@@ -1,11 +1,4 @@
-
-  # Travel app
-
-  This is a code bundle for Travel app. The original project is available at https://www.figma.com/design/xDwRpQp1Ns2hcBtNQyeSSB/Travel-app.
-
-  ## Running the code
-
-  Run `npm i` to install the dependencies.
-
-  Run `npm run dev` to start the development server.
-  
+=======
+# NT208-ai-travel-itinerary-recommendation-system
+A web-based AI recommendation system that generates personalized travel itineraries from user inputs.
+>>>>>>> 8cdffe30c0f46c4aecc9bb003fd480727c626343
