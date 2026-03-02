@@ -1,7 +1,8 @@
 =======
+
 # NT208-ai-travel-itinerary-recommendation-system
+
 A web-based AI recommendation system that generates personalized travel itineraries from user inputs.
->>>>>>> 8cdffe30c0f46c4aecc9bb003fd480727c626343
 
 ---
 
@@ -70,6 +71,7 @@ npm run dev
 ```bash
 npm start
 ```
+
 ### 📱 Truy Cập Ứng Dụng
 
 Sau khi chạy lệnh trên, ứng dụng sẽ khả dụng tại:
@@ -78,5 +80,3 @@ Sau khi chạy lệnh trên, ứng dụng sẽ khả dụng tại:
 - 🔗 **Network URL:** Xem trong terminal output
 
 **Gợi ý:** Nhấn `Ctrl + C` (hoặc `Cmd + C` trên Mac) để dừng server.
-
-
