@@ -172,7 +172,7 @@ feat: add FastAPI main app with CORS, lifespan, and router registration
 ```
 feat: add seed script to populate places from FE mock data
 
-- Add seed_data.py with 23 places from 4 destinations
+- Add seed_data.py with 22 places from 4 destinations
 - Destinations: Hà Nội, TP.HCM, Đà Nẵng, Hội An
 - Skip duplicates on re-run (idempotent)
 - Data matches FE itinerary.ts destinationData
