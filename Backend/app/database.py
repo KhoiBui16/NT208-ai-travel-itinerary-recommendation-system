@@ -36,6 +36,7 @@ from app.config import settings
 _connect_args: dict = {}
 if "onrender.com" in settings.DATABASE_URL:
     import ssl
+
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
