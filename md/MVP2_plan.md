@@ -9,11 +9,11 @@
 
 MVP #2 tập trung vào 3 trụ cột:
 
-| # | Trụ cột                  | Mô tả                                                  | Ưu tiên |
-|---|-------------------------|---------------------------------------------------------|---------|
-| 1 | **Google Maps Data Crawl** | Thay seed_data bằng dữ liệu thực từ Google Maps API   | 🔴 Cao  |
-| 2 | **Deploy Production**    | Render (BE) + Vercel (FE) + PostgreSQL cloud           | 🔴 Cao  |
-| 3 | **Map Integration**      | Hiển thị bản đồ tương tác trên FE (Leaflet/Google Maps)| 🟡 TB   |
+| #   | Trụ cột                    | Mô tả                                                   | Ưu tiên |
+| --- | -------------------------- | ------------------------------------------------------- | ------- |
+| 1   | **Google Maps Data Crawl** | Thay seed_data bằng dữ liệu thực từ Google Maps API     | 🔴 Cao  |
+| 2   | **Deploy Production**      | Render (BE) + Vercel (FE) + PostgreSQL cloud            | 🔴 Cao  |
+| 3   | **Map Integration**        | Hiển thị bản đồ tương tác trên FE (Leaflet/Google Maps) | 🟡 TB   |
 
 ---
 
@@ -21,23 +21,23 @@ MVP #2 tập trung vào 3 trụ cột:
 
 ### 2.1 Tại sao thay đổi?
 
-| Seed Data (hiện tại)                         | Google Maps Crawl (MVP #2)                     |
-|----------------------------------------------|------------------------------------------------|
-| 22 places cứng trong seed_data.py            | Hàng trăm/ngàn places thực tế                 |
-| Thiếu tọa độ (lat, lng)                     | Có tọa độ chính xác cho bản đồ                |
-| Thiếu rating, reviews                       | Có rating + user_ratings_total                 |
-| Hình ảnh từ Unsplash (không liên quan)       | Hình ảnh thực từ Google Maps Photos API        |
-| Chỉ 4 thành phố                             | Mở rộng thêm nhiều thành phố                  |
-| Dữ liệu tĩnh, không cập nhật               | Có thể re-crawl định kỳ                        |
+| Seed Data (hiện tại)                   | Google Maps Crawl (MVP #2)              |
+| -------------------------------------- | --------------------------------------- |
+| 22 places cứng trong seed_data.py      | Hàng trăm/ngàn places thực tế           |
+| Thiếu tọa độ (lat, lng)                | Có tọa độ chính xác cho bản đồ          |
+| Thiếu rating, reviews                  | Có rating + user_ratings_total          |
+| Hình ảnh từ Unsplash (không liên quan) | Hình ảnh thực từ Google Maps Photos API |
+| Chỉ 4 thành phố                        | Mở rộng thêm nhiều thành phố            |
+| Dữ liệu tĩnh, không cập nhật           | Có thể re-crawl định kỳ                 |
 
 ### 2.2 Google Maps APIs cần dùng
 
-| API                     | Mục đích                                  | Pricing (sau $200 free/tháng) |
-|-------------------------|-------------------------------------------|-------------------------------|
-| **Places API (New)**    | Tìm kiếm places theo text/nearby          | $32/1000 requests             |
-| **Place Details**       | Lấy chi tiết: rating, phone, hours        | $17/1000 requests             |
-| **Place Photos**        | Lấy ảnh thực của địa điểm                 | $7/1000 requests              |
-| **Geocoding** (tuỳ)    | Chuyển địa chỉ → tọa độ (nếu cần)        | $5/1000 requests              |
+| API                  | Mục đích                           | Pricing (sau $200 free/tháng) |
+| -------------------- | ---------------------------------- | ----------------------------- |
+| **Places API (New)** | Tìm kiếm places theo text/nearby   | $32/1000 requests             |
+| **Place Details**    | Lấy chi tiết: rating, phone, hours | $17/1000 requests             |
+| **Place Photos**     | Lấy ảnh thực của địa điểm          | $7/1000 requests              |
+| **Geocoding** (tuỳ)  | Chuyển địa chỉ → tọa độ (nếu cần)  | $5/1000 requests              |
 
 > 💰 **Chi phí:** Google cho **$200 free credit mỗi tháng**. Crawl 1 lần ~500 places ≈ $16-25 (dư sức free tier).
 
@@ -155,16 +155,16 @@ async def crawl_all():
 
 ### 2.6 So sánh với Seed Data
 
-| Metric               | seed_data.py | crawl_places.py |
-|-----------------------|-------------|-----------------|
-| Số places             | 22          | ~500-640        |
-| Có tọa độ            | ❌           | ✅               |
-| Có rating             | ❌           | ✅               |
-| Có ảnh thực           | ❌           | ✅               |
-| Có giờ mở cửa        | ❌           | ✅               |
-| Tích hợp bản đồ      | ❌           | ✅               |
-| Chi phí               | $0          | $0 (free tier)   |
-| Thời gian chạy        | <1s         | ~5-10 phút       |
+| Metric          | seed_data.py | crawl_places.py |
+| --------------- | ------------ | --------------- |
+| Số places       | 22           | ~500-640        |
+| Có tọa độ       | ❌           | ✅              |
+| Có rating       | ❌           | ✅              |
+| Có ảnh thực     | ❌           | ✅              |
+| Có giờ mở cửa   | ❌           | ✅              |
+| Tích hợp bản đồ | ❌           | ✅              |
+| Chi phí         | $0           | $0 (free tier)  |
+| Thời gian chạy  | <1s          | ~5-10 phút      |
 
 ---
 
@@ -201,6 +201,7 @@ async def crawl_all():
 5. Manual Deploy lại sau khi sửa env vars
 
 **Lưu ý Render Free Tier:**
+
 - Server tự tắt sau 15 phút không có request (cold start ~30s)
 - PostgreSQL free: 1GB storage, tự xóa sau 90 ngày
 - Upgrade Starter ($7/month) nếu cần always-on
@@ -222,6 +223,7 @@ async def crawl_all():
 8. Deploy
 
 **Lưu ý:**
+
 - Mỗi push lên `main` sẽ auto-deploy
 - Preview deployments cho mỗi PR
 - CDN toàn cầu, load nhanh
@@ -229,12 +231,14 @@ async def crawl_all():
 ### 3.4 Sau khi deploy cả 2
 
 Update CORS trên Render:
+
 ```bash
 # Render Dashboard → Environment Variables
 FRONTEND_URL=https://your-app.vercel.app
 ```
 
 Kiểm tra:
+
 ```bash
 # Health check
 curl https://dulichviet-api.onrender.com/health
@@ -249,11 +253,11 @@ open https://dulichviet-api.onrender.com/docs
 
 ### 4.1 Thư viện đề xuất
 
-| Thư viện              | Ưu điểm                         | Nhược điểm             |
-|-----------------------|----------------------------------|------------------------|
-| **React Leaflet** ⭐  | Free, open-source, nhẹ          | Map tiles chất lượng TB|
-| Google Maps React     | Chất lượng cao, Street View      | Cần API key, tốn phí  |
-| Mapbox GL             | Đẹp, customizable               | Cần API key            |
+| Thư viện             | Ưu điểm                     | Nhược điểm              |
+| -------------------- | --------------------------- | ----------------------- |
+| **React Leaflet** ⭐ | Free, open-source, nhẹ      | Map tiles chất lượng TB |
+| Google Maps React    | Chất lượng cao, Street View | Cần API key, tốn phí    |
+| Mapbox GL            | Đẹp, customizable           | Cần API key             |
 
 **Đề xuất:** Dùng **React Leaflet** (free) + OpenStreetMap tiles. Nếu đã có Google Maps API key thì dùng Google Maps.
 
@@ -261,21 +265,24 @@ open https://dulichviet-api.onrender.com/docs
 
 ```tsx
 // Pseudo-code: Hiển thị bản đồ với các điểm du lịch
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 
 <MapContainer center={[cityLat, cityLng]} zoom={13}>
-  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-  {activities.map(act => (
-    <Marker position={[act.latitude, act.longitude]}>
-      <Popup>{act.place_name} — {act.description}</Popup>
-    </Marker>
-  ))}
-</MapContainer>
+	<TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+	{activities.map((act) => (
+		<Marker position={[act.latitude, act.longitude]}>
+			<Popup>
+				{act.place_name} — {act.description}
+			</Popup>
+		</Marker>
+	))}
+</MapContainer>;
 ```
 
 ### 4.3 Route Optimization
 
 Sử dụng Google Directions API hoặc OSRM (free) để:
+
 - Vẽ tuyến đường giữa các điểm
 - Tính thời gian di chuyển thực tế
 - Tối ưu thứ tự thăm quan (TSP solver)
@@ -284,16 +291,16 @@ Sử dụng Google Directions API hoặc OSRM (free) để:
 
 ## 5. Các tính năng khác MVP #2
 
-| #  | Feature                     | Mô tả                                           | Ưu tiên |
-|----|-----------------------------|--------------------------------------------------|---------|
-| 5  | Alembic migrations          | DB version control thay create_all()             | 🔴 Cao  |
-| 6  | AI Enhancement              | Tuning Gemini prompt, dùng crawled data context  | 🟡 TB   |
-| 7  | Scoring system              | Expose auto-score từ BE → FE                     | 🟡 TB   |
-| 8  | Edit activities             | Thêm/sửa activities (hiện chỉ xóa)              | 🟡 TB   |
-| 9  | Destination normalization   | Fix "Ha Noi" vs "Hà Nội" duplicate              | 🟢 Thấp|
-| 10 | Admin panel                 | Quản lý users, places, trips                     | 🟢 Thấp|
-| 11 | Unit tests (pytest)         | pytest + httpx async test client                 | 🟡 TB   |
-| 12 | Security hardening          | Rate limiting, input sanitization, HTTPS          | 🔴 Cao  |
+| #   | Feature                   | Mô tả                                           | Ưu tiên |
+| --- | ------------------------- | ----------------------------------------------- | ------- |
+| 5   | Alembic migrations        | DB version control thay create_all()            | 🔴 Cao  |
+| 6   | AI Enhancement            | Tuning Gemini prompt, dùng crawled data context | 🟡 TB   |
+| 7   | Scoring system            | Expose auto-score từ BE → FE                    | 🟡 TB   |
+| 8   | Edit activities           | Thêm/sửa activities (hiện chỉ xóa)              | 🟡 TB   |
+| 9   | Destination normalization | Fix "Ha Noi" vs "Hà Nội" duplicate              | 🟢 Thấp |
+| 10  | Admin panel               | Quản lý users, places, trips                    | 🟢 Thấp |
+| 11  | Unit tests (pytest)       | pytest + httpx async test client                | 🟡 TB   |
+| 12  | Security hardening        | Rate limiting, input sanitization, HTTPS        | 🔴 Cao  |
 
 ---
 

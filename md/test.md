@@ -23,21 +23,23 @@
 
 ## 2. Kiểm tra khởi chạy
 
-| Hạng mục                                  | Trạng thái | Ghi chú                                                   |
-| ----------------------------------------- | ---------- | --------------------------------------------------------- |
+| Hạng mục                                  | Trạng thái | Ghi chú                                                       |
+| ----------------------------------------- | ---------- | ------------------------------------------------------------- |
 | BE: uvicorn main:app --reload --port 8000 | ✅ OK      | Startup OK, 4 tables created ⚠️ Xem ghi chú --reload bên dưới |
-| FE: npm run dev                           | ✅ OK      | Vite v6.3.5, port 5174                                    |
-| Health check: GET /                       | ✅ 200     | `{"status":"ok","message":"Du Lịch Việt API is running"}` |
-| Health check: GET /health                 | ✅ 200     | `{"status":"healthy"}`                                    |
-| Swagger UI: /docs                         | ✅ 200     | 12 API paths documented                                   |
-| ReDoc: /redoc                             | ✅ OK      | Available                                                 |
+| FE: npm run dev                           | ✅ OK      | Vite v6.3.5, port 5174                                        |
+| Health check: GET /                       | ✅ 200     | `{"status":"ok","message":"Du Lịch Việt API is running"}`     |
+| Health check: GET /health                 | ✅ 200     | `{"status":"healthy"}`                                        |
+| Swagger UI: /docs                         | ✅ 200     | 12 API paths documented                                       |
+| ReDoc: /redoc                             | ✅ OK      | Available                                                     |
 
 ---
 
 > ⚠️ **Ghi chú `--reload` trên Windows:** Flag `--reload` của uvicorn có thể gây timeout hoặc treo process trên Windows do file watcher conflict. Nếu gặp lỗi, chạy **không có** `--reload`:
+>
 > ```bash
 > uvicorn main:app --port 8000
 > ```
+>
 > Chỉ dùng `--reload` khi cần hot-reload trong lúc dev và chấp nhận khả năng restart chậm.
 
 ---
