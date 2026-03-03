@@ -51,16 +51,21 @@ app = FastAPI(
 
 
 # --- CORS Middleware ---
-# Cho phép Frontend (localhost:5173) gọi API Backend (localhost:8000)
+# Cho phép Frontend gọi API Backend (dev + production)
+allowed_origins = [
+    settings.FRONTEND_URL,  # Production: Vercel URL, Dev: http://localhost:5173
+    "http://localhost:5173",
+    "http://localhost:5174",  # Vite dev fallback port
+    "http://localhost:3000",  # Fallback
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+]
+# Lọc bỏ giá trị rỗng và trùng lặp
+allowed_origins = list(set(o for o in allowed_origins if o))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.FRONTEND_URL,  # http://localhost:5173
-        "http://localhost:5174",  # Vite dev fallback port
-        "http://localhost:3000",  # Fallback
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,  # Cho phép gửi cookies/auth headers
     allow_methods=["*"],  # GET, POST, PUT, DELETE, etc.
     allow_headers=["*"],  # Authorization, Content-Type, etc.

@@ -8,10 +8,13 @@
  * - Xử lý lỗi thống nhất
  *
  * Thay thế toàn bộ localStorage logic trong auth.ts và itinerary.ts
+ *
+ * Production: set VITE_API_BASE_URL trong Vercel Dashboard
+ * Dev: mặc định http://localhost:8000/api/v1
  * ============================================
  */
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 // ==================== Token Management ====================
 
