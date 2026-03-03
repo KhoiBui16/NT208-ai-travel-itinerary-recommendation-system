@@ -75,7 +75,7 @@ export async function registerUser(
     if (err instanceof ApiError) {
       return { success: false, error: err.message };
     }
-    return { success: false, error: 'Lỗi kết nối server' };
+    return { success: false, error: 'Không thể kết nối server. Vui lòng thử lại sau.' };
   }
 }
 
@@ -99,7 +99,7 @@ export async function loginUser(
     if (err instanceof ApiError) {
       return { success: false, error: err.message };
     }
-    return { success: false, error: 'Lỗi kết nối server' };
+    return { success: false, error: 'Không thể kết nối server. Vui lòng thử lại sau.' };
   }
 }
 

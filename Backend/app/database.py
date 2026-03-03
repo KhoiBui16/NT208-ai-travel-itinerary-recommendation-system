@@ -30,12 +30,24 @@ from app.config import settings
 # --- Async Engine ---
 # create_async_engine tạo connection pool tới PostgreSQL
 # echo=True: in SQL query ra console (debug), tắt trong production
+
+# Render Internal DB không cần SSL, nhưng External DB cần.
+# Nếu DATABASE_URL chứa "onrender.com" và không phải internal URL → enable SSL
+_connect_args: dict = {}
+if "onrender.com" in settings.DATABASE_URL:
+    import ssl
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    _connect_args = {"ssl": ssl_context}
+
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,  # In SQL ra console khi DEBUG=True
     pool_size=5,  # Số connection tối đa trong pool
     max_overflow=10,  # Thêm tối đa 10 connection khi pool đầy
     pool_pre_ping=True,  # Kiểm tra connection còn sống trước khi dùng
+    connect_args=_connect_args,
 )
 
 

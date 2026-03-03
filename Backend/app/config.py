@@ -53,6 +53,7 @@ class Settings(BaseSettings):
 
     # --- CORS ---
     # URL Frontend (cho phép gọi API cross-origin)
+    # Production: https://ai-travel-itinerary-recommendation.vercel.app
     FRONTEND_URL: str = "http://localhost:5173"
 
     # --- App ---

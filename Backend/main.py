@@ -30,9 +30,20 @@ async def lifespan(app: FastAPI):
     - Shutdown: đóng kết nối DB
     """
     # --- Startup: tạo bảng DB (chỉ dùng cho dev, production dùng alembic) ---
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("✅ Database tables created / verified")
+    print(f"⚡ Starting Du Lịch Việt API...")
+    print(f"  DATABASE_URL: {settings.DATABASE_URL[:30]}..." if len(settings.DATABASE_URL) > 30 else f"  DATABASE_URL: {settings.DATABASE_URL}")
+    print(f"  FRONTEND_URL: {settings.FRONTEND_URL}")
+    print(f"  DEBUG: {settings.DEBUG}")
+    print(f"  GEMINI_API_KEY: {'***' + settings.GEMINI_API_KEY[-4:] if settings.GEMINI_API_KEY else 'NOT SET'}")
+
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("✅ Database tables created / verified")
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        print("  ↳ App will start but DB operations will fail")
+        print("  ↳ Check DATABASE_URL environment variable")
 
     yield  # App đang chạy
 
@@ -53,7 +64,10 @@ app = FastAPI(
 # --- CORS Middleware ---
 # Cho phép Frontend gọi API Backend (dev + production)
 allowed_origins = [
-    settings.FRONTEND_URL,  # Production: Vercel URL, Dev: http://localhost:5173
+    settings.FRONTEND_URL,  # Production: Vercel URL (từ env var FRONTEND_URL)
+    # Vercel production URL (hardcode để đảm bảo luôn hoạt động)
+    "https://ai-travel-itinerary-recommendation.vercel.app",
+    # Local development
     "http://localhost:5173",
     "http://localhost:5174",  # Vite dev fallback port
     "http://localhost:3000",  # Fallback
@@ -62,6 +76,7 @@ allowed_origins = [
 ]
 # Lọc bỏ giá trị rỗng và trùng lặp
 allowed_origins = list(set(o for o in allowed_origins if o))
+print(f"🌐 CORS allowed origins: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -93,5 +108,15 @@ async def root():
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Health check cho monitoring."""
-    return {"status": "healthy"}
+    """Health check cho monitoring (bao gồm DB connectivity)."""
+    health = {"status": "healthy", "api": "ok"}
+    try:
+        from app.database import AsyncSessionLocal
+        from sqlalchemy import text
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        health["database"] = "connected"
+    except Exception as e:
+        health["status"] = "degraded"
+        health["database"] = f"error: {str(e)[:100]}"
+    return health

@@ -3,18 +3,49 @@
  * api.ts — Centralized API Service Layer
  * ============================================
  * Tất cả request tới Backend đều đi qua module này.
- * - Base URL: http://localhost:8000/api/v1
  * - JWT token tự động gắn vào header Authorization
  * - Xử lý lỗi thống nhất
  *
- * Thay thế toàn bộ localStorage logic trong auth.ts và itinerary.ts
- *
- * Production: set VITE_API_BASE_URL trong Vercel Dashboard
- * Dev: mặc định http://localhost:8000/api/v1
+ * URL Resolution (theo thứ tự ưu tiên):
+ * 1. VITE_API_BASE_URL env var (set trong Vercel Dashboard)
+ * 2. Auto-detect: nếu chạy trên *.vercel.app → dùng Render backend
+ * 3. Fallback: http://localhost:8000/api/v1 (dev mode)
  * ============================================
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+// --- Production Backend URL trên Render ---
+const RENDER_API_URL = 'https://dulichviet-api.onrender.com/api/v1';
+
+/**
+ * Xác định API Base URL theo môi trường.
+ * Ưu tiên: env var > auto-detect production > localhost fallback
+ */
+function resolveApiBaseUrl(): string {
+  // 1. Nếu có env var, dùng luôn (ưu tiên cao nhất)
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl) {
+    return envUrl;
+  }
+
+  // 2. Auto-detect: chạy trên Vercel production → dùng Render backend
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (
+      hostname.includes('vercel.app') ||
+      hostname.includes('ai-travel') ||
+      (!hostname.includes('localhost') && !hostname.includes('127.0.0.1'))
+    ) {
+      console.info(`[API] Production detected (${hostname}) → ${RENDER_API_URL}`);
+      return RENDER_API_URL;
+    }
+  }
+
+  // 3. Fallback: local development
+  return 'http://localhost:8000/api/v1';
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
+console.info(`[API] Base URL: ${API_BASE_URL}`);
 
 // ==================== Token Management ====================
 

@@ -37,9 +37,9 @@ services:
       # Gemini AI — set trong Dashboard sau deploy
       - key: GEMINI_API_KEY
         sync: false
-      # CORS — URL Frontend trên Vercel (set sau khi deploy FE)
+      # CORS — URL Frontend trên Vercel
       - key: FRONTEND_URL
-        sync: false
+        value: "https://ai-travel-itinerary-recommendation.vercel.app"
       # Production settings
       - key: DEBUG
         value: "False"
