@@ -28,7 +28,8 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Test output files
-test_results.*
-test_output.*
-test_full_*
+# Test output files (keep test source .py files)
+test_results.json
+test_results.txt
+test_output.txt
+test_full_results.json
