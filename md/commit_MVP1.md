@@ -658,12 +658,60 @@ git commit -m "docs: add MVP analysis, requirements, plan, and commit guide"
 git push origin main
 ```
 
+### Phase 4 — Post-MVP #1 Fixes & Deployment
+
+```bash
+# Commit 23: fix inconsistencies
+git add md/test.md md/commit_MVP1.md
+git commit -m "fix: correct 3 inconsistencies in test.md and commit_MVP1.md"
+
+# Commit 24: API_BASE_URL + CORS
+git add Frontend/app/utils/api.ts Backend/main.py
+git commit -m "feat: make API_BASE_URL configurable + improve CORS for production"
+
+# Commit 25: deployment configs
+git add vercel.json render.yaml
+git commit -m "chore: add deployment configs for Vercel (FE) and Render (BE)"
+
+# Commit 26: MVP#2 plan
+git add md/MVP2_plan.md
+git commit -m "docs: add MVP#2 plan — Google Maps crawl, deploy, map integration"
+
+# Commit 27: render.yaml fix
+git add render.yaml
+git commit -m "fix: update render.yaml for Oregon region + PostgreSQL 16"
+
+# Commit 28: deploy guide
+git add md/deploy.md
+git commit -m "docs: add comprehensive deploy guide (Render BE + Vercel FE + local setup)"
+
+# Commit 29: sync docs
+git add md/test.md md/MVP2_plan.md
+git commit -m "fix: sync test.md and MVP2_plan.md with user edits"
+```
+
+### Phase 5 — Bug Fixes (Runtime)
+
+```bash
+# Commit 30: FE bug fixes + BE config fix
+git add Frontend/app/pages/Home.tsx Frontend/app/pages/TripPlanning.tsx Frontend/app/pages/ItineraryView.tsx Backend/app/config.py
+git commit -m "fix: FE bugs (Xem Tất Cả, date validation, itinerary flow) + BE DATABASE_URL auto-convert"
+```
+
+### Push
+
+```bash
+git push origin main
+```
+
 ### 📊 Tổng kết
 
-| Phase | Commits        | Nội dung                          |
-| ----- | -------------- | --------------------------------- |
-| 0     | 1 commit       | .gitignore (PHẢI LÀM ĐẦU TIÊN)    |
-| 1     | 11 commits     | Backend core + docs + tests       |
-| 2     | 8 commits      | FE-BE integration + package-lock  |
-| 3     | 3 commits      | FE docs + diagrams + project docs |
-| **Σ** | **23 commits** | **Toàn bộ MVP #1**                |
+| Phase | Commits        | Nội dung                                    |
+| ----- | -------------- | ------------------------------------------- |
+| 0     | 1 commit       | .gitignore (PHẢI LÀM ĐẦU TIÊN)              |
+| 1     | 11 commits     | Backend core + docs + tests                 |
+| 2     | 8 commits      | FE-BE integration + package-lock            |
+| 3     | 3 commits      | FE docs + diagrams + project docs           |
+| 4     | 7 commits      | Post-MVP fixes, deployment configs & docs   |
+| 5     | 1 commit       | Runtime bug fixes (FE + BE)                 |
+| **Σ** | **31 commits** | **MVP #1 + Fixes + Deploy**                 |

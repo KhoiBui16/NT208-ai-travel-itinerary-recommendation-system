@@ -49,6 +49,9 @@ export default function TripPlanning() {
     if (!formData.destination) newErrors.destination = "Vui lòng chọn điểm đến";
     if (!formData.startDate) newErrors.startDate = "Vui lòng chọn ngày bắt đầu";
     if (!formData.endDate) newErrors.endDate = "Vui lòng chọn ngày kết thúc";
+    if (formData.startDate && formData.endDate && formData.endDate <= formData.startDate) {
+      newErrors.endDate = "Ngày kết thúc phải sau ngày bắt đầu";
+    }
     if (!formData.budget) newErrors.budget = "Vui lòng nhập ngân sách";
     if (formData.interests.length === 0) newErrors.interests = "Vui lòng chọn ít nhất một sở thích";
     
@@ -69,7 +72,8 @@ export default function TripPlanning() {
       );
       
       // Navigate to itinerary view
-      navigate(`/itinerary/${itinerary.id}`);
+      // If fallback (no BE), pass itinerary via state so ItineraryView can display it
+      navigate(`/itinerary/${itinerary.id}`, { state: { itinerary } });
     } catch (err) {
       setErrors({ submit: "Lỗi tạo lịch trình. Vui lòng thử lại." });
       console.error(err);

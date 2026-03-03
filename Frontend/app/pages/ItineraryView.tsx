@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router";
+import { useParams, useNavigate, useLocation, Link } from "react-router";
 import { Header } from "../components/Header";
 import {
   MapPin,
@@ -28,6 +28,7 @@ import type { Itinerary, Activity } from "../utils/auth";
 export default function ItineraryView() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const user = getCurrentUser();
   
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
@@ -40,6 +41,19 @@ export default function ItineraryView() {
 
   useEffect(() => {
     if (id) {
+      // Check if itinerary was passed via navigation state (fallback mode)
+      const stateItinerary = (location.state as { itinerary?: Itinerary })?.itinerary;
+      if (stateItinerary && stateItinerary.id === id) {
+        setItinerary(stateItinerary);
+        setRating(stateItinerary.rating || 0);
+        setFeedback(stateItinerary.feedback || "");
+        if (!isAuthenticated()) {
+          setShowSavePrompt(true);
+        }
+        return;
+      }
+
+      // Otherwise fetch from BE API
       const fetchItinerary = async () => {
         try {
           const data = await getItineraryById(id);
@@ -53,15 +67,15 @@ export default function ItineraryView() {
               setShowSavePrompt(true);
             }
           } else {
-            navigate("/");
+            navigate("/trip-planning");
           }
         } catch {
-          navigate("/");
+          navigate("/trip-planning");
         }
       };
       fetchItinerary();
     }
-  }, [id, navigate]);
+  }, [id, navigate, location.state]);
 
   const handleSave = () => {
     if (!itinerary) return;

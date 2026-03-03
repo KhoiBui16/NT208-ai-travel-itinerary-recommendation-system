@@ -116,17 +116,17 @@ export default function Home() {
       </section>
 
       {/* Popular Destinations */}
-      <section className="mx-auto max-w-7xl px-6 py-16">
+      <section id="destinations" className="mx-auto max-w-7xl px-6 py-16">
         <div className="mb-12 flex items-center justify-between">
           <h3 className="text-3xl font-bold text-gray-900">
             Điểm Đến Phổ Biến
           </h3>
-          <Link
-            to="/trip-planning"
+          <button
+            onClick={() => document.getElementById('all-destinations')?.scrollIntoView({ behavior: 'smooth' })}
             className="font-semibold text-blue-600 hover:text-blue-700"
           >
             Xem Tất Cả →
-          </Link>
+          </button>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -151,6 +151,30 @@ export default function Home() {
                 </div>
                 <p className="text-gray-200">{dest.description}</p>
               </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* All Destinations Grid */}
+      <section id="all-destinations" className="mx-auto max-w-7xl px-6 py-16">
+        <h3 className="mb-8 text-3xl font-bold text-gray-900">
+          Tất Cả Điểm Đến
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            "Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Hội An",
+            "Vịnh Hạ Long", "Sapa", "Nha Trang", "Phú Quốc", "Đà Lạt", "Huế",
+          ].map((dest) => (
+            <Link
+              key={dest}
+              to={`/trip-planning?destination=${encodeURIComponent(dest)}`}
+              className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-lg hover:-translate-y-0.5"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                <MapPin className="h-5 w-5 text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900">{dest}</span>
             </Link>
           ))}
         </div>

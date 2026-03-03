@@ -22,9 +22,22 @@ class Settings(BaseSettings):
 
     # --- Database ---
     # PostgreSQL connection string (async driver: asyncpg)
+    # Render cung cấp URL dạng "postgresql://..." nhưng asyncpg cần "postgresql+asyncpg://..."
+    # Config tự chuyển đổi trong model_post_init
     DATABASE_URL: str = (
         "postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet"
     )
+
+    def model_post_init(self, __context: object) -> None:
+        """Auto-fix DATABASE_URL: thêm +asyncpg nếu thiếu."""
+        if self.DATABASE_URL.startswith("postgresql://"):
+            self.DATABASE_URL = self.DATABASE_URL.replace(
+                "postgresql://", "postgresql+asyncpg://", 1
+            )
+        elif self.DATABASE_URL.startswith("postgres://"):
+            self.DATABASE_URL = self.DATABASE_URL.replace(
+                "postgres://", "postgresql+asyncpg://", 1
+            )
 
     # --- JWT Authentication ---
     # Secret key để ký JWT token — BẮT BUỘC thay đổi trong production!
