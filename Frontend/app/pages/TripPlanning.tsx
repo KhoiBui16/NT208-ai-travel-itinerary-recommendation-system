@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
-import { MapPin, Calendar, DollarSign, Heart, Camera, Utensils, Mountain, Users } from "lucide-react";
+import { MapPin, Calendar, DollarSign, Heart, Camera, Utensils, Mountain, Users, Loader2 } from "lucide-react";
 import { generateItinerary } from "../utils/itinerary";
-import { saveItinerary } from "../utils/auth";
 
 const destinations = [
   "Hà Nội",
@@ -40,8 +39,9 @@ export default function TripPlanning() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
@@ -57,20 +57,25 @@ export default function TripPlanning() {
       return;
     }
 
-    // Generate itinerary
-    const itinerary = generateItinerary(
-      formData.destination,
-      formData.startDate,
-      formData.endDate,
-      parseInt(formData.budget),
-      formData.interests
-    );
-
-    // Save to localStorage temporarily
-    saveItinerary(itinerary);
-    
-    // Navigate to itinerary view
-    navigate(`/itinerary/${itinerary.id}`);
+    setLoading(true);
+    try {
+      // Generate itinerary via BE API (AI-powered)
+      const itinerary = await generateItinerary(
+        formData.destination,
+        formData.startDate,
+        formData.endDate,
+        parseInt(formData.budget),
+        formData.interests
+      );
+      
+      // Navigate to itinerary view
+      navigate(`/itinerary/${itinerary.id}`);
+    } catch (err) {
+      setErrors({ submit: "Lỗi tạo lịch trình. Vui lòng thử lại." });
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleInterest = (interestId: string) => {
@@ -217,12 +222,26 @@ export default function TripPlanning() {
             )}
           </div>
 
+          {errors.submit && (
+            <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-600">
+              {errors.submit}
+            </div>
+          )}
+
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
+            disabled={loading}
+            className="w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50"
           >
-            Tạo Lịch Trình Du Lịch
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Đang tạo lịch trình (AI)...
+              </span>
+            ) : (
+              "Tạo Lịch Trình Du Lịch"
+            )}
           </button>
         </form>
       </div>
