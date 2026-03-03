@@ -20,12 +20,12 @@
 
 ## 1.1 Yêu cầu phần mềm
 
-| Phần mềm         | Phiên bản | Kiểm tra           | Tải về                                         |
-| ---------------- | --------- | ------------------ | ---------------------------------------------- |
-| **Node.js**      | 18+       | `node --version`   | https://nodejs.org/                            |
-| **Python**       | 3.11+     | `python --version` | https://www.python.org/downloads/              |
-| **Docker**       | —         | `docker --version` | https://www.docker.com/products/docker-desktop |
-| **Git**          | 2.x       | `git --version`    | https://git-scm.com/                           |
+| Phần mềm    | Phiên bản | Kiểm tra           | Tải về                                         |
+| ----------- | --------- | ------------------ | ---------------------------------------------- |
+| **Node.js** | 18+       | `node --version`   | https://nodejs.org/                            |
+| **Python**  | 3.11+     | `python --version` | https://www.python.org/downloads/              |
+| **Docker**  | —         | `docker --version` | https://www.docker.com/products/docker-desktop |
+| **Git**     | 2.x       | `git --version`    | https://git-scm.com/                           |
 
 > Nếu dùng Docker cho PostgreSQL thì **không cần** cài PostgreSQL trực tiếp.
 
@@ -51,6 +51,7 @@ docker ps
 > **Lần sau:** chỉ cần `docker start dulichviet-postgres`
 
 > **Nếu không dùng Docker:** Cài PostgreSQL trực tiếp, tạo database `dulichviet`:
+>
 > ```sql
 > CREATE DATABASE dulichviet;
 > ```
@@ -171,12 +172,12 @@ python test_full_api.py
 ## 1.3 Truy cập ứng dụng
 
 | Service      | URL                          | Mô tả                    |
-| ------------ | ---------------------------- | ------------------------- |
-| **Frontend** | http://localhost:5173        | Giao diện web             |
-| **Backend**  | http://localhost:8000        | API server                |
-| **Swagger**  | http://localhost:8000/docs   | API documentation & test  |
-| **ReDoc**    | http://localhost:8000/redoc  | API docs (read-only)      |
-| **Health**   | http://localhost:8000/health | Health check endpoint     |
+| ------------ | ---------------------------- | ------------------------ |
+| **Frontend** | http://localhost:5173        | Giao diện web            |
+| **Backend**  | http://localhost:8000        | API server               |
+| **Swagger**  | http://localhost:8000/docs   | API documentation & test |
+| **ReDoc**    | http://localhost:8000/redoc  | API docs (read-only)     |
+| **Health**   | http://localhost:8000/health | Health check endpoint    |
 
 ## 1.4 Test flow trên browser
 
@@ -212,16 +213,16 @@ python test_full_api.py
 
 ### Bước 2: Điền form "Configure and deploy your new database"
 
-| Field                  | Giá trị điền                | Ghi chú                                          |
-| ---------------------- | --------------------------- | ------------------------------------------------- |
-| **Name**               | `dulichviet-db`             | Tên hiển thị trên Dashboard                       |
-| **Database** (Optional)| `dulichviet`                | Tên database thực tế, nếu để trống Render tự tạo random |
-| **User** (Optional)    | _(để trống)_                | Render tự tạo random username, **KHÔNG cần điền** |
-| **Region**             | `Oregon (US West)`          | Free tier chỉ có Oregon                           |
-| **PostgreSQL Version** | `16`                        | Tương thích với project                           |
-| **Datadog API Key**    | _(để trống)_                | Không cần                                         |
-| **Datadog Region**     | `US1 (default)`             | Không cần thay đổi                                |
-| **Plan**               | **Free**                    | $0/month, 256MB RAM, 1GB storage                  |
+| Field                   | Giá trị điền       | Ghi chú                                                 |
+| ----------------------- | ------------------ | ------------------------------------------------------- |
+| **Name**                | `dulichviet-db`    | Tên hiển thị trên Dashboard                             |
+| **Database** (Optional) | `dulichviet`       | Tên database thực tế, nếu để trống Render tự tạo random |
+| **User** (Optional)     | _(để trống)_       | Render tự tạo random username, **KHÔNG cần điền**       |
+| **Region**              | `Oregon (US West)` | Free tier chỉ có Oregon                                 |
+| **PostgreSQL Version**  | `16`               | Tương thích với project                                 |
+| **Datadog API Key**     | _(để trống)_       | Không cần                                               |
+| **Datadog Region**      | `US1 (default)`    | Không cần thay đổi                                      |
+| **Plan**                | **Free**           | $0/month, 256MB RAM, 1GB storage                        |
 
 ### Bước 3: Click "Create Database"
 
@@ -268,34 +269,35 @@ postgresql+asyncpg://dulichviet_db_xxxx_user:AbCdEfGh12345@dpg-xxxx.oregon-postg
 
 ### Bước 2: Điền thông tin service
 
-| Field              | Giá trị                                           | Ghi chú                        |
-| ------------------ | ------------------------------------------------- | ------------------------------ |
-| **Name**           | `dulichviet-api`                                  | Sẽ thành URL subdomain         |
-| **Region**         | `Oregon (US West)`                                | Cùng region với database       |
-| **Branch**         | `main`                                            |                                |
-| **Root Directory** | `Backend`                                         | ⚠️ Quan trọng! Chỉ deploy thư mục Backend |
-| **Runtime**        | `Python`                                          |                                |
-| **Build Command**  | `pip install -r requirements.txt`                 |                                |
-| **Start Command**  | `uvicorn main:app --host 0.0.0.0 --port $PORT`   | ⚠️ Không dùng --reload, dùng $PORT |
-| **Instance Type**  | **Free**                                          | $0/month                       |
+| Field              | Giá trị                                        | Ghi chú                                   |
+| ------------------ | ---------------------------------------------- | ----------------------------------------- |
+| **Name**           | `dulichviet-api`                               | Sẽ thành URL subdomain                    |
+| **Region**         | `Oregon (US West)`                             | Cùng region với database                  |
+| **Branch**         | `main`                                         |                                           |
+| **Root Directory** | `Backend`                                      | ⚠️ Quan trọng! Chỉ deploy thư mục Backend |
+| **Runtime**        | `Python`                                       |                                           |
+| **Build Command**  | `pip install -r requirements.txt`              |                                           |
+| **Start Command**  | `uvicorn main:app --host 0.0.0.0 --port $PORT` | ⚠️ Không dùng --reload, dùng $PORT        |
+| **Instance Type**  | **Free**                                       | $0/month                                  |
 
 ### Bước 3: Thêm Environment Variables
 
 Cuộn xuống phần **Environment Variables**, click **Add Environment Variable** cho từng cặp:
 
-| Key                          | Value                                                                 | Cách lấy                        |
-| ---------------------------- | --------------------------------------------------------------------- | -------------------------------- |
-| `DATABASE_URL`               | `postgresql+asyncpg://xxxx...` (URL đã sửa ở bước 2.2)              | Copy từ PostgreSQL Info + thêm `+asyncpg` |
-| `JWT_SECRET_KEY`             | `a1b2c3d4e5f6...` (chuỗi random 64 ký tự)                           | Chạy local: `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `JWT_ALGORITHM`              | `HS256`                                                               | Giữ nguyên                      |
-| `GEMINI_API_KEY`             | `AIza...` (API key của bạn)                                          | Lấy tại https://aistudio.google.com/apikey |
-| `FRONTEND_URL`               | _(để trống trước, sẽ update sau khi deploy FE)_                     | Update ở Phần 4                  |
-| `DEBUG`                      | `False`                                                               | Tắt debug cho production        |
-| `ACCESS_TOKEN_EXPIRE_MINUTES`| `1440`                                                                | Token hết hạn sau 24h           |
+| Key                           | Value                                                  | Cách lấy                                                               |
+| ----------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `DATABASE_URL`                | `postgresql+asyncpg://xxxx...` (URL đã sửa ở bước 2.2) | Copy từ PostgreSQL Info + thêm `+asyncpg`                              |
+| `JWT_SECRET_KEY`              | `a1b2c3d4e5f6...` (chuỗi random 64 ký tự)              | Chạy local: `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `JWT_ALGORITHM`               | `HS256`                                                | Giữ nguyên                                                             |
+| `GEMINI_API_KEY`              | `AIza...` (API key của bạn)                            | Lấy tại https://aistudio.google.com/apikey                             |
+| `FRONTEND_URL`                | _(để trống trước, sẽ update sau khi deploy FE)_        | Update ở Phần 4                                                        |
+| `DEBUG`                       | `False`                                                | Tắt debug cho production                                               |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440`                                                 | Token hết hạn sau 24h                                                  |
 
 ### Bước 4: Click "Create Web Service"
 
 Render bắt đầu build:
+
 1. **Clone repo** → chỉ lấy thư mục `Backend/`
 2. **Install dependencies** → `pip install -r requirements.txt`
 3. **Start server** → `uvicorn main:app --host 0.0.0.0 --port $PORT`
@@ -305,17 +307,18 @@ Render bắt đầu build:
 ### Bước 5: Kiểm tra URL Backend
 
 Render cho bạn URL dạng:
+
 ```
 https://dulichviet-api.onrender.com
 ```
 
 **Test ngay trên browser:**
 
-| URL | Expect |
-|-----|--------|
-| `https://dulichviet-api.onrender.com/` | `{"status":"ok","message":"Du Lịch Việt API is running","docs":"/docs"}` |
-| `https://dulichviet-api.onrender.com/health` | `{"status":"healthy"}` |
-| `https://dulichviet-api.onrender.com/docs` | Swagger UI — 12 API endpoints |
+| URL                                          | Expect                                                                   |
+| -------------------------------------------- | ------------------------------------------------------------------------ |
+| `https://dulichviet-api.onrender.com/`       | `{"status":"ok","message":"Du Lịch Việt API is running","docs":"/docs"}` |
+| `https://dulichviet-api.onrender.com/health` | `{"status":"healthy"}`                                                   |
+| `https://dulichviet-api.onrender.com/docs`   | Swagger UI — 12 API endpoints                                            |
 
 > ⚠️ **Free tier:** Server tự tắt sau 15 phút không có request. Lần truy cập đầu tiên sẽ "cold start" khoảng 30-60 giây. Đây là bình thường.
 
@@ -335,6 +338,7 @@ Vì DB mới trống (không có places), cần seed data. **2 cách:**
 ### Cách B — Chạy seed_data.py qua Shell (nếu có paid plan)
 
 Render Shell chỉ có trên **Starter plan ($7/month)**:
+
 ```bash
 cd /opt/render/project/src
 python seed_data.py
@@ -377,22 +381,22 @@ Gọi 1 lần: `POST https://dulichviet-api.onrender.com/api/v1/admin/seed` → 
 
 ### Bước 2: Configure Project
 
-| Field                | Giá trị            | Ghi chú                                |
-| -------------------- | ------------------ | --------------------------------------- |
-| **Project Name**     | `dulichviet`       | Tự chọn, sẽ thành URL subdomain        |
-| **Framework Preset** | `Vite`             | Vercel auto-detect từ vite.config.ts    |
-| **Root Directory**   | `.` (mặc định)     | Giữ nguyên — package.json ở root       |
-| **Build Command**    | `npm run build`    | Auto-filled                             |
-| **Output Directory** | `dist`             | Auto-filled                             |
-| **Install Command**  | `npm install`      | Auto-filled                             |
+| Field                | Giá trị         | Ghi chú                              |
+| -------------------- | --------------- | ------------------------------------ |
+| **Project Name**     | `dulichviet`    | Tự chọn, sẽ thành URL subdomain      |
+| **Framework Preset** | `Vite`          | Vercel auto-detect từ vite.config.ts |
+| **Root Directory**   | `.` (mặc định)  | Giữ nguyên — package.json ở root     |
+| **Build Command**    | `npm run build` | Auto-filled                          |
+| **Output Directory** | `dist`          | Auto-filled                          |
+| **Install Command**  | `npm install`   | Auto-filled                          |
 
 ### Bước 3: Environment Variables
 
 Click **Environment Variables** → Add:
 
-| Key                  | Value                                               |
-| -------------------- | --------------------------------------------------- |
-| `VITE_API_BASE_URL`  | `https://dulichviet-api.onrender.com/api/v1`        |
+| Key                 | Value                                        |
+| ------------------- | -------------------------------------------- |
+| `VITE_API_BASE_URL` | `https://dulichviet-api.onrender.com/api/v1` |
 
 > ⚠️ Thay `dulichviet-api` bằng tên thật Render đã cho bạn ở Phần 2.
 
@@ -401,6 +405,7 @@ Click **Environment Variables** → Add:
 ### Bước 4: Click "Deploy"
 
 Vercel bắt đầu build:
+
 1. `npm install` → cài 283+ packages
 2. `npm run build` → Vite build → output vào `dist/`
 3. CDN deploy → URL public
@@ -410,11 +415,13 @@ Vercel bắt đầu build:
 ### Bước 5: Lấy URL public
 
 Vercel cho URL dạng:
+
 ```
 https://dulichviet.vercel.app
 ```
 
 hoặc:
+
 ```
 https://nt208-ai-travel-itinerary-recommendation-system.vercel.app
 ```
@@ -429,7 +436,7 @@ File `vercel.json` đã có sẵn trong repo:
 
 ```json
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+	"rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
 ```
 
@@ -457,9 +464,9 @@ Sau khi có URL của cả 2:
 Mở browser Console (F12) tại trang Vercel, chạy:
 
 ```javascript
-fetch('https://dulichviet-api.onrender.com/health')
-  .then(r => r.json())
-  .then(d => console.log(d))
+fetch("https://dulichviet-api.onrender.com/health")
+	.then((r) => r.json())
+	.then((d) => console.log(d));
 ```
 
 Nếu thấy `{"status":"healthy"}` → CORS OK ✅  
@@ -471,27 +478,27 @@ Nếu thấy `CORS error` → kiểm tra lại `FRONTEND_URL` trên Render.
 
 ## 5.1 Checklist sau deploy
 
-| #  | Kiểm tra                              | URL / Action                                       | Expect                        |
-| -- | ------------------------------------- | -------------------------------------------------- | ----------------------------- |
-| 1  | BE Health                             | `GET https://YOUR-BE.onrender.com/health`          | `{"status":"healthy"}`        |
-| 2  | BE Swagger                            | `https://YOUR-BE.onrender.com/docs`                | 12 API paths hiện             |
-| 3  | BE Destinations                       | `GET https://YOUR-BE.onrender.com/api/v1/destinations/` | Response 200 + list places |
-| 4  | FE Homepage                           | `https://YOUR-FE.vercel.app`                       | Trang Home load OK            |
-| 5  | FE → BE Register                      | Click Đăng ký → điền form → submit                 | 201 Created, redirect login   |
-| 6  | FE → BE Login                         | Đăng nhập email vừa tạo                            | Token lưu, redirect home      |
-| 7  | FE → BE Generate                      | Trip Planning → tạo lịch trình                     | AI trả về itinerary           |
-| 8  | FE → BE Saved                         | Vào Saved Itineraries                              | Hiện trips đã tạo             |
-| 9  | FE → BE Profile                       | Vào Profile → xem/sửa info                        | 200 OK                        |
-| 10 | CORS check                            | F12 Console → không có CORS error                  | Không lỗi cross-origin        |
+| #   | Kiểm tra         | URL / Action                                            | Expect                      |
+| --- | ---------------- | ------------------------------------------------------- | --------------------------- |
+| 1   | BE Health        | `GET https://YOUR-BE.onrender.com/health`               | `{"status":"healthy"}`      |
+| 2   | BE Swagger       | `https://YOUR-BE.onrender.com/docs`                     | 12 API paths hiện           |
+| 3   | BE Destinations  | `GET https://YOUR-BE.onrender.com/api/v1/destinations/` | Response 200 + list places  |
+| 4   | FE Homepage      | `https://YOUR-FE.vercel.app`                            | Trang Home load OK          |
+| 5   | FE → BE Register | Click Đăng ký → điền form → submit                      | 201 Created, redirect login |
+| 6   | FE → BE Login    | Đăng nhập email vừa tạo                                 | Token lưu, redirect home    |
+| 7   | FE → BE Generate | Trip Planning → tạo lịch trình                          | AI trả về itinerary         |
+| 8   | FE → BE Saved    | Vào Saved Itineraries                                   | Hiện trips đã tạo           |
+| 9   | FE → BE Profile  | Vào Profile → xem/sửa info                              | 200 OK                      |
+| 10  | CORS check       | F12 Console → không có CORS error                       | Không lỗi cross-origin      |
 
 ## 5.2 URL tổng hợp
 
-| Service          | Local                        | Production                                  |
-| ---------------- | ---------------------------- | ------------------------------------------- |
-| **Frontend**     | http://localhost:5173        | https://YOUR-FE.vercel.app                  |
-| **Backend API**  | http://localhost:8000/api/v1 | https://YOUR-BE.onrender.com/api/v1         |
-| **Swagger UI**   | http://localhost:8000/docs   | https://YOUR-BE.onrender.com/docs           |
-| **Health Check** | http://localhost:8000/health | https://YOUR-BE.onrender.com/health         |
+| Service          | Local                        | Production                          |
+| ---------------- | ---------------------------- | ----------------------------------- |
+| **Frontend**     | http://localhost:5173        | https://YOUR-FE.vercel.app          |
+| **Backend API**  | http://localhost:8000/api/v1 | https://YOUR-BE.onrender.com/api/v1 |
+| **Swagger UI**   | http://localhost:8000/docs   | https://YOUR-BE.onrender.com/docs   |
+| **Health Check** | http://localhost:8000/health | https://YOUR-BE.onrender.com/health |
 
 ---
 
@@ -501,12 +508,12 @@ Nếu thấy `CORS error` → kiểm tra lại `FRONTEND_URL` trên Render.
 
 ### BE không start / build fail
 
-| Lỗi | Nguyên nhân | Fix |
-|------|-------------|-----|
-| `ModuleNotFoundError` | Thiếu package | Kiểm tra `requirements.txt`, redeploy |
-| `sqlalchemy.exc.OperationalError` | DATABASE_URL sai | Kiểm tra đã thêm `+asyncpg` chưa |
-| `Connection refused` | DB chưa ready | Đợi 1-2 phút, check DB status trên Dashboard |
-| Build timeout | requirements nặng | Render free tier slow, đợi 5-10 phút |
+| Lỗi                               | Nguyên nhân       | Fix                                          |
+| --------------------------------- | ----------------- | -------------------------------------------- |
+| `ModuleNotFoundError`             | Thiếu package     | Kiểm tra `requirements.txt`, redeploy        |
+| `sqlalchemy.exc.OperationalError` | DATABASE_URL sai  | Kiểm tra đã thêm `+asyncpg` chưa             |
+| `Connection refused`              | DB chưa ready     | Đợi 1-2 phút, check DB status trên Dashboard |
+| Build timeout                     | requirements nặng | Render free tier slow, đợi 5-10 phút         |
 
 ### Cold start lâu (30-60s)
 
@@ -588,12 +595,12 @@ pip install -r requirements.txt --no-cache-dir
 
 ### Giới hạn Free Tier
 
-| Platform | Giới hạn | Ghi chú |
-|----------|----------|---------|
+| Platform               | Giới hạn                                         | Ghi chú                               |
+| ---------------------- | ------------------------------------------------ | ------------------------------------- |
 | **Render Web Service** | Tự tắt sau 15p không request, cold start ~30-60s | Upgrade Starter $7/month để always-on |
-| **Render PostgreSQL** | 256MB RAM, 1GB storage, **tự xóa sau 90 ngày** | Backup data trước khi hết hạn |
-| **Vercel** | 100GB bandwidth/month, 100 deployments/day | Dư sức cho project |
-| **Gemini API** | 60 requests/phút (free tier) | Đủ cho demo |
+| **Render PostgreSQL**  | 256MB RAM, 1GB storage, **tự xóa sau 90 ngày**   | Backup data trước khi hết hạn         |
+| **Vercel**             | 100GB bandwidth/month, 100 deployments/day       | Dư sức cho project                    |
+| **Gemini API**         | 60 requests/phút (free tier)                     | Đủ cho demo                           |
 
 ### Workflow tự động
 
