@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Header } from "../components/Header";
-import { Mail, Lock, LogIn } from "lucide-react";
-import { loginUser, setCurrentUser } from "../utils/auth";
+import { Mail, Lock, LogIn, Loader2 } from "lucide-react";
+import { loginUser } from "../utils/auth";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -11,18 +11,25 @@ export default function Login() {
     password: "",
   });
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
-    const result = loginUser(formData.email, formData.password);
-    
-    if (result.success && result.user) {
-      setCurrentUser(result.user);
-      navigate("/");
-    } else {
-      setError(result.error || "Đăng nhập thất bại");
+    try {
+      const result = await loginUser(formData.email, formData.password);
+      
+      if (result.success && result.user) {
+        navigate("/");
+      } else {
+        setError(result.error || "Đăng nhập thất bại");
+      }
+    } catch {
+      setError("Lỗi kết nối server");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -85,9 +92,17 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
+              disabled={loading}
+              className="w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50"
             >
-              Đăng Nhập
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Đang đăng nhập...
+                </span>
+              ) : (
+                "Đăng Nhập"
+              )}
             </button>
 
             <p className="mt-6 text-center text-gray-600">
