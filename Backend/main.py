@@ -31,10 +31,16 @@ async def lifespan(app: FastAPI):
     """
     # --- Startup: tạo bảng DB (chỉ dùng cho dev, production dùng alembic) ---
     print(f"⚡ Starting Du Lịch Việt API...")
-    print(f"  DATABASE_URL: {settings.DATABASE_URL[:30]}..." if len(settings.DATABASE_URL) > 30 else f"  DATABASE_URL: {settings.DATABASE_URL}")
+    print(
+        f"  DATABASE_URL: {settings.DATABASE_URL[:30]}..."
+        if len(settings.DATABASE_URL) > 30
+        else f"  DATABASE_URL: {settings.DATABASE_URL}"
+    )
     print(f"  FRONTEND_URL: {settings.FRONTEND_URL}")
     print(f"  DEBUG: {settings.DEBUG}")
-    print(f"  GEMINI_API_KEY: {'***' + settings.GEMINI_API_KEY[-4:] if settings.GEMINI_API_KEY else 'NOT SET'}")
+    print(
+        f"  GEMINI_API_KEY: {'***' + settings.GEMINI_API_KEY[-4:] if settings.GEMINI_API_KEY else 'NOT SET'}"
+    )
 
     try:
         async with engine.begin() as conn:
@@ -113,6 +119,7 @@ async def health_check():
     try:
         from app.database import AsyncSessionLocal
         from sqlalchemy import text
+
         async with AsyncSessionLocal() as session:
             await session.execute(text("SELECT 1"))
         health["database"] = "connected"
