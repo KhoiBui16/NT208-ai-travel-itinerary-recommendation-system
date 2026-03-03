@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
 import { Header } from "../components/Header";
-import { Calendar, MapPin, Trash2, Eye, Star, BookOpen } from "lucide-react";
+import { Calendar, MapPin, Trash2, Eye, Star, BookOpen, Loader2 } from "lucide-react";
 import {
   getCurrentUser,
   getSavedItineraries,
@@ -15,6 +15,7 @@ export default function SavedItineraries() {
   const navigate = useNavigate();
   const user = getCurrentUser();
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -22,21 +23,44 @@ export default function SavedItineraries() {
       return;
     }
 
-    if (user) {
-      const saved = getSavedItineraries(user.id);
-      setItineraries(saved);
-    }
-  }, [navigate, user]);
+    const fetchItineraries = async () => {
+      try {
+        const saved = await getSavedItineraries();
+        setItineraries(saved);
+      } catch (err) {
+        console.error("Failed to load itineraries:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleDelete = (id: string) => {
+    fetchItineraries();
+  }, [navigate]);
+
+  const handleDelete = async (id: string) => {
     if (confirm("Bạn có chắc muốn xóa lịch trình này?")) {
-      deleteItinerary(id);
-      setItineraries(itineraries.filter((i) => i.id !== id));
+      try {
+        await deleteItinerary(id);
+        setItineraries(itineraries.filter((i) => i.id !== id));
+      } catch (err) {
+        console.error("Failed to delete itinerary:", err);
+      }
     }
   };
 
   if (!user) {
     return null;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <Header />
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        </div>
+      </div>
+    );
   }
 
   return (

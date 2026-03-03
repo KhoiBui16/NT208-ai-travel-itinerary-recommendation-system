@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Header } from "../components/Header";
-import { User, Mail, Phone, Heart, Save } from "lucide-react";
+import { User, Mail, Phone, Heart, Save, Loader2 } from "lucide-react";
 import { getCurrentUser, updateUserProfile, isAuthenticated } from "../utils/auth";
 
 const interestOptions = [
@@ -34,18 +34,29 @@ export default function Profile() {
     }
   }, [navigate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     
     if (user) {
-      updateUserProfile(user.id, {
-        name: formData.name,
-        phone: formData.phone,
-        interests: formData.interests,
-      });
-      
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      setLoading(true);
+      try {
+        await updateUserProfile(user.id, {
+          name: formData.name,
+          phone: formData.phone,
+          interests: formData.interests,
+        });
+        
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      } catch {
+        setError("Cập nhật thất bại. Vui lòng thử lại.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -80,6 +91,12 @@ export default function Profile() {
           {success && (
             <div className="mb-6 rounded-lg bg-green-50 p-4 text-green-600">
               Cập nhật thông tin thành công!
+            </div>
+          )}
+
+          {error && (
+            <div className="mb-6 rounded-lg bg-red-50 p-4 text-red-600">
+              {error}
             </div>
           )}
 
@@ -159,10 +176,20 @@ export default function Profile() {
 
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50"
           >
-            <Save className="h-5 w-5" />
-            Lưu Thay Đổi
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Đang lưu...
+              </span>
+            ) : (
+              <>
+                <Save className="h-5 w-5" />
+                Lưu Thay Đổi
+              </>
+            )}
           </button>
         </form>
 

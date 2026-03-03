@@ -17,12 +17,11 @@ import {
 } from "lucide-react";
 import {
   getItineraryById,
-  saveItinerary,
-  deleteItinerary,
   rateItinerary,
   getCurrentUser,
   isAuthenticated,
 } from "../utils/auth";
+import { apiRemoveActivity } from "../utils/api";
 import { formatCurrency } from "../utils/itinerary";
 import type { Itinerary, Activity } from "../utils/auth";
 
@@ -41,19 +40,26 @@ export default function ItineraryView() {
 
   useEffect(() => {
     if (id) {
-      const data = getItineraryById(id);
-      if (data) {
-        setItinerary(data);
-        setRating(data.rating || 0);
-        setFeedback(data.feedback || "");
-        
-        // Show save prompt for guests
-        if (!isAuthenticated() && !data.userId) {
-          setShowSavePrompt(true);
+      const fetchItinerary = async () => {
+        try {
+          const data = await getItineraryById(id);
+          if (data) {
+            setItinerary(data);
+            setRating(data.rating || 0);
+            setFeedback(data.feedback || "");
+            
+            // Show save prompt for guests
+            if (!isAuthenticated() && !data.userId) {
+              setShowSavePrompt(true);
+            }
+          } else {
+            navigate("/");
+          }
+        } catch {
+          navigate("/");
         }
-      } else {
-        navigate("/");
-      }
+      };
+      fetchItinerary();
     }
   }, [id, navigate]);
 
@@ -65,37 +71,42 @@ export default function ItineraryView() {
       return;
     }
 
-    const updatedItinerary = { ...itinerary, userId: user!.id };
-    saveItinerary(updatedItinerary);
-    setItinerary(updatedItinerary);
-    alert("Đã lưu lịch trình thành công!");
+    // Itinerary is auto-saved by BE on generate
+    alert("Lịch trình đã được lưu tự động!");
   };
 
-  const handleDelete = (dayIndex: number, activityId: string) => {
+  const handleDelete = async (dayIndex: number, activityId: string) => {
     if (!itinerary) return;
     
-    const newDays = itinerary.days.map((day, idx) => {
-      if (idx === dayIndex) {
-        return {
-          ...day,
-          activities: day.activities.filter(a => a.id !== activityId)
-        };
-      }
-      return day;
-    });
-
-    const newItinerary = { ...itinerary, days: newDays };
-    setItinerary(newItinerary);
-    saveItinerary(newItinerary);
+    try {
+      const updated = await apiRemoveActivity(itinerary.id, activityId);
+      setItinerary(updated);
+    } catch {
+      // Fallback: update locally
+      const newDays = itinerary.days.map((day, idx) => {
+        if (idx === dayIndex) {
+          return {
+            ...day,
+            activities: day.activities.filter(a => a.id !== activityId)
+          };
+        }
+        return day;
+      });
+      setItinerary({ ...itinerary, days: newDays });
+    }
   };
 
-  const handleRatingSubmit = () => {
+  const handleRatingSubmit = async () => {
     if (!itinerary) return;
     
-    rateItinerary(itinerary.id, rating, feedback);
-    setItinerary({ ...itinerary, rating, feedback });
-    setShowRating(false);
-    alert("Cảm ơn bạn đã đánh giá!");
+    try {
+      await rateItinerary(itinerary.id, rating, feedback);
+      setItinerary({ ...itinerary, rating, feedback });
+      setShowRating(false);
+      alert("Cảm ơn bạn đã đánh giá!");
+    } catch {
+      alert("Lỗi khi gửi đánh giá");
+    }
   };
 
   if (!itinerary) {
