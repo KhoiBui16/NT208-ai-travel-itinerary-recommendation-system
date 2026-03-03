@@ -9,20 +9,20 @@ databases:
   - name: dulichviet-db
     plan: free
     databaseName: dulichviet
-    user: postgres
-    region: singapore  # Gần Việt Nam nhất
+    region: oregon              # Render free tier chỉ có Oregon (US West)
+    postgresMajorVersion: "16"
 
 services:
   - type: web
     name: dulichviet-api
     runtime: python
     plan: free
-    region: singapore
+    region: oregon
     rootDir: Backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      # Database — lấy từ Render PostgreSQL (cần thêm +asyncpg)
+      # Database — Render tự inject connection string từ PostgreSQL instance
       # ⚠️ SAU KHI DEPLOY: vào Dashboard → Environment → sửa DATABASE_URL
       # Thay "postgresql://" thành "postgresql+asyncpg://"
       - key: DATABASE_URL
@@ -32,6 +32,8 @@ services:
       # JWT — Render tự tạo random secret
       - key: JWT_SECRET_KEY
         generateValue: true
+      - key: JWT_ALGORITHM
+        value: "HS256"
       # Gemini AI — set trong Dashboard sau deploy
       - key: GEMINI_API_KEY
         sync: false
