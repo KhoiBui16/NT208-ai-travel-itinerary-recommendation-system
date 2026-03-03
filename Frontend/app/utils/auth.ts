@@ -1,53 +1,49 @@
-// Auth utilities using localStorage
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  phone?: string;
-  interests?: string[];
-  createdAt: string;
-}
+/**
+ * ============================================
+ * auth.ts — Authentication & Data utilities
+ * ============================================
+ * Tích hợp Backend API thực tế (FastAPI).
+ * JWT token lưu localStorage, user info cache localStorage.
+ * Tất cả hàm auth/itinerary gọi BE qua api.ts.
+ * ============================================
+ */
 
-export interface Itinerary {
-  id: string;
-  userId?: string;
-  destination: string;
-  startDate: string;
-  endDate: string;
-  budget: number;
-  interests: string[];
-  days: ItineraryDay[];
-  totalCost: number;
-  createdAt: string;
-  rating?: number;
-  feedback?: string;
-}
+import {
+  type User,
+  type Itinerary,
+  type ItineraryDay,
+  type Activity,
+  getToken,
+  setToken,
+  removeToken,
+  apiRegister,
+  apiLogin,
+  apiGetProfile,
+  apiUpdateProfile,
+  apiGetItineraries,
+  apiGetItinerary,
+  apiDeleteItinerary,
+  apiRateItinerary,
+  ApiError,
+} from './api';
 
-export interface ItineraryDay {
-  day: number;
-  date: string;
-  activities: Activity[];
-}
+// Re-export types for backward compatibility
+export type { User, Itinerary, ItineraryDay, Activity };
 
-export interface Activity {
-  id: string;
-  time: string;
-  title: string;
-  description: string;
-  location: string;
-  cost: number;
-  duration: string;
-  image: string;
-  coordinates?: { lat: number; lng: number };
-}
+// ==================== User State (localStorage cache) ====================
 
-// Get current user
+/**
+ * Lấy current user từ localStorage cache.
+ * Đây là cache — source of truth là BE API.
+ */
 export function getCurrentUser(): User | null {
   const userStr = localStorage.getItem('currentUser');
   return userStr ? JSON.parse(userStr) : null;
 }
 
-// Set current user
+/**
+ * Lưu user info vào localStorage cache.
+ */
 export function setCurrentUser(user: User | null): void {
   if (user) {
     localStorage.setItem('currentUser', JSON.stringify(user));
@@ -56,128 +52,165 @@ export function setCurrentUser(user: User | null): void {
   }
 }
 
-// Register user
-export function registerUser(email: string, password: string, name: string): { success: boolean; error?: string; user?: User } {
-  const users = getUsers();
-  
-  if (users.find(u => u.email === email)) {
-    return { success: false, error: 'Email đã được sử dụng' };
+// ==================== Auth Functions (async → BE API) ====================
+
+/**
+ * Đăng ký tài khoản mới qua BE API.
+ * POST /api/v1/auth/register
+ */
+export async function registerUser(
+  email: string,
+  password: string,
+  name: string
+): Promise<{ success: boolean; error?: string; user?: User }> {
+  try {
+    const res = await apiRegister(email, password, name);
+    if (res.success && res.access_token && res.user) {
+      setToken(res.access_token);
+      setCurrentUser(res.user);
+      return { success: true, user: res.user };
+    }
+    return { success: false, error: res.error || 'Đăng ký thất bại' };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: 'Lỗi kết nối server' };
   }
-  
-  const newUser: User = {
-    id: Date.now().toString(),
-    email,
-    name,
-    createdAt: new Date().toISOString(),
-  };
-  
-  users.push(newUser);
-  localStorage.setItem('users', JSON.stringify(users));
-  localStorage.setItem(`password_${newUser.id}`, password);
-  
-  return { success: true, user: newUser };
 }
 
-// Login user
-export function loginUser(email: string, password: string): { success: boolean; error?: string; user?: User } {
-  const users = getUsers();
-  const user = users.find(u => u.email === email);
-  
-  if (!user) {
-    return { success: false, error: 'Email hoặc mật khẩu không đúng' };
+/**
+ * Đăng nhập qua BE API.
+ * POST /api/v1/auth/login
+ */
+export async function loginUser(
+  email: string,
+  password: string
+): Promise<{ success: boolean; error?: string; user?: User }> {
+  try {
+    const res = await apiLogin(email, password);
+    if (res.success && res.access_token && res.user) {
+      setToken(res.access_token);
+      setCurrentUser(res.user);
+      return { success: true, user: res.user };
+    }
+    return { success: false, error: res.error || 'Đăng nhập thất bại' };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: 'Lỗi kết nối server' };
   }
-  
-  const storedPassword = localStorage.getItem(`password_${user.id}`);
-  if (storedPassword !== password) {
-    return { success: false, error: 'Email hoặc mật khẩu không đúng' };
-  }
-  
-  return { success: true, user };
 }
 
-// Logout
+/**
+ * Đăng xuất — xóa token + user cache.
+ */
 export function logoutUser(): void {
+  removeToken();
   setCurrentUser(null);
 }
 
-// Get all users
-function getUsers(): User[] {
-  const usersStr = localStorage.getItem('users');
-  return usersStr ? JSON.parse(usersStr) : [];
-}
-
-// Update user profile
-export function updateUserProfile(userId: string, updates: Partial<User>): User | null {
-  const users = getUsers();
-  const userIndex = users.findIndex(u => u.id === userId);
-  
-  if (userIndex === -1) return null;
-  
-  users[userIndex] = { ...users[userIndex], ...updates };
-  localStorage.setItem('users', JSON.stringify(users));
-  
-  const currentUser = getCurrentUser();
-  if (currentUser?.id === userId) {
-    setCurrentUser(users[userIndex]);
-  }
-  
-  return users[userIndex];
-}
-
-// Save itinerary
-export function saveItinerary(itinerary: Itinerary): void {
-  const itineraries = getSavedItineraries();
-  const existingIndex = itineraries.findIndex(i => i.id === itinerary.id);
-  
-  if (existingIndex >= 0) {
-    itineraries[existingIndex] = itinerary;
-  } else {
-    itineraries.push(itinerary);
-  }
-  
-  localStorage.setItem('itineraries', JSON.stringify(itineraries));
-}
-
-// Get saved itineraries
-export function getSavedItineraries(userId?: string): Itinerary[] {
-  const itinerariesStr = localStorage.getItem('itineraries');
-  const itineraries: Itinerary[] = itinerariesStr ? JSON.parse(itinerariesStr) : [];
-  
-  if (userId) {
-    return itineraries.filter(i => i.userId === userId);
-  }
-  
-  return itineraries;
-}
-
-// Get itinerary by ID
-export function getItineraryById(id: string): Itinerary | null {
-  const itineraries = getSavedItineraries();
-  return itineraries.find(i => i.id === id) || null;
-}
-
-// Delete itinerary
-export function deleteItinerary(id: string): void {
-  const itineraries = getSavedItineraries();
-  const filtered = itineraries.filter(i => i.id !== id);
-  localStorage.setItem('itineraries', JSON.stringify(filtered));
-}
-
-// Rate itinerary
-export function rateItinerary(id: string, rating: number, feedback?: string): void {
-  const itineraries = getSavedItineraries();
-  const index = itineraries.findIndex(i => i.id === id);
-  
-  if (index >= 0) {
-    itineraries[index].rating = rating;
-    if (feedback) {
-      itineraries[index].feedback = feedback;
-    }
-    localStorage.setItem('itineraries', JSON.stringify(itineraries));
+/**
+ * Cập nhật profile qua BE API.
+ * PUT /api/v1/users/profile
+ */
+export async function updateUserProfile(
+  _userId: string,
+  updates: Partial<User>
+): Promise<User | null> {
+  try {
+    const user = await apiUpdateProfile({
+      name: updates.name,
+      phone: updates.phone,
+      interests: updates.interests,
+    });
+    setCurrentUser(user);
+    return user;
+  } catch {
+    return null;
   }
 }
 
-// Check if user is authenticated
+/**
+ * Lấy profile mới nhất từ BE (refresh cache).
+ * GET /api/v1/users/profile
+ */
+export async function refreshUserProfile(): Promise<User | null> {
+  try {
+    const user = await apiGetProfile();
+    setCurrentUser(user);
+    return user;
+  } catch {
+    // Token hết hạn hoặc lỗi → đăng xuất
+    logoutUser();
+    return null;
+  }
+}
+
+// ==================== Itinerary Functions (async → BE API) ====================
+
+/**
+ * Lấy danh sách lịch trình đã lưu từ BE.
+ * GET /api/v1/itineraries/
+ */
+export async function getSavedItineraries(_userId?: string): Promise<Itinerary[]> {
+  try {
+    const res = await apiGetItineraries();
+    return res.itineraries;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Lấy chi tiết lịch trình từ BE.
+ * GET /api/v1/itineraries/{id}
+ */
+export async function getItineraryById(id: string): Promise<Itinerary | null> {
+  try {
+    return await apiGetItinerary(id);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Xóa lịch trình từ BE.
+ * DELETE /api/v1/itineraries/{id}
+ */
+export async function deleteItinerary(id: string): Promise<void> {
+  await apiDeleteItinerary(id);
+}
+
+/**
+ * Đánh giá lịch trình qua BE.
+ * PUT /api/v1/itineraries/{id}/rating
+ */
+export async function rateItinerary(
+  id: string,
+  rating: number,
+  feedback?: string
+): Promise<Itinerary | null> {
+  try {
+    return await apiRateItinerary(id, rating, feedback);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Kiểm tra đã đăng nhập chưa.
+ * Kiểm tra cả token và user cache.
+ */
 export function isAuthenticated(): boolean {
-  return getCurrentUser() !== null;
+  return getToken() !== null && getCurrentUser() !== null;
+}
+
+/**
+ * Hàm tiện ích — lưu itinerary (no-op, BE tự lưu khi generate).
+ * Giữ để backward compat, không cần gọi API.
+ */
+export function saveItinerary(_itinerary: Itinerary): void {
+  // BE already saves on generate. No client-side action needed.
 }
