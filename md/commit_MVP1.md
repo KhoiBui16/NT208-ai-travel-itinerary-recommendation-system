@@ -706,12 +706,12 @@ git push origin main
 
 ### 📊 Tổng kết
 
-| Phase | Commits        | Nội dung                                    |
-| ----- | -------------- | ------------------------------------------- |
-| 0     | 1 commit       | .gitignore (PHẢI LÀM ĐẦU TIÊN)              |
-| 1     | 11 commits     | Backend core + docs + tests                 |
-| 2     | 8 commits      | FE-BE integration + package-lock            |
-| 3     | 3 commits      | FE docs + diagrams + project docs           |
-| 4     | 7 commits      | Post-MVP fixes, deployment configs & docs   |
-| 5     | 1 commit       | Runtime bug fixes (FE + BE)                 |
-| **Σ** | **31 commits** | **MVP #1 + Fixes + Deploy**                 |
+| Phase | Commits        | Nội dung                                  |
+| ----- | -------------- | ----------------------------------------- |
+| 0     | 1 commit       | .gitignore (PHẢI LÀM ĐẦU TIÊN)            |
+| 1     | 11 commits     | Backend core + docs + tests               |
+| 2     | 8 commits      | FE-BE integration + package-lock          |
+| 3     | 3 commits      | FE docs + diagrams + project docs         |
+| 4     | 7 commits      | Post-MVP fixes, deployment configs & docs |
+| 5     | 1 commit       | Runtime bug fixes (FE + BE)               |
+| **Σ** | **31 commits** | **MVP #1 + Fixes + Deploy**               |
