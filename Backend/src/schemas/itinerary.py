@@ -110,6 +110,16 @@ class CreateTripRequest(CamelCaseModel):
     children_count: int = Field(default=0, ge=0)
     interests: list[str] = Field(default_factory=list)
 
+    @field_validator("end_date")
+    @classmethod
+    def validate_date_order(cls, value: date, info: object) -> date:
+        """Ensure end_date is not before start_date."""
+        data = getattr(info, "data", {})
+        start_date = data.get("start_date")
+        if start_date and value < start_date:
+            raise ValueError("end_date must be on or after start_date")
+        return value
+
 
 class UpdateTripRequest(CamelCaseModel):
     """Full nested auto-save request."""
