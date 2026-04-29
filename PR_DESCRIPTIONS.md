@@ -62,29 +62,32 @@
 - Task ID: #00001
 
 ## Thay đổi chính
-- [ ] `src/repositories/user_repo.py` — UserRepository: get_by_email, create, update
-- [ ] `src/repositories/token_repo.py` — RefreshTokenRepository: find_by_hash, create, revoke, revoke_all
-- [ ] `src/services/auth_service.py` — AuthService: register, login, refresh, logout (JWT rotation)
-- [ ] `src/services/user_service.py` — UserService: get_profile, update_profile, change_password
-- [ ] `src/api/v1/auth.py` — EP 1-4: POST register, POST login, POST refresh, POST logout
-- [ ] `src/api/v1/users.py` — EP 5-7: GET profile, PUT profile, PUT password
-- [ ] Cập nhật `src/api/v1/router.py` — thêm auth + users routers
-- [ ] Cập nhật `src/core/dependencies.py` — thêm DI cho repos và services
-- [ ] Viết unit tests cho auth_service + user_service
-- [ ] Viết integration tests cho EP 1-7
+- [x] `src/repositories/user_repo.py` — UserRepository: get_by_id, get_by_email, create, update
+- [x] `src/repositories/token_repo.py` — RefreshTokenRepository: find_by_hash, create, revoke, revoke_all_for_user
+- [x] `src/services/auth_service.py` — AuthService: register, login, refresh, logout (JWT rotation)
+- [x] `src/services/user_service.py` — UserService: get_profile, update_profile, change_password
+- [x] `src/api/v1/auth.py` — EP 1-4: POST register, POST login, POST refresh, POST logout
+- [x] `src/api/v1/users.py` — EP 5-7: GET profile, PUT profile, PUT password
+- [x] Cập nhật `src/api/v1/router.py` — thêm auth + users routers
+- [x] Viết unit tests cho auth_service (9 tests) + user_service (5 tests)
+- [x] Viết integration tests cho auth/user endpoints (10 tests, 1 skip needs DB)
+- [x] Thêm `docs/phase_b1_auth_users.md` — documentation chi tiết Phase B1
 
 ## Cách kiểm tra (Testing)
-- Bước 1: `uv run pytest tests/ -v` → tất cả pass
-- Bước 2: Swagger UI → POST /api/v1/auth/register → 201 Created
-- Bước 3: POST /api/v1/auth/login → nhận JWT pair
-- Bước 4: GET /api/v1/users/profile với Bearer token → 200 OK
-- Bước 5: POST /api/v1/auth/refresh → nhận token mới, token cũ bị revoke
+- Bước 1: `cd Backend && uv run ruff check src/ tests/` → 0 errors
+- Bước 2: `uv run pytest tests/ -v` → 29 passed, 1 skipped
+- Bước 3: `uv run uvicorn src.main:app` → Swagger UI → POST /api/v1/auth/register → 201 Created
+- Bước 4: POST /api/v1/auth/login → nhận JWT pair (accessToken + refreshToken)
+- Bước 5: GET /api/v1/users/profile với Bearer token → 200 OK
+- Bước 6: POST /api/v1/auth/refresh → nhận token mới, token cũ bị revoke
 - Kết quả mong đợi: Auth flow đầy đủ hoạt động, refresh token rotation đúng, logout revoke hết token
 
 ## Lưu ý khác
 - Không thay đổi migration mới (dùng bảng users + refresh_tokens đã có từ Phase A)
 - Không thay đổi `.env` hay config
 - Refresh token lưu hash trong DB, không lưu raw token
+- DI cho repos/services nằm trong từng router file (factory pattern), không cần sửa dependencies.py
+- 1 integration test skip (login valid body) vì cần DB thật — CI có postgres service sẽ pass
 
 ---
 
