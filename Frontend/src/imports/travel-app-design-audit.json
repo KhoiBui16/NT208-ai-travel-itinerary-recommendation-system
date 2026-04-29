@@ -1,0 +1,269 @@
+You are a senior UX/UI designer improving an existing travel planning app prototype.
+
+Your task is to **analyze the current design and only add or modify elements if they are missing**.
+If a feature already exists in the current design, **do not duplicate it**.
+
+The product is an **AI-assisted travel itinerary planner**.
+
+Maintain a **clean, modern travel app style**, minimal layout, consistent spacing, reusable components, and mobile-first UX.
+
+---
+
+APP STRUCTURE
+
+The app should support these core sections:
+
+1. User authentication
+2. Trip library
+3. Create trip
+4. Trip timeline
+5. Day timeline
+6. Map route view
+7. AI itinerary generator
+8. AI travel tips
+9. Save locations
+10. Estimated trip cost
+11. Share trip link
+
+Only add UI for the features that are missing.
+
+---
+
+ONBOARDING / USER PREFERENCES
+
+If not already present, add an onboarding step after signup that asks about travel preferences.
+
+Include simple selectable options:
+
+Travel type:
+
+* Solo
+* Couple
+* Friends
+* Family
+
+Interests:
+
+* Food
+* Nature
+* History
+* Nightlife
+* Shopping
+
+Budget level:
+
+* $
+* $$
+* $$$
+
+This should be quick and visually simple using selectable cards or chips.
+
+---
+
+TRIP LIBRARY SCREEN
+
+If missing, add a screen that displays all trips created by the user.
+
+Layout:
+
+* Card-based grid or list
+* Each trip card shows:
+
+  * Trip name
+  * Destination city
+  * Number of days
+  * Estimated cost (if available)
+  * Cover image
+  * Small icons for saved locations count
+
+Include a floating button:
+
+"+ Create New Trip"
+
+---
+
+CREATE TRIP FLOW
+
+If the flow is incomplete, add these steps:
+
+Step 1 – Basic trip info
+Inputs:
+
+* Trip name
+* Trip type (solo / couple / friends / family)
+* Start date
+* End date
+* Budget level ($ / $$ / $$$)
+
+Step 2 – Choose destination city
+Display a scrollable list of cities with:
+
+* photo
+* rating
+* short tag (popular / historic / nature)
+
+Step 3 – Add locations to itinerary
+Display location cards with:
+
+* image
+* rating
+* open hours
+* short description
+* "+ Add to trip" button
+* "Save / Favorite" heart icon
+
+Locations can be added to specific days.
+
+---
+
+TRIP TIMELINE SCREEN
+
+If missing or incomplete, create a timeline overview.
+
+Top summary section should show:
+
+* Total days
+* Number of locations
+* Estimated trip cost
+* Destination city
+
+Below that show day cards:
+
+Day 1 – Date
+Day 2 – Date
+Day 3 – Date
+
+Each card contains:
+
+* short summary
+* number of places
+* quick preview thumbnails
+* "View Day Details"
+
+---
+
+DAY TIMELINE SCREEN
+
+When a day is opened show:
+
+Left section:
+vertical timeline of locations
+
+Each location card contains:
+
+* location image
+* rating
+* opening hours
+* short AI travel tip
+* estimated time spent
+* estimated travel time to next location
+
+Right section:
+map preview showing the route between locations.
+
+---
+
+MAP ROUTE VIEW
+
+If not present, add a dedicated map view showing:
+
+* route between selected locations
+* markers for each stop
+* numbered stops matching the timeline
+
+---
+
+AI ITINERARY GENERATOR
+
+Add a screen where users can generate a trip with AI.
+
+Inputs:
+
+* destination
+* number of days
+* travel type
+* budget
+* interests
+
+Show a note indicating:
+
+"Free users can generate up to 2 AI itineraries per day."
+
+Display generated itinerary as:
+
+Day 1
+Day 2
+Day 3
+
+With location suggestions.
+
+Provide button:
+
+"Convert to Trip Plan"
+
+---
+
+AI TRAVEL TIPS
+
+If not already present, add AI tips inside location cards.
+
+Example:
+
+AI Tip:
+"Best time to visit early morning to avoid crowds."
+
+Keep tips visually subtle using a small highlighted card.
+
+---
+
+SAVE LOCATIONS FEATURE
+
+Add a heart icon to location cards allowing users to save locations.
+
+Create a "Saved Places" section accessible from the profile or trip creation flow.
+
+---
+
+ESTIMATED TRIP COST
+
+If missing, display estimated cost in:
+
+* trip summary
+* trip library cards
+
+Use a simple breakdown model such as:
+
+Tickets
+Food
+Transport
+
+Display total estimated cost prominently.
+
+---
+
+SHARE TRIP LINK
+
+If not already included, add a share button in the trip screen.
+
+Share options:
+
+* Copy link
+* Share via social apps
+
+Display a generated link for the trip.
+
+---
+
+DESIGN REQUIREMENTS
+
+Use:
+
+* clean travel-themed color palette
+* large destination imagery
+* card-based layout
+* clear hierarchy
+* modern mobile app style
+
+Maintain component consistency across all screens.
+
+Do not redesign existing screens unnecessarily — only enhance or add missing functionality.

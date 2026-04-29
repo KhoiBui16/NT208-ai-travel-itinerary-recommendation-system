@@ -1,0 +1,239 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - 'feat/**'
+      - 'fix/**'
+      - 'docs/**'
+      - 'style/**'
+      - 'refactor/**'
+      - 'chore/**'
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  DATABASE_URL: "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/test_db"
+  REDIS_URL: "redis://127.0.0.1:6379/0"
+  JWT_SECRET_KEY: "ci-test-secret-key-not-for-production"
+  FRONTEND_URL: "http://localhost:5173"
+  GEMINI_API_KEY: "dummy-ci-key"
+  GOONG_API_KEY: "dummy-ci-key"
+  PYTHONUTF8: "1"
+
+jobs:
+  backend-lint:
+    name: backend-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: astral-sh/setup-uv@v3
+
+      - name: Install backend dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [[ -f Backend/pyproject.toml ]]; then
+            cd Backend
+            if [[ -f uv.lock ]]; then
+              uv sync --frozen --dev
+            else
+              uv sync --dev
+            fi
+          elif [[ -f Backend/requirements.txt ]]; then
+            python -m pip install -r Backend/requirements.txt ruff pytest
+          else
+            echo "No backend dependency manifest found. Skipping install."
+          fi
+
+      - name: Run lint or syntax fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f Backend/pyproject.toml && -d Backend/src ]]; then
+            cd Backend
+            uv run ruff check src tests
+          elif [[ -d Backend/app ]]; then
+            python -m compileall Backend/app Backend/main.py
+          else
+            echo "No Backend/src or Backend/app directory found. Placeholder pass."
+          fi
+
+  backend-unit:
+    name: backend-unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: astral-sh/setup-uv@v3
+
+      - name: Install backend dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [[ -f Backend/pyproject.toml ]]; then
+            cd Backend
+            if [[ -f uv.lock ]]; then
+              uv sync --frozen --dev
+            else
+              uv sync --dev
+            fi
+          elif [[ -f Backend/requirements.txt ]]; then
+            python -m pip install -r Backend/requirements.txt pytest
+          else
+            echo "No backend dependency manifest found. Skipping install."
+          fi
+
+      - name: Run unit tests or placeholder pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f Backend/pyproject.toml && -d Backend/tests/unit ]]; then
+            cd Backend
+            uv run pytest tests/unit/ -v --tb=short
+          elif [[ -d Backend/tests/unit ]]; then
+            python -m pytest Backend/tests/unit -v --tb=short
+          else
+            echo "No Backend/tests/unit directory detected. Placeholder pass until refactor tests land."
+          fi
+
+  backend-integration:
+    name: backend-integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d test_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: astral-sh/setup-uv@v3
+
+      - name: Install backend dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [[ -f Backend/pyproject.toml ]]; then
+            cd Backend
+            if [[ -f uv.lock ]]; then
+              uv sync --frozen --dev
+            else
+              uv sync --dev
+            fi
+          elif [[ -f Backend/requirements.txt ]]; then
+            python -m pip install -r Backend/requirements.txt pytest
+          else
+            echo "No backend dependency manifest found. Skipping install."
+          fi
+
+      - name: Run integration tests or placeholder pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f Backend/pyproject.toml && -d Backend/tests/integration ]]; then
+            cd Backend
+            uv run pytest tests/integration/ -v --tb=short
+          elif [[ -d Backend/tests/integration ]]; then
+            python -m pytest Backend/tests/integration -v --tb=short
+          else
+            echo "No Backend/tests/integration directory detected. Placeholder pass until integration suite lands."
+          fi
+
+  backend-migrations:
+    name: backend-migrations
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d test_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: astral-sh/setup-uv@v3
+
+      - name: Install backend dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [[ -f Backend/pyproject.toml ]]; then
+            cd Backend
+            if [[ -f uv.lock ]]; then
+              uv sync --frozen --dev
+            else
+              uv sync --dev
+            fi
+          elif [[ -f Backend/requirements.txt ]]; then
+            python -m pip install -r Backend/requirements.txt
+          else
+            echo "No backend dependency manifest found. Skipping install."
+          fi
+
+      - name: Run migrations or placeholder pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f Backend/alembic.ini ]]; then
+            cd Backend
+            if [[ -f pyproject.toml ]]; then
+              uv run alembic upgrade head
+            else
+              alembic upgrade head
+            fi
+          else
+            echo "No Backend/alembic.ini detected. Placeholder pass until migration stack lands."
+          fi
