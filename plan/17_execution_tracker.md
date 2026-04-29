@@ -71,9 +71,9 @@ feat: [#12345] add refresh token endpoint
 
 | Task ID | Phase | Branch | Scope | Code Status | Doc Status | Test Status | Local Verify | PR Status | Owner | Last Updated | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 00000 | A | `feat/00000-a-foundation-bootstrap` | Phase A foundation bootstrap: `Backend/src`, core config/db/security, models, schemas, Alembic, Docker, README, basic tests | `in_progress` | `synced` | `integration_pass` | `passed` | `not_created` | `@codex` | 2026-04-28 | Local verify passed; awaiting real ClickUp Task ID before rename branch + final squash commit. Placeholder Task ID; replace with real ID before PR. `uv sync` with managed Python 3.12.13 OK; `uv run ruff check src tests` OK; `uv run pytest tests` = 6 passed; Docker Postgres/Redis healthy; `uv run alembic upgrade head` OK; DB has 16 core tables; `uv run uvicorn src.main:app` health check OK. `gh` CLI unavailable locally, so PR should be opened via GitHub GUI/app after push |
-| 12345 | B1 | `feat/12345-b1-auth-register` | Register endpoint + service + unit tests | `todo` | `not_started` | `not_started` | `not_started` | `not_created` | `@owner` | 2026-04-25 | Replace sample row when starting work |
-| 12346 | A | `chore/12346-a-ci-bootstrap` | GitHub Actions + PR template + tracker bootstrap | `todo` | `not_started` | `not_started` | `not_started` | `not_created` | `@owner` | 2026-04-25 | CI fallback allowed until refactor structure lands |
+| 00000 | A | `feat/00000-a-foundation-bootstrap` | Phase A foundation bootstrap | `merged` | `synced` | `integration_pass` | `passed` | `merged` | `@codex` | 2026-04-28 | Merged via PR #1 (squash merge). 28/28 tasks done. |
+| 00001 | B1 | `feat/00001-b1-auth-users` | Phase B1 auth + users: 7 endpoints (EP 1-7), repos, services, routers, unit + integration tests, CI event-loop fix | `review_ready` | `synced` | `integration_pass` | `passed` | `in_review` | `@KhoiBui16` | 2026-04-29 | PR #2 open. 13/13 tasks done. `ruff check` OK; unit: 19 passed; integration: 9 passed, 2 skipped (CI-only); alembic OK. CI: PR Policy pass, backend-lint pass, backend-unit pass, backend-migrations pass, backend-integration had "Event loop is closed" — fixed via `asyncio_default_fixture_loop_scope = "function"` in pyproject.toml + conftest.py event_loop_policy. |
+| 12346 | A | `chore/12346-a-ci-bootstrap` | GitHub Actions + PR template + tracker bootstrap | `merged` | `synced` | `integration_pass` | `passed` | `merged` | `@KhoiBui16` | 2026-04-28 | CI workflows already live and working. |
 
 ## Daily Review Checklist
 

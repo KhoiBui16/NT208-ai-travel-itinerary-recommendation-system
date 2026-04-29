@@ -397,41 +397,41 @@ git worktree remove worktrees/foundation
 
 ### B1: Auth Domain (4 endpoints)
 
-- [ ] **B1.1** — `src/repositories/user_repo.py` (~80 lines)
+- [x] **B1.1** — `src/repositories/user_repo.py` (~80 lines)
   - Files: `src/repositories/user_repo.py`
   - Endpoint: EP 1–7
   - Dependency: A3.1, A4.1
   - Estimate: medium
   - Details: `UserRepository(BaseRepository[User])`: `find_by_email()`, `create()`, `update()`
 
-- [ ] **B1.2** — `src/repositories/token_repo.py` (~60 lines)
+- [x] **B1.2** — `src/repositories/token_repo.py` (~60 lines)
   - Files: `src/repositories/token_repo.py`
   - Endpoint: EP 3, 4
   - Dependency: A3.1, A4.1
   - Estimate: small
   - Details: `RefreshTokenRepository`: `create()`, `find_by_hash()`, `revoke_all()`
 
-- [ ] **B1.3** — `src/services/auth_service.py` (~100 lines)
+- [x] **B1.3** — `src/services/auth_service.py` (~100 lines)
   - Files: `src/services/auth_service.py`
   - Endpoint: EP 1–4
   - Dependency: B1.1, B1.2, A2.3
   - Estimate: medium
   - Details: `AuthService`: `register()`, `login()`, `refresh()`, `logout()`
 
-- [ ] **B1.4** — `src/api/v1/auth.py` (~80 lines)
+- [x] **B1.4** — `src/api/v1/auth.py` (~80 lines)
   - Files: `src/api/v1/auth.py`
   - Endpoint: EP 1 `POST /auth/register`, EP 2 `POST /auth/login`, EP 3 `POST /auth/refresh`, EP 4 `POST /auth/logout`
   - Dependency: B1.3
   - Estimate: medium
   - Ref: [12_be_crud_endpoints.md EP 1–4](12_be_crud_endpoints.md)
 
-- [ ] **B1.5** — Wire auth router in `src/api/v1/router.py`
+- [x] **B1.5** — Wire auth router in `src/api/v1/router.py`
   - Files: `src/api/v1/router.py` (modify)
   - Endpoint: N/A
   - Dependency: B1.4
   - Estimate: small
 
-- [ ] **B1.6** — Update `src/core/dependencies.py` — add auth DI
+- [x] **B1.6** — Update `src/core/dependencies.py` — add auth DI
   - Files: `src/core/dependencies.py` (modify)
   - Endpoint: N/A
   - Dependency: B1.1, B1.2, B1.3
@@ -439,49 +439,49 @@ git worktree remove worktrees/foundation
 
 ### B2: User Domain (3 endpoints)
 
-- [ ] **B2.1** — `src/services/user_service.py` (~60 lines)
+- [x] **B2.1** — `src/services/user_service.py` (~60 lines)
   - Files: `src/services/user_service.py`
   - Endpoint: EP 5–7
   - Dependency: B1.1
   - Estimate: small
   - Details: `UserService`: `get_profile()`, `update()`, `change_password()`
 
-- [ ] **B2.2** — `src/api/v1/users.py` (~60 lines)
+- [x] **B2.2** — `src/api/v1/users.py` (~60 lines)
   - Files: `src/api/v1/users.py`
   - Endpoint: EP 5 `GET /users/profile`, EP 6 `PUT /users/profile`, EP 7 `PUT /users/password`
   - Dependency: B2.1
   - Estimate: small
   - Ref: [12_be_crud_endpoints.md EP 5–7](12_be_crud_endpoints.md)
 
-- [ ] **B2.3** — Wire users router in `src/api/v1/router.py`
+- [x] **B2.3** — Wire users router in `src/api/v1/router.py`
   - Files: `src/api/v1/router.py` (modify)
   - Dependency: B2.2
   - Estimate: small
 
 ### B3: Auth + Users Tests
 
-- [ ] **B3.1** — `src/tests/unit/test_security.py`
+- [x] **B3.1** — `src/tests/unit/test_security.py`
   - Files: `src/tests/unit/test_security.py`
   - Dependency: A2.3
   - Estimate: small
   - Details: Test hash_password, verify_password, create_access_token, verify_access_token
 
-- [ ] **B3.2** — `src/tests/unit/test_auth_service.py`
+- [x] **B3.2** — `src/tests/unit/test_auth_service.py`
   - Files: `src/tests/unit/test_auth_service.py`
   - Dependency: B1.3
   - Estimate: medium
   - Details: Test register (success + duplicate email), login (success + wrong password), refresh, logout
 
-- [ ] **B3.3** — `src/tests/integration/test_auth_api.py`
+- [x] **B3.3** — `src/tests/integration/test_auth_endpoints.py`
   - Files: `src/tests/integration/test_auth_api.py`
   - Dependency: B1.4
   - Estimate: medium
   - Details: HTTP tests for EP 1–4 with `httpx.AsyncClient`
 
-- [ ] **B3.4** — Verify: Full auth flow works
+- [x] **B3.4** — Verify: Full auth flow works
   - Test: Swagger UI → register → login → get token → GET /users/profile → 200 OK
 
-**Phase B1 Total: 13 tasks** | **PR: `feat/be-auth-users` → main**
+**Phase B1 Total: 13 tasks** | **Status:** completed on 2026-04-29 | **PR:** `feat/00001-b1-auth-users` → main (PR #2)
 
 ---
 
@@ -1132,13 +1132,13 @@ git push --force-with-lease origin feat/12345-b1-auth-register
 
 | Phase | Total Tasks | Done | In Progress | Remaining | % Complete |
 |-------|------------|------|-------------|-----------|------------|
-| **A: Foundation** | 28 | 0 | 0 | 28 | 0% |
-| **B1: Auth+Users** | 13 | 0 | 0 | 13 | 0% |
+| **A: Foundation** | 28 | 28 | 0 | 0 | 100% |
+| **B1: Auth+Users** | 13 | 13 | 0 | 0 | 100% |
 | **B2: Itineraries** | 16 | 0 | 0 | 16 | 0% |
 | **B3: Places** | 10 | 0 | 0 | 10 | 0% |
 | **C: AI Agent** | 14 | 0 | 0 | 14 | 0% |
 | **D: ETL+Integration** | 9 | 0 | 0 | 9 | 0% |
-| **TOTAL** | **90** | **0** | **0** | **90** | **0%** |
+| **TOTAL** | **90** | **41** | **0** | **49** | **46%** |
 
 > Update bảng này mỗi khi check task `[x]`.
 
