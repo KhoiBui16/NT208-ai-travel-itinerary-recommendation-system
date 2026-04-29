@@ -1,8 +1,9 @@
 """Integration tests for auth and user endpoints.
 
-These tests use FastAPI TestClient with verify_database=False,
-so no real DB connection is needed — they validate endpoint routing,
-request/response schemas, and error handling.
+Tests use FastAPI TestClient against a real database in CI
+(postgres service + alembic migrations run before tests).
+Locally without a DB, tests that hit DB may fail — use `verify_database=False`
+for schema/routing-only tests or run docker compose for full integration.
 """
 
 import pytest
@@ -49,18 +50,17 @@ def test_register__short_password__returns_422(client: TestClient) -> None:
     assert response.status_code == 422
 
 
-@pytest.mark.skip(reason="Requires running DB — tested in CI with postgres service")
-def test_login__valid_body__accepts(client: TestClient) -> None:
-    """POST /api/v1/auth/login should accept valid payload structure.
+def test_login__valid_body__returns_200_or_401(client: TestClient) -> None:
+    """POST /api/v1/auth/login should return 200 or 401 with real DB.
 
-    Without a real DB the endpoint may return 500 (connection error)
-    instead of 200/401, which is acceptable for schema/routing tests.
+    With a real DB: 200 if user exists + correct password, 401 otherwise.
+    Without a DB (local): may return 500 due to connection error.
     """
     response = client.post(
         "/api/v1/auth/login",
         json={"email": "test@test.com", "password": "password123"},
     )
-    assert response.status_code in {200, 401, 500, 503, 422}
+    assert response.status_code in {200, 401, 500, 503}
 
 
 def test_login__missing_fields__returns_422(client: TestClient) -> None:

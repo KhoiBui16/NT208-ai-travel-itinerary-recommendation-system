@@ -166,6 +166,19 @@ jobs:
             echo "No backend dependency manifest found. Skipping install."
           fi
 
+      - name: Run database migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f Backend/alembic.ini ]]; then
+            cd Backend
+            if [[ -f pyproject.toml ]]; then
+              uv run alembic upgrade head
+            else
+              alembic upgrade head
+            fi
+          fi
+
       - name: Run integration tests or placeholder pass
         shell: bash
         run: |
