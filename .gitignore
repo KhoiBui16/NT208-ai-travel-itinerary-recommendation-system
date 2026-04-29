@@ -52,3 +52,6 @@ Backend/venv/
 # Render/Vercel deploy configs (MVP1)
 render.yaml
 vercel.json
+
+# Archive files
+*.zip
