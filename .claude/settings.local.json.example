@@ -1,0 +1,18 @@
+{
+  "// INSTRUCTIONS": "Copy this file to settings.local.json for your personal Claude setup. Do not commit the real local file.",
+  "// NOTE": "Use this file only for local-only secrets, model routing, or personal CLI tokens.",
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://your-model-gateway.example",
+    "ANTHROPIC_AUTH_TOKEN": "replace-with-your-local-token",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "replace-with-your-sonnet-model",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "replace-with-your-opus-model",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "replace-with-your-haiku-model",
+    "GITHUB_TOKEN": "optional-github-token"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)"
+    ]
+  }
+}

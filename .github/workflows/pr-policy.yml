@@ -1,0 +1,69 @@
+name: PR Policy
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  pr-policy:
+    name: pr-policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate branch name
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          branch_regex='^(feat|fix|docs|style|refactor|chore)/[0-9]+-(a|b1|b2|b3|c|d)-[a-z0-9-]+$'
+          if [[ ! "${HEAD_REF}" =~ ${branch_regex} ]]; then
+            echo "Invalid branch name: ${HEAD_REF}"
+            echo "Expected format: type/task-phase-scope"
+            echo "Example: feat/12345-b1-auth-register"
+            exit 1
+          fi
+
+      - name: Validate PR title
+        shell: bash
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          title_regex='^(feat|fix|docs|style|refactor|chore): \[#([0-9]+)\] [a-z].+$'
+          if [[ ! "${PR_TITLE}" =~ ${title_regex} ]]; then
+            echo "Invalid PR title: ${PR_TITLE}"
+            echo "Expected format: <type>: [#<Task-ID>] <description>"
+            echo "Example: feat: [#12345] add refresh token endpoint"
+            exit 1
+          fi
+
+      - name: Validate PR body sections
+        shell: bash
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          required_sections=(
+            "## Mô tả"
+            "## Thay đổi chính"
+            "## Cách kiểm tra (Testing)"
+            "## Lưu ý khác"
+          )
+
+          if [[ -z "${PR_BODY}" ]]; then
+            echo "PR body is empty."
+            exit 1
+          fi
+
+          for section in "${required_sections[@]}"; do
+            if ! printf '%s' "${PR_BODY}" | grep -Fq "${section}"; then
+              echo "Missing PR body section: ${section}"
+              exit 1
+            fi
+          done

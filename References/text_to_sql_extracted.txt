@@ -1,0 +1,309 @@
+Thiết KếAgent Text-to-SQL
+HệThống Truy Vấn Database Bài Báo Khoa Học
+Version 0.1 (Draft)
+Ngày 1 tháng 4 năm 2026
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+1 / 21
+Tổng Quan Bài Toán
+Mục tiêu: Triển khai agent trên nền tảng quản lý bài báo khoa học giúp user truy vấn dữliệu
+bằng ngôn ngữtựnhiên.
+Tài liệu tham khảo:
+LangChain SQL Agent:
+https://docs.langchain.com/oss/python/langchain/sql-agent
+Quy trình hoạt động của agent:
+1 Fetch available tables và schemas
+2 Quyết định tables liên quan đến câu hỏi
+3 Generate SQL query dựa trên schemas
+4 Double-check query với LLM
+5 Execute query và trảkết quả
+6 Correct mistakes nếu có lỗi
+7 Formulate response từresults
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+2 / 21
+1. Purpose - Functional Requirements
+Hệthống cho phép: Người dùng đặt câu hỏi bằng ngôn ngữtựnhiên →Hệthống trảlời
+dựa trên SQL database.
+Các chức năng chính:
+F1. Nhận câu hỏi & ngữcảnh
+Input: question + schema database
+Output: answer_text + sql_executed + rows_preview
+F2. Tựkhám phá schema
+Agent phải lấy danh sách bảng và schema trước khi tạo SQL
+Cho phép cache schema đểgiảm sốlần gọi tool
+F3. Sinh SQL theo description database
+Phù hợp dialect (MySQL/Postgres)
+Mặc định áp dụng TOP_K/LIMIT
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+3 / 21
+1. Purpose - Functional Requirements (tt)
+F4. Kiểm tra SQL trước khi chạy
+Query check phát hiện lỗi join/cột/hàm
+F5. Thực thi query qua MCP tool
+list_tables / get_schema / run_query / query_checking
+Agent gọi tool, không truy DB trực tiếp
+F6. Xửlý lỗi & retry
+Nếu DB trảlỗi →agent sửa SQL và retry (MAX_RETRIES)
+F7. Trảlời có căn cứ
+Dựa trên kết quảquery
+Nếu rỗng →trả"không tìm thấy"
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+4 / 21
+In Scope - Các Dạng Câu Hỏi HỗTrợ
+1. Truy vấn lọc (Filtering)
+Lọc bài báo theo: năm, loại công bố, đơn vị, giảng viên, venue, nhãn đềtài/tài trợ
+2. Thống kê & tổng hợp (Aggregation/KPI)
+Count papers theo năm/loại
+Top giảng viên/venues theo sốbài
+Phân bốcông bốcủa giảng viên/đơn vị
+Thống kê theo nguồn đềtài/tài trợ
+3. Join dữliệu cần support
+paper paper_author author
+author org_unit
+paper venue venue_ranking_snapshot
+paper paper_funding_or_project
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+5 / 21
+Out of Scope - Non-Goals
+Hệthống KHÔNG làm:
+NG1. Không cho phép thay đổi dữliệu DB
+Không hỗtrợINSERT/UPDATE/DELETE/DROP/ALTER
+Mọi query phải read-only
+NG2. Không xửlý ETL/cleaning
+Không chuẩn hoá tên tác giả, dedup paper_url
+NG3. Không suy luận ngoài DB
+Không trảlời câu hỏi cần kiến thức ngoài dữliệu
+Thiếu dữliệu →trả"không đủdữliệu"
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+6 / 21
+Non-Functional Requirements - Latency Target
+MVP (nội bộ):
+p95 E2E 15s, p99 E2E 20s
+Production (có cache + ổn định):
+p95 E2E 10s, p99 E2E 15s
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+7 / 21
+Non-Functional - Accuracy Target
+Execution Accuracy: đo theo "outcome-based" (kết quảđúng so với reference)
+Metric
+MVP
+Production
+Execution success rate
+92%
+98%
+Execution accuracy
+90%
+88%
+Note: MVP test trên 50 câu hỏi offline;
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+8 / 21
+Non-Functional - Hallucination Target
+Groundedness/Faithfulness: Câu trảlời phải bám schema + result, không tựbịa.
+KPI
+MVP
+Production
+Groundedness pass rate
+95%
+98%
+Fabricated number rate
+2%
+0.5%
+Cách đo:
+Groundedness: Answer phải suy ra được từSQL result
+Fabricated number: Tỉlệcâu có sốliệu không truy vết được từresult
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+9 / 21
+Technical Stack - MVP
+Triển khai nhanh với components build sẵn:
+Build Agent: LangChain
+Sửdụng SQLDatabaseToolkit
+Handle Generate SQL: LangChain SQL Agent
+Tutorial: https://docs.langchain.com/oss/python/langchain/sql-agent
+Dùng components build sẵn vềText-to-SQL
+Evaluation: DeepEval + LangSmith
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+10 / 21
+MVP: LangChain Components
+LLM & SQLDatabaseToolkit:
+LLM: OpenAI/Gemini Chat Model
+Reasoning engine; quyết định gọi tool nào, thứtựnào
+Temperature/max_tokens configurable
+SQLDatabaseToolkit: cung cấp 4 tools
+sql_db_list_tables: liệt kê tất cảtables có sẵn
+sql_db_schema: lấy chi tiết schema (cột, type, FK, indexes, descriptions)
+sql_db_query: execute SELECT query, trảkết quả+ metadata
+sql_db_query_checker: verify SQL trước chạy (LLM-based linter)
+Query Checker Details:
+Bắt lỗi phổbiến: join sai cột, NOT IN gặp NULL, UNION vs UNION ALL, function args
+không match
+Rewrite SQL nếu tìm được lỗi
+Giảm sốvòng DB retry →giảm latency
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+11 / 21
+Technical Stack - Production
+Nếu latency, accuracy, hallucination không đảm bảo:
+MCP Server: FastMCP
+Text-to-SQL: create_sql_query_chain
+Triển khai from scratch (tựcontrol prompt + flow)
+Break components đểtest từng phần
+Agent Orchestration: LangChain
+Guardrails/Policy:
+Allowlist tables/columns
+Read-only DB role
+SQL validator middleware
+Observability & Evaluation: LangSmith + DeepEval
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+12 / 21
+Design System
+Agent layer (LangChain):
+Reasoning + policy (prompt), orchestration, retry/timeout, tracing.
+Không chứa credentials DB, không chạy SQL trực tiếp.
+Tool layer (MCP/FastMCP):
+Enforce read-only, allowlist tables/columns, limit rows, redact fields.
+Trảvềoutput structured (JSON): success / error, row_count, rows_preview,
+sql_executed.
+Why: policy + validation nằm ởtool layer thì agent “có bịa” cũng không phá DB.
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+13 / 21
+Tool spec: list_schema
+Purpose: cung cấp schema đủđểLLM sinh SQL đúng, tránh hallucination.
+Input:
+tables: list[string] (optional filter)
+include_descriptions/comments: bool
+Output (structured):
+tables: [name, description, columns[name,type,nullable,desc], pk, fk, indexes]
+version/hash + cache_hint (đểagent quyết định reuse cache)
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+14 / 21
+Tool spec: query_sql
+query_sql (execute):
+Input: query: string (SQL) + optional params (nếu hỗtrợ).
+Validation bắt buộc: chỉcho phép SELECT, deny DML/DDL.
+Output: success, row_count, rows_preview, truncated, error, sql_executed.
+query_check (LLM-based):
+Mục tiêu: bắt lỗi common mistakes trước khi chạy query thật.
+Input: (query, dialect, schema summary) →Output: query đã sửa hoặc cảnh báo.
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+15 / 21
+Resolution (A): Fuzzy Match & Normalize
+Problem: Entity mention bịtypo / format mismatch.
+Examples:
+“An” →DB có “Anh”, “Ân”
+“NLP UIT” →DB có “NLP@UIT”
+“ICMLL” →DB có “ICML”
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+16 / 21
+Resolution (B): Synonym Mapping & Clarification
+Problem: Term có nhiều mapping hợp lệ.
+Examples:
+“Quốc tế” →“HNQT” OR “TCQT” OR venue Scopus?
+“Q1” vs “Scopus” vs “ISI” →ý nghĩa giống nhưng field khác
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+17 / 21
+Schema-Aware Prompting (Semantic Mapping)
+Problem: User hỏi “có bao nhiêu bài viết thuộc xửlý ngôn ngữtựnhiên”
+Nhưng database chỉlưu “NLP@UIT” (code không giống text tựnhiên)
+LLM có thểkhông tựđộng map “NLP” ←→“xửlý ngôn ngữtựnhiên”
+Solution: Detailed field comments trong schema definition
+Thêm comment vào mỗi field giải thích:
+Mục đích (semantic meaning)
+Cách dữliệu lưu trữ(format, examples)
+Mapping nếu có (vd: “NLP@UIT = xửlý ngôn ngữtựnhiên”)
+How it works (LLM perspective):
+1 Agent gọi sql_db_schema →nhận schema + comments
+2 LLM đọc comment, tựngầm map “xửlý ngôn ngữtựnhiên” ←→NLP@UIT
+3 Generate WHERE clause đúng: WHERE research_group_code = ’NLP@UIT’
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+18 / 21
+So Sánh MVP vs Production Approach
+Aspect
+MVP
+Production
+Agent architecture
+Black box (create_agent)
+White box
+SQL generation
+Built-in agent loop
+create_sql_query_chain
+Testability
+E2E test only
+Unit test từng component
+Control
+Limited (system prompt)
+Full control (custom pipeline)
+Guardrails
+Prompt-based
+Middleware + DB-level
+Observability
+Basic tracing
+LangSmith detailed trace
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+19 / 21
+Testing (1): SQL Correctness
+Mục tiêu: Kiểm chứng agent sinh SQL đúng cú pháp + cú ý (correct schema links, joins).
+Test workflow:
+1 Input: Test set câu hỏi (50) theo tier (A/B/C)
+Tier A: 2-table join (simple)
+Tier B: 3–4 joins + GROUP BY (intermediate)
+Tier C: subquery / complex (advanced)
+2 Validation:
+Execution success rate: % câu query chạy không lỗi DB
+Schema compliance: SQL dùng đúng table/column (allowlist check)
+Join correctness: khi 2+ tables, kiểm chứng join path qua FK (pattern match)
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+20 / 21
+Testing (2): LLM Response (DeepEval)
+Mục tiêu: Kiểm chứng LLM trảlời đúng sựthật (groundedness) và không bịa số.
+Test workflow:
+1 Input: Test set có question + ground truth (reference result từreference SQL)
+2 Execution: agent.invoke(question) →capture LLM answer + SQL + rows
+3 Evaluation (DeepEval):
+FaithfulnessMetric (answer grounded): LLM answer nhất quán với rows_preview? Không
+nói gì ngoài dữliệu?
+HallucinationMetric (phát hiện bịa): LLM bịa con số/ entity không có trong
+rows_preview?
+ToolCorrectnessMetric (agent trace): Tool có được gọi theo đúng thứtựkhông? (schema
+→select →check →query →answer)
+Version 0.1 (Draft)
+Thiết KếAgent Text-to-SQL
+Ngày 1 tháng 4 năm 2026
+21 / 21

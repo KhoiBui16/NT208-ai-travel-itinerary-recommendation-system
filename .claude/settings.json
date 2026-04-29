@@ -1,0 +1,36 @@
+{
+  "env": {
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(rg:*)",
+      "Bash(uv:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(alembic:*)",
+      "Bash(uvicorn:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Read(./)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(./secrets/**)",
+      "Read(**/*secret*)",
+      "Read(**/*credential*)",
+      "Bash(rm -rf:*)"
+    ]
+  },
+  "memory": {
+    "enabled": true,
+    "maxTokens": 100000
+  },
+  "editor": {
+    "autoSave": true,
+    "formatOnSave": true
+  }
+}
