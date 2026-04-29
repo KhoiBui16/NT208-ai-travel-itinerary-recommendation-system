@@ -1,6 +1,6 @@
 """Unit tests for PlaceService business logic."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
