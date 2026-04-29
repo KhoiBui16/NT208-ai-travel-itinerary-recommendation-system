@@ -12,6 +12,9 @@ dist/
 # Python virtual environment
 venv/
 .venv/
+.uv-cache/
+.uv-python/
+.docker-cli/
 
 # Python bytecode
 __pycache__/
@@ -33,3 +36,19 @@ test_results.json
 test_results.txt
 test_output.txt
 test_full_results.json
+.pytest_cache/
+pytest-cache-files-*/
+
+# Claude local-only settings
+.claude/settings.local.json
+
+# MVP1 legacy code (kept for reference, not tracked)
+Backend/app/
+Backend/main.py
+Backend/requirements.txt
+Backend/seed_data.py
+Backend/venv/
+
+# Render/Vercel deploy configs (MVP1)
+render.yaml
+vercel.json
