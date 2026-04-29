@@ -316,7 +316,7 @@ class ItineraryService(BaseService):
         trip = await self.repo.create_trip(
             user_id=user_id, ai_generated=ai_generated, status="draft", **kwargs
         )
-        return trip
+        return await self.repo.get_with_full_data(trip.id)
 
     async def _check_trip_limit(self, user_id: int) -> None:
         count = await self.repo.count_active_by_user(user_id)

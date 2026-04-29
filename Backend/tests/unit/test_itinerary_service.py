@@ -47,6 +47,8 @@ def _make_trip(
         created_at=datetime(2026, 5, 1),
         updated_at=datetime(2026, 5, 1),
     )
+    trip.days = []
+    trip.accommodations = []
     return trip
 
 
@@ -56,8 +58,10 @@ def _make_trip(
 async def test_create_manual__auth_user__success(
     service: ItineraryService, mock_repo: AsyncMock
 ) -> None:
+    trip = _make_trip()
     mock_repo.count_active_by_user.return_value = 0
-    mock_repo.create_trip.return_value = _make_trip()
+    mock_repo.create_trip.return_value = trip
+    mock_repo.get_with_full_data.return_value = trip
 
     from src.schemas.itinerary import CreateTripRequest
 
@@ -94,7 +98,9 @@ async def test_create_manual__trip_limit_exceeded(
 async def test_create_manual__guest__gets_claim_token(
     service: ItineraryService, mock_repo: AsyncMock
 ) -> None:
-    mock_repo.create_trip.return_value = _make_trip(user_id=None)
+    trip = _make_trip(user_id=None)
+    mock_repo.create_trip.return_value = trip
+    mock_repo.get_with_full_data.return_value = trip
     mock_repo.create_claim_token.return_value = MagicMock()
 
     from src.schemas.itinerary import CreateTripRequest
