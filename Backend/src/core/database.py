@@ -73,10 +73,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Yield a database session for FastAPI dependencies.
 
     Used as Depends(get_db) in endpoint functions. The session is
-    automatically closed when the request completes.
+    automatically committed on success and rolled back on error.
 
     Yields:
         AsyncSession bound to the application engine.
     """
     async with AsyncSessionLocal() as session:
-        yield session
+        async with session.begin():
+            yield session
