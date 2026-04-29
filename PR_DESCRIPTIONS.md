@@ -2,12 +2,14 @@
 
 > Copy nội dung từng section tương ứng vào GitHub PR.
 > Sau mỗi phase code xong, cập nhật lại file này nếu có thay đổi thực tế.
+> Mỗi PR body phải có 4 section: "## Mô tả", "## Thay đổi chính", "## Cách kiểm tra (Testing)", "## Lưu ý khác".
 
 ---
 
 ## Phase A — `feat: [#00000] bootstrap MVP2 foundation layer`
 
 **Branch:** `feat/00000-a-foundation-bootstrap`
+**PR:** https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/pull/1
 
 ---
 
@@ -23,10 +25,13 @@
 - [x] `Backend/src/api/v1/` — health check endpoint + router aggregator
 - [x] Alembic migration tạo 16 bảng core
 - [x] Docker Compose (api + postgres:16 + redis:7), Dockerfile
-- [x] GitHub Actions CI (4 job: backend-lint, backend-unit, backend-integration, backend-migrations)
+- [x] GitHub Actions CI (4 job: backend-lint, backend-unit, backend-integration, backend-migrations + pr-policy)
 - [x] pyproject.toml + uv.lock, config.yaml, .env.example
 - [x] 6 unit/integration tests pass
 - [x] Remove MVP1 code khỏi git tracking (giữ file vật lý trên disk)
+- [x] Fix integration test path: `/health` → `/api/v1/health`
+- [x] Remove stale files: BE.md, FE.md, implementation_plan.md, render.yaml, vercel.json
+- [x] Thêm `docs/phase_a_foundation.md` — documentation chi tiết Phase A
 
 ## Cách kiểm tra (Testing)
 - Bước 1: `cd Backend && uv sync --dev`
@@ -40,6 +45,9 @@
 - Migration mới: `20260428_0001_initial_mvp2_schema.py` (16 bảng)
 - `.env.example` đã cập nhật cho MVP2 (thêm REDIS_URL, GOONG_API_KEY, ENABLE_ANALYTICS)
 - MVP1 code (`Backend/app/`, `Backend/main.py`, `Backend/requirements.txt`) đã remove khỏi git, file vật lý vẫn còn trên disk
+- Integration test path fix: `/health` → `/api/v1/health` (match router prefix)
+- Đã remove stale files: BE.md, FE.md, implementation_plan.md, render.yaml, vercel.json
+- Thêm docs/phase_a_foundation.md mô tả chi tiết cấu trúc, CI/CD rules, luồng đọc code
 
 ---
 
