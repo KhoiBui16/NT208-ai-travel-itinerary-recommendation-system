@@ -1,4 +1,10 @@
-"""Middleware and exception handler registration."""
+"""Middleware and exception handler registration.
+
+Sets up three layers on the FastAPI app:
+  1. CORS — allow FE origins from settings.cors_origins.
+  2. Request logging — log method, path, status, duration for every request.
+  3. Exception handlers — format AppException and HTTPException into consistent JSON.
+"""
 
 import time
 from collections.abc import Awaitable, Callable
@@ -15,7 +21,13 @@ logger = get_logger(__name__)
 
 
 def setup_middlewares(app: FastAPI, settings: AppSettings) -> None:
-    """Register CORS, request logging, and exception handlers."""
+    """Register CORS, request logging, and exception handlers.
+
+    Args:
+        app: The FastAPI application instance.
+        settings: AppSettings for CORS origins and other config.
+    """
+    # Layer 1: CORS — allow FE development servers
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -23,7 +35,9 @@ def setup_middlewares(app: FastAPI, settings: AppSettings) -> None:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Layer 2: Request logging middleware
     app.middleware("http")(request_logging_middleware)
+    # Layer 3: Consistent exception formatting
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
 
@@ -32,7 +46,11 @@ async def request_logging_middleware(
     request: Request,
     call_next: Callable[[Request], Awaitable[Response]],
 ) -> Response:
-    """Log request duration without logging request bodies or secrets."""
+    """Log request duration without logging request bodies or secrets.
+
+    Records method, path, status code, and duration in milliseconds.
+    Structured logging makes it easy to filter and aggregate in production.
+    """
     started_at = time.perf_counter()
     response = await call_next(request)
     duration_ms = round((time.perf_counter() - started_at) * 1000, 2)
