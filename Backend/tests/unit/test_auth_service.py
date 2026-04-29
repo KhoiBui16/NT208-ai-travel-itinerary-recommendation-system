@@ -141,9 +141,7 @@ async def test_refresh__revoked_token__raises_unauthorized(
         await service.refresh("some_raw_token")
 
 
-async def test_logout__valid_token__revokes(
-    service: AuthService, token_repo: AsyncMock
-) -> None:
+async def test_logout__valid_token__revokes(service: AuthService, token_repo: AsyncMock) -> None:
     stored_token = RefreshToken(
         id=1, user_id=1, token_hash="hash", expires_at=datetime.now(UTC) + timedelta(days=1)
     )

@@ -70,6 +70,7 @@ def yaml_config_settings() -> dict[str, Any]:
         "environment": flattened.get("app_environment"),
         "debug": flattened.get("app_debug"),
         "cors_origins": flattened.get("cors_origins"),
+        "frontend_url": flattened.get("app_frontend_url"),
         "access_token_expire_minutes": flattened.get("auth_access_token_expire_minutes"),
         "refresh_token_expire_days": flattened.get("auth_refresh_token_expire_days"),
         "min_password_length": flattened.get("auth_min_password_length"),
@@ -110,6 +111,7 @@ class AppSettings(BaseSettings):
     environment: str = "development"
     debug: bool = Field(default=False, validation_alias="APP_DEBUG")
     cors_origins: list[str] = ["http://localhost:5173"]
+    frontend_url: str = "http://localhost:5173"
 
     # --- Auth ---
     access_token_expire_minutes: int = 15
