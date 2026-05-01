@@ -1,19 +1,7 @@
 """Unit tests for ETL transformers and validator logic."""
 
-import pytest
-
-from src.etl.transformers.place_transformer import (
-    MIN_NAME_LENGTH,
-    normalize_name,
-    transform,
-    validate_place,
-    VN_LAT_MIN,
-    VN_LAT_MAX,
-    VN_LNG_MIN,
-    VN_LNG_MAX,
-)
 from src.etl.transformers.hotel_transformer import transform_hotels
-
+from src.etl.transformers.place_transformer import normalize_name, transform, validate_place
 
 # --- validate_place ---
 
