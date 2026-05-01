@@ -492,14 +492,14 @@ git worktree remove worktrees/foundation
 
 ### B4: Trip CRUD (core)
 
-- [ ] **B4.1** — `src/repositories/trip_repo.py` (~120 lines)
+- [x] **B4.1** — `src/repositories/trip_repo.py` (~120 lines)
   - Files: `src/repositories/trip_repo.py`
   - Endpoint: EP 8–13
   - Dependency: A3.1, A4.2
   - Estimate: large
   - Details: `TripRepository`: `create_full()`, `get_by_user()`, `get_with_full()`, `update_full()`, `delete()`
 
-- [ ] **B4.2** — `src/services/itinerary_service.py` (~130 lines)
+- [x] **B4.2** — `src/services/itinerary_service.py` (~130 lines)
   - Files: `src/services/itinerary_service.py`
   - Endpoint: EP 8–20, 32
   - Dependency: B4.1
@@ -507,35 +507,35 @@ git worktree remove worktrees/foundation
   - Details: `ItineraryService`: `generate()`, `create_manual()`, `list_by_user()`, `get_by_id()`, `update()`, `delete()`, `claim()`
   - Note: `generate()` chỉ stub trong Phase B2 — AI logic thêm ở Phase C
 
-- [ ] **B4.3** — `src/api/v1/itineraries.py` (~120 lines)
+- [x] **B4.3** — `src/api/v1/itineraries.py` (~120 lines)
   - Files: `src/api/v1/itineraries.py`
   - Endpoint: EP 8 `POST /itineraries/generate`, EP 9 `POST /itineraries`, EP 10 `GET /itineraries`, EP 11 `GET /itineraries/{id}`, EP 12 `PUT /itineraries/{id}`, EP 13 `DELETE /itineraries/{id}`
   - Dependency: B4.2
   - Estimate: large
   - Ref: [12_be_crud_endpoints.md EP 8–13](12_be_crud_endpoints.md)
 
-- [ ] **B4.4** — Wire itinerary router + update dependencies.py
+- [x] **B4.4** — Wire itinerary router + update dependencies.py
   - Files: `src/api/v1/router.py` (modify), `src/core/dependencies.py` (modify)
   - Dependency: B4.3
   - Estimate: small
 
 ### B5: Activity + Accommodation
 
-- [ ] **B5.1** — Add activity CRUD methods to `trip_repo.py`
+- [x] **B5.1** — Add activity CRUD methods to `trip_repo.py`
   - Files: `src/repositories/trip_repo.py` (modify)
   - Endpoint: EP 16–18
   - Dependency: B4.1
   - Estimate: medium
   - Details: `add_activity()`, `update_activity()`, `delete_activity()`
 
-- [ ] **B5.2** — Add accommodation CRUD methods to `trip_repo.py`
+- [x] **B5.2** — Add accommodation CRUD methods to `trip_repo.py`
   - Files: `src/repositories/trip_repo.py` (modify)
   - Endpoint: EP 19–20
   - Dependency: B4.1
   - Estimate: small
   - Details: `add_accommodation()`, `delete_accommodation()`
 
-- [ ] **B5.3** — Add activity/accommodation router endpoints
+- [x] **B5.3** — Add activity/accommodation router endpoints
   - Files: `src/api/v1/itineraries.py` (modify)
   - Endpoint: EP 16–20
   - Dependency: B5.1, B5.2
@@ -543,13 +543,13 @@ git worktree remove worktrees/foundation
 
 ### B6: Share + Rating
 
-- [ ] **B6.1** — `src/repositories/shared_repo.py` (~40 lines)
+- [x] **B6.1** — `src/repositories/shared_repo.py` (~40 lines)
   - Files: `src/repositories/shared_repo.py`
   - Endpoint: EP 15
   - Dependency: A3.1, A4.4
   - Estimate: small
 
-- [ ] **B6.2** — Add share/rating endpoints
+- [x] **B6.2** — Add share/rating endpoints
   - Files: `src/api/v1/itineraries.py` (modify)
   - Endpoint: EP 14 `PUT /itineraries/{id}/rating`, EP 15 `POST /itineraries/{id}/share`
   - Dependency: B6.1, B4.2
@@ -557,7 +557,7 @@ git worktree remove worktrees/foundation
 
 ### B7: Guest Claim + Trip Limit
 
-- [ ] **B7.1** — Implement `claim()` in `itinerary_service.py`
+- [x] **B7.1** — Implement `claim()` in `itinerary_service.py`
   - Files: `src/services/itinerary_service.py` (modify)
   - Endpoint: EP 32 `POST /itineraries/{id}/claim`
   - Dependency: B4.2
@@ -565,14 +565,14 @@ git worktree remove worktrees/foundation
   - Details: Verify one-time `claimToken` hash/expiry trong `guest_claim_tokens`, consume token, rồi mới set `user_id = current_user.id`. Không claim chỉ bằng `trip.user_id IS NULL`.
   - Ref: [04_ai_agent_plan.md §4.10](04_ai_agent_plan.md)
 
-- [ ] **B7.2** — Implement trip limit check in `create_manual()` and `generate()`
+- [x] **B7.2** — Implement trip limit check in `create_manual()` and `generate()`
   - Files: `src/services/itinerary_service.py` (modify)
   - Endpoint: EP 8, 9
   - Dependency: B4.2
   - Estimate: small
   - Details: `COUNT(trips WHERE user_id=X AND active) >= MAX_ACTIVE_TRIPS_PER_USER` → 403
 
-- [ ] **B7.3** — Add claim endpoint to router
+- [x] **B7.3** — Add claim endpoint to router
   - Files: `src/api/v1/itineraries.py` (modify)
   - Endpoint: EP 32
   - Dependency: B7.1
@@ -580,22 +580,22 @@ git worktree remove worktrees/foundation
 
 ### B8: Itinerary Tests
 
-- [ ] **B8.1** — `src/tests/unit/test_itinerary_service.py`
+- [x] **B8.1** — `src/tests/unit/test_itinerary_service.py`
   - Files: `src/tests/unit/test_itinerary_service.py`
   - Dependency: B4.2
   - Estimate: medium
   - Details: Test CRUD, ownership check, trip limit, guest claim
 
-- [ ] **B8.2** — `src/tests/integration/test_itinerary_api.py`
+- [x] **B8.2** — `src/tests/integration/test_itinerary_api.py`
   - Files: `src/tests/integration/test_itinerary_api.py`
   - Dependency: B4.3
   - Estimate: large
   - Details: HTTP tests for EP 8–20, 32 (happy + error paths)
 
-- [ ] **B8.3** — Verify: Full trip flow works
+- [x] **B8.3** — Verify: Full trip flow works
   - Test: Swagger → create trip → add activities → auto-save → share → delete
 
-**Phase B2 Total: 16 tasks** | **PR: `feat/be-itineraries` → main**
+**Phase B2 Total: 16 tasks** | **Status:** completed on 2026-04-29 | **PR:** `feat/00002-b2-itineraries` → main (PR #3)
 
 ---
 
@@ -776,49 +776,50 @@ git push --force-with-lease origin feat/12345-b1-auth-register
 
 ### B9: Places + Destinations (4 endpoints)
 
-- [ ] **B9.1** — `src/repositories/place_repo.py` (~100 lines)
+- [x] **B9.1** — `src/repositories/place_repo.py` (~100 lines)
   - Files: `src/repositories/place_repo.py`
   - Endpoint: EP 21–24
   - Dependency: A3.1, A4.3
   - Estimate: medium
   - Details: `PlaceRepository(BaseRepository[Place])`: `get_destinations()`, `get_by_destination()`, `search()`, `get_by_id()`, `correlated()`
 
-- [ ] **B9.2** — `src/services/place_service.py` (~100 lines)
+- [x] **B9.2** — `src/services/place_service.py` (~100 lines)
   - Files: `src/services/place_service.py`
   - Endpoint: EP 21–27, 30
   - Dependency: B9.1
   - Estimate: medium
   - Details: `PlaceService`: `get_destinations()`, `get_detail()`, `search()`, `get_by_id()`, `suggest()`, `list_saved()`, `save()`, `unsave()`
 
-- [ ] **B9.3** — `src/api/v1/places.py` (~80 lines)
+- [x] **B9.3** — `src/api/v1/places.py` (~80 lines)
   - Files: `src/api/v1/places.py`
   - Endpoint: EP 21 `GET /destinations`, EP 22 `GET /destinations/{name}/detail`, EP 23 `GET /places/search`, EP 24 `GET /places/{id}`
   - Dependency: B9.2
   - Estimate: medium
   - Ref: [12_be_crud_endpoints.md EP 21–24](12_be_crud_endpoints.md)
 
-- [ ] **B9.4** — Wire places router + update dependencies.py
+- [x] **B9.4** — Wire places router + update dependencies.py
   - Files: `src/api/v1/router.py` (modify), `src/core/dependencies.py` (modify)
   - Dependency: B9.3
   - Estimate: small
 
 ### B10: Saved Places + Redis Cache (3 endpoints)
 
-- [ ] **B10.1** — `src/repositories/saved_repo.py` (~50 lines)
+- [x] **B10.1** — `src/repositories/saved_repo.py` (~50 lines)
   - Files: `src/repositories/saved_repo.py`
   - Endpoint: EP 25–27
   - Dependency: A3.1, A4.3
   - Estimate: small
   - Details: `SavedPlaceRepository`: `get_by_user()`, `create()`, `delete()`, `exists()`
+  - Note: Merged into `place_repo.py` instead of separate file
 
-- [ ] **B10.2** — Add saved places endpoints to places router
+- [x] **B10.2** — Add saved places endpoints to places router
   - Files: `src/api/v1/places.py` (modify) hoặc `src/api/v1/users.py` (modify)
-  - Endpoint: EP 25 `GET /users/saved-places`, EP 26 `POST /users/saved-places`, EP 27 `DELETE /users/saved-places/{id}`
+  - Endpoint: EP 25 `GET /places/saved/list`, EP 26 `POST /places/saved`, EP 27 `DELETE /places/saved/{id}`
   - Dependency: B10.1, B9.2
   - Estimate: small
   - Ref: [12_be_crud_endpoints.md EP 25–27](12_be_crud_endpoints.md)
 
-- [ ] **B10.3** — `src/core/rate_limiter.py` (~80 lines) — Redis rate limiter
+- [x] **B10.3** — `src/core/rate_limiter.py` (~80 lines) — Redis rate limiter
   - Files: `src/core/rate_limiter.py`
   - Endpoint: EP 8, 28, 29, 31
   - Dependency: A2.1
@@ -826,29 +827,29 @@ git push --force-with-lease origin feat/12345-b1-auth-register
   - Details: `RateLimiter`: `check_ai_limit()`, `check_api_limit()`, `get_remaining()`
   - Ref: [03_be_refactor_plan.md §3.7](03_be_refactor_plan.md)
 
-- [ ] **B10.4** — Add Redis cache to `place_service.py` — destinations + search
+- [x] **B10.4** — Add Redis cache to `place_service.py` — destinations + search
   - Files: `src/services/place_service.py` (modify)
   - Endpoint: EP 21, 23
   - Dependency: B9.2, B10.3
   - Estimate: medium
-  - Details: Cache `GET /destinations` (TTL 1h), `GET /places/search` (TTL 15min)
+  - Details: Cache `GET /destinations` (TTL 1h), `GET /places/search` (TTL 15min), cache fail-open on Redis error
   - Ref: [06_scalability_plan.md §2](06_scalability_plan.md)
 
 ### B11: Places Tests
 
-- [ ] **B11.1** — `src/tests/unit/test_place_service.py`
+- [x] **B11.1** — `src/tests/unit/test_place_service.py`
   - Files: `src/tests/unit/test_place_service.py`
   - Dependency: B9.2
   - Estimate: medium
-  - Details: Test search, destinations, saved places, cache hit/miss
+  - Details: Test search, destinations, saved places, cache hit/miss — 17 unit tests
 
-- [ ] **B11.2** — `src/tests/integration/test_places_api.py`
+- [x] **B11.2** — `src/tests/integration/test_places_api.py`
   - Files: `src/tests/integration/test_places_api.py`
   - Dependency: B9.3
   - Estimate: medium
-  - Details: HTTP tests for EP 21–27
+  - Details: HTTP tests for EP 21–27 — 11 integration tests (10 local + 1 CI-only)
 
-**Phase B3 Total: 10 tasks** | **PR: `feat/be-places` → main**
+**Phase B3 Total: 10 tasks** | **Status:** completed on 2026-04-30 | **PR:** `feat/00003-b3-places-cache` → main (PR #4)
 
 ---
 
@@ -1130,15 +1131,20 @@ git push --force-with-lease origin feat/12345-b1-auth-register
 
 ## Updated Progress Tracking
 
-| Phase | Total Tasks | Done | In Progress | Remaining | % Complete |
-|-------|------------|------|-------------|-----------|------------|
-| **A: Foundation** | 28 | 28 | 0 | 0 | 100% |
-| **B1: Auth+Users** | 13 | 13 | 0 | 0 | 100% |
-| **B2: Itineraries** | 16 | 0 | 0 | 16 | 0% |
-| **B3: Places** | 10 | 0 | 0 | 10 | 0% |
-| **C: AI Agent** | 14 | 0 | 0 | 14 | 0% |
-| **D: ETL+Integration** | 9 | 0 | 0 | 9 | 0% |
-| **TOTAL** | **90** | **41** | **0** | **49** | **46%** |
+> **Decision lock v5.0 (2026-04-30):** Hoán đổi thứ tự Phase C ↔ D. Làm Phase C (AI Agent)
+> trước, sau đó Phase D (ETL) khi có API keys. Lý do: AI Agent cần phân tích kỹ trước khi code,
+> còn ETL chỉ cần Goong API key là chạy được. Phase C cũng không bắt buộc phải có real data
+> — có thể dùng stub/seed data để test pipeline trước.
+
+| Phase | Total Tasks | Done | In Progress | Remaining | % Complete | PR |
+|-------|------------|------|-------------|-----------|------------|-----|
+| **A: Foundation** | 28 | 28 | 0 | 0 | 100% | #1 |
+| **B1: Auth+Users** | 13 | 13 | 0 | 0 | 100% | #2 |
+| **B2: Itineraries** | 16 | 16 | 0 | 0 | 100% | #3 |
+| **B3: Places** | 10 | 10 | 0 | 0 | 100% | #4 |
+| **C: AI Agent** | 22 | 0 | 0 | 22 | 0% | — |
+| **D: ETL+Integration** | 9 | 0 | 0 | 9 | 0% | — |
+| **TOTAL** | **98** | **67** | **0** | **31** | **68%** |
 
 > Update bảng này mỗi khi check task `[x]`.
 

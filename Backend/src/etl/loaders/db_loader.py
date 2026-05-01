@@ -1,0 +1,245 @@
+"""DB loader for ETL pipeline — upsert places, hotels, and track sources.
+
+Uses SQLAlchemy Core insert().on_conflict_do_update() for idempotent
+upserts (INSERT ... ON CONFLICT DO UPDATE).
+"""
+
+import logging
+from datetime import UTC, datetime
+
+from redis.asyncio import Redis
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.models.extras import ScrapedSource
+from src.models.place import Destination, Hotel, Place
+
+logger = logging.getLogger(__name__)
+
+
+async def get_or_create_destination(session: AsyncSession, city: str) -> Destination:
+    """Get existing destination or create a new one by name.
+
+    Also creates a slug from the city name for URL-friendly lookups.
+
+    Args:
+        session: DB session.
+        city: Destination city name.
+
+    Returns:
+        Destination ORM instance.
+    """
+    stmt = select(Destination).where(Destination.name == city)
+    result = await session.execute(stmt)
+    dest = result.scalar_one_or_none()
+
+    if dest:
+        return dest
+
+    slug = _to_slug(city)
+    dest = Destination(
+        name=city,
+        slug=slug,
+        description=f"Khám phá {city}",
+        image=f"/img/destinations/{slug}.jpg",
+        is_active=True,
+    )
+    session.add(dest)
+    await session.flush()
+    return dest
+
+
+async def upsert_places(session: AsyncSession, places: list[dict]) -> int:
+    """Upsert place records into the database.
+
+    Uses ON CONFLICT (name, destination_id) DO UPDATE to handle
+    duplicate runs gracefully.
+
+    Args:
+        session: DB session.
+        places: List of normalized place dicts.
+
+    Returns:
+        Number of records upserted.
+    """
+    if not places:
+        return 0
+
+    count = 0
+    for place_data in places:
+        city = place_data["destination"]
+        dest = await get_or_create_destination(session, city)
+
+        stmt = insert(Place).values(
+            destination_id=dest.id,
+            name=place_data["name"],
+            category=place_data["category"],
+            description=place_data.get("description", ""),
+            location=place_data.get("location", ""),
+            latitude=place_data.get("latitude"),
+            longitude=place_data.get("longitude"),
+            avg_cost=place_data.get("avg_cost", 0),
+            rating=place_data.get("rating", 0),
+            image=place_data.get("image", ""),
+            opening_hours=place_data.get("opening_hours"),
+            source=place_data.get("source", "etl"),
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["name", "destination_id"],
+            set_={
+                "category": stmt.excluded.category,
+                "description": stmt.excluded.description,
+                "location": stmt.excluded.location,
+                "latitude": stmt.excluded.latitude,
+                "longitude": stmt.excluded.longitude,
+                "rating": stmt.excluded.rating,
+                "source": stmt.excluded.source,
+            },
+        )
+        await session.execute(stmt)
+        count += 1
+
+    await session.flush()
+
+    # Update places_count on destinations
+    for place_data in places:
+        city = place_data["destination"]
+        dest = await get_or_create_destination(session, city)
+        count_stmt = select(Place).where(Place.destination_id == dest.id)
+        result = await session.execute(count_stmt)
+        dest.places_count = len(result.scalars().all())
+
+    await session.flush()
+    return count
+
+
+async def upsert_hotels(session: AsyncSession, hotels: list[dict]) -> int:
+    """Upsert hotel records into the database.
+
+    Args:
+        session: DB session.
+        hotels: List of normalized hotel dicts.
+
+    Returns:
+        Number of records upserted.
+    """
+    if not hotels:
+        return 0
+
+    count = 0
+    for hotel_data in hotels:
+        city = hotel_data["destination"]
+        dest = await get_or_create_destination(session, city)
+
+        stmt = insert(Hotel).values(
+            destination_id=dest.id,
+            name=hotel_data["name"],
+            price_per_night=hotel_data.get("price_per_night", 0),
+            rating=hotel_data.get("rating", 0),
+            review_count=hotel_data.get("review_count", 0),
+            location=hotel_data.get("location", ""),
+            image=hotel_data.get("image", ""),
+            amenities=hotel_data.get("amenities", ""),
+            description=hotel_data.get("description", ""),
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["name", "destination_id"],
+            set_={
+                "price_per_night": stmt.excluded.price_per_night,
+                "rating": stmt.excluded.rating,
+                "review_count": stmt.excluded.review_count,
+                "amenities": stmt.excluded.amenities,
+                "description": stmt.excluded.description,
+            },
+        )
+        await session.execute(stmt)
+        count += 1
+
+    await session.flush()
+    return count
+
+
+async def update_source_tracking(
+    session: AsyncSession,
+    source_name: str,
+    city: str | None = None,
+    items_count: int = 0,
+    status: str = "success",
+    error_message: str | None = None,
+) -> None:
+    """Update scraped_sources table with ETL run metadata.
+
+    Args:
+        session: DB session.
+        source_name: ETL source name (e.g. "osm_overpass", "goong_geocode").
+        city: City that was processed.
+        items_count: Number of items loaded.
+        status: Run status ("success", "failed", "partial").
+        error_message: Error details if failed.
+    """
+    stmt = insert(ScrapedSource).values(
+        source_name=source_name,
+        city=city,
+        items_count=items_count,
+        status=status,
+        error_message=error_message,
+        last_crawled=datetime.now(UTC),
+    )
+    await session.execute(stmt)
+    await session.flush()
+
+
+async def invalidate_cache(redis: Redis | None) -> None:
+    """Invalidate place/destination caches after ETL run.
+
+    Deletes all Redis keys matching destinations:* and places:*
+    so next API requests fetch fresh data from DB.
+
+    Args:
+        redis: Redis client (None = no cache to invalidate).
+    """
+    if not redis:
+        return
+    try:
+        async for key in redis.scan_iter("destinations:*"):
+            await redis.delete(key)
+        async for key in redis.scan_iter("places:*"):
+            await redis.delete(key)
+        logger.info("Cache invalidated: destinations:* + places:*")
+    except Exception:
+        logger.warning("Cache invalidation failed", exc_info=True)
+
+
+def _to_slug(name: str) -> str:
+    """Convert Vietnamese city name to URL-safe slug.
+
+    Simple approach: lowercase, replace spaces with hyphens,
+    remove non-alphanumeric characters except hyphens.
+
+    Args:
+        name: City name in Vietnamese.
+
+    Returns:
+        URL-safe slug string.
+    """
+    import re
+
+    slug = name.lower().strip()
+    # Common Vietnamese diacritics removal (simple approximation)
+    replacements = {
+        "đ": "d", "ă": "a", "â": "a", "ê": "e",
+        "ô": "o", "ơ": "o", "ư": "u",
+        "à": "a", "á": "a", "ả": "a", "ã": "a", "ạ": "a",
+        "è": "e", "é": "e", "ẻ": "e", "ẽ": "e", "ẹ": "e",
+        "ì": "i", "í": "i", "ỉ": "i", "ĩ": "i", "ị": "i",
+        "ò": "o", "ó": "o", "ỏ": "o", "õ": "o", "ọ": "o",
+        "ù": "u", "ú": "u", "ủ": "u", "ũ": "u", "ụ": "u",
+        "ỳ": "y", "ý": "y", "ỷ": "y", "ỹ": "y", "ỵ": "y",
+    }
+    for vn_char, ascii_char in replacements.items():
+        slug = slug.replace(vn_char, ascii_char)
+
+    slug = re.sub(r"[^a-z0-9]+", "-", slug)
+    slug = slug.strip("-")
+    return slug

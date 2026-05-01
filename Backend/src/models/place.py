@@ -47,6 +47,7 @@ class Place(Base):
     """Searchable travel place from seed/ETL sources."""
 
     __tablename__ = "places"
+    __table_args__ = (UniqueConstraint("name", "destination_id", name="uq_places_name_dest"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     destination_id: Mapped[int] = mapped_column(
@@ -82,6 +83,7 @@ class Hotel(Base):
     """Hotel reference data."""
 
     __tablename__ = "hotels"
+    __table_args__ = (UniqueConstraint("name", "destination_id", name="uq_hotels_name_dest"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     destination_id: Mapped[int] = mapped_column(
