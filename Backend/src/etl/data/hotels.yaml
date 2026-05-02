@@ -1,0 +1,208 @@
+# TEST/SAMPLE hotel data for development only.
+# Real data should come from Goong Places API or Google Maps API.
+# This file is used when running `--hotels-only` during development/testing.
+# When GOONG_API_KEY is configured, the ETL pipeline will use API data instead.
+
+hotels:
+  # --- Hà Nội ---
+  - name: "Sofitel Legend Metropole Hà Nội"
+    city: "Hà Nội"
+    rating: 4.9
+    review_count: 2450
+    price: 5500000
+    amenities: ["wifi", "pool", "spa", "restaurant", "gym", "bar"]
+    image: "/img/hotels/metropole.jpg"
+    location: "15 Ngô Quyền, Hoàn Kiếm"
+    description: "Khách sạn lịch sử 5 sao ngay trung tâm phố cổ"
+
+  - name: "Hotel de l'Opera Hà Nội"
+    city: "Hà Nội"
+    rating: 4.7
+    review_count: 1820
+    price: 3200000
+    amenities: ["wifi", "pool", "restaurant", "spa", "bar"]
+    image: "/img/hotels/delopera.jpg"
+    location: "29 Tràng Tiền, Hoàn Kiếm"
+    description: "Khách sạn boutique 4 sao gần Nhà hát Lớn"
+
+  - name: "La Siesta Premium Hang Be"
+    city: "Hà Nội"
+    rating: 4.6
+    review_count: 1350
+    price: 1800000
+    amenities: ["wifi", "restaurant", "spa"]
+    image: "/img/hotels/lasiesta.jpg"
+    location: "95 Hàng Bè, Hoàn Kiếm"
+    description: "Khách sạn trung tâm phố cổ, tiện nghi hiện đại"
+
+  # --- TP. Hồ Chí Minh ---
+  - name: "Caravelle Saigon"
+    city: "TP. Hồ Chí Minh"
+    rating: 4.8
+    review_count: 2100
+    price: 4200000
+    amenities: ["wifi", "pool", "spa", "restaurant", "gym", "bar"]
+    image: "/img/hotels/caravelle.jpg"
+    location: "19 Lam Sơn, District 1"
+    description: "Khách sạn 5 sao mang tầm nhìn toàn cảnh Sài Gòn"
+
+  - name: "Liberty Central Saigon Riverside"
+    city: "TP. Hồ Chí Minh"
+    rating: 4.5
+    review_count: 1680
+    price: 2400000
+    amenities: ["wifi", "pool", "restaurant", "gym"]
+    image: "/img/hotels/liberty.jpg"
+    location: "17 Tôn Đức Thắng, District 1"
+    description: "Khách sạn ven sông Sài Gòn, trung tâm Quận 1"
+
+  # --- Đà Nẵng ---
+  - name: "Furama Resort Đà Nẵng"
+    city: "Đà Nẵng"
+    rating: 4.8
+    review_count: 1950
+    price: 4800000
+    amenities: ["wifi", "pool", "spa", "restaurant", "gym", "beach"]
+    image: "/img/hotels/furama.jpg"
+    location: "68 Hoàng Sa, Sơn Trà"
+    description: "Resort 5 sao bãi biển Mỹ Khê danh tiếng"
+
+  - name: "A La Carte Da Nang Beach"
+    city: "Đà Nẵng"
+    rating: 4.5
+    review_count: 1200
+    price: 2200000
+    amenities: ["wifi", "pool", "restaurant", "gym"]
+    image: "/img/hotels/alacarte.jpg"
+    location: "200 Võ Nguyên Giáp, Sơn Trà"
+    description: "Khách sạn公寓 ven biển, view biển trực diện"
+
+  # --- Đà Lạt ---
+  - name: "Ana Mandara Villas Đà Lạt"
+    city: "Đà Lạt"
+    rating: 4.7
+    review_count: 980
+    price: 3500000
+    amenities: ["wifi", "spa", "restaurant", "garden"]
+    image: "/img/hotels/anamandara.jpg"
+    location: "Trại Mát, Đà Lạt"
+    description: "Resort villa kiểu Pháp giữa rừng thông"
+
+  - name: "Swiss-Belresort Tuyen Lam"
+    city: "Đà Lạt"
+    rating: 4.4
+    review_count: 870
+    price: 1900000
+    amenities: ["wifi", "pool", "restaurant", "gym"]
+    image: "/img/hotels/swissbel.jpg"
+    location: "Tuyên Lâm, Đà Lạt"
+    description: "Resort bên hồ Tuyền Lâm, không gian yên tĩnh"
+
+  # --- Hội An ---
+  - name: "Victoria Hội An Beach Resort"
+    city: "Hội An"
+    rating: 4.6
+    review_count: 1120
+    price: 3200000
+    amenities: ["wifi", "pool", "spa", "restaurant", "beach"]
+    image: "/img/hotels/victoria.jpg"
+    location: "Cửa Đại, Hội An"
+    description: "Resort bãi biển Cửa Đại, kiến trúc Indochine"
+
+  - name: "Almanity Hoi An"
+    city: "Hội An"
+    rating: 4.5
+    review_count: 760
+    price: 2100000
+    amenities: ["wifi", "pool", "spa", "restaurant"]
+    image: "/img/hotels/almanity.jpg"
+    location: "88 Cửa Đại, Hội An"
+    description: "Wellness resort trung tâm, gần phố cổ"
+
+  # --- Nha Trang ---
+  - name: "Sheraton Nha Trang"
+    city: "Nha Trang"
+    rating: 4.7
+    review_count: 1560
+    price: 3800000
+    amenities: ["wifi", "pool", "spa", "restaurant", "gym", "beach"]
+    image: "/img/hotels/sheraton.jpg"
+    location: "28 Trần Phú, Nha Trang"
+    description: "Khách sạn 5 sao đường biển Trần Phú"
+
+  # --- Phú Quốc ---
+  - name: "InterContinental Phú Quốc"
+    city: "Phú Quốc"
+    rating: 4.8
+    review_count: 1340
+    price: 6500000
+    amenities: ["wifi", "pool", "spa", "restaurant", "gym", "beach"]
+    image: "/img/hotels/intercontinental.jpg"
+    location: "Bãi Trường, Phú Quốc"
+    description: "Resort 5 sao bãi biển hoang sơ phía tây đảo"
+
+  # --- Huế ---
+  - name: "Azerai La Résidence Huế"
+    city: "Huế"
+    rating: 4.7
+    review_count: 890
+    price: 3600000
+    amenities: ["wifi", "pool", "spa", "restaurant", "garden"]
+    image: "/img/hotels/azerai.jpg"
+    location: "5 Lê Lợi, Huế"
+    description: "Khách sạn di sản bên sông Hương, kiến trúc Art Deco"
+
+  # --- Sapa ---
+  - name: "Hotel de la Coupole Sapa"
+    city: "Sapa"
+    rating: 4.6
+    review_count: 670
+    price: 2800000
+    amenities: ["wifi", "pool", "restaurant", "spa"]
+    image: "/img/hotels/coupole.jpg"
+    location: "Hoàng Liên, Sapa"
+    description: "Khách sạn thiết kế Indochine giữa ruộng bậc thang"
+
+  # --- Hạ Long ---
+  - name: "Wyndham Legend Hạ Long"
+    city: "Hạ Long"
+    rating: 4.5
+    review_count: 1100
+    price: 3000000
+    amenities: ["wifi", "pool", "restaurant", "gym", "bar"]
+    image: "/img/hotels/wyndham.jpg"
+    location: "12 Hạ Long, Bãi Cháy"
+    description: "Khách sạn 5 sao view vịnh Hạ Long trực diện"
+
+  # --- Cần Thơ ---
+  - name: "Azerai Cần Thơ"
+    city: "Cần Thơ"
+    rating: 4.6
+    review_count: 560
+    price: 3200000
+    amenities: ["wifi", "pool", "spa", "restaurant", "garden"]
+    image: "/img/hotels/azerai-canTho.jpg"
+    location: "Cồn Châu Á, Cần Thơ"
+    description: "Resort trên cồn sông Hậu, trải nghiệm miền Tây"
+
+  # --- Quy Nhơn ---
+  - name: "Avani Quy Nhơn Resort"
+    city: "Quy Nhơn"
+    rating: 4.5
+    review_count: 480
+    price: 2600000
+    amenities: ["wifi", "pool", "spa", "restaurant", "beach"]
+    image: "/img/hotels/avani.jpg"
+    location: "Nhơn Lý, Quy Nhơn"
+    description: "Resort bãi biển Eo Gió, view hoàng hôn tuyệt đẹp"
+
+  # --- Vũng Tàu ---
+  - name: "Imperial Hotel Vũng Tàu"
+    city: "Vũng Tàu"
+    rating: 4.4
+    review_count: 720
+    price: 2200000
+    amenities: ["wifi", "pool", "restaurant", "gym"]
+    image: "/img/hotels/imperial.jpg"
+    location: "159 Thùy Vân, Vũng Tàu"
+    description: "Khách sạn 4 sao đường biển Thùy Vân"

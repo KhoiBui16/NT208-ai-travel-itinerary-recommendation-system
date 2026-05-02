@@ -33,3 +33,21 @@ security:
 cache:
   destination_ttl_seconds: 86400
   place_search_ttl_seconds: 3600
+
+etl:
+  cities:
+    - "Hà Nội"
+    - "TP. Hồ Chí Minh"
+    - "Đà Nẵng"
+    - "Hội An"
+    - "Nha Trang"
+    - "Phú Quốc"
+    - "Sapa"
+    - "Hạ Long"
+    - "Huế"
+    - "Đà Lạt"
+    - "Vũng Tàu"
+    - "Cần Thơ"
+    - "Quy Nhơn"
+  update_interval_days: 30
+  max_places_per_city: 50
