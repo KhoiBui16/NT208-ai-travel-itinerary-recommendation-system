@@ -22,7 +22,7 @@ export default function Onboarding() {
       interests: selectedInterests,
       budgetLevel: selectedBudget,
     };
-    localStorage.setItem("userPreferences", JSON.stringify(preferences));
+    sessionStorage.setItem("userPreferences", JSON.stringify(preferences));
     
     // Navigate to trip library
     navigate("/trip-library");

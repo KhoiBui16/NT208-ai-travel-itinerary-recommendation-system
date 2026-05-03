@@ -132,8 +132,8 @@ export default function DailyItinerary() {
         console.error("Error loading trip data:", error);
       });
     } else {
-      // Fallback: check localStorage for workspace-passed data
-      const savedTrip = localStorage.getItem("currentTrip");
+      // Fallback: check sessionStorage for workspace-passed data
+      const savedTrip = sessionStorage.getItem("currentTrip");
       if (savedTrip) {
         try {
           const tripData = JSON.parse(savedTrip);

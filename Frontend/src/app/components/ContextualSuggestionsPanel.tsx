@@ -17,6 +17,7 @@ import {
   trackAddToItineraryConfirm,
 } from "../utils/analytics";
 import { Suggestion, mockSuggestions } from "../data/suggestions";
+import { useAuth } from "../contexts/AuthContext";
 
 interface ContextualSuggestionsPanelProps {
   selectedCities: string[];
@@ -31,6 +32,7 @@ export function ContextualSuggestionsPanel({
   onAddToItinerary,
   budgetAvailable = true,
 }: ContextualSuggestionsPanelProps) {
+  const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "dining" | "lodging" | "sightseeing" | "nearby">("all");
   const [viewingDetail, setViewingDetail] = useState<Suggestion | null>(null);
@@ -55,18 +57,18 @@ export function ContextualSuggestionsPanel({
 
   const handleViewDetails = (suggestion: Suggestion) => {
     setViewingDetail(suggestion);
-    trackOpenDetail(suggestion.id, suggestion.name);
+    trackOpenDetail(suggestion.id, suggestion.name, user?.id);
   };
 
   const handleSave = (suggestion: Suggestion) => {
     onSaveSuggestion(suggestion);
-    trackSaveSuggestion(suggestion.id, suggestion.name);
+    trackSaveSuggestion(suggestion.id, suggestion.name, user?.id);
   };
 
   const handleConfirmAdd = () => {
     if (confirmingAdd && selectedDate && selectedTime) {
       onAddToItinerary(confirmingAdd, selectedDate, selectedTime);
-      trackAddToItineraryConfirm(confirmingAdd.id, confirmingAdd.name, selectedDate, selectedTime);
+      trackAddToItineraryConfirm(confirmingAdd.id, confirmingAdd.name, selectedDate, selectedTime, user?.id);
       setConfirmingAdd(null);
       setViewingDetail(null);
       setSelectedDate("");
@@ -139,7 +141,7 @@ export function ContextualSuggestionsPanel({
             <div
               key={suggestion.id}
               className="rounded-xl border-2 border-gray-200 bg-white p-3 transition-all hover:border-cyan-300 hover:shadow-md"
-              onMouseEnter={() => trackViewSuggestion(suggestion.id, suggestion.name, "panel")}
+              onMouseEnter={() => trackViewSuggestion(suggestion.id, suggestion.name, "panel", user?.id)}
             >
               <img
                 src={suggestion.image}

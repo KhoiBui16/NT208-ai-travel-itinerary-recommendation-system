@@ -24,9 +24,9 @@ export default function BudgetSetup() {
 
   useEffect(() => {
     // Load trip data from localStorage
-    const savedDayAllocations = localStorage.getItem("tripDayAllocations");
-    const savedTravelers = localStorage.getItem("tripTravelers");
-    const savedDestinations = localStorage.getItem("tripDestinations");
+    const savedDayAllocations = sessionStorage.getItem("tripDayAllocations");
+    const savedTravelers = sessionStorage.getItem("tripTravelers");
+    const savedDestinations = sessionStorage.getItem("tripDestinations");
 
     let totalDays = 0;
     let totalPeople = 1;
@@ -104,19 +104,19 @@ export default function BudgetSetup() {
   };
 
   const saveBudgetAndNavigate = () => {
-    localStorage.setItem("tripBudget", JSON.stringify({ amount: budget }));
+    sessionStorage.setItem("tripBudget", JSON.stringify({ amount: budget }));
     // Clear old trip data so TripWorkspace generates fresh days from new setup
-    localStorage.removeItem("currentTrip");
-    localStorage.removeItem("selectedTripId");
+    sessionStorage.removeItem("currentTrip");
+    sessionStorage.removeItem("selectedTripId");
     navigate("/trip-workspace");
   };
 
   const handleSkip = () => {
     // Clear any saved budget
-    localStorage.removeItem("tripBudget");
+    sessionStorage.removeItem("tripBudget");
     // Clear old trip data so TripWorkspace generates fresh days from new setup
-    localStorage.removeItem("currentTrip");
-    localStorage.removeItem("selectedTripId");
+    sessionStorage.removeItem("currentTrip");
+    sessionStorage.removeItem("selectedTripId");
     navigate("/trip-workspace");
   };
 

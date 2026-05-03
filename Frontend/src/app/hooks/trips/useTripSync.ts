@@ -111,7 +111,7 @@ export const useTripSync = (
       }
 
       // Fallback: check localStorage for workspace-passed data (wizard flow)
-      const savedTrip = localStorage.getItem("currentTrip");
+      const savedTrip = sessionStorage.getItem("currentTrip");
       if (savedTrip) {
         try {
           const tripData = JSON.parse(savedTrip);
@@ -137,8 +137,8 @@ export const useTripSync = (
       }
 
       // NẾU LÀ LỊCH TRÌNH MỚI TINH (Từ bước manual setup sang)
-      const savedDestinations = localStorage.getItem("tripDestinations");
-      const savedAllocations = localStorage.getItem("tripDayAllocations");
+      const savedDestinations = sessionStorage.getItem("tripDestinations");
+      const savedAllocations = sessionStorage.getItem("tripDayAllocations");
 
       if (savedDestinations && savedAllocations) {
         try {
@@ -173,7 +173,7 @@ export const useTripSync = (
             let counter = 1;
             // Simple name uniqueness without API call for speed
             setTripName(name);
-            localStorage.removeItem("selectedTripId");
+            sessionStorage.removeItem("selectedTripId");
           }
         } catch (error) {}
       }
@@ -189,7 +189,7 @@ export const useTripSync = (
     if (days.length > 0) {
       const tripData = { name: tripName, days, accommodations, totalBudget, savedAt: new Date().toISOString() };
       // Always save to localStorage as quick-restore cache
-      localStorage.setItem("currentTrip", JSON.stringify(tripData));
+      sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
     }
   }, [days, accommodations, totalBudget, tripName]);
 
@@ -295,12 +295,12 @@ export const useTripSync = (
       }
 
       // Also save to localStorage as cache
-      localStorage.setItem("currentTrip", JSON.stringify(tripData));
+      sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
       toast.success("Đã lưu lịch trình thành công", { position: "top-right" });
     } catch (error) {
       console.error("Error saving itinerary:", error);
       // Fallback: save to localStorage only
-      localStorage.setItem("currentTrip", JSON.stringify(tripData));
+      sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
       toast.error("Lưu lên server thất bại, đã lưu tạm thời", { position: "top-right" });
     }
   }, [isAuthenticated, tripName, days, accommodations, totalBudget, setShowLoginModal]);

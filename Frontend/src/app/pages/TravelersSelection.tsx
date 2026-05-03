@@ -12,7 +12,7 @@ export default function TravelersSelection() {
 
   const handleContinue = () => {
     // Save to localStorage
-    localStorage.setItem("tripTravelers", JSON.stringify({ adults, children, total: totalTravelers }));
+    sessionStorage.setItem("tripTravelers", JSON.stringify({ adults, children, total: totalTravelers }));
     navigate("/budget-setup");
   };
 

@@ -79,7 +79,7 @@ export default function ManualTripSetup() {
 
   const handleContinue = () => {
     const selected = destinations.filter((d) => selectedDests.includes(d.id));
-    localStorage.setItem("tripDestinations", JSON.stringify(selected));
+    sessionStorage.setItem("tripDestinations", JSON.stringify(selected));
     navigate("/day-allocation");
   };
 
