@@ -12,7 +12,7 @@ Frontend/
 │   │   ├── App.tsx
 │   │   ├── routes.tsx
 │   │   ├── components/
-│   │   ├── contexts/         # AuthContext (JWT state)
+│   │   ├── contexts/         # AuthContext (JWT state), TripWizardContext (wizard flow)
 │   │   ├── data/
 │   │   ├── hooks/
 │   │   ├── pages/
@@ -38,27 +38,28 @@ Root `index.html` trỏ tới `Frontend/src/main.tsx`, nên lệnh build trong `
 |---|---|---|
 | `/` | `Home` | UI/data FE |
 | `/cities` | `CityList` | chủ yếu data FE |
-| `/cities/:cityId` | `CityDetail` | chủ yếu data FE |
+| `/cities/:cityId` | `CityDetail` | API: getDestinationDetail + mock fallback |
 | `/onboarding` | `Onboarding` | flow FE |
 | `/trip-library` | `TripLibrary` | API: list itineraries (protected) |
 | `/saved-places` | `SavedPlaces` | API: list/save/unsave places (protected) |
 | `/account` | `Account` | API: profile/update/password (protected) |
-| `/trip-history` | `TripHistory` | cần nối itinerary list (protected) |
+| `/trip-history` | `TripHistory` | API: list/update/delete itineraries (protected) |
 | `/settings` | `Settings` | local UI (protected) |
-| `/daily-itinerary` | `DailyItinerary` | mock/demo |
+| `/daily-itinerary` | `DailyItinerary` | API: getItinerary + sessionStorage fallback |
 | `/create-trip` | `CreateTrip` | cần nối create/generate thật |
-| `/budget-setup` | `BudgetSetup` | flow FE |
-| `/travelers-selection` | `TravelersSelection` | flow FE |
+| `/budget-setup` | `BudgetSetup` | flow FE (TripWizardContext) |
+| `/travelers-selection` | `TravelersSelection` | flow FE (TripWizardContext) |
 | `/manual-trip-setup` | `ManualTripSetup` | API: auth check (protected) |
-| `/day-allocation` | `DayAllocation` | flow FE |
-| `/trip-workspace` | `TripWorkspace` | API: places save/unsave (protected) |
+| `/day-allocation` | `DayAllocation` | flow FE (TripWizardContext) |
+| `/trip-workspace` | `TripWorkspace` | API: full CRUD + places search (protected) |
 | `/trip-planning` | `TripPlanning` | legacy/planning UI |
-| `/itinerary/:id` | `ItineraryView` | cần owner API hoặc local fallback |
+| `/itinerary/:id` | `ItineraryView` | API: get/rate/update/delete itinerary |
+| `/shared/:token` | `SharedTripView` | API: getSharedItinerary (public) |
 | `/login` | `Login` | API: auth login |
 | `/register` | `Register` | API: auth register |
 | `/forgot-password` | `ForgotPassword` | UI, BE chưa có endpoint |
-| `/profile` | `Profile` | API: user profile (protected) |
-| `/saved-itineraries` | `SavedItineraries` | cần nối itinerary list (protected) |
+| `/profile` | `Profile` | API: updateProfile (protected) |
+| `/saved-itineraries` | `SavedItineraries` | API: list/delete itineraries (protected) |
 | `*` | `NotFound` | done |
 
 ## Component Groups
@@ -91,7 +92,7 @@ Shared UI:
 
 ## Data Và Hooks
 
-Static/mock data:
+Static/mock data (fallback khi BE không có data):
 
 - `data/cities.ts`
 - `data/destinations.ts`
@@ -101,19 +102,24 @@ Static/mock data:
 - `data/budget.ts`
 - `utils/tripConstants.ts`
 
+Contexts:
+
+- `contexts/AuthContext.tsx` — JWT state, login/logout/register, pending claim flow
+- `contexts/TripWizardContext.tsx` — Wizard flow state (destinations, allocations, travelers, budget) thay thế sessionStorage
+
 Trip state/hooks:
 
 - `hooks/useTripState.ts`
 - `hooks/useTripCost.ts`
-- `hooks/trips/useTripSync.ts`
-- `hooks/trips/useActivityManager.ts`
-- `hooks/trips/useAccommodation.ts`
-- `hooks/trips/usePlacesManager.ts`
+- `hooks/trips/useTripSync.ts` — BE API auto-save (create/update/get itinerary), sessionStorage chỉ làm quick-restore cache
+- `hooks/trips/useActivityManager.ts` — Activity CRUD API (add/update/delete) với optimistic update + revert
+- `hooks/trips/useAccommodation.ts` — Accommodation CRUD API (add/delete) với optimistic update + revert
+- `hooks/trips/usePlacesManager.ts` — Debounced searchPlaces API, save/unsave place API, addActivity API cho suggestion
 
 Ý nghĩa hiện tại:
 
 - FE đã có UX/workflow để quản lý trip phức tạp.
-- BE đã có API core tương ứng, nhưng FE chưa thay toàn bộ localStorage/mock bằng API.
+- BE đã có API core tương ứng, FE đã thay gần hết localStorage/mock bằng API (với fallback).
 - Khi nối API cần cẩn thận mapping camelCase để không phá contract.
 
 ## Contract Quan Trọng
@@ -130,7 +136,7 @@ Các field cần giữ:
 
 Backend hiện dùng `CamelCaseModel`, nên Python nội bộ `adult_price` sẽ serialize thành `adultPrice`.
 
-## Flow FE Nên Nối Với BE
+## Flow FE Đã Nối BE
 
 Auth:
 
@@ -139,44 +145,53 @@ Login/Register page
 → POST /api/v1/auth/login hoặc /register
 → lưu accessToken/refreshToken an toàn
 → GET /api/v1/users/profile
+→ executePendingClaim() cho guest→owner
+```
+
+Trip CRUD:
+
+```text
+TripWorkspace
+→ POST /api/v1/itineraries (create)
+→ PUT /api/v1/itineraries/{tripId} (update)
+→ GET /api/v1/itineraries/{tripId} (load)
+→ POST/PUT/DELETE /api/v1/itineraries/{tripId}/activities (nested CRUD)
+→ POST/DELETE /api/v1/itineraries/{tripId}/accommodations (nested CRUD)
 ```
 
 Trip list/history:
 
 ```text
-TripHistory/SavedItineraries
+TripHistory/SavedItineraries/TripLibrary
 → GET /api/v1/itineraries
-→ render list trip owner-only
-```
-
-Manual trip:
-
-```text
-ManualTripSetup/CreateTrip
-→ POST /api/v1/itineraries
-→ TripWorkspace
-→ PUT /api/v1/itineraries/{tripId} debounce auto-save
+→ DELETE /api/v1/itineraries/{tripId}
 ```
 
 Places:
 
 ```text
-CityList
-→ GET /api/v1/places/destinations
-
 CityDetail
 → GET /api/v1/places/destinations/{name}
+
+TripWorkspace (usePlacesManager)
+→ GET /api/v1/places/search?query=...&city=...&category=...
+→ POST/DELETE /api/v1/places/saved/{placeId}
 
 SavedPlaces
 → GET/POST/DELETE /api/v1/places/saved...
 ```
 
-Share:
+Share/Claim:
 
 ```text
-TripWorkspace share button
+TripWorkspace (TopActionBar)
 → POST /api/v1/itineraries/{tripId}/share
-→ public page should read /api/v1/shared/{shareToken}
+
+SharedTripView
+→ GET /api/v1/shared/{shareToken}
+
+AuthContext (after login/register)
+→ POST /api/v1/itineraries/{tripId}/claim (claimToken one-time)
 ```
 
 ## Automation Hiện Có
@@ -198,28 +213,37 @@ Smoke website:
 
 ## Known Gaps
 
+- `CreateTrip` chưa nối `createItinerary`/`generateItinerary` API — vẫn navigate với mock data.
+- `ItineraryView` chưa có share button — share flow nằm trong `TopActionBar` của TripWorkspace.
 - `ForgotPassword` có UI nhưng BE chưa có endpoint password reset.
-- City/hotel/place UI cần thay data mock bằng API sau khi ETL real data sẵn sàng.
-- Một số màn AI/chat vẫn mock vì BE AI chưa implement.
-- `useTripSync` vẫn dùng localStorage cho trip workspace state — cần đổi sang BE API auto-save.
+- City/hotel/place UI dùng API làm primary, mock làm fallback khi BE không có data.
+- Một số màn AI/chat vẫn mock vì BE AI chưa implement (Phase C).
 - Chưa có Playwright/Cypress.
 - Chưa có test visual/e2e cho trip workspace.
 
-## API Integration Status (2026-05-03)
+## API Integration Status (2026-05-04)
 
-Đã triển khai API client layer (`services/api.ts`) với JWT Bearer injection và auto-refresh trên 401. Các page đã nối BE:
+Đã triển khai API client layer (`services/api.ts`) với JWT Bearer injection và auto-refresh trên 401. Tất cả API call dùng optimistic update + revert-on-failure, với mock fallback khi BE không có data.
 
 | Page | API endpoint | Trạng thái |
 |---|---|---|
 | Login | `POST /auth/login` | Done |
 | Register | `POST /auth/register` | Done |
 | Account | `GET/PUT /users/profile`, `PUT /users/password` | Done |
+| Profile | `PUT /users/profile` | Done |
 | TripLibrary | `GET /itineraries` | Done |
 | SavedPlaces | `GET/POST/DELETE /places/saved/*` | Done |
+| TripHistory | `GET /itineraries`, `PUT /itineraries/{id}`, `DELETE /itineraries/{id}` | Done |
+| SavedItineraries | `GET /itineraries`, `DELETE /itineraries/{id}` | Done |
 | ManualTripSetup | Auth check via `useAuth()` | Done |
-| TripWorkspace | `savePlace/unsavePlace` via API | Done |
+| TripWorkspace | `POST/PUT/GET /itineraries`, nested activity CRUD, nested accommodation CRUD, `GET /places/search`, `POST/DELETE /places/saved` | Done |
+| ItineraryView | `GET /itineraries/{id}`, `PUT /itineraries/{id}`, `PUT /itineraries/{id}/rating`, `DELETE /itineraries/{id}` | Done |
+| SharedTripView | `GET /shared/{shareToken}` | Done |
+| CityDetail | `GET /places/destinations/{name}`, `GET/POST/DELETE /places/saved` | Done |
+| DailyItinerary | `GET /itineraries/{id}` + sessionStorage fallback | Done |
 | Header | Auth state via `AuthContext` | Done |
+| CreateTrip | — | Chưa nối API |
 
-Protected routes (7 routes) đã được bọc bằng `ProtectedRoute` — redirect sang `/login` nếu chưa đăng nhập.
+Protected routes (8 routes) đã được bọc bằng `ProtectedRoute` — redirect sang `/login` nếu chưa đăng nhập.
 
 AI generate endpoint (`POST /itineraries/generate`) vẫn là stub — tạo empty trip, chưa gọi LLM. Sẽ được implement ở Phase C.

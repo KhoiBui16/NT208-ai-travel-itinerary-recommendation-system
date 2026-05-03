@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { Header } from "../components/Header";
 import { CalendarModal } from "../components/CalendarModal";
 import { travelTypes, budgetLevels, interests, popularDestinations } from "../utils/tripConstants";
+import { createItinerary } from "../services/itinerary";
 import {
   Sparkles,
   MapPin,
@@ -49,18 +50,39 @@ export default function CreateTrip() {
     );
   };
 
-  const handleGenerateAI = () => {
-    // 2. Validate theo DateRange mới
+  const handleGenerateAI = async () => {
     if (!destination.trim() || !dateRange.from || !dateRange.to) {
       setValidationError("Vui lòng nhập đầy đủ điểm đến và thời gian chuyến đi");
       return;
     }
-    
+
     setValidationError("");
     setIsGenerating(true);
-    setTimeout(() => {
-      navigate("/daily-itinerary");
-    }, 1500);
+
+    try {
+      // Map budgetLevel to budget number
+      const budgetMap: Record<string, number> = { low: 2000000, mid: 5000000, high: 10000000 };
+      // Map travelType to adults/children count
+      const adultsMap: Record<string, number> = { solo: 1, couple: 2, family: 2, group: 4 };
+      const childrenMap: Record<string, number> = { solo: 0, couple: 0, family: 1, group: 0 };
+
+      const resp = await createItinerary({
+        destination: destination.trim(),
+        tripName: `Chuyến đi ${destination.trim()}`,
+        startDate: format(dateRange.from!, "yyyy-MM-dd"),
+        endDate: format(dateRange.to!, "yyyy-MM-dd"),
+        budget: budgetMap[budgetLevel] || 5000000,
+        adultsCount: adultsMap[travelType] || 2,
+        childrenCount: childrenMap[travelType] || 0,
+        interests: selectedInterests,
+      });
+
+      navigate(`/trip-workspace?tripId=${resp.id}`);
+    } catch {
+      setValidationError("Không thể tạo lịch trình. Vui lòng thử lại.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleManualTrip = () => {
