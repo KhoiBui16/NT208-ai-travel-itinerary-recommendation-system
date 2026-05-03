@@ -112,9 +112,10 @@ Owner POST /itineraries/{tripId}/share
 
 Điểm còn cần kiểm thử sâu hơn sau này:
 
-- Full e2e FE auto-save khi FE đã nối API thật.
+- Full e2e FE auto-save khi FE đã nối API thật — **FE đã nối qua useTripSync, useActivityManager, useAccommodation**.
 - Activity extra expenses CRUD riêng nếu FE cần endpoint tách.
 - Update accommodation hiện có add/delete và nested sync, chưa có endpoint update accommodation riêng.
+- `ItineraryView` chưa có share button — share flow nằm trong `TopActionBar` của TripWorkspace.
 
 ## Phase B3: Places, Saved Places, Redis Cache
 
@@ -190,5 +191,20 @@ Chưa implement trong code hiện tại:
 - Patch-confirm flow.
 - Chat history API.
 - Analytics EP-34.
+- Password reset endpoint cho FE `ForgotPassword`.
 
 Do đó không coi Phase C là done trong tracker hoặc báo cáo test.
+
+## FE Integration Status Tổng Hợp
+
+Tất cả trang FE chính đã nối BE API (xem chi tiết tại `docs/04_frontend.md`):
+
+- Auth (login/register/logout) — `AuthContext`
+- Profile/Account — `GET/PUT /users/profile`, `PUT /users/password`
+- Trip CRUD — `useTripSync` (create/update/get)
+- Activity CRUD — `useActivityManager` (add/update/delete + optimistic)
+- Accommodation CRUD — `useAccommodation` (add/delete + optimistic)
+- Places search/saved — `usePlacesManager` (debounced search, save/unsave)
+- CreateTrip — `createItinerary` → navigate TripWorkspace
+- Share/Claim — `TopActionBar` + `AuthContext`
+- City detail — `getDestinationDetail` + mock fallback

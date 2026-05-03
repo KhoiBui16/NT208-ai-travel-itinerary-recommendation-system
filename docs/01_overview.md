@@ -49,9 +49,17 @@ Backend:
 Frontend:
 
 - FE revamp UI trong `Frontend/` với Vite, React, TypeScript.
-- Route set đầy đủ cho home, city list/detail, auth, trip setup, trip workspace, saved/history/settings.
+- Route set đầy đủ cho home, city list/detail, auth, trip setup, trip workspace, saved/history/settings, shared trip view.
 - FE type contract quan trọng nằm ở `Frontend/src/app/types/trip.types.ts`.
 - Root build đã trỏ đúng `Frontend/src/main.tsx`.
+- API client layer (`services/api.ts` + 4 modules) với JWT auto-refresh.
+- `AuthContext` quản lý JWT state + guest→owner claim flow; **8 protected routes**.
+- `TripWizardContext` thay 6 sessionStorage keys cho wizard flow.
+- `useTripSync` auto-save qua BE API; sessionStorage chỉ làm quick-restore cache.
+- `useActivityManager`/`useAccommodation`/`usePlacesManager` — optimistic CRUD + revert.
+- `CreateTrip` nối `createItinerary` API, navigate TripWorkspace với tripId.
+- `ErrorBoundary` bọc toàn app.
+- Hầu hết trang đã nối BE API thật; mock chỉ làm fallback khi BE không có data.
 
 Docs/ops:
 
@@ -72,11 +80,13 @@ AI:
 Frontend integration:
 
 - API client layer đã triển khai (`services/api.ts` + 4 service modules).
-- Auth, profile, trip list, saved places đã nối BE API thật.
-- `AuthContext` quản lý JWT state toàn app.
-- 7 protected routes redirect sang `/login` khi chưa đăng nhập.
-- `useTripSync` vẫn dùng localStorage cho workspace state.
-- Một số màn (TripHistory, DailyItinerary) cần nối thêm.
+- **Tất cả trang chính đã nối BE API**: auth, profile, trip CRUD, activity/accommodation CRUD, places search/saved, share/claim, city detail, CreateTrip.
+- `AuthContext` quản lý JWT state + guest→owner claim flow.
+- `TripWizardContext` thay 6 sessionStorage keys cho wizard flow.
+- `useTripSync` auto-save qua BE API, sessionStorage chỉ làm quick-restore cache.
+- 8 protected routes redirect sang `/login` khi chưa đăng nhập.
+- `ItineraryView` chưa có share button — share flow nằm trong `TopActionBar` của TripWorkspace.
+- `ForgotPassword` có UI nhưng BE chưa có endpoint.
 - Chưa có Playwright/Cypress hoặc FE unit test runner.
 
 ETL/data:
@@ -105,9 +115,12 @@ Backend:
 
 Frontend:
 
-- UI được mở rộng thành nhiều workflow thực tế hơn: city browsing, trip setup, workspace, history, saved places.
+- UI được mở rộng thành nhiều workflow thực tế hơn: city browsing, trip setup, workspace, history, saved places/itineraries, shared trip view.
 - Contract itinerary mới dùng `Activity.name`, `adultPrice`, `childPrice`, `extraExpenses`, `Day.activities`.
-- Nhiều màn đã sẵn UI nhưng cần nối API thật để thay localStorage/mock.
+- API client layer + optimistic CRUD + revert-on-failure cho trip, activity, accommodation.
+- Hầu hết trang đã nối BE API thật; mock chỉ dùng fallback khi BE không có data.
+- `TripWizardContext` thay sessionStorage cho wizard flow state.
+- `ErrorBoundary` bắt lỗi React runtime, hiển thị UI recover.
 
 Ops:
 
@@ -125,4 +138,4 @@ Ops:
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test, nhưng mức e2e với FE vẫn chưa hoàn chỉnh vì FE còn mock/localStorage. Giai đoạn tiếp theo nên ưu tiên nối FE-BE thật cho auth/trip/place trước khi implement AI Phase C.
+Backend CRUD core đã chạy và có test (33 endpoints, 110 tests). FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip. Giai đoạn tiếp theo là implement AI Phase C (direct itinerary pipeline, companion chat, chat history) và bổ sung FE e2e tests.

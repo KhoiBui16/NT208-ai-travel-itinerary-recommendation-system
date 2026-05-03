@@ -119,8 +119,9 @@ Trip state/hooks:
 Ý nghĩa hiện tại:
 
 - FE đã có UX/workflow để quản lý trip phức tạp.
-- BE đã có API core tương ứng, FE đã thay gần hết localStorage/mock bằng API (với fallback).
-- Khi nối API cần cẩn thận mapping camelCase để không phá contract.
+- **Tất cả trang chính đã nối BE API**: auth, profile, trip CRUD, activity/accommodation CRUD, places search/saved, share/claim, city detail, CreateTrip.
+- Mock data chỉ làm fallback khi BE không có data hoặc API fail.
+- `ErrorBoundary` bọc toàn app, hiển thị UI recover khi React runtime error.
 
 ## Contract Quan Trọng
 
@@ -192,6 +193,15 @@ SharedTripView
 
 AuthContext (after login/register)
 → POST /api/v1/itineraries/{tripId}/claim (claimToken one-time)
+```
+
+CreateTrip:
+
+```text
+CreateTrip
+→ POST /api/v1/itineraries (createItinerary)
+→ navigate /trip-workspace?tripId={resp.id}
+→ TripWorkspace load trip via useTripSync
 ```
 
 ## Automation Hiện Có

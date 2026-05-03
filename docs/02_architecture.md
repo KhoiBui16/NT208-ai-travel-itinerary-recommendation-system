@@ -5,7 +5,9 @@
 ```text
 Frontend React/Vite
   ├─ UI pages/components/hooks
-  ├─ Mock/localStorage flows còn tồn tại
+  ├─ API client layer (services/api.ts + 4 modules) với JWT auto-refresh
+  ├─ TripWizardContext thay sessionStorage cho wizard flow
+  ├─ Mock data chỉ làm fallback khi BE không có data
   └─ Gọi REST API Backend theo camelCase contract
 
 FastAPI Backend
