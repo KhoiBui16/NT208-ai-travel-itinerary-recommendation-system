@@ -3,6 +3,7 @@ import { Header } from "../components/Header";
 import { Bookmark, MapPin, Clock, Star, Plus, Trash2, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
+import * as placesService from "../services/places";
 
 interface SavedPlace {
   id: string;
@@ -27,63 +28,54 @@ export default function SavedPlaces() {
   const [savedLocations, setSavedLocations] = useState<SavedPlace[]>([]);
   const [viewingPlace, setViewingPlace] = useState<SavedPlace | null>(null);
 
-  // Load saved places from localStorage
-  useEffect(() => { // TODO: Gọi API GET /api/places/saved để lấy danh sách địa điểm đã lưu thực tế. Hiện tại đang dùng localStorage để demo.
-    const savedPlaces = localStorage.getItem("savedPlaces");
-    if (savedPlaces) {
-      try {
-        const parsed = JSON.parse(savedPlaces);
-        // Initialize all as bookmarked
-        const withBookmark = parsed.map((p: SavedPlace) => ({
-          ...p,
-          isBookmarked: p.isBookmarked !== undefined ? p.isBookmarked : true,
-        }));
-        setSavedLocations(withBookmark);
-      } catch (error) {
-        console.error("Error loading saved places:", error);
-      }
-    }
+  // Load saved places from API
+  useEffect(() => {
+    placesService.listSavedPlaces().then((res) => {
+      const mapped: SavedPlace[] = res.map((sp) => ({
+        id: String(sp.id),
+        name: sp.place.name,
+        type: sp.place.type,
+        rating: sp.place.rating,
+        reviewCount: sp.place.reviewCount,
+        estimatedCost: String(sp.place.price),
+        priceLevel: "",
+        image: sp.place.image,
+        description: sp.place.description,
+        address: sp.place.location,
+        isBookmarked: true,
+        savedAt: sp.createdAt,
+      }));
+      setSavedLocations(mapped);
+    }).catch(() => {
+      setSavedLocations([]);
+    });
   }, []);
 
-  // Clean up unbookmarked places on component unmount or page unload
-  useEffect(() => {
-    const cleanupUnbookmarked = () => {
-      const bookmarkedOnly = savedLocations.filter(loc => loc.isBookmarked !== false);
-      if (bookmarkedOnly.length !== savedLocations.length) {
-        localStorage.setItem("savedPlaces", JSON.stringify(bookmarkedOnly));
-      }
-    };
-
-    // Cleanup on page unload
-    window.addEventListener("beforeunload", cleanupUnbookmarked);
-
-    return () => {
-      window.removeEventListener("beforeunload", cleanupUnbookmarked);
-      // Cleanup on component unmount
-      cleanupUnbookmarked();
-    };
-  }, [savedLocations]);
+  // No more localStorage cleanup needed — data lives in BE
 
   const handleToggleBookmark = (id: string) => {
-    setSavedLocations(prevLocations => {
-      const updated = prevLocations.map(loc =>
-        loc.id === id
-          ? { ...loc, isBookmarked: !loc.isBookmarked }
-          : loc
-      );
-      
-      // Update localStorage immediately for currently bookmarked items
-      const currentlyBookmarked = updated.filter(loc => loc.isBookmarked !== false);
-      localStorage.setItem("savedPlaces", JSON.stringify(currentlyBookmarked));
-      
-      return updated;
-    });
+    const place = savedLocations.find(loc => loc.id === id);
+    if (!place) return;
+
+    if (place.isBookmarked === false) {
+      // Re-save via API
+      placesService.savePlace(Number(id)).catch(() => {});
+    } else {
+      // Unsave via API
+      placesService.unsavePlace(Number(id)).catch(() => {});
+    }
+
+    setSavedLocations(prevLocations =>
+      prevLocations.map(loc =>
+        loc.id === id ? { ...loc, isBookmarked: !loc.isBookmarked } : loc
+      )
+    );
   };
 
-  const handleDelete = (id: string) => { // TODO: Gọi API DELETE /api/places/saved/:id để xóa địa điểm đã lưu thực tế. Hiện tại chỉ xóa local để demo.
+  const handleDelete = (id: string) => {
+    placesService.unsavePlace(Number(id)).catch(() => {});
     const updated = savedLocations.filter(loc => loc.id !== id);
     setSavedLocations(updated);
-    localStorage.setItem("savedPlaces", JSON.stringify(updated.filter(loc => loc.isBookmarked !== false)));
   };
 
   // Filter to show all locations, even unbookmarked ones (until page reload)

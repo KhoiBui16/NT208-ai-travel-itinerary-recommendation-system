@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Place, Day, Activity } from "../../types/trip.types";
 import { allPlaces } from "../../utils/tripConstants";
+import * as placesService from "../../services/places";
 
 export const usePlacesManager = (
   days: Day[],
@@ -50,33 +51,19 @@ export const usePlacesManager = (
     const place = places.find(p => p.id === id);
     if (!place) return;
 
-    const savedPlacesData = localStorage.getItem("savedPlaces");
-    let savedPlacesArray: any[] = [];
-    if (savedPlacesData) {
-      try { savedPlacesArray = JSON.parse(savedPlacesData); } catch (e) {}
-    }
+    // Optimistic UI update
+    setPlaces((prev: Place[]) => prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p)));
 
-    const isAlreadySaved = savedPlacesArray.some((p: any) => p.name === place.name);
-    if (isAlreadySaved) {
-      savedPlacesArray = savedPlacesArray.filter((p: any) => p.name !== place.name);
+    if (place.saved) {
+      placesService.unsavePlace(id).catch(() => {
+        // Revert on failure
+        setPlaces((prev: Place[]) => prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p)));
+      });
     } else {
-      savedPlacesArray.push({
-        id: `workspace-${id}`,
-        name: place.name,
-        type: place.type,
-        rating: (place as any).rating || 4.5,
-        reviewCount: (place as any).reviews || 0,
-        estimatedCost: place.price || "",
-        priceLevel: "",
-        image: place.image,
-        description: place.description || "",
-        address: place.location || "",
-        savedAt: new Date().toISOString(),
-        isBookmarked: true,
+      placesService.savePlace(id).catch(() => {
+        setPlaces((prev: Place[]) => prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p)));
       });
     }
-    localStorage.setItem("savedPlaces", JSON.stringify(savedPlacesArray));
-    setPlaces((prev: Place[]) => prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p)));
   };
 
   const filteredPlaces = places.filter((p) => {

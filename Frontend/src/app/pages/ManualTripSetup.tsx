@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Header } from "../components/Header";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
-import { getCurrentUser } from "../utils/auth";
+import { useAuth } from "../contexts/AuthContext";
 import {
   Heart,
   Plus,
@@ -27,6 +27,7 @@ import { Destination, destinations } from "../data/destinations";
 
 export default function ManualTripSetup() {
   const navigate = useNavigate();
+  const { isAuthenticated: isLoggedIn } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [savedDestinations, setSavedDestinations] = useState<number[]>([]);
   const [selectedDests, setSelectedDests] = useState<number[]>([]);
@@ -34,22 +35,11 @@ export default function ManualTripSetup() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalReason, setLoginModalReason] = useState("");
 
-  // Check auth state from localStorage
-  const isLoggedIn = !!getCurrentUser();
-
-  // Sync bookmark state from localStorage on mount
+  // Sync bookmark state from API on mount
   useEffect(() => {
-    const savedPlacesData = localStorage.getItem("savedPlaces");
-    if (savedPlacesData) {
-      try {
-        const savedPlacesArray = JSON.parse(savedPlacesData);
-        const savedNames = new Set(savedPlacesArray.map((p: any) => p.name));
-        const matchedIds = destinations
-          .filter((d) => savedNames.has(d.name))
-          .map((d) => d.id);
-        setSavedDestinations(matchedIds);
-      } catch (e) {}
-    }
+    // Load from BE destinations + saved places
+    // For now, destinations are still from local data file
+    // Saved places will come from API once places have matching IDs
   }, []);
 
   const filtered = destinations.filter(
@@ -58,7 +48,7 @@ export default function ManualTripSetup() {
       d.country.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const toggleSaved = (id: number, e: React.MouseEvent) => {
+  const toggleSaved = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
 
     if (!isLoggedIn) {
@@ -70,42 +60,12 @@ export default function ManualTripSetup() {
     const dest = destinations.find((d) => d.id === id);
     if (!dest) return;
 
-    const savedPlacesData = localStorage.getItem("savedPlaces");
-    let savedPlacesArray: any[] = [];
-    if (savedPlacesData) {
-      try {
-        savedPlacesArray = JSON.parse(savedPlacesData);
-      } catch (e) {}
-    }
-
-    const isAlreadySaved = savedPlacesArray.some(
-      (p: any) => p.name === dest.name,
-    );
-
-    if (isAlreadySaved) {
-      savedPlacesArray = savedPlacesArray.filter(
-        (p: any) => p.name !== dest.name,
-      );
+    if (savedDestinations.includes(id)) {
       setSavedDestinations((prev) => prev.filter((d) => d !== id));
     } else {
-      savedPlacesArray.push({
-        id: `dest-${id}`,
-        name: dest.name,
-        type: "Điểm đến",
-        rating: dest.rating,
-        reviewCount: 0,
-        estimatedCost: "",
-        priceLevel: "",
-        image: dest.image,
-        description: dest.description,
-        address: dest.country,
-        savedAt: new Date().toISOString(),
-        isBookmarked: true,
-      });
       setSavedDestinations((prev) => [...prev, id]);
     }
-
-    localStorage.setItem("savedPlaces", JSON.stringify(savedPlacesArray));
+    // Note: Full save/unsave to BE requires placeId mapping — will be wired when ETL populates places
   };
 
   const handleAddDestination = (id: number, e: React.MouseEvent) => {

@@ -23,8 +23,10 @@ import TripWorkspace from "./pages/TripWorkspace";
 import CityList from "./pages/CityList";
 import CityDetail from "./pages/CityDetail";
 import ForgotPassword from "./pages/ForgotPassword";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter([
+  // Public routes
   {
     path: "/",
     Component: Home,
@@ -42,32 +44,24 @@ export const router = createBrowserRouter([
     Component: Onboarding,
   },
   {
-    path: "/trip-library",
-    Component: TripLibrary,
+    path: "/login",
+    Component: Login,
   },
   {
-    path: "/saved-places",
-    Component: SavedPlaces,
+    path: "/register",
+    Component: Register,
   },
   {
-    path: "/account",
-    Component: Account,
-  },
-  {
-    path: "/trip-history",
-    Component: TripHistory,
-  },
-  {
-    path: "/settings",
-    Component: Settings,
-  },
-  {
-    path: "/daily-itinerary",
-    Component: DailyItinerary,
+    path: "/forgot-password",
+    Component: ForgotPassword,
   },
   {
     path: "/create-trip",
     Component: CreateTrip,
+  },
+  {
+    path: "/daily-itinerary",
+    Component: DailyItinerary,
   },
   {
     path: "/budget-setup",
@@ -86,10 +80,6 @@ export const router = createBrowserRouter([
     Component: DayAllocation,
   },
   {
-    path: "/trip-workspace",
-    Component: TripWorkspace,
-  },
-  {
     path: "/trip-planning",
     Component: TripPlanning,
   },
@@ -97,26 +87,74 @@ export const router = createBrowserRouter([
     path: "/itinerary/:id",
     Component: ItineraryView,
   },
+
+  // Protected routes (require login)
   {
-    path: "/login",
-    Component: Login,
+    path: "/trip-library",
+    element: (
+      <ProtectedRoute>
+        <TripLibrary />
+      </ProtectedRoute>
+    ),
   },
   {
-    path: "/register",
-    Component: Register,
+    path: "/saved-places",
+    element: (
+      <ProtectedRoute>
+        <SavedPlaces />
+      </ProtectedRoute>
+    ),
   },
   {
-    path: "/forgot-password",
-    Component: ForgotPassword,
+    path: "/account",
+    element: (
+      <ProtectedRoute>
+        <Account />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/trip-history",
+    element: (
+      <ProtectedRoute>
+        <TripHistory />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/trip-workspace",
+    element: (
+      <ProtectedRoute>
+        <TripWorkspace />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/settings",
+    element: (
+      <ProtectedRoute>
+        <Settings />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/profile",
-    Component: Profile,
+    element: (
+      <ProtectedRoute>
+        <Profile />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/saved-itineraries",
-    Component: SavedItineraries,
+    element: (
+      <ProtectedRoute>
+        <SavedItineraries />
+      </ProtectedRoute>
+    ),
   },
+
+  // Catch-all
   {
     path: "*",
     Component: NotFound,

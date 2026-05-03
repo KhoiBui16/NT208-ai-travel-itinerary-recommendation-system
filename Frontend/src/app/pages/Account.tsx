@@ -1,24 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "../components/Header";
 import { User, Mail, Lock, Camera, Globe, Bell, Crown, Shield, Utensils, Mountain, Building, Music, ShoppingBag, Heart, Users, Baby } from "lucide-react";
 import { TRAVEL_TYPES, INTEREST_OPTIONS, BUDGET_LEVELS } from "../utils/tripConstants";
+import { useAuth } from "../contexts/AuthContext";
+import * as userService from "../services/users";
+import { ApiError } from "../services/api";
+import { toast } from "sonner";
 
 export default function Account() {
+  const { user, refreshUser } = useAuth();
   const [editMode, setEditMode] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
-  // Mock user data
-  const [userData, setUserData] = useState({ //gọi API /api/users/me để lấy thông tin user thực tế
-    username: "Nguyễn Văn A",
-    email: "nguyen.vana@example.com",
+  const [userData, setUserData] = useState({
+    username: "",
+    email: "",
     profilePicture: "",
     language: "vi",
     accountPlan: "Free",
     travelType: "solo",
-    interests: ["food", "nature", "history"],
+    interests: [] as string[],
     budgetLevel: "moderate",
     notificationsEnabled: true,
   });
+
+  // Load user data from auth context
+  useEffect(() => {
+    if (user) {
+      setUserData((prev) => ({
+        ...prev,
+        username: user.name,
+        email: user.email,
+        interests: user.interests ?? [],
+      }));
+    }
+  }, [user]);
 
   const handleToggleInterest = (id: string) => {
     setUserData((prev) => ({
@@ -27,6 +46,54 @@ export default function Account() {
         ? prev.interests.filter((i) => i !== id)
         : [...prev.interests, id],
     }));
+  };
+
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      await userService.updateProfile({
+        name: userData.username,
+        interests: userData.interests,
+      });
+      await refreshUser();
+      setEditMode(false);
+      toast.success("Đã cập nhật thông tin!", { position: "top-right" });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message, { position: "top-right" });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword) {
+      toast.error("Vui lòng nhập đầy đủ thông tin", { position: "top-right" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Mật khẩu mới phải có ít nhất 6 ký tự", { position: "top-right" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await userService.changePassword({
+        currentPassword,
+        newPassword,
+      });
+      setShowPasswordChange(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      toast.success("Đã đổi mật khẩu thành công!", { position: "top-right" });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message, { position: "top-right" });
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -68,10 +135,17 @@ export default function Account() {
                 Thông Tin Tài Khoản
               </h2>
               <button
-                onClick={() => setEditMode(!editMode)}
-                className="rounded-lg bg-cyan-100 px-4 py-2 text-sm font-semibold text-cyan-700 transition-colors hover:bg-cyan-200"
+                onClick={() => {
+                  if (editMode) {
+                    handleSaveProfile();
+                  } else {
+                    setEditMode(!editMode);
+                  }
+                }}
+                disabled={saving}
+                className="rounded-lg bg-cyan-100 px-4 py-2 text-sm font-semibold text-cyan-700 transition-colors hover:bg-cyan-200 disabled:opacity-50"
               >
-                {editMode ? "Lưu" : "Chỉnh sửa"}
+                {saving ? "Đang lưu..." : editMode ? "Lưu" : "Chỉnh sửa"}
               </button>
             </div>
 
@@ -128,11 +202,8 @@ export default function Account() {
                 <input
                   type="email"
                   value={userData.email}
-                  onChange={(e) =>
-                    setUserData({ ...userData, email: e.target.value })
-                  }
-                  disabled={!editMode}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-200 disabled:bg-gray-50"
+                  disabled
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 bg-gray-50"
                 />
               </div>
 
@@ -163,16 +234,24 @@ export default function Account() {
                 <div className="rounded-lg bg-gray-50 p-4 space-y-3">
                   <input
                     type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Mật khẩu hiện tại"
                     className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm"
                   />
                   <input
                     type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Mật khẩu mới"
                     className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm"
                   />
-                  <button className="w-full rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700">
-                    Cập Nhật Mật Khẩu
+                  <button
+                    onClick={handleChangePassword}
+                    disabled={saving}
+                    className="w-full rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-50"
+                  >
+                    {saving ? "Đang cập nhật..." : "Cập Nhật Mật Khẩu"}
                   </button>
                 </div>
               )}
