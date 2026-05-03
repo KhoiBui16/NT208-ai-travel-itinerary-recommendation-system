@@ -2,42 +2,58 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
 import { Header } from "../components/Header";
 import { Calendar, MapPin, Trash2, Eye, Star, BookOpen } from "lucide-react";
-import {
-  getCurrentUser,
-  getSavedItineraries,
-  deleteItinerary,
-  isAuthenticated,
-} from "../utils/auth";
+import { useAuth } from "../contexts/AuthContext";
+import { listItineraries, deleteItinerary as deleteItineraryApi, ItineraryResponse } from "../services/itinerary";
 import { formatCurrency } from "../utils/itinerary";
-import type { Itinerary } from "../utils/auth";
+import { toast } from "sonner";
 
 export default function SavedItineraries() {
   const navigate = useNavigate();
-  const [itineraries, setItineraries] = useState<Itinerary[]>([]);
+  const { isAuthenticated } = useAuth();
+  const [itineraries, setItineraries] = useState<ItineraryResponse[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { // TODO: Gọi API GET /api/itineraries/saved để lấy danh sách lịch trình đã lưu thực tế.
-    if (!isAuthenticated()) {
+  useEffect(() => {
+    if (!isAuthenticated) {
       navigate("/login");
       return;
     }
 
-    const user = getCurrentUser();
-    if (user) {
-      const saved = getSavedItineraries(user.id);
-      setItineraries(saved);
-    }
-  }, [navigate]);
+    listItineraries(1, 100)
+      .then((resp) => {
+        setItineraries(resp.items);
+      })
+      .catch(() => {
+        toast.error("Không thể tải danh sách lịch trình");
+      })
+      .finally(() => setLoading(false));
+  }, [isAuthenticated, navigate]);
 
-  const handleDelete = (id: string) => { // TODO: Gọi API DELETE /api/itineraries/:id để xóa lịch trình thực tế.
-    if (confirm("Bạn có chắc muốn xóa lịch trình này?")) {
-      deleteItinerary(id);
+  const handleDelete = async (id: number) => {
+    if (!confirm("Bạn có chắc muốn xóa lịch trình này?")) return;
+
+    try {
+      await deleteItineraryApi(id);
       setItineraries(itineraries.filter((i) => i.id !== id));
+      toast.success("Đã xóa lịch trình");
+    } catch {
+      toast.error("Xóa lịch trình thất bại");
     }
   };
 
-  const user = getCurrentUser();
-  if (!user) {
+  if (!isAuthenticated) {
     return null;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <p className="text-lg text-gray-600">Đang tải...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -64,7 +80,7 @@ export default function SavedItineraries() {
               Bắt đầu lên kế hoạch cho chuyến đi đầu tiên của bạn
             </p>
             <Link
-              to="/trip-planning"
+              to="/manual-trip-setup"
               className="inline-block rounded-lg bg-blue-600 px-8 py-3 font-semibold text-white transition-colors hover:bg-blue-700"
             >
               Lên Kế Hoạch Ngay
@@ -104,7 +120,7 @@ export default function SavedItineraries() {
                     <div>
                       <p className="mb-1 text-sm text-gray-600">Số ngày</p>
                       <p className="font-bold text-gray-900">
-                        {itinerary.days.length} ngày
+                        {itinerary.days?.length || 0} ngày
                       </p>
                     </div>
                     <div>
@@ -118,7 +134,7 @@ export default function SavedItineraries() {
                   <div className="mb-4">
                     <p className="mb-2 text-sm text-gray-600">Sở thích</p>
                     <div className="flex flex-wrap gap-2">
-                      {itinerary.interests.map((interest) => (
+                      {itinerary.interests?.map((interest) => (
                         <span
                           key={interest}
                           className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-600"
@@ -128,14 +144,6 @@ export default function SavedItineraries() {
                       ))}
                     </div>
                   </div>
-
-                  {itinerary.feedback && (
-                    <div className="mb-4 rounded-lg bg-gray-50 p-3">
-                      <p className="text-sm text-gray-700">
-                        "{itinerary.feedback}"
-                      </p>
-                    </div>
-                  )}
 
                   <div className="flex gap-3">
                     <Link

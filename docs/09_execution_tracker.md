@@ -11,7 +11,8 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00004 | D | `feat/00004-d-etl-pipeline` | ETL extract/transform/load foundation | merged | passed | #5 |
 | 00005 | D | `fix/00005-d-etl-backend-readiness` | ETL schema, local readiness, CI frontend build | merged | passed | #6 |
 | 00006 | D | `docs/00006-d-docs-cleanup` | Dọn legacy docs, mở rộng docs FE/BE/phase/test, thêm full-stack smoke script, fix lỗi CRUD bắt được khi smoke | merged | passed | #7 |
-| 00007 | B3 | `fix/00007-b3-fe-api-fixes` | Nối FE localStorage còn sót sang BE API, cập nhật README/tracker | wip | FE build pass | pending |
+| 00007 | B3 | `fix/00007-b3-fe-api-fixes` | Nối FE localStorage còn sót sang BE API, cập nhật README/tracker | merged | FE build pass | #8 |
+| 00008 | B3 | `fix/00008-b3-fe-auth-itinerary-api` | Thay utils/auth mock bằng API thật (Profile, ItineraryView, SavedItineraries, TripPlanning, useTripSync, BudgetDetailModal) | wip | FE build pass | pending |
 
 ## Scope Task 00006
 

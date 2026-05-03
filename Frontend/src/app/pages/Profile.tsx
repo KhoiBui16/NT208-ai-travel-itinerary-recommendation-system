@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Header } from "../components/Header";
 import { User, Mail, Phone, Heart, Save } from "lucide-react";
-import { getCurrentUser, updateUserProfile, isAuthenticated } from "../utils/auth";
+import { useAuth } from "../contexts/AuthContext";
+import { updateProfile } from "../services/users";
+import { toast } from "sonner";
 import { INTEREST_OPTIONS } from "../utils/tripConstants";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const user = getCurrentUser();
+  const { user, isAuthenticated, refreshUser } = useAuth();
 
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -17,25 +19,33 @@ export default function Profile() {
   });
 
   const [success, setSuccess] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      navigate("/login");
-    }
-  }, [navigate]);
+  if (!isAuthenticated) {
+    navigate("/login");
+    return null;
+  }
 
-  const handleSubmit = (e: React.FormEvent) => { // Gọi API PUT /api/users/me để cập nhật profile thực tế.
+  if (!user) {
+    return null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (user) {
-      updateUserProfile(user.id, {
+    setSaving(true);
+    try {
+      await updateProfile({
         name: formData.name,
         phone: formData.phone,
         interests: formData.interests,
       });
-      
+      await refreshUser();
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
+    } catch (error) {
+      toast.error("Cập nhật thất bại. Vui lòng thử lại.", { position: "top-right" });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -47,10 +57,6 @@ export default function Profile() {
         : [...prev.interests, interest]
     }));
   };
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -152,7 +158,7 @@ export default function Profile() {
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
           >
             <Save className="h-5 w-5" />
-            Lưu Thay Đổi
+            {saving ? "Đang lưu..." : "Lưu Thay Đổi"}
           </button>
         </form>
 

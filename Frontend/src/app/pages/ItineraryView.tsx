@@ -15,70 +15,123 @@ import {
   X,
   Plus,
 } from "lucide-react";
-import {
-  getItineraryById,
-  saveItinerary,
-  deleteItinerary,
-  rateItinerary,
-  getCurrentUser,
-  isAuthenticated,
-} from "../utils/auth";
+import { useAuth } from "../contexts/AuthContext";
+import { getItinerary, updateItinerary, deleteItinerary as deleteItineraryApi, rateItinerary as rateItineraryApi, ItineraryResponse } from "../services/itinerary";
 import { formatCurrency } from "../utils/itinerary";
-import type { Itinerary, Activity } from "../utils/auth";
+import { toast } from "sonner";
+
+// Local types matching what the component renders
+interface LocalActivity {
+  id: string;
+  time: string;
+  title: string;
+  description: string;
+  location: string;
+  cost: number;
+  duration: string;
+  image: string;
+}
+
+interface LocalDay {
+  day: number;
+  date: string;
+  activities: LocalActivity[];
+}
+
+interface LocalItinerary {
+  id: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  budget: number;
+  interests: string[];
+  days: LocalDay[];
+  totalCost: number;
+  rating?: number;
+  feedback?: string;
+}
+
+function mapApiToLocal(resp: ItineraryResponse): LocalItinerary {
+  return {
+    id: String(resp.id),
+    destination: resp.destination,
+    startDate: resp.startDate,
+    endDate: resp.endDate,
+    budget: resp.budget,
+    interests: resp.interests,
+    totalCost: resp.totalCost,
+    days: resp.days.map((d, idx) => ({
+      day: idx + 1,
+      date: d.date || d.label || "",
+      activities: (d.activities || []).map((a) => ({
+        id: String(a.id ?? idx * 100 + Math.random()),
+        time: a.time,
+        title: a.name,
+        description: a.description,
+        location: a.location,
+        cost: a.adultPrice ?? a.customCost ?? 0,
+        duration: a.endTime ? `${a.time} - ${a.endTime}` : a.time,
+        image: a.image || "",
+      })),
+    })),
+  };
+}
 
 export default function ItineraryView() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const user = getCurrentUser();
-  
-  const [itinerary, setItinerary] = useState<Itinerary | null>(null);
+  const { isAuthenticated, user } = useAuth();
+
+  const [itinerary, setItinerary] = useState<LocalItinerary | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showMap, setShowMap] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
-  const [showSavePrompt, setShowSavePrompt] = useState(false);
-  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      const data = getItineraryById(id);
-      if (data) {
-        setItinerary(data);
-        setRating(data.rating || 0);
-        setFeedback(data.feedback || "");
-        
-        // Show save prompt for guests
-        if (!isAuthenticated() && !data.userId) {
-          setShowSavePrompt(true);
-        }
-      } else {
+    if (!id) return;
+    setLoading(true);
+    getItinerary(Number(id))
+      .then((resp) => {
+        const local = mapApiToLocal(resp);
+        setItinerary(local);
+        setRating(local.rating || 0);
+        setFeedback(local.feedback || "");
+      })
+      .catch(() => {
+        toast.error("Không tìm thấy lịch trình");
         navigate("/");
-      }
-    }
+      })
+      .finally(() => setLoading(false));
   }, [id, navigate]);
 
-  const handleSave = () => { // TODO: Đổi thành API POST /api/itineraries để lưu lịch trình thực tế.
-    if (!itinerary) return;
-    
-    if (!isAuthenticated()) {
-      setShowSavePrompt(true);
+  const handleSave = async () => {
+    if (!itinerary || !id) return;
+
+    if (!isAuthenticated) {
+      navigate("/login");
       return;
     }
 
-    const updatedItinerary = { ...itinerary, userId: user!.id };
-    saveItinerary(updatedItinerary);
-    setItinerary(updatedItinerary);
-    alert("Đã lưu lịch trình thành công!");
+    try {
+      await updateItinerary(Number(id), {
+        tripName: itinerary.destination,
+      });
+      toast.success("Đã lưu lịch trình thành công!");
+    } catch {
+      toast.error("Lưu thất bại. Vui lòng thử lại.");
+    }
   };
 
-  const handleDelete = (dayIndex: number, activityId: string) => { // TODO: Đổi thành API DELETE /api/itineraries/:id/activities/:activityId để xóa hoạt
-    if (!itinerary) return;
-    
+  const handleDelete = async (dayIndex: number, activityId: string) => {
+    if (!itinerary || !id) return;
+
     const newDays = itinerary.days.map((day, idx) => {
       if (idx === dayIndex) {
         return {
           ...day,
-          activities: day.activities.filter(a => a.id !== activityId)
+          activities: day.activities.filter((a) => a.id !== activityId),
         };
       }
       return day;
@@ -86,19 +139,43 @@ export default function ItineraryView() {
 
     const newItinerary = { ...itinerary, days: newDays };
     setItinerary(newItinerary);
-    saveItinerary(newItinerary);
+
+    try {
+      await updateItinerary(Number(id), {
+        days: newDays.map((d, idx) => ({
+          id: idx + 1,
+          label: `Ngày ${idx + 1}`,
+          date: d.date,
+          activities: d.activities.map((a) => ({
+            time: a.time,
+            name: a.title,
+            description: a.description,
+            location: a.location,
+            type: "attraction",
+            image: a.image,
+          })),
+        })),
+      });
+    } catch {
+      toast.error("Xóa hoạt động thất bại.");
+      setItinerary(itinerary);
+    }
   };
 
-  const handleRatingSubmit = () => { // TODO: Đổi thành API POST /api/itineraries/:id/rate để gửi đánh giá thực tế. Hiện tại chỉ lưu local để demo.
-    if (!itinerary) return;
-    
-    rateItinerary(itinerary.id, rating, feedback);
-    setItinerary({ ...itinerary, rating, feedback });
-    setShowRating(false);
-    alert("Cảm ơn bạn đã đánh giá!");
+  const handleRatingSubmit = async () => {
+    if (!itinerary || !id) return;
+
+    try {
+      await rateItineraryApi(Number(id), rating);
+      setItinerary({ ...itinerary, rating });
+      setShowRating(false);
+      toast.success("Cảm ơn bạn đã đánh giá!");
+    } catch {
+      toast.error("Gửi đánh giá thất bại.");
+    }
   };
 
-  if (!itinerary) {
+  if (loading || !itinerary) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -113,13 +190,13 @@ export default function ItineraryView() {
       <Header />
 
       {/* Save Prompt Modal for Guests */}
-      {showSavePrompt && (
+      {!isAuthenticated && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
             <div className="mb-6 text-center">
               <Save className="mx-auto mb-4 h-16 w-16 text-blue-600" />
               <h3 className="mb-2 text-2xl font-bold text-gray-900">
-                Đăng ký để lưu lịch trình
+                Đăng nhập để lưu lịch trình
               </h3>
               <p className="text-gray-600">
                 Tạo tài khoản để lưu và quản lý các lịch trình du lịch của bạn
@@ -133,7 +210,7 @@ export default function ItineraryView() {
                 Đăng Ký
               </Link>
               <button
-                onClick={() => setShowSavePrompt(false)}
+                onClick={() => navigate(-1)}
                 className="flex-1 rounded-lg border-2 border-gray-300 px-6 py-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50"
               >
                 Để Sau
@@ -226,26 +303,21 @@ export default function ItineraryView() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button
-              onClick={handleSave}
-              className="flex items-center gap-2 rounded-lg bg-white/20 px-6 py-2 font-semibold backdrop-blur-sm transition-all hover:bg-white/30"
-            >
-              <Save className="h-5 w-5" />
-              {user && itinerary.userId ? "Đã Lưu" : "Lưu Lịch Trình"}
-            </button>
+            {isAuthenticated && (
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-2 rounded-lg bg-white/20 px-6 py-2 font-semibold backdrop-blur-sm transition-all hover:bg-white/30"
+              >
+                <Save className="h-5 w-5" />
+                Đã Lưu
+              </button>
+            )}
             <button
               onClick={() => setShowMap(!showMap)}
               className="flex items-center gap-2 rounded-lg bg-white/20 px-6 py-2 font-semibold backdrop-blur-sm transition-all hover:bg-white/30"
             >
               <Map className="h-5 w-5" />
               {showMap ? "Ẩn Bản Đồ" : "Xem Bản Đồ"}
-            </button>
-            <button
-              onClick={() => setEditMode(!editMode)}
-              className="flex items-center gap-2 rounded-lg bg-white/20 px-6 py-2 font-semibold backdrop-blur-sm transition-all hover:bg-white/30"
-            >
-              <Edit2 className="h-5 w-5" />
-              {editMode ? "Xong" : "Chỉnh Sửa"}
             </button>
             <button
               onClick={() => setShowRating(true)}
@@ -343,14 +415,6 @@ export default function ItineraryView() {
                             {activity.description}
                           </p>
                         </div>
-                        {editMode && (
-                          <button
-                            onClick={() => handleDelete(dayIndex, activity.id)}
-                            className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                        )}
                       </div>
                       <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                         <div className="flex items-center gap-1">

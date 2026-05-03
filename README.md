@@ -295,22 +295,29 @@ uv run uvicorn src.main:app --reload --port 8001
 
 ## FE-BE Integration Status
 
-Auth, profile, trip list, saved places, and trip workspace are connected to the backend via an API client layer (`Frontend/src/app/services/`). JWT tokens are stored in `localStorage` (access + refresh) with auto-refresh on 401.
+All FE pages now connect to the backend via an API client layer (`Frontend/src/app/services/`). JWT tokens are stored in `localStorage` (access + refresh) with auto-refresh on 401. The legacy `utils/auth.ts` mock is no longer imported by any page.
 
 | FE Feature | Status | API Endpoint |
 |---|---|---|
 | Auth (login/register/logout) | Done | `POST /auth/login`, `POST /auth/register`, `POST /auth/logout` |
 | User profile | Done | `GET /users/profile`, `PUT /users/profile` |
 | Password change | Done | `PUT /users/password` |
-| Trip CRUD (list/create/delete) | Done | `POST /itineraries`, `GET /itineraries`, `DELETE /itineraries/{id}` |
-| Trip update (rename) | Done | `PUT /itineraries/{id}` |
+| Trip CRUD (list/create/update/delete) | Done | `POST /itineraries`, `GET /itineraries`, `PUT /itineraries/{id}`, `DELETE /itineraries/{id}` |
+| Trip rating | Done | `PUT /itineraries/{id}/rating` |
 | Places/saved (all pages) | Done | `GET /places/saved`, `POST /places/saved`, `DELETE /places/saved/{id}` |
+| Trip workspace save | Done | `PUT /itineraries/{id}` via `useTripSync` |
 | Destinations | Hardcoded | `GET /places/destinations` (pending ETL data) |
 | Trip share | Backend ready | `POST /itineraries/{id}/share`, `GET /shared/{token}` |
 | Guest claim | Backend ready | `POST /itineraries/{id}/claim` |
-| Trip workspace auto-save | localStorage | `PUT /itineraries/{id}` (pending `useTripSync` migration) |
-| Budget | localStorage | Part of itinerary update |
+| Budget | React state | Part of itinerary update |
 | AI generate | Stub | `POST /itineraries/generate` (Phase C) |
+
+**Remaining localStorage usage (acceptable):**
+
+- JWT tokens (`services/api.ts`) — required
+- Wizard flow state (`tripDestinations`, `tripDayAllocations`, `tripTravelers`) — passes data between pages before itinerary exists; no draft endpoint on BE
+- `currentTrip` cache in `useTripSync` — quick-restore fallback when API fails
+- `userPreferences` in Onboarding — FE-only, no BE endpoint
 
 ---
 
@@ -319,7 +326,6 @@ Auth, profile, trip list, saved places, and trip workspace are connected to the 
 - Implement Phase C AI direct itinerary pipeline (replace stub with Gemini call).
 - Implement AI companion chat with patch-confirm flow.
 - Persist chat history with `chat_sessions` and `chat_messages`.
-- Migrate `useTripSync` from localStorage to BE API auto-save.
 - Add real `GOONG_API_KEY` for full ETL runs.
 - Keep `docs/09_execution_tracker.md` updated for every branch/PR.
 
