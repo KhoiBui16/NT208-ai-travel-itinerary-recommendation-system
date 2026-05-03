@@ -1,20 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Place, Day, Activity } from "../../types/trip.types";
 import { allPlaces } from "../../utils/tripConstants";
 import * as placesService from "../../services/places";
+import * as itineraryService from "../../services/itinerary";
 
 export const usePlacesManager = (
   days: Day[],
   setDays: React.Dispatch<React.SetStateAction<Day[]>>,
   selectedDayId: number,
   isAuthenticated: boolean,
-  setShowLoginModal: (show: boolean) => void
+  setShowLoginModal: (show: boolean) => void,
+  tripId: number | null
 ) => {
   const [places, setPlaces] = useState<Place[]>(allPlaces);
   const [placeSearch, setPlaceSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [showSavedSuggestions, setShowSavedSuggestions] = useState(false);
   const [savedSuggestions, setSavedSuggestions] = useState<any[]>([]);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Search places from API when search query or selected day changes
+  useEffect(() => {
+    const selectedDay = days.find(d => d.id === selectedDayId);
+    const city = selectedDay?.destinationName;
+    const query = placeSearch.trim();
+
+    // Debounce API calls (300ms)
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await placesService.searchPlaces({
+          query: query || undefined,
+          city: city || undefined,
+          category: activeFilter !== "all" ? activeFilter : undefined,
+          limit: 50,
+        });
+        if (results.length > 0) {
+          setPlaces(results.map((p) => ({
+            id: p.id,
+            name: p.name,
+            reviewCount: p.reviewCount || 0,
+            type: p.type,
+            image: p.image || "",
+            price: p.price ?? undefined,
+            location: p.location ?? undefined,
+            reviews: p.reviews ?? undefined,
+            rating: p.rating ?? undefined,
+            saved: p.saved,
+            city: p.city,
+            description: p.description ?? undefined,
+          })));
+        }
+      } catch {
+        // Keep mock fallback — don't clear current places
+      }
+    }, 300);
+
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [placeSearch, selectedDayId, activeFilter, days]);
 
   const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
 
@@ -32,11 +75,47 @@ export const usePlacesManager = (
       transportation: "taxi",
       extraExpenses: [],
     };
+
+    // Optimistic UI update
     setDays((prev: Day[]) =>
       prev.map((day: Day) =>
         day.id !== dayId ? day : { ...day, activities: [...day.activities, act] }
       )
     );
+
+    // Fire API call if tripId exists
+    if (tripId) {
+      itineraryService.addActivity(tripId, dayId, {
+        time: act.time,
+        endTime: act.endTime || "",
+        name: act.name,
+        location: act.location,
+        description: act.description,
+        type: act.type,
+        image: act.image,
+        transportation: act.transportation,
+        extraExpenses: act.extraExpenses,
+      }).then((resp) => {
+        // Update local state with BE-assigned ID
+        if (resp.id && resp.id !== act.id) {
+          setDays((prev: Day[]) =>
+            prev.map((day: Day) =>
+              day.id !== dayId ? day : {
+                ...day,
+                activities: day.activities.map((a: Activity) => a.id === act.id ? { ...a, id: resp.id! } : a)
+              }
+            )
+          );
+        }
+      }).catch(() => {
+        // Remove on failure
+        setDays((prev: Day[]) =>
+          prev.map((day: Day) =>
+            day.id !== dayId ? day : { ...day, activities: day.activities.filter((a: Activity) => a.id !== act.id) }
+          )
+        );
+      });
+    }
   };
 
   const handleRemoveSavedSuggestion = (id: string) => {

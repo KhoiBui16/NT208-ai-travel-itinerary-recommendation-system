@@ -2,11 +2,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Day, Activity, TimeConflictWarning, ExtraExpense, DayExtraExpense } from "../../types/trip.types";
 import { parseTimeToMinutes, recalculateActivityTimes } from "../../utils/timeHelpers";
+import * as itineraryService from "../../services/itinerary";
 
 export const useActivityManager = (
   days: Day[],
   setDays: React.Dispatch<React.SetStateAction<Day[]>>,
-  selectedDayId: number
+  selectedDayId: number,
+  tripId: number | null
 ) => {
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
@@ -45,11 +47,30 @@ export const useActivityManager = (
   const handleDragEnd = () => { setDraggedIdx(null); setDragOverIdx(null); };
 
   const handleDeleteActivity = (actId: number) => {
+    // Keep a copy for revert
+    const day = days.find(d => d.id === selectedDayId);
+    const deletedAct = day?.activities.find(a => a.id === actId);
+
+    // Optimistic UI update
     setDays((prev: Day[]) =>
       prev.map((day: Day) =>
         day.id !== selectedDayId ? day : { ...day, activities: day.activities.filter((a: Activity) => a.id !== actId) }
       )
     );
+
+    // Fire API call if tripId exists
+    if (tripId) {
+      itineraryService.deleteActivity(tripId, actId).catch(() => {
+        // Revert on failure
+        if (deletedAct) {
+          setDays((prev: Day[]) =>
+            prev.map((day: Day) =>
+              day.id !== selectedDayId ? day : { ...day, activities: [...day.activities, deletedAct] }
+            )
+          );
+        }
+      });
+    }
   };
 
   const handleViewDetails = (act: Activity) => {
@@ -64,16 +85,16 @@ export const useActivityManager = (
     if (!activity.time || !activity.endTime) return { hasConflict: false };
     const currentDay = days.find(d => d.id === selectedDayId);
     if (!currentDay) return { hasConflict: false };
-    
+
     const editStart = parseTimeToMinutes(activity.time);
     const editEnd = parseTimeToMinutes(activity.endTime);
-    
+
     for (const otherAct of currentDay.activities) {
       if (otherAct.id === activity.id) continue;
       if (!otherAct.time || !otherAct.endTime) continue;
       const otherStart = parseTimeToMinutes(otherAct.time);
       const otherEnd = parseTimeToMinutes(otherAct.endTime);
-      
+
       if (editStart < otherEnd && editEnd > otherStart) {
         return { hasConflict: true, conflictWith: otherAct };
       }
@@ -88,6 +109,10 @@ export const useActivityManager = (
       toast.error("Địa điểm này đang có xung đột về thời gian, vui lòng kiểm tra lại!", { position: "top-right", duration: 5000 });
       return;
     }
+
+    const original = originalEditingActivity;
+
+    // Optimistic UI update
     setDays((prev: Day[]) =>
       prev.map((day: Day) => {
         if (day.id !== selectedDayId) return day;
@@ -99,6 +124,87 @@ export const useActivityManager = (
     setEditingActivity(null);
     setOriginalEditingActivity(null);
     setTimeConflictWarning({ hasConflict: false });
+
+    // Fire API call if tripId exists
+    if (tripId) {
+      itineraryService.updateActivity(tripId, editingActivity.id, {
+        id: editingActivity.id,
+        time: editingActivity.time,
+        endTime: editingActivity.endTime || "",
+        name: editingActivity.name,
+        location: editingActivity.location,
+        description: editingActivity.description,
+        type: editingActivity.type,
+        image: editingActivity.image,
+        transportation: editingActivity.transportation,
+        adultPrice: editingActivity.adultPrice,
+        childPrice: editingActivity.childPrice,
+        customCost: editingActivity.customCost,
+        taxiCost: editingActivity.taxiCost,
+        extraExpenses: editingActivity.extraExpenses,
+      }).catch(() => {
+        // Revert on failure
+        if (original) {
+          setDays((prev: Day[]) =>
+            prev.map((day: Day) => {
+              if (day.id !== selectedDayId) return day;
+              const revertedActivities = day.activities.map((a: Activity) => a.id === original.id ? original : a);
+              return { ...day, activities: revertedActivities };
+            })
+          );
+        }
+      });
+    }
+  };
+
+  /** Add an activity and sync to API if tripId exists. Returns the activity with its ID. */
+  const addActivityToDay = (dayId: number, activity: Activity): Activity => {
+    // Optimistic UI update
+    setDays((prev: Day[]) =>
+      prev.map((day: Day) =>
+        day.id !== dayId ? day : { ...day, activities: [...day.activities, activity] }
+      )
+    );
+
+    // Fire API call if tripId exists
+    if (tripId) {
+      itineraryService.addActivity(tripId, dayId, {
+        time: activity.time,
+        endTime: activity.endTime || "",
+        name: activity.name,
+        location: activity.location,
+        description: activity.description,
+        type: activity.type,
+        image: activity.image,
+        transportation: activity.transportation,
+        adultPrice: activity.adultPrice,
+        childPrice: activity.childPrice,
+        customCost: activity.customCost,
+        taxiCost: activity.taxiCost,
+        extraExpenses: activity.extraExpenses,
+      }).then((resp) => {
+        // Update local state with BE-assigned ID
+        if (resp.id && resp.id !== activity.id) {
+          setDays((prev: Day[]) =>
+            prev.map((day: Day) =>
+              day.id !== dayId ? day : {
+                ...day,
+                activities: day.activities.map((a: Activity) => a.id === activity.id ? { ...a, id: resp.id! } : a)
+              }
+            )
+          );
+        }
+      }).catch(() => {
+        // Remove on failure
+        setDays((prev: Day[]) =>
+          prev.map((day: Day) =>
+            day.id !== dayId ? day : { ...day, activities: day.activities.filter((a: Activity) => a.id !== activity.id) }
+          )
+        );
+      });
+    }
+
+    return activity;
   };
 
   const handleAddExtraExpense = () => {
@@ -153,6 +259,7 @@ export const useActivityManager = (
     setDetailActivity, setEditingActivity, setOriginalEditingActivity, setTimeConflictWarning, setViewingPlaceInfo,
     handleDragStart, handleDragOver, handleDrop, handleDragEnd,
     handleDeleteActivity, handleViewDetails, checkTimeConflict, handleSaveActivityDetails,
+    addActivityToDay,
     handleAddExtraExpense, handleUpdateExtraExpense, handleRemoveExtraExpense,
     handleAddDayExtraExpense, handleAddDayExtraExpenseFromSidebar, handleUpdateDayExtraExpense, handleRemoveDayExtraExpense
   };

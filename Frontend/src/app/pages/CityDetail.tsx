@@ -15,7 +15,7 @@ import {
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
-import { listSavedPlaces, savePlace, unsavePlace } from "../services/places";
+import { listSavedPlaces, savePlace, unsavePlace, getDestinationDetail, type PlaceResponse } from "../services/places";
 import { Place, CityData, cityData } from "../data/cities";
 
 
@@ -26,8 +26,41 @@ export default function CityDetail() {
   const [savedPlaces, setSavedPlaces] = useState<number[]>([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [savedPlaceNames, setSavedPlaceNames] = useState<Set<string>>(new Set());
+  const [apiPlaces, setApiPlaces] = useState<PlaceResponse[]>([]);
+  const [apiCityName, setApiCityName] = useState<string | null>(null);
 
   const city = cityId ? cityData[cityId] : null;
+
+  // Try loading from API, fall back to mock
+  useEffect(() => {
+    if (!cityId) return;
+    let isMounted = true;
+
+    // Derive API destination name from slug: "ha-noi" -> "Hà Nội"
+    const slugToName: Record<string, string> = {
+      "ha-noi": "Hà Nội", "ho-chi-minh": "Hồ Chí Minh", "da-nang": "Đà Nẵng",
+      "hoi-an": "Hội An", "hue": "Huế", "nha-trang": "Nha Trang",
+      "da-lat": "Đà Lạt", "ha-long": "Hạ Long", "sapa": "Sapa",
+      "phu-quoc": "Phú Quốc", "vinh-ha-long": "Vịnh Hạ Long",
+      "ninh-binh": "Ninh Bình", "quang-ninh": "Quảng Ninh",
+      "can-tho": "Cần Thơ", "vung-tau": "Vũng Tàu", "hai-phong": "Hải Phòng",
+    };
+
+    const name = slugToName[cityId];
+    if (!name) return;
+
+    getDestinationDetail(name).then((data) => {
+      if (!isMounted) return;
+      const dest = (data as any).destination;
+      const places = (data as any).places as PlaceResponse[];
+      if (dest) setApiCityName(dest.name || name);
+      if (places && places.length > 0) setApiPlaces(places);
+    }).catch(() => {
+      // Keep mock fallback
+    });
+
+    return () => { isMounted = false; };
+  }, [cityId]);
 
   // Sync bookmark state from BE API on mount
   useEffect(() => {
@@ -296,7 +329,7 @@ export default function CityDetail() {
         {/* CTA Section */}
         <div className="mt-12 rounded-3xl bg-gradient-to-r from-cyan-500 to-cyan-600 p-10 text-center text-white">
           <h3 className="mb-4 text-3xl font-bold">
-            Sẵn sàng khám phá {city.name}?
+            Sẵn sàng khám phá {apiCityName || city.name}?
           </h3>
           <p className="mb-6 text-lg text-cyan-100">
             Tạo lịch trình du lịch của bạn ngay hôm nay
@@ -309,6 +342,58 @@ export default function CityDetail() {
             Lên kế hoạch chuyến đi
           </button>
         </div>
+
+        {/* API Places — shown when BE has data */}
+        {apiPlaces.length > 0 && (
+          <div className="mt-12">
+            <h2 className="mb-6 text-3xl font-bold text-gray-900">
+              Địa điểm từ cơ sở dữ liệu
+            </h2>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {apiPlaces.map((place) => (
+                <div
+                  key={place.id}
+                  className="overflow-hidden rounded-2xl border-2 border-gray-200 bg-white shadow-md transition-all hover:shadow-xl"
+                >
+                  <div className="relative h-48">
+                    {place.image ? (
+                      <img src={place.image} alt={place.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-cyan-50">
+                        <MapPin className="h-10 w-10 text-cyan-300" />
+                      </div>
+                    )}
+                    <div className="absolute left-3 top-3">
+                      <span className="inline-block rounded-full bg-cyan-500/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                        {place.type}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="mb-1 text-lg font-bold text-gray-900">{place.name}</h3>
+                    {place.location && (
+                      <p className="mb-2 text-sm text-gray-500">{place.location}</p>
+                    )}
+                    {place.description && (
+                      <p className="text-sm text-gray-700 line-clamp-2">{place.description}</p>
+                    )}
+                    <div className="mt-2 flex items-center gap-2">
+                      {place.rating != null && (
+                        <>
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <span className="text-sm font-semibold">{place.rating}</span>
+                        </>
+                      )}
+                      {place.price && (
+                        <span className="text-sm text-gray-500">{place.price}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Login Required Modal */}
