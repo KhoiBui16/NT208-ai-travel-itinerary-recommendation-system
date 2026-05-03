@@ -1,18 +1,23 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User, Edit2, Save, Check } from "lucide-react";
+import { User, Edit2, Save, Check, Share2, Copy, X } from "lucide-react";
+import { shareItinerary } from "../services/itinerary";
+import { toast } from "sonner";
 
 interface TopActionBarProps {
   travelersTotal: number;
   tripName: string;
+  tripId: number | null;
   onEditTravelers: () => void;
   onSaveItinerary: () => void;
   onCreateItinerary: () => void;
   onNameChange: (newName: string) => void;
 }
 
-export function TopActionBar({ travelersTotal, tripName, onEditTravelers, onSaveItinerary, onCreateItinerary, onNameChange }: TopActionBarProps) {
+export function TopActionBar({ travelersTotal, tripName, tripId, onEditTravelers, onSaveItinerary, onCreateItinerary, onNameChange }: TopActionBarProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(tripName);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Cập nhật lại tempName khi tripName từ ngoài truyền vào thay đổi
@@ -46,11 +51,29 @@ export function TopActionBar({ travelersTotal, tripName, onEditTravelers, onSave
     }
   };
 
+  // Copy share link to clipboard
+  const handleCopyLink = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      toast.success("Đã sao chép liên kết chia sẻ");
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = shareLink;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      toast.success("Đã sao chép liên kết chia sẻ");
+    }
+  };
+
   return (
     <div className="flex-shrink-0 border-b border-gray-200 bg-white px-6 py-3 z-10">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center">
-          
+
           {/* Tính năng Đổi tên lịch trình */}
           {isEditing ? (
             <div className="flex items-center gap-2">
@@ -64,8 +87,8 @@ export function TopActionBar({ travelersTotal, tripName, onEditTravelers, onSave
                 className="text-xl font-bold text-gray-900 border-b-2 border-cyan-500 focus:outline-none bg-transparent py-0.5 min-w-[300px]"
                 placeholder="Nhập tên lịch trình..."
               />
-              <button 
-                onMouseDown={(e) => { e.preventDefault(); handleSave(); }} 
+              <button
+                onMouseDown={(e) => { e.preventDefault(); handleSave(); }}
                 className="text-green-600 hover:bg-green-50 p-1.5 rounded-lg transition-colors"
                 title="Lưu"
               >
@@ -73,8 +96,8 @@ export function TopActionBar({ travelersTotal, tripName, onEditTravelers, onSave
               </button>
             </div>
           ) : (
-            <div 
-              className="flex items-center gap-3 cursor-pointer group rounded-lg hover:bg-gray-50 py-1 pr-2 transition-colors" 
+            <div
+              className="flex items-center gap-3 cursor-pointer group rounded-lg hover:bg-gray-50 py-1 pr-2 transition-colors"
               onClick={() => setIsEditing(true)}
               title="Nhấn để đổi tên lịch trình"
             >
@@ -98,8 +121,30 @@ export function TopActionBar({ travelersTotal, tripName, onEditTravelers, onSave
           </button>
 
         </div>
-        
+
         <div className="flex items-center gap-3">
+          {/* Share button */}
+          {tripId && (
+            <button
+              onClick={async () => {
+                setIsSharing(true);
+                try {
+                  const resp = await shareItinerary(tripId);
+                  const link = `${window.location.origin}/shared/${resp.shareToken}`;
+                  setShareLink(link);
+                } catch {
+                  toast.error("Không thể chia sẻ lịch trình");
+                } finally {
+                  setIsSharing(false);
+                }
+              }}
+              disabled={isSharing}
+              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:shadow-md hover:border-cyan-200 disabled:opacity-50"
+            >
+              <Share2 className="h-4 w-4" />
+              {isSharing ? "Đang chia sẻ..." : "Chia sẻ"}
+            </button>
+          )}
           <button
             onClick={onSaveItinerary}
             className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:shadow-md"
@@ -116,6 +161,27 @@ export function TopActionBar({ travelersTotal, tripName, onEditTravelers, onSave
           </button>
         </div>
       </div>
+
+      {/* Share Link Modal */}
+      {shareLink && (
+        <div className="mt-3 flex items-center gap-3 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2.5">
+          <Share2 className="h-4 w-4 text-cyan-600 flex-shrink-0" />
+          <span className="text-sm text-gray-700 truncate flex-1">{shareLink}</span>
+          <button
+            onClick={handleCopyLink}
+            className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-cyan-700 flex-shrink-0"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Sao chép
+          </button>
+          <button
+            onClick={() => setShareLink(null)}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 flex-shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

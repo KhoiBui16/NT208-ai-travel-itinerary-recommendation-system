@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { Header } from "../components/Header";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { useAuth } from "../contexts/AuthContext";
+import { useTripWizard } from "../contexts/TripWizardContext";
 import {
   Heart,
   Plus,
@@ -23,12 +24,15 @@ import {
   ChevronLeft,
 } from "lucide-react";
 
-import { Destination, destinations } from "../data/destinations";
+import { Destination, destinations as mockDestinations } from "../data/destinations";
+import { listDestinations } from "../services/places";
 
 export default function ManualTripSetup() {
   const navigate = useNavigate();
   const { isAuthenticated: isLoggedIn } = useAuth();
+  const { setDestinations: setWizardDestinations } = useTripWizard();
   const [searchQuery, setSearchQuery] = useState("");
+  const [destinations, setDestinations] = useState<Destination[]>(mockDestinations);
   const [savedDestinations, setSavedDestinations] = useState<number[]>([]);
   const [selectedDests, setSelectedDests] = useState<number[]>([]);
   const [viewingDest, setViewingDest] = useState<Destination | null>(null);
@@ -37,9 +41,32 @@ export default function ManualTripSetup() {
 
   // Sync bookmark state from API on mount
   useEffect(() => {
-    // Load from BE destinations + saved places
-    // For now, destinations are still from local data file
-    // Saved places will come from API once places have matching IDs
+    let isMounted = true;
+
+    async function loadApiDestinations() {
+      try {
+        const apiDests = await listDestinations();
+        if (!isMounted) return;
+        if (apiDests.length > 0) {
+          // Map API destinations to local Destination shape for UI compatibility
+          const mapped: Destination[] = apiDests.map((d, idx) => ({
+            id: d.id || idx + 1,
+            name: d.name,
+            country: d.country || "",
+            image: d.image || "",
+            description: d.country || "",
+            rating: d.rating || 0,
+            places: [],
+          }));
+          setDestinations(mapped);
+        }
+      } catch {
+        // Keep mockDestinations fallback
+      }
+    }
+
+    loadApiDestinations();
+    return () => { isMounted = false; };
   }, []);
 
   const filtered = destinations.filter(
@@ -79,7 +106,13 @@ export default function ManualTripSetup() {
 
   const handleContinue = () => {
     const selected = destinations.filter((d) => selectedDests.includes(d.id));
-    sessionStorage.setItem("tripDestinations", JSON.stringify(selected));
+    setWizardDestinations(selected.map((d) => ({
+      id: d.id,
+      name: d.name,
+      country: d.country,
+      image: d.image,
+      description: d.description,
+    })));
     navigate("/day-allocation");
   };
 

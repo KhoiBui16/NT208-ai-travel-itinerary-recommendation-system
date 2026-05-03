@@ -1,18 +1,84 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Header } from "../components/Header";
 import { MapPin, Star, ArrowRight } from "lucide-react";
-import { City, cities } from "../data/cities";
+import { City, cities as mockCities } from "../data/cities";
+import { listDestinations, type DestinationResponse } from "../services/places";
 
+interface DisplayCity {
+  id: string;
+  name: string;
+  region: string;
+  image: string;
+  description: string;
+  popularPlaces: number;
+  rating: number;
+}
+
+/** Map API destinations to the display shape CityList expects. */
+function apiToCity(d: DestinationResponse): DisplayCity {
+  return {
+    id: String(d.id),
+    name: d.name,
+    region: "",          // API doesn't have region; UI can derive later
+    image: d.image || "",
+    description: d.country || "",
+    popularPlaces: 0,    // unknown from API
+    rating: d.rating || 0,
+  };
+}
 
 const regions = ["Tất cả", "Miền Bắc", "Miền Trung", "Miền Nam"];
 
 export default function CityList() {
+  const [cityList, setCityList] = useState<DisplayCity[]>([]);
+  const [loading, setLoading] = useState(true);
   const selectedRegion = "Tất cả";
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function load() {
+      try {
+        const apiDests = await listDestinations();
+        if (!isMounted) return;
+
+        if (apiDests.length > 0) {
+          setCityList(apiDests.map(apiToCity));
+        } else {
+          // API returned empty (no ETL data yet) — use mock fallback
+          setCityList(mockCities);
+        }
+      } catch {
+        // API error — use mock fallback
+        if (isMounted) setCityList(mockCities);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { isMounted = false; };
+  }, []);
 
   const filteredCities =
     selectedRegion === "Tất cả"
-      ? cities
-      : cities.filter((city) => city.region === selectedRegion);
+      ? cityList
+      : cityList.filter((city) => city.region === selectedRegion);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-orange-50">
+        <Header />
+        <div className="flex items-center justify-center py-40">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-cyan-200 border-t-cyan-600" />
+            <p className="text-gray-500">Đang tải điểm đến...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-orange-50">
@@ -56,21 +122,25 @@ export default function CityList() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
                 {/* Region Badge */}
-                <div className="absolute left-3 top-3">
-                  <span className="inline-block rounded-full bg-cyan-500/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                    {city.region}
-                  </span>
-                </div>
+                {city.region && (
+                  <div className="absolute left-3 top-3">
+                    <span className="inline-block rounded-full bg-cyan-500/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                      {city.region}
+                    </span>
+                  </div>
+                )}
 
                 {/* City Name Overlay */}
                 <div className="absolute bottom-0 left-0 right-0 p-4">
                   <h3 className="text-2xl font-bold text-white drop-shadow-lg">
                     {city.name}
                   </h3>
-                  <div className="flex items-center gap-1 text-white/90">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-semibold">{city.rating}</span>
-                  </div>
+                  {city.rating > 0 && (
+                    <div className="flex items-center gap-1 text-white/90">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <span className="text-sm font-semibold">{city.rating}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -81,7 +151,7 @@ export default function CityList() {
                 </p>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-500">
-                    {city.popularPlaces} địa điểm
+                    {city.popularPlaces > 0 ? `${city.popularPlaces} địa điểm` : "Xem chi tiết"}
                   </span>
                   <div className="flex items-center gap-1 text-cyan-600 transition-all group-hover:gap-2">
                     <span className="text-sm font-semibold">Xem chi tiết</span>

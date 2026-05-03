@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { Header } from "../components/Header";
 import { DollarSign, Sparkles, ArrowRight, ChevronLeft, X, AlertCircle } from "lucide-react";
+import { useTripWizard } from "../contexts/TripWizardContext";
 
 export default function BudgetSetup() {
   const navigate = useNavigate();
-  
+  const { destinations, dayAllocations, travelers, setBudget: setWizardBudget, resetWizard } = useTripWizard();
+
   const [budget, setBudget] = useState<number>(0);
   const [inputValue, setInputValue] = useState("");
   const [showSuggestion, setShowSuggestion] = useState(false);
@@ -15,40 +17,16 @@ export default function BudgetSetup() {
   const [debounceTimeout, setDebounceTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [warningMessage, setWarningMessage] = useState("");
 
-  // Load trip data for suggestion calculation
-  const [tripData, setTripData] = useState<{
-    days: number;
-    people: number;
-    destinations: string[];
-  }>({ days: 0, people: 0, destinations: [] });
-
-  useEffect(() => {
-    // Load trip data from sessionStorage
-    const savedDayAllocations = sessionStorage.getItem("tripDayAllocations");
-    const savedTravelers = sessionStorage.getItem("tripTravelers");
-    const savedDestinations = sessionStorage.getItem("tripDestinations");
-
+  // Derive trip data from context instead of sessionStorage
+  const tripData = useMemo(() => {
     let totalDays = 0;
-    let totalPeople = 1;
-    let destinations: string[] = [];
-
-    if (savedDayAllocations) {
-      const allocations = JSON.parse(savedDayAllocations);
-      totalDays = Object.values(allocations).reduce((sum: number, allocation: any) => sum + (allocation?.days || 0), 0);
-    }
-
-    if (savedTravelers) {
-      const travelers = JSON.parse(savedTravelers);
-      totalPeople = travelers.total || 1;
-    }
-
-    if (savedDestinations) {
-      const dests = JSON.parse(savedDestinations);
-      destinations = dests.map((d: any) => d.name);
-    }
-
-    setTripData({ days: totalDays, people: totalPeople, destinations });
-  }, []);
+    Object.values(dayAllocations).forEach((alloc) => {
+      if (alloc) totalDays += alloc.days;
+    });
+    const totalPeople = travelers?.total || 1;
+    const destNames = destinations.map((d) => d.name);
+    return { days: totalDays, people: totalPeople, destinations: destNames };
+  }, [dayAllocations, travelers, destinations]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, "");
@@ -104,7 +82,7 @@ export default function BudgetSetup() {
   };
 
   const saveBudgetAndNavigate = () => {
-    sessionStorage.setItem("tripBudget", JSON.stringify({ amount: budget }));
+    setWizardBudget(budget);
     // Clear old trip data so TripWorkspace generates fresh days from new setup
     sessionStorage.removeItem("currentTrip");
     sessionStorage.removeItem("selectedTripId");
@@ -112,8 +90,7 @@ export default function BudgetSetup() {
   };
 
   const handleSkip = () => {
-    // Clear any saved budget
-    sessionStorage.removeItem("tripBudget");
+    setWizardBudget(0);
     // Clear old trip data so TripWorkspace generates fresh days from new setup
     sessionStorage.removeItem("currentTrip");
     sessionStorage.removeItem("selectedTripId");

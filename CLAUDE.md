@@ -17,6 +17,7 @@ Claude phai doc theo thu tu nay:
 5. Codebase that te
 
 Neu docs va code xung dot:
+
 - Uu tien docs moi nhat trong `docs/`
 - Sau do doi chieu voi code that te
 - Neu code da lech docs, phai noi ro mismatch truoc khi sua tiep
@@ -104,6 +105,7 @@ Required checks tren GitHub:
 - `frontend-build`
 
 Rules:
+
 - Khong direct push vao `main`
 - Chi merge qua PR
 - Squash merge only
@@ -111,17 +113,17 @@ Rules:
 
 ## Claude assets map
 
-| Asset | Muc dich |
-|---|---|
-| `.claude/commands/analyze-project.md` | Phan tich repo theo current truth vs target plan |
-| `.claude/commands/test.md` | Chay test theo dual-mode current repo / target repo |
-| `.claude/commands/lint-fix.md` | Lint/format theo dual-mode, khong hardcode template |
-| `.claude/commands/commit.md` | Tao final commit message dung branch/commit policy |
-| `.claude/commands/pr.md` | Tao PR dung title/body template cua repo |
-| `.claude/skills/code-review/SKILL.md` | Review theo invariant cua project nay |
-| `.claude/skills/db-migration/SKILL.md` | Migration/schema rules theo MVP2 |
-| `.claude/agents/security-auditor.md` | Audit secret, auth, token, SQL, AI guardrails |
-| `.claude/agents/doc-generator.md` | Sync docs dai, docs rut gon, README, CI/PR docs |
+| Asset                                  | Muc dich                                            |
+| -------------------------------------- | --------------------------------------------------- |
+| `.claude/commands/analyze-project.md`  | Phan tich repo theo current truth vs target plan    |
+| `.claude/commands/test.md`             | Chay test theo dual-mode current repo / target repo |
+| `.claude/commands/lint-fix.md`         | Lint/format theo dual-mode, khong hardcode template |
+| `.claude/commands/commit.md`           | Tao final commit message dung branch/commit policy  |
+| `.claude/commands/pr.md`               | Tao PR dung title/body template cua repo            |
+| `.claude/skills/code-review/SKILL.md`  | Review theo invariant cua project nay               |
+| `.claude/skills/db-migration/SKILL.md` | Migration/schema rules theo MVP2                    |
+| `.claude/agents/security-auditor.md`   | Audit secret, auth, token, SQL, AI guardrails       |
+| `.claude/agents/doc-generator.md`      | Sync docs dai, docs rut gon, README, CI/PR docs     |
 
 ## Security rules
 

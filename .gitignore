@@ -57,3 +57,10 @@ vercel.json
 
 # Archive files
 *.zip
+
+# Local-only folders (not pushed to GitHub)
+plan/
+References/
+Diagram/
+guidelines/
+md/
