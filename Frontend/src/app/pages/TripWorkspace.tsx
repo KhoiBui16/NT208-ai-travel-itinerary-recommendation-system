@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
 import { FloatingAIChat } from "../components/FloatingAIChat";
 import { SavedSuggestions, SavedSuggestion } from "../components/SavedSuggestions";
@@ -52,6 +52,7 @@ import { useAccommodation } from "../hooks/trips/useAccommodation";
 import { usePlacesManager } from "../hooks/trips/usePlacesManager";
 import { useTripSync } from "../hooks/trips/useTripSync";
 import { listSavedPlaces } from "../services/places";
+import { useAuth } from "../contexts/AuthContext";
 // Khởi tạo ID (để tránh lỗi khi tạo hoạt động mới)
 let nextId = 500;
 const updateNextId = (id: number) => { nextId = Math.max(nextId, id); };
@@ -60,15 +61,18 @@ const updateNextId = (id: number) => { nextId = Math.max(nextId, id); };
   // Hàm tính tiền khách sạn (Giờ / Đêm / Ngày)
 
 export default function TripWorkspace() {
-  
+
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tripIdParam = searchParams.get("tripId");
+  const { isAuthenticated: authIsAuthenticated } = useAuth();
   const [days, setDays] = useState<Day[]>(initialDays);
   const [selectedDayId, setSelectedDayId] = useState(1);
 
   // Tab state for Địa điểm / Nơi ở
   const [activeTab, setActiveTab] = useState<"places" | "accommodation">("places");
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(authIsAuthenticated);
   const {
     places, setPlaces, placeSearch, setPlaceSearch, activeFilter, setActiveFilter,
     showSavedSuggestions, setShowSavedSuggestions, savedSuggestions, setSavedSuggestions,
@@ -87,7 +91,7 @@ export default function TripWorkspace() {
   // Add to itinerary modal (from place panel)
   const [addPlaceModal, setAddPlaceModal] = useState<{ place: Place } | null>(null);
 
-  // Traveler info from localStorage
+  // Traveler info from sessionStorage
   const [travelers, setTravelers] = useState<TravelerInfo>({ adults: 2, children: 0, total: 2 });
   
   // Edit travelers modal
@@ -123,7 +127,8 @@ export default function TripWorkspace() {
     days, setDays, setSelectedDayId, accommodations, setAccommodations,
     totalBudget, setTotalBudget, setTravelers, setIsAuthenticated, setPlaces,
     isAuthenticated, setShowLoginModal, updateNextId,
-    tripName, setTripName // <-- THÊM 2 BIẾN NÀY VÀO CUỐI
+    tripName, setTripName,
+    tripIdParam ? Number(tripIdParam) : null
   );
 
   const {
@@ -221,7 +226,7 @@ export default function TripWorkspace() {
           tripName={tripName || "Lịch trình mới"}
           onNameChange={(newName) => {
             setTripName(newName);
-            // Optional: Thêm logic lưu tên mới vào localStorage nếu cần
+            // Optional: Thêm logic lưu tên mới vào sessionStorage nếu cần
           }}
           onEditTravelers={() => setShowEditTravelersModal(true)}
           onSaveItinerary={handleSaveItinerary}

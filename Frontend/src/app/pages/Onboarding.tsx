@@ -16,13 +16,13 @@ export default function Onboarding() {
   };
 
   const handleComplete = () => { // Gọi API POST /api/user/preferences để lưu thiết lập.
-    // Save preferences to localStorage
+    // Save preferences to sessionStorage
     const preferences = {
       travelType: selectedTravelType,
       interests: selectedInterests,
       budgetLevel: selectedBudget,
     };
-    localStorage.setItem("userPreferences", JSON.stringify(preferences));
+    sessionStorage.setItem("userPreferences", JSON.stringify(preferences));
     
     // Navigate to trip library
     navigate("/trip-library");

@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
 import { MapPin, Calendar, DollarSign, Heart, Camera, Utensils, Mountain, Users } from "lucide-react";
-import { generateItinerary } from "../utils/itinerary";
-import { saveItinerary } from "../utils/auth";
+import { useAuth } from "../contexts/AuthContext";
+import { createItinerary } from "../services/itinerary";
+import { toast } from "sonner";
 import { popularDestinations, INTEREST_OPTIONS } from "../utils/tripConstants";
 
 export default function TripPlanning() {
@@ -20,10 +21,12 @@ export default function TripPlanning() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const { isAuthenticated } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     const newErrors: Record<string, string> = {};
     if (!formData.destination) newErrors.destination = "Vui lòng chọn điểm đến";
@@ -31,26 +34,33 @@ export default function TripPlanning() {
     if (!formData.endDate) newErrors.endDate = "Vui lòng chọn ngày kết thúc";
     if (!formData.budget) newErrors.budget = "Vui lòng nhập ngân sách";
     if (formData.interests.length === 0) newErrors.interests = "Vui lòng chọn ít nhất một sở thích";
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    // Generate itinerary
-    const itinerary = generateItinerary(
-      formData.destination,
-      formData.startDate,
-      formData.endDate,
-      parseInt(formData.budget),
-      formData.interests
-    );
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
 
-    // Save to localStorage temporarily
-    saveItinerary(itinerary);
-    
-    // Navigate to itinerary view
-    navigate(`/itinerary/${itinerary.id}`);
+    setSubmitting(true);
+    try {
+      const resp = await createItinerary({
+        destination: formData.destination,
+        tripName: `Chuyến đi ${formData.destination}`,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        budget: parseInt(formData.budget),
+        interests: formData.interests,
+      });
+      navigate(`/itinerary/${resp.id}`);
+    } catch (error) {
+      toast.error("Tạo lịch trình thất bại. Vui lòng thử lại.", { position: "top-right" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const toggleInterest = (interestId: string) => {
@@ -202,7 +212,7 @@ export default function TripPlanning() {
             type="submit"
             className="w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
           >
-            Tạo Lịch Trình Du Lịch
+            {submitting ? "Đang tạo..." : "Tạo Lịch Trình Du Lịch"}
           </button>
         </form>
       </div>

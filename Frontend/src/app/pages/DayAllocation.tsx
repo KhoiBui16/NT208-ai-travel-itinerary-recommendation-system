@@ -35,8 +35,8 @@ export default function DayAllocation() {
   const [initialDateRange, setInitialDateRange] = useState<{ from: Date | null; to: Date | null }>({ from: null, to: null });
 
   useEffect(() => {
-    // Load selected destinations from localStorage
-    const saved = localStorage.getItem("tripDestinations");
+    // Load selected destinations from sessionStorage
+    const saved = sessionStorage.getItem("tripDestinations");
     if (saved) {
       const parsed = JSON.parse(saved);
       setDestinations(parsed);
@@ -120,7 +120,7 @@ export default function DayAllocation() {
       return;
     }
     
-    // Save allocations to localStorage
+    // Save allocations to sessionStorage
     const saveData: Record<number, { from: string; to: string; days: number }> = {};
     Object.entries(dateAllocations).forEach(([id, allocation]) => {
       if (allocation) {
@@ -131,7 +131,7 @@ export default function DayAllocation() {
         };
       }
     });
-    localStorage.setItem("tripDayAllocations", JSON.stringify(saveData));
+    sessionStorage.setItem("tripDayAllocations", JSON.stringify(saveData));
     
     // Navigate to travelers selection
     navigate("/travelers-selection");

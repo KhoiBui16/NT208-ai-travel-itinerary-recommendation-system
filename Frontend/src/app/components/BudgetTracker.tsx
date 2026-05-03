@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { trackBudgetChange } from "../utils/analytics";
+import { useAuth } from "../contexts/AuthContext";
 import { BudgetPreset, presets } from "../data/budget";
 
 interface BudgetCategory {
@@ -19,12 +20,22 @@ interface BudgetCategory {
   color: string;
 }
 
+interface BudgetHistoryEntry {
+  category: string;
+  oldValue: number;
+  newValue: number;
+  action: string;
+  timestamp: string;
+}
+
 export function BudgetTracker() {
+  const { user } = useAuth();
   const [totalBudget, setTotalBudget] = useState(10000000);
   const [warningThreshold, setWarningThreshold] = useState(80);
   const [showHistory, setShowHistory] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
+  const [changeHistory, setChangeHistory] = useState<BudgetHistoryEntry[]>([]);
 
   const [categories, setCategories] = useState<BudgetCategory[]>([
     { id: "dining", name: "Ẩm thực", amount: 2500000, icon: DollarSign, color: "orange" },
@@ -46,8 +57,10 @@ export function BudgetTracker() {
       prev.map((cat) => {
         if (cat.id === categoryId) {
           const increment = 100000;
-          trackBudgetChange(cat.name, cat.amount, cat.amount + increment, "increment");
-          return { ...cat, amount: cat.amount + increment };
+          const newAmount = cat.amount + increment;
+          trackBudgetChange(cat.name, cat.amount, newAmount, "increment", user?.id);
+          setChangeHistory((h) => [...h, { category: cat.name, oldValue: cat.amount, newValue: newAmount, action: "increment", timestamp: new Date().toISOString() }]);
+          return { ...cat, amount: newAmount };
         }
         return cat;
       })
@@ -59,8 +72,10 @@ export function BudgetTracker() {
       prev.map((cat) => {
         if (cat.id === categoryId && cat.amount >= 100000) {
           const decrement = 100000;
-          trackBudgetChange(cat.name, cat.amount, cat.amount - decrement, "decrement");
-          return { ...cat, amount: cat.amount - decrement };
+          const newAmount = cat.amount - decrement;
+          trackBudgetChange(cat.name, cat.amount, newAmount, "decrement", user?.id);
+          setChangeHistory((h) => [...h, { category: cat.name, oldValue: cat.amount, newValue: newAmount, action: "decrement", timestamp: new Date().toISOString() }]);
+          return { ...cat, amount: newAmount };
         }
         return cat;
       })
@@ -71,7 +86,8 @@ export function BudgetTracker() {
     setCategories((prev) =>
       prev.map((cat) => {
         if (cat.id === categoryId) {
-          trackBudgetChange(cat.name, cat.amount, newAmount, "direct_edit");
+          trackBudgetChange(cat.name, cat.amount, newAmount, "direct_edit", user?.id);
+          setChangeHistory((h) => [...h, { category: cat.name, oldValue: cat.amount, newValue: newAmount, action: "direct_edit", timestamp: new Date().toISOString() }]);
           return { ...cat, amount: newAmount };
         }
         return cat;
@@ -85,7 +101,8 @@ export function BudgetTracker() {
         const percentage = preset.allocations[cat.id] || 0;
         const newAmount = Math.round((totalBudget * percentage) / 100);
         if (newAmount !== cat.amount) {
-          trackBudgetChange(cat.name, cat.amount, newAmount, `preset_${preset.id}`);
+          trackBudgetChange(cat.name, cat.amount, newAmount, `preset_${preset.id}`, user?.id);
+          setChangeHistory((h) => [...h, { category: cat.name, oldValue: cat.amount, newValue: newAmount, action: `preset_${preset.id}`, timestamp: new Date().toISOString() }]);
         }
         return { ...cat, amount: newAmount };
       })
@@ -93,8 +110,6 @@ export function BudgetTracker() {
   };
 
   const costPerDay = totalAllocated / 3; // Assuming 3-day trip
-
-  const changeHistory = JSON.parse(localStorage.getItem("budgetChangeHistory") || "[]").slice(-10);
 
   if (isCompact) {
     return (

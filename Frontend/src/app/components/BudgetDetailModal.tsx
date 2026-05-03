@@ -34,13 +34,11 @@ export function BudgetDetailModal({ isOpen, onClose, totalBudget, setTotalBudget
     if (val < 10000) {
       if (window.confirm("Ngân sách hiện tại quá ít, bạn có thực sự muốn thiết lập không?")) {
         setTotalBudget(val);
-        localStorage.setItem("tripBudget", JSON.stringify({ total: val })); // Chuyển logic lưu ngân sách lên API Backend
         setShowSetBudgetInput(false);
         setBudgetInputValue("");
       }
     } else {
       setTotalBudget(val);
-      localStorage.setItem("tripBudget", JSON.stringify({ total: val }));  // Chuyển logic lưu ngân sách lên API Backend
       setShowSetBudgetInput(false);
       setBudgetInputValue("");
       toast.success("Đã thiết lập ngân sách", { position: "top-right", duration: 3000 });
@@ -56,13 +54,11 @@ export function BudgetDetailModal({ isOpen, onClose, totalBudget, setTotalBudget
     if (val < 10000) {
       if (window.confirm("Ngân sách hiện tại quá ít, bạn có thực sự muốn thiết lập không?")) {
         setTotalBudget(val);
-        localStorage.setItem("tripBudget", JSON.stringify({ total: val }));  // Chuyển logic lưu ngân sách lên API Backend
         setShowAdjustBudget(false);
         setAdjustBudgetValue("");
       }
     } else {
       setTotalBudget(val);
-      localStorage.setItem("tripBudget", JSON.stringify({ total: val }));  // Chuyển logic lưu ngân sách lên API Backend
       setShowAdjustBudget(false);
       setAdjustBudgetValue("");
       toast.success("Đã cập nhật ngân sách", { position: "top-right", duration: 3000 });
