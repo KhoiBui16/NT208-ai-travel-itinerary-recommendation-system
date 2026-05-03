@@ -1,10 +1,10 @@
 """ETL runner — CLI entry point to orchestrate the full pipeline.
 
 Usage:
-    uv run python -m src.etl.runner                       # All 12 cities
-    uv run python -m src.etl.runner --cities "Hà Nội"     # Single city
-    uv run python -m src.etl.runner --dry-run              # No DB writes
-    uv run python -m src.etl.runner --hotels-only          # Load hotels YAML only
+    uv run python -m src.etl                       # All configured cities
+    uv run python -m src.etl --cities "Hà Nội"     # Single city
+    uv run python -m src.etl --dry-run             # No DB writes
+    uv run python -m src.etl --hotels-only         # Load hotels YAML only
 """
 
 import argparse
@@ -31,22 +31,6 @@ from src.etl.transformers.place_transformer import transform
 
 logger = logging.getLogger(__name__)
 
-VIETNAM_CITIES = [
-    "Hà Nội",
-    "TP. Hồ Chí Minh",
-    "Đà Nẵng",
-    "Hội An",
-    "Nha Trang",
-    "Phú Quốc",
-    "Sapa",
-    "Hạ Long",
-    "Huế",
-    "Đà Lạt",
-    "Vũng Tàu",
-    "Cần Thơ",
-    "Quy Nhơn",
-]
-
 HOTELS_YAML = Path(__file__).parent / "data" / "hotels.yaml"
 
 
@@ -63,7 +47,7 @@ async def run_etl(
         hotels_only: If True, only load hotels from YAML.
     """
     settings = get_settings()
-    target_cities = cities or VIETNAM_CITIES
+    target_cities = cities or settings.etl_cities
     start = time.monotonic()
 
     logger.info("ETL started — cities: %s, dry_run: %s", target_cities, dry_run)
@@ -98,15 +82,13 @@ async def run_etl(
                         if goong:
                             for poi in raw_pois:
                                 if not poi.get("lat"):
-                                    coords = await goong.geocode(
-                                        f"{poi['name']} {city}"
-                                    )
+                                    coords = await goong.geocode(f"{poi['name']} {city}")
                                     if coords:
                                         poi["lat"] = coords["lat"]
                                         poi["lng"] = coords["lng"]
 
                         # Transform
-                        places = transform(raw_pois, city)
+                        places = transform(raw_pois, city)[: settings.etl_max_places_per_city]
                         logger.info("Transformed %d valid places for %s", len(places), city)
 
                         # Load
@@ -153,7 +135,9 @@ async def run_etl(
     elapsed = time.monotonic() - start
     logger.info(
         "ETL completed in %.1fs: %d places, %d hotels",
-        elapsed, total_places, total_hotels,
+        elapsed,
+        total_places,
+        total_hotels,
     )
 
 
@@ -173,15 +157,19 @@ def main() -> None:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="DuLichViet ETL Pipeline")
     parser.add_argument(
-        "--cities", nargs="+", default=None,
-        help="Cities to process (default: all 12)",
+        "--cities",
+        nargs="+",
+        default=None,
+        help="Cities to process (default: configured etl.cities)",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Extract and transform only — no DB writes",
     )
     parser.add_argument(
-        "--hotels-only", action="store_true",
+        "--hotels-only",
+        action="store_true",
         help="Load hotels from YAML only",
     )
 
@@ -192,11 +180,13 @@ def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    asyncio.run(run_etl(
-        cities=args.cities,
-        dry_run=args.dry_run,
-        hotels_only=args.hotels_only,
-    ))
+    asyncio.run(
+        run_etl(
+            cities=args.cities,
+            dry_run=args.dry_run,
+            hotels_only=args.hotels_only,
+        )
+    )
 
 
 if __name__ == "__main__":

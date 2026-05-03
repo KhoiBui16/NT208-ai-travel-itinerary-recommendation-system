@@ -20,11 +20,7 @@ class PlaceRepository:
     # --- Destination ---
 
     async def get_destinations(self) -> list[Destination]:
-        stmt = (
-            select(Destination)
-            .where(Destination.is_active.is_(True))
-            .order_by(Destination.name)
-        )
+        stmt = select(Destination).where(Destination.is_active.is_(True)).order_by(Destination.name)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -41,11 +37,7 @@ class PlaceRepository:
     # --- Place ---
 
     async def get_by_id(self, place_id: int) -> Place | None:
-        stmt = (
-            select(Place)
-            .where(Place.id == place_id)
-            .options(selectinload(Place.destination))
-        )
+        stmt = select(Place).where(Place.id == place_id).options(selectinload(Place.destination))
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -114,8 +106,10 @@ class PlaceRepository:
             await self.session.flush()
 
     async def saved_exists(self, user_id: int, place_id: int) -> bool:
-        stmt = select(func.count()).select_from(SavedPlace).where(
-            SavedPlace.user_id == user_id, SavedPlace.place_id == place_id
+        stmt = (
+            select(func.count())
+            .select_from(SavedPlace)
+            .where(SavedPlace.user_id == user_id, SavedPlace.place_id == place_id)
         )
         count = (await self.session.execute(stmt)).scalar_one()
         return count > 0

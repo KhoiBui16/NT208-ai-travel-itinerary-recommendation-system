@@ -5,6 +5,10 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./Backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/dulichviet
+      REDIS_URL: redis://redis:6379/0
+      FRONTEND_URL: http://localhost:5173
     ports:
       - "8000:8000"
     depends_on:

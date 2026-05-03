@@ -32,17 +32,19 @@ def transform_hotels(raw_hotels: list[dict], city: str) -> list[dict]:
         amenities = hotel.get("amenities", [])
         amenities_str = ",".join(amenities) if isinstance(amenities, list) else str(amenities)
 
-        valid.append({
-            "name": name,
-            "destination": city,
-            "price_per_night": int(hotel.get("price", 0)),
-            "rating": float(hotel.get("rating", 0)),
-            "review_count": int(hotel.get("review_count", 0)),
-            "location": hotel.get("location", ""),
-            "image": hotel.get("image", ""),
-            "amenities": amenities_str,
-            "description": hotel.get("description", ""),
-        })
+        valid.append(
+            {
+                "name": name,
+                "destination": city,
+                "price_per_night": int(hotel.get("price", 0)),
+                "rating": float(hotel.get("rating", 0)),
+                "review_count": int(hotel.get("review_count", 0)),
+                "location": hotel.get("location", ""),
+                "image": hotel.get("image", ""),
+                "amenities": amenities_str,
+                "description": hotel.get("description", ""),
+            }
+        )
 
     logger.info("Transform hotels %s: %d valid", city, len(valid))
     return valid
