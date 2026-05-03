@@ -4,6 +4,8 @@ import { vi } from "date-fns/locale";
 import { toast } from "sonner";
 import { Day, Accommodation, TravelerInfo, Place, Activity, ExtraExpense, DayExtraExpense } from "../../types/trip.types";
 import { getItinerary, createItinerary, updateItinerary } from "../../services/itinerary";
+import { useTripWizard } from "../../contexts/TripWizardContext";
+import { storePendingClaim } from "../../contexts/AuthContext";
 
 /** Convert dd/MM/yyyy → yyyy-MM-dd for API. Pass-through if already ISO or empty. */
 function toISODate(d: string): string {
@@ -33,6 +35,7 @@ export const useTripSync = (
 ) => {
   const isInitialMount = useRef(true);
   const currentTripIdRef = useRef<number | null>(tripIdParam ?? null);
+  const { destinations: wizardDestinations, dayAllocations: wizardAllocations, budget: wizardBudget, resetWizard } = useTripWizard();
 
   // Sync auth state
   useEffect(() => {
@@ -146,20 +149,15 @@ export const useTripSync = (
         } catch (error) {}
       }
 
-      // NẾU LÀ LỊCH TRÌNH MỚI TINH (Từ bước manual setup sang)
-      const savedDestinations = sessionStorage.getItem("tripDestinations");
-      const savedAllocations = sessionStorage.getItem("tripDayAllocations");
-
-      if (savedDestinations && savedAllocations) {
+      // NẾU LÀ LỊCH TRÌNH MỚI TINH (Từ bước manual setup sang) — read from wizard context
+      if (wizardDestinations.length > 0 && Object.keys(wizardAllocations).length > 0) {
         try {
-          const destinations = JSON.parse(savedDestinations);
-          const allocations = JSON.parse(savedAllocations);
           let dayCounter = 1;
           let dayId = 1;
           const generatedDays: Day[] = [];
 
-          destinations.forEach((dest: any) => {
-            const allocation = allocations[dest.id.toString()];
+          wizardDestinations.forEach((dest) => {
+            const allocation = wizardAllocations[dest.id];
             if (!allocation) return;
             const from = parseISO(allocation.from);
             for (let i = 0; i < allocation.days; i++) {
@@ -177,12 +175,8 @@ export const useTripSync = (
             setDays(generatedDays);
             setSelectedDayId(generatedDays[0].id);
             updateNextId(dayId);
-
-            // Generate unique name
-            let name = "Lịch trình mới";
-            let counter = 1;
-            // Simple name uniqueness without API call for speed
-            setTripName(name);
+            setTripName("Lịch trình mới");
+            if (wizardBudget > 0) setTotalBudget(wizardBudget);
             sessionStorage.removeItem("selectedTripId");
           }
         } catch (error) {}
@@ -265,6 +259,11 @@ export const useTripSync = (
           budget: totalBudget,
         });
         currentTripIdRef.current = resp.id;
+
+        // Store claimToken for guest → owner claim after login
+        if (resp.claimToken) {
+          storePendingClaim(resp.id, resp.claimToken);
+        }
 
         // Now update with the full days data
         await updateItinerary(resp.id, {

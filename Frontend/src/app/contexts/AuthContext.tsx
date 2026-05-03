@@ -10,6 +10,28 @@ import * as authService from "../services/auth";
 import * as userService from "../services/users";
 import type { UserResponse } from "../services/auth";
 import { getAccessToken, getRefreshToken, clearTokens } from "../services/api";
+import { claimItinerary } from "../services/itinerary";
+
+const PENDING_CLAIM_KEY = "pendingClaim";
+
+/** Store a claim token + tripId so AuthContext can claim after login. */
+export function storePendingClaim(tripId: number, claimToken: string) {
+  sessionStorage.setItem(PENDING_CLAIM_KEY, JSON.stringify({ tripId, claimToken }));
+}
+
+/** Execute any pending claim (called right after successful login). */
+async function executePendingClaim() {
+  const raw = sessionStorage.getItem(PENDING_CLAIM_KEY);
+  if (!raw) return;
+  try {
+    const { tripId, claimToken } = JSON.parse(raw);
+    await claimItinerary(tripId, claimToken);
+    sessionStorage.removeItem(PENDING_CLAIM_KEY);
+  } catch {
+    // Claim failed (expired or already claimed) — silently remove
+    sessionStorage.removeItem(PENDING_CLAIM_KEY);
+  }
+}
 
 // ---------- Context shape ----------
 
@@ -58,6 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const res = await authService.login({ email, password });
     setUser(res.user);
+    // Claim any guest itineraries that were created before login
+    await executePendingClaim();
   }, []);
 
   const register = useCallback(
@@ -69,6 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ) => {
       const res = await authService.register({ email, password, name, phone });
       setUser(res.user);
+      // Claim any guest itineraries that were created before register
+      await executePendingClaim();
     },
     [],
   );

@@ -4,13 +4,7 @@ import { Header } from "../components/Header";
 import { CalendarModal } from "../components/CalendarModal";
 import { Calendar, MapPin, ArrowRight, AlertCircle, ChevronLeft, CalendarDays } from "lucide-react";
 import { format, startOfDay, addDays } from "date-fns";
-
-interface Destination {
-  id: number;
-  name: string;
-  country: string;
-  image: string;
-}
+import { useTripWizard, type WizardDestination } from "../contexts/TripWizardContext";
 
 interface DateRange {
   from: Date | null;
@@ -25,9 +19,10 @@ interface DateAllocation {
 
 export default function DayAllocation() {
   const navigate = useNavigate();
-  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const { destinations: wizardDestinations, dayAllocations: wizardAllocations, setDayAllocations } = useTripWizard();
+  const [destinations, setDestinations] = useState<WizardDestination[]>([]);
   const [dateAllocations, setDateAllocations] = useState<Record<number, DateAllocation | null>>({});
-  
+
   // Calendar modal state
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedDestId, setSelectedDestId] = useState<number | null>(null);
@@ -35,23 +30,26 @@ export default function DayAllocation() {
   const [initialDateRange, setInitialDateRange] = useState<{ from: Date | null; to: Date | null }>({ from: null, to: null });
 
   useEffect(() => {
-    // Load selected destinations from sessionStorage
-    const saved = sessionStorage.getItem("tripDestinations");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setDestinations(parsed);
-      
-      // Initialize allocations
-      const initial: Record<number, DateAllocation | null> = {};
-      parsed.forEach((dest: Destination) => {
-        initial[dest.id] = null;
+    // Load selected destinations from context
+    if (wizardDestinations.length > 0) {
+      setDestinations(wizardDestinations);
+
+      // Restore allocations from context if any
+      const restored: Record<number, DateAllocation | null> = {};
+      wizardDestinations.forEach((dest) => {
+        const saved = wizardAllocations[dest.id];
+        if (saved) {
+          restored[dest.id] = { from: new Date(saved.from), to: new Date(saved.to), days: saved.days };
+        } else {
+          restored[dest.id] = null;
+        }
       });
-      setDateAllocations(initial);
+      setDateAllocations(restored);
     } else {
       // No destinations selected, go back
       navigate("/manual-trip-setup");
     }
-  }, [navigate]);
+  }, [wizardDestinations, wizardAllocations, navigate]);
   
   const totalDays = Object.values(dateAllocations).reduce((sum, allocation) => {
     return sum + (allocation ? allocation.days : 0);
@@ -115,12 +113,12 @@ export default function DayAllocation() {
       const allocation = dateAllocations[dest.id];
       return allocation && allocation.days >= 1;
     });
-    
+
     if (!hasAllAllocations) {
       return;
     }
-    
-    // Save allocations to sessionStorage
+
+    // Save allocations to wizard context
     const saveData: Record<number, { from: string; to: string; days: number }> = {};
     Object.entries(dateAllocations).forEach(([id, allocation]) => {
       if (allocation) {
@@ -131,8 +129,8 @@ export default function DayAllocation() {
         };
       }
     });
-    sessionStorage.setItem("tripDayAllocations", JSON.stringify(saveData));
-    
+    setDayAllocations(saveData);
+
     // Navigate to travelers selection
     navigate("/travelers-selection");
   };

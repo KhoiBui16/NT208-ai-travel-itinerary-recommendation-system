@@ -224,9 +224,9 @@ export default function TripWorkspace() {
       <TopActionBar
           travelersTotal={travelers.total}
           tripName={tripName || "Lịch trình mới"}
+          tripId={tripIdParam ? Number(tripIdParam) : null}
           onNameChange={(newName) => {
             setTripName(newName);
-            // Optional: Thêm logic lưu tên mới vào sessionStorage nếu cần
           }}
           onEditTravelers={() => setShowEditTravelersModal(true)}
           onSaveItinerary={handleSaveItinerary}

@@ -1,9 +1,43 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Header } from "../components/Header";
-import { destinations, features, heroFeatures } from "../data/homeData";
-import { Sparkles, MapPin, Plane, Star, ArrowRight } from "lucide-react";
+import { destinations as mockDestinations, features, heroFeatures } from "../data/homeData";
+import { listDestinations, type DestinationResponse } from "../services/places";
+import { Sparkles, MapPin, Plane, ArrowRight } from "lucide-react";
+
+interface DisplayDest {
+  name: string;
+  image: string;
+  description: string;
+}
 
 export default function Home() {
+  const [destinations, setDestinations] = useState<DisplayDest[]>(mockDestinations);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function load() {
+      try {
+        const apiDests = await listDestinations();
+        if (!isMounted) return;
+        if (apiDests.length > 0) {
+          setDestinations(
+            apiDests.map((d: DestinationResponse) => ({
+              name: d.name,
+              image: d.image || "",
+              description: d.country || "",
+            })),
+          );
+        }
+      } catch {
+        // Keep mock fallback
+      }
+    }
+
+    load();
+    return () => { isMounted = false; };
+  }, []);
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />

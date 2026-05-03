@@ -2,17 +2,18 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Header } from "../components/Header";
 import { ChevronLeft, Users, Plus, Minus, ArrowRight } from "lucide-react";
+import { useTripWizard } from "../contexts/TripWizardContext";
 
 export default function TravelersSelection() {
   const navigate = useNavigate();
+  const { setTravelers } = useTripWizard();
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
 
   const totalTravelers = adults + children;
 
   const handleContinue = () => {
-    // Save to sessionStorage
-    sessionStorage.setItem("tripTravelers", JSON.stringify({ adults, children, total: totalTravelers }));
+    setTravelers({ adults, children, total: totalTravelers });
     navigate("/budget-setup");
   };
 
