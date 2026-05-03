@@ -1,0 +1,60 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    branches:
+      - main
+  push:
+    branches:
+      - 'feat/**'
+      - 'fix/**'
+      - 'docs/**'
+      - 'style/**'
+      - 'refactor/**'
+      - 'chore/**'
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  frontend-build:
+    name: frontend-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f Frontend/package.json ]]; then
+            cd Frontend
+            npm ci
+          else
+            echo "No Frontend/package.json found. Skipping install."
+          fi
+
+      - name: Build frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f Frontend/package.json ]]; then
+            cd Frontend
+            npm run build
+          else
+            echo "No Frontend/package.json found. Skipping build."
+          fi

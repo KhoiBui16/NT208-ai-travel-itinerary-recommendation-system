@@ -3,6 +3,8 @@ import { X, ArrowLeft, Star, Bookmark, MapPin, Plus, Check, Eye, Search } from "
 import { toast } from "sonner";
 import { PlaceInfoModal } from "./PlaceInfoModal";
 import { City, Place, cities, places } from "../data/places";
+import { useAuth } from "../contexts/AuthContext";
+import { listSavedPlaces, savePlace, unsavePlace } from "../services/places";
 
 interface PlaceSelectionModalProps {
   isOpen: boolean;
@@ -18,30 +20,34 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
   const [step, setStep] = useState<"city" | "place">("city");
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
   const [savedPlaces, setSavedPlaces] = useState<number[]>([]);
+  const [savedPlaceNames, setSavedPlaceNames] = useState<Set<string>>(new Set());
   const [selectedPlaces, setSelectedPlaces] = useState<number[]>([]);
   const [viewingPlaceInfo, setViewingPlaceInfo] = useState<Place | null>(null);
-  
+
   // States cho Tìm kiếm và Lọc
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("Tất cả");
-  
-  const modalRef = useRef<HTMLDivElement>(null);
 
-  const syncBookmarksFromStorage = () => {
-    const data = localStorage.getItem("savedPlaces");
-    if (data) {
-      try {
-        const parsed = JSON.parse(data);
-        const savedNames = new Set(parsed.map((p: any) => p.name));
-        const matchedIds = places
-          .filter((p) => savedNames.has(p.name))
-          .map((p) => p.id);
-        setSavedPlaces(matchedIds);
-      } catch (e) {
-        setSavedPlaces([]);
-      }
-    } else {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const { isAuthenticated } = useAuth();
+
+  const syncBookmarksFromAPI = async () => {
+    if (!isAuthenticated) {
       setSavedPlaces([]);
+      setSavedPlaceNames(new Set());
+      return;
+    }
+    try {
+      const data = await listSavedPlaces();
+      const names = new Set(data.map((p: any) => p.placeName || p.name));
+      setSavedPlaceNames(names);
+      const matchedIds = places
+        .filter((p) => names.has(p.name))
+        .map((p) => p.id);
+      setSavedPlaces(matchedIds);
+    } catch {
+      setSavedPlaces([]);
+      setSavedPlaceNames(new Set());
     }
   };
 
@@ -68,7 +74,7 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
       setSelectedPlaces([]);
       setSearchQuery("");
       setActiveCategory("Tất cả");
-      syncBookmarksFromStorage();
+      syncBookmarksFromAPI();
     }
   }, [isOpen, destinationName]);
 
@@ -133,42 +139,47 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
     setSelectedPlaces([]);
   };
 
-  const toggleBookmark = (placeId: number, e: React.MouseEvent) => {
+  const toggleBookmark = async (placeId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const user = localStorage.getItem("currentUser");
-    if (!user) return;
-    
+    if (!isAuthenticated) return;
+
     const place = places.find((p) => p.id === placeId);
     if (!place) return;
-    
+
     const isCurrentlySaved = savedPlaces.includes(placeId);
-    const data = localStorage.getItem("savedPlaces");
-    let arr: any[] = [];
-    if (data) {
-      try { arr = JSON.parse(data); } catch (e) {}
-    }
-    
+
+    // Optimistic UI update
     if (isCurrentlySaved) {
-      arr = arr.filter((p: any) => p.name !== place.name);
       setSavedPlaces((prev) => prev.filter((id) => id !== placeId));
+      setSavedPlaceNames(prev => { const n = new Set(prev); n.delete(place.name); return n; });
     } else {
-      arr.push({
-        id: `modal-${placeId}`,
-        name: place.name,
-        type: place.category === "Ẩm thực" ? "food" : place.category === "Điểm tham quan" ? "attraction" : place.category === "Thiên nhiên" ? "nature" : place.category === "Giải trí" ? "entertainment" : place.category === "Mua sắm" ? "shopping" : "attraction",
-        rating: place.rating,
-        reviewCount: 0,
-        estimatedCost: "",
-        priceLevel: "",
-        image: place.image,
-        description: place.description,
-        address: cities.find((c) => c.id === place.cityId)?.name || "",
-        savedAt: new Date().toISOString(),
-        isBookmarked: true,
-      });
       setSavedPlaces((prev) => [...prev, placeId]);
+      setSavedPlaceNames(prev => { const n = new Set(prev); n.add(place.name); return n; });
     }
-    localStorage.setItem("savedPlaces", JSON.stringify(arr));
+
+    try {
+      if (isCurrentlySaved) {
+        const savedList = await listSavedPlaces();
+        const match = savedList.find((p: any) => (p.placeName || p.name) === place.name);
+        if (match) await unsavePlace(match.id);
+      } else {
+        await savePlace({
+          placeId: 0,
+          placeName: place.name,
+          placeType: place.category === "Ẩm thực" ? "food" : place.category === "Điểm tham quan" ? "attraction" : place.category === "Thiên nhiên" ? "nature" : place.category === "Giải trí" ? "entertainment" : place.category === "Mua sắm" ? "shopping" : "attraction",
+          city: cities.find((c) => c.id === place.cityId)?.name || "",
+        });
+      }
+    } catch {
+      // Revert on failure
+      if (isCurrentlySaved) {
+        setSavedPlaces((prev) => [...prev, placeId]);
+        setSavedPlaceNames(prev => { const n = new Set(prev); n.add(place.name); return n; });
+      } else {
+        setSavedPlaces((prev) => prev.filter((id) => id !== placeId));
+        setSavedPlaceNames(prev => { const n = new Set(prev); n.delete(place.name); return n; });
+      }
+    }
   };
 
   return (

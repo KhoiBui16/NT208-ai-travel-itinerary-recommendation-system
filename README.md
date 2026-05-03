@@ -17,19 +17,22 @@ This README is the single source of truth for running the project locally.
 - Share/claim: public `shareToken`, one-time `claimToken` with hash + expiry.
 - Places: destinations, destination detail, place search/detail, saved places, Redis read cache.
 - ETL: OSM/Goong extractors, transformers, DB upsert loader, sample hotel data.
-- **24 API endpoints** registered, 110 tests (66 unit + 44 integration) passing.
+- **24 API endpoints** registered, 108 tests (66 unit + 42 integration) passing.
 
 ### Implemented (FE)
 
 - UI under `Frontend/` with Vite + React + TypeScript + Tailwind/MUI.
 - Routes for home, city list/detail, auth, trip setup, workspace, history, saved places, settings.
+- API client layer with JWT auto-refresh (`Frontend/src/app/services/`).
+- Auth, profile, trip list, saved places connected to backend API.
+- `AuthContext` manages JWT state; 7 protected routes redirect to `/login`.
 - Type contract at `Frontend/src/app/types/trip.types.ts`.
 - Builds successfully (production bundle 1.1 MB).
 
 ### Not yet implemented
 
 - **Phase C AI**: `POST /itineraries/generate` is a stub (creates empty trip, no LLM call). No companion chat, no patch-confirm flow, no chat history API.
-- **FE-BE integration**: Frontend currently uses `localStorage` for ALL data (auth, trips, places, budgets). No API client layer exists. See [FE-BE Gap](#fe-be-integration-gap) below.
+- **FE-BE integration**: Auth, profile, trip list, and saved places are connected. Trip workspace auto-save and budget still use localStorage. See [FE-BE Status](#fe-be-integration-status) below.
 - Full ETL with real place data needs `GOONG_API_KEY`.
 
 ---
@@ -290,26 +293,24 @@ uv run uvicorn src.main:app --reload --port 8001
 
 ---
 
-## FE-BE Integration Gap
+## FE-BE Integration Status
 
-The frontend currently runs as a **standalone mock app** — no API calls are made to the backend. All data is stored in `localStorage`:
+Auth, profile, trip list, saved places, and trip workspace are connected to the backend via an API client layer (`Frontend/src/app/services/`). JWT tokens are stored in `localStorage` (access + refresh) with auto-refresh on 401.
 
-| FE Feature | Current (localStorage) | Should call BE API |
+| FE Feature | Status | API Endpoint |
 |---|---|---|
-| Auth (login/register/logout) | `localStorage.currentUser` + `localStorage.users` + `localStorage.password_*` | `POST /auth/login`, `POST /auth/register`, `POST /auth/logout` |
-| User profile | `localStorage.currentUser` | `GET /users/profile`, `PUT /users/profile` |
-| Password change | Not implemented | `PUT /users/password` |
-| Trip CRUD | `localStorage.currentTrip` + `localStorage.savedTrips` | `POST /itineraries`, `GET /itineraries`, `PUT /itineraries/{id}`, `DELETE /itineraries/{id}` |
-| Trip share | Not implemented | `POST /itineraries/{id}/share`, `GET /shared/{token}` |
-| Guest claim | Not implemented | `POST /itineraries/{id}/claim` |
-| Places/saved | `localStorage.savedPlaces` | `GET /places/search`, `POST /places/saved`, `DELETE /places/saved/{id}` |
-| Destinations | Hardcoded `data/destinations.ts` | `GET /places/destinations` |
-| Budget | `localStorage.tripBudget` | Part of itinerary update |
-
-To connect FE to BE, the frontend needs:
-1. An API client layer (e.g., `fetch` wrapper with JWT Bearer token)
-2. Replace each `localStorage` call with the corresponding API call
-3. Handle JWT token storage (access token in memory or httpOnly cookie, refresh token securely)
+| Auth (login/register/logout) | Done | `POST /auth/login`, `POST /auth/register`, `POST /auth/logout` |
+| User profile | Done | `GET /users/profile`, `PUT /users/profile` |
+| Password change | Done | `PUT /users/password` |
+| Trip CRUD (list/create/delete) | Done | `POST /itineraries`, `GET /itineraries`, `DELETE /itineraries/{id}` |
+| Trip update (rename) | Done | `PUT /itineraries/{id}` |
+| Places/saved (all pages) | Done | `GET /places/saved`, `POST /places/saved`, `DELETE /places/saved/{id}` |
+| Destinations | Hardcoded | `GET /places/destinations` (pending ETL data) |
+| Trip share | Backend ready | `POST /itineraries/{id}/share`, `GET /shared/{token}` |
+| Guest claim | Backend ready | `POST /itineraries/{id}/claim` |
+| Trip workspace auto-save | localStorage | `PUT /itineraries/{id}` (pending `useTripSync` migration) |
+| Budget | localStorage | Part of itinerary update |
+| AI generate | Stub | `POST /itineraries/generate` (Phase C) |
 
 ---
 
@@ -318,7 +319,7 @@ To connect FE to BE, the frontend needs:
 - Implement Phase C AI direct itinerary pipeline (replace stub with Gemini call).
 - Implement AI companion chat with patch-confirm flow.
 - Persist chat history with `chat_sessions` and `chat_messages`.
-- Create FE API client layer and replace all `localStorage` usage with real API calls.
+- Migrate `useTripSync` from localStorage to BE API auto-save.
 - Add real `GOONG_API_KEY` for full ETL runs.
 - Keep `docs/09_execution_tracker.md` updated for every branch/PR.
 

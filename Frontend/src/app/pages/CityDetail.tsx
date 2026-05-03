@@ -13,34 +13,34 @@ import {
   Bookmark,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getCurrentUser } from "../utils/auth";
+import { useAuth } from "../contexts/AuthContext";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
+import { listSavedPlaces, savePlace, unsavePlace } from "../services/places";
 import { Place, CityData, cityData } from "../data/cities";
 
 
 export default function CityDetail() {
   const { cityId } = useParams<{ cityId: string }>();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [savedPlaces, setSavedPlaces] = useState<number[]>([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [savedPlaceNames, setSavedPlaceNames] = useState<Set<string>>(new Set());
 
   const city = cityId ? cityData[cityId] : null;
 
-  // Sync bookmark state from localStorage on mount
+  // Sync bookmark state from BE API on mount
   useEffect(() => {
-    if (!city) return;
-    const savedPlacesData = localStorage.getItem("savedPlaces");
-    if (savedPlacesData) {
-      try {
-        const savedPlacesArray = JSON.parse(savedPlacesData);
-        const savedNames = new Set(savedPlacesArray.map((p: any) => p.name));
-        const matchedIds = city.popularPlaces
-          .filter(p => savedNames.has(p.name))
-          .map(p => p.id);
-        setSavedPlaces(matchedIds);
-      } catch (e) {}
-    }
-  }, [city]);
+    if (!city || !isAuthenticated) return;
+    listSavedPlaces().then((data) => {
+      const names = new Set(data.map((p: any) => p.placeName || p.name));
+      setSavedPlaceNames(names);
+      const matchedIds = city.popularPlaces
+        .filter(p => names.has(p.name))
+        .map(p => p.id);
+      setSavedPlaces(matchedIds);
+    }).catch(() => {});
+  }, [city, isAuthenticated]);
 
   if (!city) {
     return (
@@ -62,46 +62,50 @@ export default function CityDetail() {
     );
   }
 
-  const toggleSavePlace = (placeId: number) => {
-    if (!getCurrentUser()) {
+  const toggleSavePlace = async (placeId: number) => {
+    if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
     }
-    
+
     const place = city?.popularPlaces.find(p => p.id === placeId);
     if (!place) return;
-    
-    const savedPlacesData = localStorage.getItem("savedPlaces");
-    let savedPlacesArray: any[] = [];
-    if (savedPlacesData) {
-      try { savedPlacesArray = JSON.parse(savedPlacesData); } catch (e) {}
-    }
-    
-    const isAlreadySaved = savedPlacesArray.some((p: any) => p.name === place.name);
-    
+
+    const isAlreadySaved = savedPlaceNames.has(place.name);
+
+    // Optimistic UI update
     if (isAlreadySaved) {
-      savedPlacesArray = savedPlacesArray.filter((p: any) => p.name !== place.name);
       setSavedPlaces(prev => prev.filter(id => id !== placeId));
+      setSavedPlaceNames(prev => { const n = new Set(prev); n.delete(place.name); return n; });
     } else {
-      savedPlacesArray.push({
-        id: `city-${cityId}-${placeId}`,
-        name: place.name,
-        type: place.category,
-        rating: place.rating,
-        reviewCount: place.reviewCount,
-        estimatedCost: place.estimatedCost,
-        priceLevel: "",
-        image: place.image,
-        description: place.description,
-        address: place.address || city?.name || "",
-        openingHours: place.openingHours,
-        savedAt: new Date().toISOString(),
-        isBookmarked: true,
-      });
       setSavedPlaces(prev => [...prev, placeId]);
+      setSavedPlaceNames(prev => { const n = new Set(prev); n.add(place.name); return n; });
     }
-    
-    localStorage.setItem("savedPlaces", JSON.stringify(savedPlacesArray));
+
+    try {
+      if (isAlreadySaved) {
+        // Find saved place ID to unsave — fallback by name match
+        const savedList = await listSavedPlaces();
+        const match = savedList.find((p: any) => (p.placeName || p.name) === place.name);
+        if (match) await unsavePlace(match.id);
+      } else {
+        await savePlace({
+          placeId: 0,
+          placeName: place.name,
+          placeType: place.category,
+          city: city?.name || "",
+        });
+      }
+    } catch {
+      // Revert on failure
+      if (isAlreadySaved) {
+        setSavedPlaces(prev => [...prev, placeId]);
+        setSavedPlaceNames(prev => { const n = new Set(prev); n.add(place.name); return n; });
+      } else {
+        setSavedPlaces(prev => prev.filter(id => id !== placeId));
+        setSavedPlaceNames(prev => { const n = new Set(prev); n.delete(place.name); return n; });
+      }
+    }
   };
 
   return (
