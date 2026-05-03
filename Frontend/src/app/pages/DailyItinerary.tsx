@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router";
+import { useNavigate, Link, useParams } from "react-router";
 import { Header } from "../components/Header";
 import { SavedSuggestion } from "../components/SavedSuggestions";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
 import { Suggestion, mockSuggestions } from "../data/suggestions";
+import { useAuth } from "../contexts/AuthContext";
+import { getItinerary } from "../services/itinerary";
+import { listSavedPlaces, savePlace, unsavePlace } from "../services/places";
 import {
   Plus,
   Sparkles,
@@ -75,12 +78,14 @@ interface Day {
 
 export default function DailyItinerary() {
   const navigate = useNavigate();
+  const { id: tripIdParam } = useParams<{ id: string }>();
+  const { isAuthenticated } = useAuth();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [selectedPin, setSelectedPin] = useState<number | null>(null);
   const [savedSuggestions, setSavedSuggestions] = useState<string[]>([]);
   const [viewingPlace, setViewingPlace] = useState<Suggestion | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<"suggestions" | "map">("suggestions");
-  
+
   // AI Chat state
   const [showAIChat, setShowAIChat] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -94,41 +99,65 @@ export default function DailyItinerary() {
   ]);
   const [aiInputValue, setAiInputValue] = useState("");
   
-  // Load trip data from localStorage
+  // Load trip data from BE API
   const [days, setDays] = useState<Day[]>([]);
   const [selectedDayId, setSelectedDayId] = useState<string>("1");
-  
-  // Load data from localStorage on mount
+
+  // Load data from BE API on mount
   useEffect(() => {
-    const savedTrip = localStorage.getItem("currentTrip");
-    if (savedTrip) {
-      try {
-        const tripData = JSON.parse(savedTrip);
+    // If we have a tripId in URL, fetch from API; otherwise fallback to localStorage for demo
+    if (tripIdParam) {
+      getItinerary(Number(tripIdParam)).then((tripData) => {
         if (tripData.days && tripData.days.length > 0) {
-          setDays(tripData.days);
-          setSelectedDayId(tripData.days[0].id.toString());
+          setDays(tripData.days.map((d: any) => ({
+            id: d.id,
+            label: d.label,
+            date: d.date,
+            activities: (d.activities || []).map((a: any) => ({
+              id: a.id,
+              time: a.time,
+              endTime: a.endTime,
+              name: a.name,
+              location: a.location,
+              description: a.description,
+              type: a.type,
+              image: a.image,
+              transportation: a.transportation,
+            })),
+            destinationName: d.destinationName,
+          })));
+          setSelectedDayId(String(tripData.days[0].id));
         }
-      } catch (error) {
+      }).catch((error) => {
         console.error("Error loading trip data:", error);
+      });
+    } else {
+      // Fallback: check localStorage for workspace-passed data
+      const savedTrip = localStorage.getItem("currentTrip");
+      if (savedTrip) {
+        try {
+          const tripData = JSON.parse(savedTrip);
+          if (tripData.days && tripData.days.length > 0) {
+            setDays(tripData.days);
+            setSelectedDayId(tripData.days[0].id.toString());
+          }
+        } catch (error) {
+          console.error("Error loading trip data:", error);
+        }
       }
     }
-    
-    // Load saved places
-    const savedPlaces = localStorage.getItem("savedPlaces");
-    if (savedPlaces) {
-      try {
-        const parsed = JSON.parse(savedPlaces);
-        // Match by name for cross-page bookmark sync
-        const savedNames = parsed.map((p: any) => p.name);
+
+    // Load saved places from API
+    if (isAuthenticated) {
+      listSavedPlaces().then((data) => {
+        const savedNames = data.map((p: any) => p.placeName || p.name);
         const matchedIds = mockSuggestions
           .filter(s => savedNames.includes(s.name))
           .map(s => s.id);
         setSavedSuggestions(matchedIds);
-      } catch (error) {
-        console.error("Error loading saved places:", error);
-      }
+      }).catch(() => {});
     }
-  }, []);
+  }, [tripIdParam, isAuthenticated]);
   
   // Get selected day data
   const selectedDay = days.find(d => d.id.toString() === selectedDayId);
@@ -152,53 +181,42 @@ export default function DailyItinerary() {
     
   const totalTravelTime = "55 phút";
   
-  const handleToggleSave = (suggestion: Suggestion) => {
-    const user = localStorage.getItem("currentUser");
-    if (!user) {
+  const handleToggleSave = async (suggestion: Suggestion) => {
+    if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
     }
-    
-    const savedPlaces = localStorage.getItem("savedPlaces");
-    let savedPlacesArray: any[] = [];
-    
-    if (savedPlaces) {
-      try {
-        savedPlacesArray = JSON.parse(savedPlaces);
-      } catch (e) {
-        console.error("Error parsing saved places:", e);
-      }
-    }
-    
-    const isAlreadySaved = savedPlacesArray.some(p => p.name === suggestion.name);
-    
+
+    const isAlreadySaved = savedSuggestions.includes(suggestion.id);
+
+    // Optimistic UI update
     if (isAlreadySaved) {
-      // Remove from saved
-      savedPlacesArray = savedPlacesArray.filter(p => p.name !== suggestion.name);
       setSavedSuggestions(prev => prev.filter(id => id !== suggestion.id));
     } else {
-      // Add to saved
-      savedPlacesArray.push({
-        id: suggestion.id,
-        name: suggestion.name,
-        type: suggestion.type,
-        rating: suggestion.rating,
-        reviewCount: suggestion.reviewCount,
-        distance: suggestion.distance,
-        estimatedCost: suggestion.estimatedCost,
-        priceLevel: suggestion.priceLevel,
-        image: suggestion.image,
-        description: suggestion.description,
-        address: suggestion.address,
-        openingHours: suggestion.openingHours,
-        phone: suggestion.phone,
-        website: suggestion.website,
-        savedAt: new Date().toISOString(),
-      });
       setSavedSuggestions(prev => [...prev, suggestion.id]);
     }
-    
-    localStorage.setItem("savedPlaces", JSON.stringify(savedPlacesArray));
+
+    try {
+      if (isAlreadySaved) {
+        const savedList = await listSavedPlaces();
+        const match = savedList.find((p: any) => (p.placeName || p.name) === suggestion.name);
+        if (match) await unsavePlace(match.id);
+      } else {
+        await savePlace({
+          placeId: 0,
+          placeName: suggestion.name,
+          placeType: suggestion.type,
+          city: suggestion.city || "",
+        });
+      }
+    } catch {
+      // Revert on failure
+      if (isAlreadySaved) {
+        setSavedSuggestions(prev => [...prev, suggestion.id]);
+      } else {
+        setSavedSuggestions(prev => prev.filter(id => id !== suggestion.id));
+      }
+    }
   };
 
   const handleAddToItinerary = (suggestion: any, date: string, time: string) => {

@@ -51,6 +51,7 @@ import { useActivityManager } from "../hooks/trips/useActivityManager";
 import { useAccommodation } from "../hooks/trips/useAccommodation";
 import { usePlacesManager } from "../hooks/trips/usePlacesManager";
 import { useTripSync } from "../hooks/trips/useTripSync";
+import { listSavedPlaces } from "../services/places";
 // Khởi tạo ID (để tránh lỗi khi tạo hoạt động mới)
 let nextId = 500;
 const updateNextId = (id: number) => { nextId = Math.max(nextId, id); };
@@ -412,18 +413,14 @@ export default function TripWorkspace() {
           isOpen={showSavedSuggestions}
           onClose={() => {
             setShowSavedSuggestions(false);
-            // Re-sync bookmark state from localStorage
-            const savedPlacesData = localStorage.getItem("savedPlaces");
-            if (savedPlacesData) {
-              try {
-                const savedPlacesArray = JSON.parse(savedPlacesData);
-                const savedNames = new Set(savedPlacesArray.map((p: any) => p.name));
-                setPlaces(prev => prev.map(p => ({
-                  ...p,
-                  saved: savedNames.has(p.name),
-                })));
-              } catch (e) {}
-            }
+            // Re-sync bookmark state from API
+            listSavedPlaces().then((data) => {
+              const savedNames = new Set(data.map((p: any) => p.placeName || p.name));
+              setPlaces(prev => prev.map(p => ({
+                ...p,
+                saved: savedNames.has(p.name),
+              })));
+            }).catch(() => {});
           }}
           suggestions={savedSuggestions}
           onAddToItinerary={handleAddSuggestionToItinerary}
@@ -471,18 +468,14 @@ export default function TripWorkspace() {
           onClose={() => {
             setShowPlaceSelectionModal(false);
             setSelectedDayForPlaces(null);
-            // Re-sync bookmark state from localStorage after modal closes
-            const savedPlacesData = localStorage.getItem("savedPlaces");
-            if (savedPlacesData) {
-              try {
-                const savedPlacesArray = JSON.parse(savedPlacesData);
-                const savedNames = new Set(savedPlacesArray.map((p: any) => p.name));
-                setPlaces(prev => prev.map(p => ({
-                  ...p,
-                  saved: savedNames.has(p.name),
-                })));
-              } catch (e) {}
-            }
+            // Re-sync bookmark state from API after modal closes
+            listSavedPlaces().then((data) => {
+              const savedNames = new Set(data.map((p: any) => p.placeName || p.name));
+              setPlaces(prev => prev.map(p => ({
+                ...p,
+                saved: savedNames.has(p.name),
+              })));
+            }).catch(() => {});
           }}
           currentDayLabel={days.find((d) => d.id === selectedDayForPlaces)?.label || ""}
           onAddPlace={handleAddPlaceFromModal}

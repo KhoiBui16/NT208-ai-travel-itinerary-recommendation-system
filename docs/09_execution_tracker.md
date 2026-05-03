@@ -10,7 +10,8 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00003 | B3 | `feat/00003-b3-places-cache` | Places, destinations, saved places, Redis cache | merged | passed | #4 |
 | 00004 | D | `feat/00004-d-etl-pipeline` | ETL extract/transform/load foundation | merged | passed | #5 |
 | 00005 | D | `fix/00005-d-etl-backend-readiness` | ETL schema, local readiness, CI frontend build | merged | passed | #6 |
-| 00006 | D | `docs/00006-d-docs-cleanup` | Dọn legacy docs, mở rộng docs FE/BE/phase/test, thêm full-stack smoke script, fix lỗi CRUD bắt được khi smoke | review_ready | passed with FE build sandbox note | pending |
+| 00006 | D | `docs/00006-d-docs-cleanup` | Dọn legacy docs, mở rộng docs FE/BE/phase/test, thêm full-stack smoke script, fix lỗi CRUD bắt được khi smoke | merged | passed | #7 |
+| 00007 | B3 | `fix/00007-b3-fe-api-fixes` | Nối FE localStorage còn sót sang BE API, cập nhật README/tracker | wip | FE build pass | pending |
 
 ## Scope Task 00006
 
@@ -33,7 +34,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 - Tạo `ProtectedRoute` (`Frontend/src/app/components/ProtectedRoute.tsx`) cho 7 protected routes.
 - Nối FE-BE: Login, Register, Account, TripLibrary, SavedPlaces, ManualTripSetup, Header, usePlacesManager — thay localStorage bằng API calls.
 - Cập nhật `docs/04_frontend.md` với API integration status.
-- 110 BE tests pass (66 unit + 44 integration). FE build pass.
+- 108 BE tests pass (66 unit + 42 integration). FE build pass.
 
 Review-ready khi:
 

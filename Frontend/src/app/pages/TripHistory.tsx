@@ -2,7 +2,8 @@ import { Link, useNavigate } from "react-router";
 import { Header } from "../components/Header";
 import { MapPin, Calendar, DollarSign, Clock, TrendingUp, Edit2, Eye, FileText, Trash2, X, Check, LogIn } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getCurrentUser } from "../utils/auth";
+import { useAuth } from "../contexts/AuthContext";
+import { listItineraries, updateItinerary, deleteItinerary } from "../services/itinerary";
 
 interface SavedTrip {
   id: string;
@@ -24,40 +25,40 @@ export default function TripHistory() {
   const [trips, setTrips] = useState<SavedTrip[]>([]);
   const [editingTripId, setEditingTripId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  
+
   // Delete mode states
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedTrips, setSelectedTrips] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Check login status
-  useEffect(() => { // TODO: Gọi API GET /api/trips/saved để lấy danh sách lịch trình đã lưu thực tế. Hiện tại đang dùng localStorage để demo.
-    const user = getCurrentUser();
-    setIsLoggedIn(!!user);
-  }, []);
+  const { isAuthenticated } = useAuth();
 
-  // Lấy dữ liệu từ localStorage và sắp xếp mới nhất lên đầu
+  // Fetch trips from BE API
   useEffect(() => {
-    if (!isLoggedIn) return;
-    
-    const savedTripsData = localStorage.getItem("savedTrips");
-    if (savedTripsData) {
-      try {
-        const parsedTrips = JSON.parse(savedTripsData);
-        
-        // SẮP XẾP: Lịch trình có createdAt lớn hơn (mới hơn) sẽ lên đầu
-        parsedTrips.sort((a: SavedTrip, b: SavedTrip) => b.createdAt - a.createdAt);
-        
-        setTrips(parsedTrips);
-      } catch (e) {
-        console.error("Error loading trips:", e);
-        setTrips([]);
-      }
-    } else {
+    if (!isAuthenticated) return;
+
+    listItineraries(1, 100).then((data) => {
+      const mapped: SavedTrip[] = (data.items || []).map((trip: any) => ({
+        id: String(trip.id),
+        name: trip.tripName || trip.destination,
+        createdAt: new Date(trip.createdAt).getTime(),
+        cities: [trip.destination],
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        days: trip.days?.length || 0,
+        estimatedCost: trip.budget || 0,
+        status: "planning" as const,
+        coverImage: trip.coverImage || "",
+        tripData: trip,
+      }));
+      mapped.sort((a, b) => b.createdAt - a.createdAt);
+      setTrips(mapped);
+    }).catch((e) => {
+      console.error("Error loading trips:", e);
       setTrips([]);
-    }
-  }, [isLoggedIn]);
+    });
+  }, [isAuthenticated]);
 
   const filteredTrips =
     filter === "all"
@@ -73,22 +74,22 @@ export default function TripHistory() {
     setEditingName(currentName);
   };
 
-  const handleSaveName = (tripId: string) => {
+  const handleSaveName = async (tripId: string) => {
     const updatedTrips = trips.map((trip) =>
       trip.id === tripId ? { ...trip, name: editingName } : trip
     );
     setTrips(updatedTrips);
-    localStorage.setItem("savedTrips", JSON.stringify(updatedTrips));
     setEditingTripId(null);
+    try {
+      await updateItinerary(Number(tripId), { tripName: editingName });
+    } catch {
+      // Revert on failure
+      setTrips(trips);
+    }
   };
 
   const handleViewDetails = (trip: SavedTrip) => {
-    // Save the trip data to localStorage so daily-itinerary can access it
-    if (trip.tripData) {
-      localStorage.setItem("currentTrip", JSON.stringify(trip.tripData));
-      localStorage.setItem("selectedTripId", trip.id);
-    }
-    navigate("/daily-itinerary");
+    navigate(`/itinerary/${trip.id}`);
   };
 
   const handleStartDeleteMode = (tripId: string) => {
@@ -113,13 +114,16 @@ export default function TripHistory() {
     setShowDeleteConfirm(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     const updatedTrips = trips.filter(trip => !selectedTrips.includes(trip.id));
     setTrips(updatedTrips);
-    localStorage.setItem("savedTrips", JSON.stringify(updatedTrips));
     setShowDeleteConfirm(false);
     setIsSelectionMode(false);
     setSelectedTrips([]);
+    // Delete via API in parallel
+    await Promise.allSettled(
+      selectedTrips.map(id => deleteItinerary(Number(id)))
+    );
   };
 
   const cancelDelete = () => {
@@ -127,7 +131,7 @@ export default function TripHistory() {
   };
 
   // Show login prompt if not logged in
-  if (!isLoggedIn) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-orange-50">
         <Header />

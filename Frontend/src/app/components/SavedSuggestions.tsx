@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Star, MapPin, Bookmark, Plus, Calendar, Clock } from "lucide-react";
+import { listSavedPlaces, unsavePlace } from "../services/places";
 export interface SavedSuggestion {
   id: string;
   name: string;
@@ -51,36 +52,42 @@ export function SavedSuggestions({
   const [selectedDayIdx, setSelectedDayIdx] = useState("0");
   const [selectedTime, setSelectedTime] = useState("09:00");
 
-  // Load bookmarked places from localStorage
+  // Load bookmarked places from BE API
   useEffect(() => {
     if (!isOpen) return;
-    const data = localStorage.getItem("savedPlaces"); // TODO: Fetch saved places from API
-    if (data) {
-      try {
-        const parsed: SavedPlace[] = JSON.parse(data);
-        setSavedPlaces(parsed.filter((p) => p.isBookmarked !== false));
-      } catch (e) {
-        setSavedPlaces([]);
-      }
-    } else {
+    listSavedPlaces().then((data) => {
+      const mapped: SavedPlace[] = data.map((p: any) => ({
+        id: String(p.id),
+        name: p.placeName || p.name,
+        type: p.placeType || "attraction",
+        rating: p.rating || 0,
+        reviewCount: 0,
+        estimatedCost: "",
+        priceLevel: "",
+        image: p.image || "",
+        description: p.description || "",
+        address: p.city || "",
+        savedAt: p.savedAt || new Date().toISOString(),
+        isBookmarked: true,
+      }));
+      setSavedPlaces(mapped);
+    }).catch(() => {
       setSavedPlaces([]);
-    }
+    });
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleRemoveBookmark = (placeName: string) => {
-    // Remove from localStorage
-    const data = localStorage.getItem("savedPlaces"); // TODO: Fetch saved places from API
-    if (data) {
-      try {
-        let arr = JSON.parse(data);
-        arr = arr.filter((p: any) => p.name !== placeName);
-        localStorage.setItem("savedPlaces", JSON.stringify(arr));
-      } catch (e) {}
-    }
-    // Remove from local state
+  const handleRemoveBookmark = async (placeName: string) => {
+    // Optimistic remove from local state
     setSavedPlaces((prev) => prev.filter((p) => p.name !== placeName));
+    try {
+      const savedList = await listSavedPlaces();
+      const match = savedList.find((p: any) => (p.placeName || p.name) === placeName);
+      if (match) await unsavePlace(match.id);
+    } catch {
+      // Revert handled by next open sync
+    }
   };
 
   const handleConfirmAdd = () => {
