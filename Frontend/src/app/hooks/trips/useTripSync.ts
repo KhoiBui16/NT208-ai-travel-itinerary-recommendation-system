@@ -3,8 +3,7 @@ import { format, addDays, parseISO } from "date-fns";
 import { vi } from "date-fns/locale";
 import { toast } from "sonner";
 import { Day, Accommodation, TravelerInfo, Place, Activity, ExtraExpense, DayExtraExpense } from "../../types/trip.types";
-import { useAuth } from "../../contexts/AuthContext";
-import { listItineraries, getItinerary, createItinerary, updateItinerary, ItineraryResponse } from "../../services/itinerary";
+import { getItinerary, createItinerary, updateItinerary } from "../../services/itinerary";
 
 export const useTripSync = (
   days: Day[],
