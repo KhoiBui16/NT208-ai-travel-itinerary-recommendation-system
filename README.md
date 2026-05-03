@@ -39,7 +39,7 @@ Not complete yet:
 │   ├── .env.example          # Local env template
 │   └── README.md             # Backend-specific notes
 ├── Frontend/                 # Vite React frontend
-├── plan/                     # Long-form BE/AI/ETL roadmap and tracker
+├── docs/                     # Project documentation source of truth
 ├── .claude/context/          # Condensed operational plan for agents
 ├── docker-compose.yml        # API + PostgreSQL + Redis
 ├── CLAUDE.md                 # Agent memory for this repo
@@ -358,7 +358,7 @@ Then update frontend API config if the FE code expects port `8000`.
 - Decide whether to add a real frontend service to `docker-compose.yml`.
 - Expand FE mock data or connect all city/hotel/place views fully to BE APIs.
 - Run final full-stack verification after API keys are configured.
-- Keep `plan/17_execution_tracker.md` updated for every branch/PR.
+- Keep `docs/09_execution_tracker.md` updated for every branch/PR.
 
 ---
 
@@ -367,8 +367,10 @@ Then update frontend API config if the FE code expects port `8000`.
 | File | Purpose |
 |---|---|
 | `Backend/README.md` | Backend quick start and gates |
-| `plan/15_todo_checklist.md` | Long task checklist |
-| `plan/17_execution_tracker.md` | Execution tracker by branch/task |
+| `docs/README.md` | Documentation index |
+| `docs/01_overview.md` | MVP2 status and remaining work |
+| `docs/02_architecture.md` | System architecture |
+| `docs/09_execution_tracker.md` | Execution tracker by branch/task |
 | `.claude/context/00_project_overview.md` | Condensed current project truth |
 | `CLAUDE.md` | Agent/project memory |
 | `AGENTS.md` | Agent and skill coordination |

@@ -2,55 +2,47 @@
 
 ## Purpose
 
-Tom tat scope Auth + Users de implement dung contract, dung security, dung test gate.
+Tóm tắt auth/user flow đã implement và rule an toàn khi sửa.
 
 ## Current truth
 
-- MVP1 chi co auth/user flow co ban
-- Chua co refresh token flow day du
-- Chua co logout revoke that
-- FE moi can profile flow ro hon
+- Auth/users đã có register, login, refresh, logout, profile, update profile, change password.
+- Refresh token lưu hash trong DB.
+- JWT dependency lấy `current_user`, không tin user id từ client.
 
 ## Target state
 
-- Auth core: register, login, refresh, logout
-- User core: get profile, update profile, change password
-- Access token ngan, refresh token dai va revoke duoc
+- Token rotation rõ ràng.
+- Logout revoke refresh token.
+- Profile endpoints owner-only theo current user.
 
 ## Key invariants
 
-- Public JSON dung camelCase
-- Khong tra password hash hoac secret fields trong response
-- Refresh token nen luu hash trong DB, revoke khi logout
-- Moi endpoint user profile phai dua tren `current_user`, khong tin client-provided user id
-- Test logic moi bang unit test; endpoint moi bang integration test
+- Không lưu raw refresh token.
+- Password luôn hash bằng helper security.
+- Không expose secret/token trong log.
+- Response public vẫn camelCase.
 
 ## Do next
 
-- Tao schemas auth/user request-response
-- Tao repository cho user + refresh token
-- Tao service cho register/login/refresh/logout/profile/password
-- Tao router va dependency auth
-- Viet unit tests cho security/auth service
-- Viet integration tests cho auth/user endpoints
+- Khi sửa auth, chạy unit + integration auth tests.
+- Khi sửa token model, chạy Alembic + security tests.
+- Cập nhật docs nếu đổi TTL/env/config.
 
 ## Do not do
 
-- Khong tai su dung schema chung lam response cho moi use case
-- Khong luu refresh token raw neu da chot hash strategy
-- Khong bo qua revoke/logout flow
-- Khong de endpoint profile phu thuoc vao user id tu FE
+- Không nhận `userId` từ client để update profile.
+- Không bypass inactive/revoked token.
+- Không commit `.env`.
 
 ## Acceptance checkpoints
 
-- Register/login/refresh/logout/profile/password hoat dong
-- Token flow ro rang va revoke duoc
-- Response khop naming rules
-- Unit + integration tests pass theo pham vi auth/users
+- `tests/unit/test_auth_service.py` pass.
+- `tests/unit/test_user_service.py` pass.
+- `tests/integration/test_auth_endpoints.py` pass.
 
 ## Read more
 
-- `../../plan/03_be_refactor_plan.md`
-- `../../plan/12_be_crud_endpoints.md`
-- `../../plan/16_unit_test_specs.md`
-- `../../plan/08_coding_standards.md`
+- `../../docs/03_backend.md`
+- `../../docs/07_workflow_ci.md`
+- `../../docs/08_testing_local_run.md`
