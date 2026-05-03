@@ -26,11 +26,14 @@ Các file MVP1 cũ như `Backend/BE_docs.md` và folder `Backend/app/` không c�
 
 ## Endpoint groups đã có
 
-- Health: `/api/v1/health`
-- Auth: register, login, refresh, logout.
-- Users: profile, update profile, password.
-- Itineraries: create/list/get/update/delete, nested day/activity/accommodation, share, claim, rating.
-- Places: destinations, place search/detail, saved places.
+- Health: `/api/v1/health` (1 endpoint)
+- Auth: register, login, refresh, logout (4 endpoints)
+- Users: profile, update profile, password (3 endpoints)
+- Itineraries: create/list/get/update/delete, generate, nested day/activity/accommodation, share, claim, rating (16 endpoints)
+- Shared: public read by shareToken (1 endpoint)
+- Places: destinations, destination detail, search, detail, saved places CRUD (8 endpoints)
+
+**Total: 33 endpoints** (EP-34 `/agent/analytics` optional cho MVP2+)
 
 ## Security rules
 
@@ -57,8 +60,8 @@ ANALYTICS_DATABASE_URL=
 
 ## Backend còn thiếu
 
-- AI generate pipeline thật.
+- AI generate pipeline thật (stub hiện tại tạo empty trip).
 - AI companion chat.
+- Password reset endpoint cho `ForgotPassword` FE.
 - Analytics optional EP-34 với SQL guardrails.
-- FE-BE full integration pass cho mọi mock flow.
 

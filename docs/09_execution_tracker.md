@@ -78,3 +78,9 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 - Full ETL real data sau khi có `GOONG_API_KEY`.
 - Phase C AI services (generate pipeline, companion chat, chat history).
 - Optional analytics EP-34 nếu cần.
+
+## FE-BE Integration Status (2026-05-04)
+
+Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
+
+Tóm tắt: 33 BE endpoints, 110 BE tests (66 unit + 44 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback.

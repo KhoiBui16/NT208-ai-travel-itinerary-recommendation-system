@@ -83,3 +83,20 @@ uv run python -m src.etl --hotels-only --cities "Hà Nội"
 - FE dev server trả HTTP 200 ở `/`.
 - Docker API container health endpoint trả healthy.
 
+## FE verification
+
+```powershell
+cd Frontend
+npm run build
+```
+
+FE build phải pass (production bundle). Không có FE unit/e2e test runner hiện tại — Playwright/Cypress sẽ thêm sau.
+
+## Full-stack smoke script
+
+```powershell
+.\scripts\test_fullstack_smoke.ps1
+```
+
+Kiểm 16 luồng HTTP thật: health, auth, profile, trip CRUD, share/claim, places, FE home. Xem chi tiết kịch bản tại `docs/10_automation_testing_report.md`.
+

@@ -17,23 +17,29 @@ This README is the single source of truth for running the project locally.
 - Share/claim: public `shareToken`, one-time `claimToken` with hash + expiry.
 - Places: destinations, destination detail, place search/detail, saved places, Redis read cache.
 - ETL: OSM/Goong extractors, transformers, DB upsert loader, sample hotel data.
-- **24 API endpoints** registered, 108 tests (66 unit + 42 integration) passing.
+- **33 API endpoints** registered, 110 tests (66 unit + 44 integration) passing.
 
 ### Implemented (FE)
 
 - UI under `Frontend/` with Vite + React + TypeScript + Tailwind/MUI.
-- Routes for home, city list/detail, auth, trip setup, workspace, history, saved places, settings.
-- API client layer with JWT auto-refresh (`Frontend/src/app/services/`).
-- Auth, profile, trip list, saved places connected to backend API.
-- `AuthContext` manages JWT state; 7 protected routes redirect to `/login`.
+- Full route set: home, city list/detail, auth, trip setup/workspace, history, saved places/itineraries, settings, profile, shared trip view.
+- API client layer with JWT auto-refresh (`Frontend/src/app/services/`): `api.ts`, `auth.ts`, `itinerary.ts`, `places.ts`, `users.ts`.
+- `AuthContext` manages JWT state + guest-to-owner claim flow; **8 protected routes** redirect to `/login`.
+- `TripWizardContext` replaces 6 sessionStorage keys for wizard flow (destinations, allocations, travelers, budget).
+- `useTripSync` auto-saves via BE API (`createItinerary`/`updateItinerary`); sessionStorage only as quick-restore cache.
+- `useActivityManager`/`useAccommodation`/`usePlacesManager` — optimistic CRUD with revert-on-failure.
+- `CreateTrip` wired to `createItinerary` API, navigates to TripWorkspace with `tripId`.
+- `ErrorBoundary` wraps entire app for graceful crash recovery.
 - Type contract at `Frontend/src/app/types/trip.types.ts`.
 - Builds successfully (production bundle 1.1 MB).
 
 ### Not yet implemented
 
 - **Phase C AI**: `POST /itineraries/generate` is a stub (creates empty trip, no LLM call). No companion chat, no patch-confirm flow, no chat history API.
-- **FE-BE integration**: Auth, profile, trip list, and saved places are connected. Trip workspace auto-save and budget still use localStorage. See [FE-BE Status](#fe-be-integration-status) below.
+- `ItineraryView` lacks share button — share flow lives in `TopActionBar` of TripWorkspace.
+- `ForgotPassword` has UI but BE endpoint for password reset is missing.
 - Full ETL with real place data needs `GOONG_API_KEY`.
+- No Playwright/Cypress or FE unit test runner.
 
 ---
 
@@ -124,7 +130,7 @@ uv run alembic upgrade head
 uv run uvicorn src.main:app --reload --port 8000
 ```
 
-Verify: open http://localhost:8000/docs — you should see Swagger UI with 24 endpoints.
+Verify: open http://localhost:8000/docs — you should see Swagger UI with 33 endpoints.
 
 ### Step 4: Start Frontend
 
@@ -295,7 +301,7 @@ uv run uvicorn src.main:app --reload --port 8001
 
 ## FE-BE Integration Status
 
-All FE pages now connect to the backend via an API client layer (`Frontend/src/app/services/`). JWT tokens are stored in `localStorage` (access + refresh) with auto-refresh on 401. The legacy `utils/auth.ts` mock is no longer imported by any page.
+All FE pages connect to the backend via an API client layer (`Frontend/src/app/services/`). JWT tokens are stored in `localStorage` (access + refresh) with auto-refresh on 401. The legacy `utils/auth.ts` mock is no longer imported by any page.
 
 | FE Feature | Status | API Endpoint |
 |---|---|---|
@@ -304,18 +310,23 @@ All FE pages now connect to the backend via an API client layer (`Frontend/src/a
 | Password change | Done | `PUT /users/password` |
 | Trip CRUD (list/create/update/delete) | Done | `POST /itineraries`, `GET /itineraries`, `PUT /itineraries/{id}`, `DELETE /itineraries/{id}` |
 | Trip rating | Done | `PUT /itineraries/{id}/rating` |
+| CreateTrip | Done | `POST /itineraries` → navigate `/trip-workspace?tripId=` |
+| Trip workspace auto-save | Done | `POST/PUT /itineraries` via `useTripSync` |
+| Activity CRUD (add/update/delete) | Done | `POST/PUT/DELETE /itineraries/{id}/activities/{aid}` |
+| Accommodation CRUD (add/delete) | Done | `POST/DELETE /itineraries/{id}/accommodations/{aid}` |
+| Places search (debounced 300ms) | Done | `GET /places/search?query=...&city=...` |
 | Places/saved (all pages) | Done | `GET /places/saved`, `POST /places/saved`, `DELETE /places/saved/{id}` |
-| Trip workspace save | Done | `PUT /itineraries/{id}` via `useTripSync` |
-| Destinations | Hardcoded | `GET /places/destinations` (pending ETL data) |
-| Trip share | Backend ready | `POST /itineraries/{id}/share`, `GET /shared/{token}` |
-| Guest claim | Backend ready | `POST /itineraries/{id}/claim` |
-| Budget | React state | Part of itinerary update |
+| City detail | Done | `GET /places/destinations/{name}` + mock fallback |
+| Share trip | Done | `POST /itineraries/{id}/share` → `TopActionBar` |
+| View shared trip | Done | `GET /shared/{shareToken}` → `SharedTripView` |
+| Guest claim | Done | `POST /itineraries/{id}/claim` → `AuthContext` after login |
+| Destinations list | Hardcoded | `GET /places/destinations` (pending ETL data) |
 | AI generate | Stub | `POST /itineraries/generate` (Phase C) |
 
-**Remaining localStorage usage (acceptable):**
+**Remaining sessionStorage/localStorage usage (acceptable):**
 
-- JWT tokens (`services/api.ts`) — required
-- Wizard flow state (`tripDestinations`, `tripDayAllocations`, `tripTravelers`) — passes data between pages before itinerary exists; no draft endpoint on BE
+- JWT tokens (`services/api.ts`) — required for auth
+- `TripWizardContext` manages wizard flow state in-memory; session survives page navigation within the same tab
 - `currentTrip` cache in `useTripSync` — quick-restore fallback when API fails
 - `userPreferences` in Onboarding — FE-only, no BE endpoint
 
@@ -326,6 +337,9 @@ All FE pages now connect to the backend via an API client layer (`Frontend/src/a
 - Implement Phase C AI direct itinerary pipeline (replace stub with Gemini call).
 - Implement AI companion chat with patch-confirm flow.
 - Persist chat history with `chat_sessions` and `chat_messages`.
+- Add share button to `ItineraryView` (share flow currently in `TopActionBar` only).
+- Implement `ForgotPassword` BE endpoint for password reset.
+- Add Playwright/Cypress for FE e2e tests.
 - Add real `GOONG_API_KEY` for full ETL runs.
 - Keep `docs/09_execution_tracker.md` updated for every branch/PR.
 
@@ -353,9 +367,14 @@ All FE pages now connect to the backend via an API client layer (`Frontend/src/a
 
 ## Team
 
-| Member / Area | Role / Stack |
+| Member | Role |
 |---|---|
 | KhoiBui16 | Leader - Backend - AI |
+| DngChinh9h | Frontend |
+| vanchi-3 | Frontend |
+
+| Area | Stack |
+|---|---|
 | Frontend | React, TypeScript, Vite, Tailwind/MUI |
 | Backend | FastAPI, SQLAlchemy async, Alembic, PostgreSQL |
 | Cache | Redis |
