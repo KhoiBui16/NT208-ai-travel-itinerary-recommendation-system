@@ -46,7 +46,7 @@ Root `index.html` trỏ tới `Frontend/src/main.tsx`, nên lệnh build trong `
 | `/trip-history` | `TripHistory` | API: list/update/delete itineraries (protected) |
 | `/settings` | `Settings` | local UI (protected) |
 | `/daily-itinerary` | `DailyItinerary` | API: getItinerary + sessionStorage fallback |
-| `/create-trip` | `CreateTrip` | cần nối create/generate thật |
+| `/create-trip` | `CreateTrip` | API: createItinerary |
 | `/budget-setup` | `BudgetSetup` | flow FE (TripWizardContext) |
 | `/travelers-selection` | `TravelersSelection` | flow FE (TripWizardContext) |
 | `/manual-trip-setup` | `ManualTripSetup` | API: auth check (protected) |
@@ -213,7 +213,6 @@ Smoke website:
 
 ## Known Gaps
 
-- `CreateTrip` chưa nối `createItinerary`/`generateItinerary` API — vẫn navigate với mock data.
 - `ItineraryView` chưa có share button — share flow nằm trong `TopActionBar` của TripWorkspace.
 - `ForgotPassword` có UI nhưng BE chưa có endpoint password reset.
 - City/hotel/place UI dùng API làm primary, mock làm fallback khi BE không có data.
@@ -242,7 +241,7 @@ Smoke website:
 | CityDetail | `GET /places/destinations/{name}`, `GET/POST/DELETE /places/saved` | Done |
 | DailyItinerary | `GET /itineraries/{id}` + sessionStorage fallback | Done |
 | Header | Auth state via `AuthContext` | Done |
-| CreateTrip | — | Chưa nối API |
+| CreateTrip | `POST /itineraries` (createItinerary) | Done |
 
 Protected routes (8 routes) đã được bọc bằng `ProtectedRoute` — redirect sang `/login` nếu chưa đăng nhập.
 
