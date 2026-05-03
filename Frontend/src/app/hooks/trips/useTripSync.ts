@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { format, addDays, parseISO } from "date-fns";
 import { vi } from "date-fns/locale";
 import { toast } from "sonner";
@@ -35,6 +35,11 @@ export const useTripSync = (
 ) => {
   const isInitialMount = useRef(true);
   const currentTripIdRef = useRef<number | null>(tripIdParam ?? null);
+  const [currentTripId, _setCurrentTripId] = useState<number | null>(tripIdParam ?? null);
+  const setCurrentTripId = (id: number | null) => {
+    currentTripIdRef.current = id;
+    _setCurrentTripId(id);
+  };
   const { destinations: wizardDestinations, dayAllocations: wizardAllocations, budget: wizardBudget, resetWizard } = useTripWizard();
 
   // Sync auth state
@@ -52,7 +57,7 @@ export const useTripSync = (
         try {
           const resp = await getItinerary(tripIdParam);
           if (!isMounted) return;
-          currentTripIdRef.current = resp.id;
+          setCurrentTripId(resp.id);
 
           if (resp.tripName) setTripName(resp.tripName);
           if (resp.budget) setTotalBudget(resp.budget);
@@ -258,7 +263,7 @@ export const useTripSync = (
           endDate: toISODate(days[days.length - 1]?.date) || new Date().toISOString().split("T")[0],
           budget: totalBudget,
         });
-        currentTripIdRef.current = resp.id;
+        setCurrentTripId(resp.id);
 
         // Store claimToken for guest → owner claim after login
         if (resp.claimToken) {
@@ -315,5 +320,5 @@ export const useTripSync = (
     }
   }, [isAuthenticated, tripName, days, accommodations, totalBudget, setShowLoginModal]);
 
-  return { handleSaveItinerary };
+  return { handleSaveItinerary, currentTripId };
 };

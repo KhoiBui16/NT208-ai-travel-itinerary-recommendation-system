@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Accommodation, Hotel, Day } from "../../types/trip.types";
 import { availableHotels } from "../../utils/tripConstants";
+import * as itineraryService from "../../services/itinerary";
 
-export const useAccommodation = (days: Day[], selectedDayId: number) => {
+export const useAccommodation = (days: Day[], selectedDayId: number, tripId: number | null) => {
   const [accommodations, setAccommodations] = useState<Record<number, Accommodation>>({});
   const [showHotelSelection, setShowHotelSelection] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
@@ -46,6 +47,8 @@ export const useAccommodation = (days: Day[], selectedDayId: number) => {
       bookingType: bookingType,
       duration: bookingDuration
     };
+
+    // Optimistic UI update
     setAccommodations((prev) => ({ ...prev, [selectedHotel.id]: newAccommodation }));
     setShowDaySelection(false);
     setSelectedHotel(null);
@@ -53,6 +56,47 @@ export const useAccommodation = (days: Day[], selectedDayId: number) => {
     setShowHotelSelection(false);
     setBookingType('nightly');
     setBookingDuration(1);
+
+    // Fire API call if tripId exists
+    if (tripId) {
+      itineraryService.addAccommodation(tripId, {
+        hotel: selectedHotel,
+        dayIds: selectedDaysForHotel,
+        bookingType: bookingType,
+        duration: bookingDuration,
+        name: selectedHotel.name,
+        pricePerNight: selectedHotel.pricePerNight,
+        totalPrice: selectedHotel.pricePerNight * bookingDuration,
+      }).catch(() => {
+        // Revert on failure — remove the accommodation
+        setAccommodations((prev) => {
+          const next = { ...prev };
+          delete next[selectedHotel.id];
+          return next;
+        });
+      });
+    }
+  };
+
+  const handleDeleteAccommodation = (accKey: number) => {
+    const deleted = accommodations[accKey];
+
+    // Optimistic UI update
+    setAccommodations((prev) => {
+      const next = { ...prev };
+      delete next[accKey];
+      return next;
+    });
+
+    // Fire API call if tripId exists
+    if (tripId && deleted?.id) {
+      itineraryService.deleteAccommodation(tripId, deleted.id).catch(() => {
+        // Revert on failure
+        if (deleted) {
+          setAccommodations((prev) => ({ ...prev, [accKey]: deleted }));
+        }
+      });
+    }
   };
 
   const handleChangeAccommodation = () => {
@@ -78,6 +122,7 @@ export const useAccommodation = (days: Day[], selectedDayId: number) => {
     bookingType, setBookingType,
     bookingDuration, setBookingDuration,
     getAccommodationForDay, getDaysInSameCity, getHotelsForCity,
-    handleSelectHotel, handleConfirmAccommodation, handleChangeAccommodation
+    handleSelectHotel, handleConfirmAccommodation, handleChangeAccommodation,
+    handleDeleteAccommodation
   };
 };

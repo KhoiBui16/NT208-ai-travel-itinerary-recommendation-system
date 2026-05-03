@@ -66,6 +66,7 @@ export default function TripWorkspace() {
   const [searchParams] = useSearchParams();
   const tripIdParam = searchParams.get("tripId");
   const { isAuthenticated: authIsAuthenticated } = useAuth();
+  const [tripId, setTripId] = useState<number | null>(tripIdParam ? Number(tripIdParam) : null);
   const [days, setDays] = useState<Day[]>(initialDays);
   const [selectedDayId, setSelectedDayId] = useState(1);
 
@@ -77,7 +78,7 @@ export default function TripWorkspace() {
     places, setPlaces, placeSearch, setPlaceSearch, activeFilter, setActiveFilter,
     showSavedSuggestions, setShowSavedSuggestions, savedSuggestions, setSavedSuggestions,
     filteredPlaces, handleAddSuggestionToItinerary, handleRemoveSavedSuggestion, toggleSavePlace
-  } = usePlacesManager(days, setDays, selectedDayId, isAuthenticated, setShowLoginModal);
+  } = usePlacesManager(days, setDays, selectedDayId, isAuthenticated, setShowLoginModal, tripId);
   
   // Place Selection Modal state
   const [showPlaceSelectionModal, setShowPlaceSelectionModal] = useState(false);
@@ -111,9 +112,9 @@ export default function TripWorkspace() {
     selectedHotel, setSelectedHotel, showDaySelection, setShowDaySelection,
     selectedDaysForHotel, setSelectedDaysForHotel,
     bookingType, setBookingType, bookingDuration, setBookingDuration,
-    getAccommodationForDay, getHotelsForCity, handleSelectHotel, 
-    handleConfirmAccommodation, handleChangeAccommodation
-  } = useAccommodation(days, selectedDayId);
+    getAccommodationForDay, getHotelsForCity, handleSelectHotel,
+    handleConfirmAccommodation, handleChangeAccommodation, handleDeleteAccommodation
+  } = useAccommodation(days, selectedDayId, tripId);
 
   const {
     calculateHotelCost, calculateActivityCost, calculateDayCost,
@@ -123,7 +124,7 @@ export default function TripWorkspace() {
 
   const updateNextId = (id: number) => { nextId = Math.max(nextId, id); };
 
-  const { handleSaveItinerary } = useTripSync(
+  const { handleSaveItinerary, currentTripId } = useTripSync(
     days, setDays, setSelectedDayId, accommodations, setAccommodations,
     totalBudget, setTotalBudget, setTravelers, setIsAuthenticated, setPlaces,
     isAuthenticated, setShowLoginModal, updateNextId,
@@ -131,13 +132,19 @@ export default function TripWorkspace() {
     tripIdParam ? Number(tripIdParam) : null
   );
 
+  // Sync tripId from useTripSync (e.g. after creating a new itinerary)
+  useEffect(() => {
+    if (currentTripId != null && currentTripId !== tripId) setTripId(currentTripId);
+  }, [currentTripId]);
+
   const {
     draggedIdx, dragOverIdx, detailActivity, editingActivity, timeConflictWarning, viewingPlaceInfo,
     setDetailActivity, setEditingActivity, setOriginalEditingActivity, setTimeConflictWarning, setViewingPlaceInfo,
     handleDragStart, handleDragOver, handleDrop, handleDragEnd,
     handleDeleteActivity, handleViewDetails, checkTimeConflict, handleSaveActivityDetails,
+    addActivityToDay,
     handleAddDayExtraExpenseFromSidebar, handleRemoveDayExtraExpense
-  } = useActivityManager(days, setDays, selectedDayId);
+  } = useActivityManager(days, setDays, selectedDayId, tripId);
 
   // ── Add Place from PlaceSelectionModal ──────────────────────────────────
   const handleAddPlaceFromModal = (place: any) => {
@@ -147,7 +154,7 @@ export default function TripWorkspace() {
     const startTime = lastAct?.endTime || "09:00";
     const startMin = parseTimeToMinutes(startTime);
     const endTime = minutesToTime(startMin + 60);
-    
+
     const act: Activity = {
       id: nextId++,
       name: place.name,
@@ -163,15 +170,9 @@ export default function TripWorkspace() {
       taxiCost: 50000,
       extraExpenses: [],
     };
-    
-    setDays((prev) =>
-      prev.map((day) => {
-        if (day.id !== dayId) return day;
-        const newActivities = [...day.activities, act];
-        return { ...day, activities: resolveTimeConflicts(newActivities) };
-      })
-    );
-    
+
+    addActivityToDay(dayId, act);
+
     setShowPlaceSelectionModal(false);
     setSelectedDayForPlaces(null);
   };
@@ -195,13 +196,7 @@ export default function TripWorkspace() {
       customCost: place.type === "shopping" || place.type === "entertainment" ? 100000 : undefined,
       extraExpenses: [],
     };
-    setDays((prev) =>
-      prev.map((day) => {
-        if (day.id !== dayId) return day;
-        const newActivities = [...day.activities, act];
-        return { ...day, activities: resolveTimeConflicts(newActivities) };
-      })
-    );
+    addActivityToDay(dayId, act);
     setAddPlaceModal(null);
     setSelectedDayId(dayId);
   };
