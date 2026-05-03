@@ -4,26 +4,192 @@ DuLichViet is a web-based travel itinerary system with a React/Vite frontend,
 FastAPI backend, PostgreSQL database, Redis cache, and planned AI itinerary
 generation/chat services.
 
-This README is the main local setup guide for the current MVP2 codebase.
+This README is the single source of truth for running the project locally.
 
 ---
 
 ## Current Status
 
-Implemented:
+### Implemented (BE)
 
-- Frontend revamp UI under `Frontend/` with Vite + React + TypeScript.
-- Backend MVP2 foundation under `Backend/src/` with `uv`, FastAPI, async SQLAlchemy, Alembic, and centralized config.
-- Auth/users, itinerary CRUD, share token, guest claim token, places, saved places, Redis read cache.
-- ETL foundation with OSM/Goong extractors, transformers, DB upsert loader, and sample hotel data.
-- Docker Compose for Backend API + PostgreSQL + Redis.
+- Auth: register, login, refresh-token rotation, logout, profile, change password.
+- Itinerary CRUD: create/list/get/update/delete, nested days/activities/accommodations, owner-only check, rating.
+- Share/claim: public `shareToken`, one-time `claimToken` with hash + expiry.
+- Places: destinations, destination detail, place search/detail, saved places, Redis read cache.
+- ETL: OSM/Goong extractors, transformers, DB upsert loader, sample hotel data.
+- **24 API endpoints** registered, 110 tests (66 unit + 44 integration) passing.
 
-Not complete yet:
+### Implemented (FE)
 
-- Phase C AI services are still pending. `POST /api/v1/itineraries/generate` is still a stub until the direct AI pipeline is implemented.
+- UI under `Frontend/` with Vite + React + TypeScript + Tailwind/MUI.
+- Routes for home, city list/detail, auth, trip setup, workspace, history, saved places, settings.
+- Type contract at `Frontend/src/app/types/trip.types.ts`.
+- Builds successfully (production bundle 1.1 MB).
+
+### Not yet implemented
+
+- **Phase C AI**: `POST /itineraries/generate` is a stub (creates empty trip, no LLM call). No companion chat, no patch-confirm flow, no chat history API.
+- **FE-BE integration**: Frontend currently uses `localStorage` for ALL data (auth, trips, places, budgets). No API client layer exists. See [FE-BE Gap](#fe-be-integration-gap) below.
 - Full ETL with real place data needs `GOONG_API_KEY`.
-- Docker Compose does not yet include a dedicated frontend service. Frontend can be run with host Node.js or a temporary Node Docker container.
-- FE mock datasets are still sparser than the backend ETL data for some cities/hotels/places.
+
+---
+
+## Quick Start (Recommended)
+
+> This is the fastest path to get both FE and BE running on your machine.
+
+### Prerequisites
+
+- **Git**
+- **Docker Desktop** — must be running before any other step
+- **Node.js 20 LTS**
+- **uv** Python package manager
+
+Verify:
+
+```powershell
+git --version
+docker --version
+node --version
+uv --version
+```
+
+### Step 1: Configure environment
+
+```powershell
+copy Backend\.env.example Backend\.env
+```
+
+Edit `Backend/.env` — at minimum set `JWT_SECRET_KEY` to a long random string:
+
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Paste the output into `JWT_SECRET_KEY`. Never commit `Backend/.env`.
+
+Full recommended `.env`:
+
+```env
+# App
+APP_NAME=DuLichViet API
+APP_VERSION=2.0.0
+ENVIRONMENT=development
+APP_DEBUG=true
+FRONTEND_URL=http://localhost:5173
+
+# Local host database and Redis (used when running BE locally)
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet
+REDIS_URL=redis://localhost:6379/0
+
+# Security
+JWT_SECRET_KEY=<paste-your-random-secret-here>
+
+# AI providers (leave empty until Phase C)
+GEMINI_API_KEY=
+GOONG_API_KEY=
+
+# Optional analytics
+ENABLE_ANALYTICS=false
+ANALYTICS_DATABASE_URL=
+```
+
+### Step 2: Start infrastructure (Docker)
+
+Docker only runs PostgreSQL and Redis. BE and FE run natively for fast hot-reload:
+
+```powershell
+docker compose up -d db redis
+```
+
+Verify they are healthy:
+
+```powershell
+docker compose ps
+```
+
+Both `db` and `redis` should show `healthy` status.
+
+### Step 3: Start Backend
+
+Terminal 1:
+
+```powershell
+cd Backend
+uv sync
+uv run alembic upgrade head
+uv run uvicorn src.main:app --reload --port 8000
+```
+
+Verify: open http://localhost:8000/docs — you should see Swagger UI with 24 endpoints.
+
+### Step 4: Start Frontend
+
+Terminal 2:
+
+```powershell
+cd Frontend
+npm ci
+npm run dev
+```
+
+Verify: open http://localhost:5173 — you should see the DuLichViet home page.
+
+---
+
+## When to Use Docker vs Local
+
+| Scenario | Docker | Local (uv + npm) |
+|---|---|---|
+| Daily development | db + redis only | BE + FE |
+| No Python/Node installed | Everything | Not possible |
+| Testing BE hot-reload | No (slow rebuild) | Yes (`--reload`) |
+| Testing FE hot-reload | Possible but slow | Yes (Vite HMR) |
+| CI / production-like | Full `docker compose up --build` | Not applicable |
+
+### Docker-only mode (no Python/Node on host)
+
+If you only have Docker Desktop and Git:
+
+```powershell
+# Start BE + PostgreSQL + Redis
+docker compose up --build
+
+# Start FE in a separate terminal
+docker run --rm -it `
+  --name dulichviet-fe `
+  -p 5173:5173 `
+  -v "${PWD}\Frontend:/app" `
+  -w /app `
+  node:20-alpine `
+  sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+```
+
+The API container runs Alembic migrations automatically before starting Uvicorn.
+
+Stop everything:
+
+```powershell
+docker compose down        # Stop containers, keep data
+docker compose down -v     # Stop and reset database data
+```
+
+### Docker URL rules
+
+When BE runs **inside** Docker Compose, `docker-compose.yml` overrides env vars:
+
+```yaml
+DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/dulichviet
+REDIS_URL: redis://redis:6379/0
+FRONTEND_URL: http://localhost:5173
+```
+
+When BE runs **locally** (recommended), keep `localhost` in `.env`:
+
+```env
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet
+REDIS_URL=redis://localhost:6379/0
+```
 
 ---
 
@@ -39,232 +205,27 @@ Not complete yet:
 │   ├── .env.example          # Local env template
 │   └── README.md             # Backend-specific notes
 ├── Frontend/                 # Vite React frontend
-├── plan/                     # Long-form BE/AI/ETL roadmap and tracker
+├── docs/                     # Project documentation source of truth
 ├── .claude/context/          # Condensed operational plan for agents
 ├── docker-compose.yml        # API + PostgreSQL + Redis
 ├── CLAUDE.md                 # Agent memory for this repo
-└── AGENTS.md                 # Agent/skill coordination guide
+└── AGENTS.md                 # Agent and skill coordination guide
 ```
-
----
-
-## Prerequisites
-
-### Option A: Docker-only minimum
-
-Install:
-
-- Git
-- Docker Desktop
-
-With only Docker, you can run:
-
-- PostgreSQL
-- Redis
-- Backend API container
-- Frontend via a temporary `node:20-alpine` container
-
-### Option B: Full local development
-
-Install:
-
-- Git
-- Docker Desktop
-- Node.js 20 LTS
-- `uv` Python package manager
-
-Recommended checks:
-
-```powershell
-git --version
-docker --version
-node --version
-uv --version
-```
-
----
-
-## Environment Setup
-
-Copy the backend environment template:
-
-```powershell
-copy Backend\.env.example Backend\.env
-```
-
-Never commit `Backend/.env`.
-
-Recommended local `Backend/.env`:
-
-```env
-# App
-APP_NAME=DuLichViet API
-APP_VERSION=2.0.0
-ENVIRONMENT=development
-APP_DEBUG=true
-FRONTEND_URL=http://localhost:5173
-
-# Local host database and Redis
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet
-REDIS_URL=redis://localhost:6379/0
-
-# Security
-JWT_SECRET_KEY=replace-with-a-long-random-secret-for-local-dev
-
-# AI providers
-GEMINI_API_KEY=
-GOONG_API_KEY=
-
-# Optional analytics, keep disabled until guardrails are implemented
-ENABLE_ANALYTICS=false
-ANALYTICS_DATABASE_URL=
-```
-
-Generate a local JWT secret:
-
-```powershell
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-If Python is not installed, use any password/secret generator and paste a long
-random string into `JWT_SECRET_KEY`.
-
-### Redis URL Rules
-
-Use this when running Backend directly on your machine:
-
-```env
-REDIS_URL=redis://localhost:6379/0
-```
-
-Use this inside Docker Compose API container:
-
-```env
-REDIS_URL=redis://redis:6379/0
-```
-
-`docker-compose.yml` already overrides container values:
-
-```yaml
-DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/dulichviet
-REDIS_URL: redis://redis:6379/0
-FRONTEND_URL: http://localhost:5173
-```
-
-So `Backend/.env` can keep `localhost` values for local host development, while
-Compose uses `db` and `redis` service names inside containers.
-
----
-
-## Run With Docker Only
-
-Use this path when the machine only has Docker Desktop and Git.
-
-### 1. Start Backend, PostgreSQL, Redis
-
-```powershell
-docker compose up --build
-```
-
-Open:
-
-- API: http://localhost:8000
-- Swagger: http://localhost:8000/docs
-- Health: http://localhost:8000/api/v1/health
-- PostgreSQL: `localhost:5432`
-- Redis: `localhost:6379`
-
-The API container runs Alembic migrations automatically before starting Uvicorn.
-
-### 2. Run Frontend With Node Docker Container
-
-Open a second terminal at the repo root:
-
-```powershell
-docker run --rm -it `
-  --name dulichviet-fe `
-  -p 5173:5173 `
-  -v "${PWD}\Frontend:/app" `
-  -w /app `
-  node:20-alpine `
-  sh -c "npm ci && npm run dev -- --host 0.0.0.0"
-```
-
-Open:
-
-- Frontend: http://localhost:5173
-
-Stop servers with `Ctrl+C`.
-
-Stop backend containers:
-
-```powershell
-docker compose down
-```
-
-Reset database data if needed:
-
-```powershell
-docker compose down -v
-```
-
----
-
-## Run With Local Node + uv
-
-Use this path for normal development.
-
-### 1. Start Infrastructure
-
-```powershell
-docker compose up -d db redis
-```
-
-### 2. Start Backend
-
-```powershell
-cd Backend
-uv sync
-uv run alembic upgrade head
-uv run uvicorn src.main:app --reload --port 8000
-```
-
-Backend URLs:
-
-- API: http://localhost:8000
-- Swagger: http://localhost:8000/docs
-- Health: http://localhost:8000/api/v1/health
-
-### 3. Start Frontend
-
-Open a new terminal:
-
-```powershell
-cd Frontend
-npm ci
-npm run dev
-```
-
-Frontend URL:
-
-- http://localhost:5173
 
 ---
 
 ## Tests And Verification
 
-Backend gates:
+### Backend lint + unit tests (no Docker needed)
 
 ```powershell
 cd Backend
 uv run ruff check src tests
 uv run ruff format --check src tests
-uv run alembic upgrade head
-uv run alembic check
 uv run pytest tests/unit/ -v
 ```
 
-DB-backed integration tests:
+### Backend integration tests (needs Docker for db + redis)
 
 ```powershell
 docker compose up -d db redis
@@ -273,7 +234,7 @@ $env:CI="true"
 uv run pytest tests/integration/ -v
 ```
 
-Full backend test suite:
+### Full backend suite
 
 ```powershell
 cd Backend
@@ -281,7 +242,7 @@ $env:CI="true"
 uv run pytest tests/ -v
 ```
 
-Frontend build:
+### Frontend build check
 
 ```powershell
 cd Frontend
@@ -292,73 +253,74 @@ npm run build
 
 ## ETL
 
-ETL config lives in:
+ETL config lives in `Backend/config.yaml` and `Backend/src/core/config.py`.
 
-- `Backend/config.yaml`
-- `Backend/src/core/config.py`
-
-Configured values:
-
-- `etl.cities`
-- `etl.update_interval_days`
-- `etl.max_places_per_city`
-
-Load sample hotels without Goong/Google key:
+Load sample hotels (no API key needed):
 
 ```powershell
 cd Backend
 uv run python -m src.etl --hotels-only --cities "Hà Nội"
 ```
 
-Run ETL for selected cities:
+Run ETL for selected cities (needs `GOONG_API_KEY`):
 
 ```powershell
 cd Backend
 uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng"
 ```
 
-Full real-data ETL needs:
-
-```env
-GOONG_API_KEY=your-goong-api-key
-```
-
-Do not commit real API keys.
-
 ---
 
 ## Local Ports
 
-| Service | Local URL / Port |
+| Service | URL / Port |
 |---|---|
 | Frontend | http://localhost:5173 |
 | Backend API | http://localhost:8000 |
-| Swagger | http://localhost:8000/docs |
-| Health | http://localhost:8000/api/v1/health |
+| Swagger UI | http://localhost:8000/docs |
+| Health check | http://localhost:8000/api/v1/health |
 | PostgreSQL | localhost:5432 |
 | Redis | localhost:6379 |
 
-If port `8000` is blocked on Windows, run Backend on another port:
+If port `8000` is blocked, run BE on another port:
 
 ```powershell
-cd Backend
 uv run uvicorn src.main:app --reload --port 8001
 ```
 
-Then update frontend API config if the FE code expects port `8000`.
+---
+
+## FE-BE Integration Gap
+
+The frontend currently runs as a **standalone mock app** — no API calls are made to the backend. All data is stored in `localStorage`:
+
+| FE Feature | Current (localStorage) | Should call BE API |
+|---|---|---|
+| Auth (login/register/logout) | `localStorage.currentUser` + `localStorage.users` + `localStorage.password_*` | `POST /auth/login`, `POST /auth/register`, `POST /auth/logout` |
+| User profile | `localStorage.currentUser` | `GET /users/profile`, `PUT /users/profile` |
+| Password change | Not implemented | `PUT /users/password` |
+| Trip CRUD | `localStorage.currentTrip` + `localStorage.savedTrips` | `POST /itineraries`, `GET /itineraries`, `PUT /itineraries/{id}`, `DELETE /itineraries/{id}` |
+| Trip share | Not implemented | `POST /itineraries/{id}/share`, `GET /shared/{token}` |
+| Guest claim | Not implemented | `POST /itineraries/{id}/claim` |
+| Places/saved | `localStorage.savedPlaces` | `GET /places/search`, `POST /places/saved`, `DELETE /places/saved/{id}` |
+| Destinations | Hardcoded `data/destinations.ts` | `GET /places/destinations` |
+| Budget | `localStorage.tripBudget` | Part of itinerary update |
+
+To connect FE to BE, the frontend needs:
+1. An API client layer (e.g., `fetch` wrapper with JWT Bearer token)
+2. Replace each `localStorage` call with the corresponding API call
+3. Handle JWT token storage (access token in memory or httpOnly cookie, refresh token securely)
 
 ---
 
-## What Still Needs To Be Added
+## What Still Needs To Be Done
 
-- Add real `GOONG_API_KEY` for full ETL runs.
-- Implement Phase C AI direct itinerary pipeline.
+- Implement Phase C AI direct itinerary pipeline (replace stub with Gemini call).
 - Implement AI companion chat with patch-confirm flow.
 - Persist chat history with `chat_sessions` and `chat_messages`.
-- Decide whether to add a real frontend service to `docker-compose.yml`.
-- Expand FE mock data or connect all city/hotel/place views fully to BE APIs.
-- Run final full-stack verification after API keys are configured.
-- Keep `plan/17_execution_tracker.md` updated for every branch/PR.
+- Create FE API client layer and replace all `localStorage` usage with real API calls.
+- Add real `GOONG_API_KEY` for full ETL runs.
+- Keep `docs/09_execution_tracker.md` updated for every branch/PR.
 
 ---
 
@@ -367,8 +329,15 @@ Then update frontend API config if the FE code expects port `8000`.
 | File | Purpose |
 |---|---|
 | `Backend/README.md` | Backend quick start and gates |
-| `plan/15_todo_checklist.md` | Long task checklist |
-| `plan/17_execution_tracker.md` | Execution tracker by branch/task |
+| `docs/01_overview.md` | MVP2 status, reading order, doc rules |
+| `docs/02_architecture.md` | System architecture |
+| `docs/03_backend.md` | Backend modules, endpoints, flows |
+| `docs/04_frontend.md` | Frontend routes, mock/API integration status |
+| `docs/05_database_etl.md` | Database, Redis, ETL details |
+| `docs/06_backend_phases.md` | Implemented Backend phases |
+| `docs/08_testing_local_run.md` | Local run and test guide |
+| `docs/09_execution_tracker.md` | Execution tracker by branch/task |
+| `docs/10_automation_testing_report.md` | Latest automation testing report |
 | `.claude/context/00_project_overview.md` | Condensed current project truth |
 | `CLAUDE.md` | Agent/project memory |
 | `AGENTS.md` | Agent and skill coordination |
@@ -377,8 +346,9 @@ Then update frontend API config if the FE code expects port `8000`.
 
 ## Team
 
-| Area | Stack |
+| Member / Area | Role / Stack |
 |---|---|
+| KhoiBui16 | Leader - Backend - AI |
 | Frontend | React, TypeScript, Vite, Tailwind/MUI |
 | Backend | FastAPI, SQLAlchemy async, Alembic, PostgreSQL |
 | Cache | Redis |

@@ -2,66 +2,66 @@
 
 ## Purpose
 
-Tom tat ticket workflow, branch/commit/PR rules, tracker, va GitHub quality gates de Claude khong lam lech process.
+Tóm tắt branch/commit/PR/CI sau cleanup docs.
 
 ## Current truth
 
-- Repo da co plan branch/commit/PR/CI rules moi
-- `plan/17_execution_tracker.md` track thuc thi hang ngay
-- `.github/` da co quality-gate docs/workflows cho local-first setup
+- Tracker mới: `docs/09_execution_tracker.md`.
+- Docs chính: `docs/`.
+- GitHub Actions có PR policy, backend CI và frontend build.
 
 ## Target state
 
-- Moi ticket di tren branch rieng `type/task-phase-scope`
-- Moi PR duoc squash thanh 1 commit cuoi sach
-- `main` chi nhan code qua PR
-- GitHub rules block direct push va chi merge khi checks pass, khong conflict
+- Mỗi ticket đi trên branch riêng.
+- Final branch có 1 commit sạch.
+- PR body đúng template.
+- `main` chỉ merge khi required checks pass và ruleset thỏa.
 
 ## Key invariants
 
-- Branch regex:
+Branch regex:
 
 ```text
 ^(feat|fix|docs|style|refactor|chore)\/[0-9]+-(a|b1|b2|b3|c|d)-[a-z0-9-]+$
 ```
 
-- Final commit format:
+Commit format:
 
 ```text
 <type>: [#<Task-ID>] <description>
 ```
 
-- PR title = final squash commit title
-- Required checks:
-  - `pr-policy`
-  - `backend-lint`
-  - `backend-unit`
-  - `backend-integration`
-  - `backend-migrations`
+Required checks:
+
+- `pr-policy`
+- `backend-lint`
+- `backend-unit`
+- `backend-integration`
+- `backend-migrations`
+- `frontend-build`
 
 ## Do next
 
-- Cap nhat tracker row truoc va sau khi code
-- Chay local verification phu hop voi scope ticket
-- Dong bo docs neu quyet dinh lon doi
-- Chi mo PR khi branch da squash va template day du
+- Cập nhật `docs/09_execution_tracker.md`.
+- Chạy local verification theo scope.
+- Squash/amend còn 1 commit trước PR.
+- Check CI/CD sau khi PR mở.
 
 ## Do not do
 
-- Khong direct push vao `main`
-- Khong mo PR khi test/local verify chua pass
-- Khong dung generic PR template khac voi repo
-- Khong doi ten required checks tuy y neu da set ruleset tren GitHub
+- Không direct push main.
+- Không bỏ qua PR approval nếu ruleset yêu cầu.
+- Không để PR body placeholder.
 
 ## Acceptance checkpoints
 
-- Tracker, branch, commit, PR body, local verify deu sync
-- Required checks dung ten va co the map vao GitHub GUI
-- Docs condensed khop voi plan dai khi quyet dinh doi
+- Branch đúng regex.
+- Commit đúng Conventional Commit + Task ID.
+- PR title trùng commit title.
+- CI xanh hoặc có báo cáo lỗi/fix rõ ràng.
 
 ## Read more
 
-- `../../plan/11_cicd_docker_plan.md`
-- `../../plan/15_todo_checklist.md`
-- `../../plan/17_execution_tracker.md`
-- `../../plan/08_coding_standards.md`
+- `../../docs/07_workflow_ci.md`
+- `../../docs/08_testing_local_run.md`
+- `../../docs/09_execution_tracker.md`

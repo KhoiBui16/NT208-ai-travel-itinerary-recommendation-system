@@ -13,20 +13,16 @@ export default function ForgotPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  
-  // OTP Modal State
+
+  // OTP Modal State (client-side placeholder until backend email OTP is implemented)
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [generatedOTP, setGeneratedOTP] = useState("");
   const [otpTimestamp, setOtpTimestamp] = useState<number>(0);
 
-  const generateOTP = () => { // Gọi API POST /api/auth/forgot-password để Backend tự sinh OTP và gửi qua Email.
+  const generateOTP = () => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOTP(otp);
     setOtpTimestamp(Date.now());
-    
-    console.log("OTP sent to email:", email);
-    console.log("OTP Code:", otp);
-    
     return otp;
   };
 
@@ -34,21 +30,8 @@ export default function ForgotPassword() {
     e.preventDefault();
     setError("");
 
-    // Check if email exists in localStorage
-    const usersData = localStorage.getItem("users");
-    if (usersData) {
-      const users = JSON.parse(usersData);
-      const userExists = users.some((u: any) => u.email === email);
-      
-      if (!userExists) {
-        setError("Email không tồn tại trong hệ thống");
-        return;
-      }
-    } else {
-      setError("Email không tồn tại trong hệ thống");
-      return;
-    }
-
+    // TODO: Call POST /api/auth/forgot-password when backend implements email OTP
+    // For now, show OTP modal as a client-side placeholder
     generateOTP();
     setShowOTPModal(true);
   };
@@ -66,7 +49,7 @@ export default function ForgotPassword() {
     generateOTP();
   };
 
-  const handleNewPasswordSubmit = (e: React.FormEvent) => { // Gọi API POST /api/auth/reset-password kèm theo mã OTP và mật khẩu mới
+  const handleNewPasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -80,19 +63,7 @@ export default function ForgotPassword() {
       return;
     }
 
-    // Update password in localStorage
-    const usersData = localStorage.getItem("users");
-    if (usersData) {
-      const users = JSON.parse(usersData);
-      const updatedUsers = users.map((u: any) => {
-        if (u.email === email) {
-          return { ...u, password: newPassword };
-        }
-        return u;
-      });
-      localStorage.setItem("users", JSON.stringify(updatedUsers));
-    }
-
+    // TODO: Call POST /api/auth/reset-password when backend implements it
     toast.success("Đã đổi mật khẩu thành công", {
       position: "top-right",
     });

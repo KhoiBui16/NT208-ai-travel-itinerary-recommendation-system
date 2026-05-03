@@ -10,7 +10,7 @@ allowed-tools: Bash(git:*), Read
 
 - `CLAUDE.md`
 - `.claude/context/06_ops_workflow_ci.md`
-- `plan/17_execution_tracker.md`
+- `docs/09_execution_tracker.md`
 
 ## Rules
 
@@ -38,7 +38,7 @@ allowed-tools: Bash(git:*), Read
 ## Your Task
 
 1. Kiem tra branch name
-2. Doi chieu task voi row trong `plan/17_execution_tracker.md`
+2. Doi chieu task voi row trong `docs/09_execution_tracker.md`
 3. Kiem tra code/docs/test/local verify da du dieu kien `review_ready` cho final branch state chua
 4. Chon type phu hop
 5. Tao message cuoi cung dung format cua repo

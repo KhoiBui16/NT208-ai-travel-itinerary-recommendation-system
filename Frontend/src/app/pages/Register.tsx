@@ -4,11 +4,13 @@ import { Header } from "../components/Header";
 import { AuthLayout } from "../components/AuthLayout";
 import { OTPModal } from "../components/OTPModal";
 import { Mail, Lock, User, Chrome } from "lucide-react";
-import { registerUser } from "../utils/auth";
+import { useAuth } from "../contexts/AuthContext";
+import { ApiError } from "../services/api";
 import { toast } from "sonner";
 
 export default function Register() {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -16,20 +18,17 @@ export default function Register() {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
-  
-  // OTP Modal State
+  const [loading, setLoading] = useState(false);
+
+  // OTP Modal State (client-side verification placeholder until backend email OTP)
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [generatedOTP, setGeneratedOTP] = useState("");
   const [otpTimestamp, setOtpTimestamp] = useState<number>(0);
 
-  const generateOTP = () => { // Chuyển logic tạo mã OTP qua cho Backend xử lý (gửi email)
+  const generateOTP = () => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOTP(otp);
     setOtpTimestamp(Date.now());
-    
-    console.log("OTP sent to email:", formData.email);
-    console.log("OTP Code:", otp);
-    
     return otp;
   };
 
@@ -51,19 +50,23 @@ export default function Register() {
     setShowOTPModal(true);
   };
 
-  const handleVerifySuccess = () => { // Gọi API POST /api/auth/register kèm theo OTP để tạo user.
-    const result = registerUser(formData.email, formData.password, formData.name);
-    
-    if (result.success) {
-      toast.success("Đăng ký thành công!", {
-        position: "top-right",
-      });
+  const handleVerifySuccess = async () => {
+    setLoading(true);
+    try {
+      await register(formData.email, formData.password, formData.name);
+      toast.success("Đăng ký thành công!", { position: "top-right" });
       setTimeout(() => {
-        navigate("/login");
+        navigate("/");
       }, 1000);
-    } else {
-      setError(result.error || "Đăng ký thất bại");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Đăng ký thất bại. Vui lòng thử lại.");
+      }
       setShowOTPModal(false);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -204,9 +207,10 @@ export default function Register() {
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 py-3.5 font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl"
+              disabled={loading}
+              className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 py-3.5 font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl disabled:opacity-60 disabled:hover:scale-100"
             >
-              Đăng Ký
+              {loading ? "Đang đăng ký..." : "Đăng Ký"}
             </button>
           </form>
 

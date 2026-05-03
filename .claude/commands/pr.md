@@ -10,7 +10,7 @@ allowed-tools: Bash(git:*), Bash(gh:*), Read
 
 - `CLAUDE.md`
 - `.claude/context/06_ops_workflow_ci.md`
-- `plan/17_execution_tracker.md`
+- `docs/09_execution_tracker.md`
 
 ## Your Task
 
@@ -59,3 +59,4 @@ $ARGUMENTS
 - `backend-unit`
 - `backend-integration`
 - `backend-migrations`
+- `frontend-build`

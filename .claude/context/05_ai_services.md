@@ -2,57 +2,50 @@
 
 ## Purpose
 
-Tom tat AI architecture de Claude code dung direct pipeline, dung patch-confirm flow, va khong over-engineer.
+Tóm tắt AI target architecture để implement Phase C không sai hướng.
 
 ## Current truth
 
-- MVP1 dung raw Gemini SDK + parse JSON thu cong
-- FE moi co FloatingAIChat va DailyItinerary con mock/local behavior o nhieu cho
-- Multi-agent can duoc dung vua du, khong phai cho moi request
+- Phase C AI services chưa implement thật.
+- Generate endpoint hiện vẫn stub.
+- DB đã có bảng chat target: `chat_sessions`, `chat_messages`.
 
 ## Target state
 
-- `ItineraryPipeline` direct structured-output cho generate
-- `CompanionService` cho chat/tool-calling va patch proposals
-- `TravelSupervisor` chi route natural-language chat/analytics
-- `SuggestionService` la DB-only service
-- `AnalyticsWorker` optional/MVP2+ va phai co guardrails
-- Chat history projection qua `chat_sessions` + `chat_messages`
+- Generate itinerary dùng direct pipeline với structured output.
+- Companion chat dùng intent routing/tool-calling và trả patch cần confirm.
+- SuggestionService nếu chỉ query DB thì không gọi là agent.
+- Analytics EP-34 optional, cần guardrails nếu bật.
 
 ## Key invariants
 
-- Generate khong qua Supervisor
-- Companion tra `requiresConfirmation` + `proposedOperations`
-- BE khong tu apply patch neu user chua confirm
-- Suggest alternatives la DB-only, khong goi LLM
-- Analytics Text-to-SQL chi bat khi co allowlist, read-only role, validator, max rows, audit log
-- Output AI phai di qua validation pipeline/structured output
+- Không parse JSON tự do nếu có structured output.
+- Không đưa generate explicit route qua Supervisor.
+- Chat không tự persist trước confirm.
+- Text-to-SQL không được chạy nếu thiếu read-only role, allowlist, validator, max rows, audit.
 
 ## Do next
 
-- Refactor generate sang structured output pipeline
-- Tao tools cho companion doc trip, de xuat patch, tra response co confirmation
-- Tao chat session/message persistence
-- Them WebSocket/API contract cho chat
-- De optional analytics sau core AI flows
+- Thiết kế Pydantic output schema khớp FE contract.
+- Implement retry hữu hạn cho invalid structured output.
+- Implement chat proposedOperations + apply endpoint riêng.
+- Viết unit tests cho invalid output, patch confirmation, rate limit.
 
 ## Do not do
 
-- Khong parse text AI bang `json.loads()` nhu main path neu da co structured output
-- Khong doi ten DB-only service thanh "agent" neu no khong goi model
-- Khong tu persist thay doi lich trinh tu chat message
-- Khong day analytics vao MVP2 core neu guardrails chua co
+- Không gọi LLM cho DB-only suggestions.
+- Không fail-open rate limit AI trả phí.
+- Không lưu prompt/secret key vào DB/log.
 
 ## Acceptance checkpoints
 
-- Generate trip on dinh voi structured output
-- Chat flow tra patch-confirm dung contract
-- Chat history doc lai duoc tu DB projection
-- Analytics van de optional va bi khoa neu chua dat guardrails
+- Generate valid output lưu trip/day/activity/accommodation.
+- Invalid output retry rồi fail rõ.
+- Chat modify chỉ trả patch.
+- Confirmed patch mới update DB.
 
 ## Read more
 
-- `../../plan/04_ai_agent_plan.md`
-- `../../plan/12_be_crud_endpoints.md`
-- `../../plan/14_config_plan.md`
-- `../../plan/16_unit_test_specs.md`
+- `../../docs/06_ai_roadmap.md`
+- `../../docs/02_architecture.md`
+- `../../docs/03_backend.md`

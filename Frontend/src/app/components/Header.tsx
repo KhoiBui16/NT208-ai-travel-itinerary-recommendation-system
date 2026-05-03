@@ -1,16 +1,17 @@
 import { Link, useNavigate } from "react-router";
 import { User, LogOut, Menu, X, Settings, History, MapPin, Crown, ChevronDown, Home, Compass } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { isAuthenticated, logoutUser } from "../utils/auth";
+import { useAuth } from "../contexts/AuthContext";
 
 export function Header() {
   const navigate = useNavigate();
+  const { isAuthenticated, logout, user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  const handleLogout = () => {
-    logoutUser();
+  const handleLogout = async () => {
+    await logout();
     navigate("/login");
   };
 
@@ -84,7 +85,7 @@ export function Header() {
             </Link>
 
             {/* Profile Avatar with Dropdown */}
-            {isAuthenticated() ? (
+            {isAuthenticated ? (
               <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setProfileMenuOpen(!profileMenuOpen)}
@@ -235,7 +236,7 @@ export function Header() {
               Tạo Chuyến Đi
             </Link>
 
-            {isAuthenticated() ? (
+            {isAuthenticated ? (
               <>
                 <Link
                   to="/account"

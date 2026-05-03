@@ -1,0 +1,57 @@
+import { api, setTokens, clearTokens } from "./api";
+
+// ---------- Types (match BE CamelCaseModel responses) ----------
+
+export interface UserResponse {
+  id: number;
+  email: string;
+  name: string;
+  phone: string | null;
+  interests: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: UserResponse;
+}
+
+interface SuccessResponse {
+  success: boolean;
+  message: string;
+}
+
+// ---------- Auth API ----------
+
+export async function register(data: {
+  email: string;
+  password: string;
+  name: string;
+  phone?: string;
+}): Promise<AuthResponse> {
+  const res = await api.post<AuthResponse>("/api/v1/auth/register", data);
+  setTokens(res.accessToken, res.refreshToken);
+  return res;
+}
+
+export async function login(data: {
+  email: string;
+  password: string;
+}): Promise<AuthResponse> {
+  const res = await api.post<AuthResponse>("/api/v1/auth/login", data);
+  setTokens(res.accessToken, res.refreshToken);
+  return res;
+}
+
+export async function logout(refreshToken: string): Promise<void> {
+  try {
+    await api.post<SuccessResponse>("/api/v1/auth/logout", { refreshToken });
+  } finally {
+    clearTokens();
+  }
+}

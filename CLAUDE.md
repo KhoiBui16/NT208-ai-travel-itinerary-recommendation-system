@@ -13,21 +13,21 @@ Claude phai doc theo thu tu nay:
 1. `CLAUDE.md`
 2. `.claude/context/00_project_overview.md`
 3. File phase phu hop trong `.claude/context/`
-4. `plan/*.md` duoc link trong file condensed
+4. `docs/*.md` duoc link trong file condensed
 5. Codebase that te
 
 Neu docs va code xung dot:
-- Uu tien decision lock moi nhat trong `plan/`
+- Uu tien docs moi nhat trong `docs/`
 - Sau do doi chieu voi code that te
 - Neu code da lech docs, phai noi ro mismatch truoc khi sua tiep
 
-## Current repo truth (2026-04-25)
+## Current repo truth (2026-05-03)
 
-- Backend runtime hien tai van la MVP1 trong `Backend/app/`, `Backend/main.py`, `Backend/requirements.txt`
-- Frontend da co branch moi `feat/frontend-revamp`
+- Backend runtime hien tai la MVP2 trong `Backend/src/`
+- Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
+- Frontend runtime hien tai nam trong `Frontend/`
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
-- Plan MVP2 huong den `Backend/src/`, `pyproject.toml`, `uv`, `alembic`, `tests/`, `repository layer`, `AI services`
-- `plan/` la bo tai lieu chi tiet cho user va reviewer
+- `docs/` la bo tai lieu chi tiet cho user va reviewer
 - `.claude/` la lop operational memory cho Claude, phai bam theo project nay
 
 ## Target MVP2 decisions da chot
@@ -55,13 +55,13 @@ Luon doc:
    - Places/Cache -> `04_places_cache.md`
    - AI services -> `05_ai_services.md`
    - Workflow/CI -> `06_ops_workflow_ci.md`
-3. Cac file plan nguon duoc link trong section `Read more`
+3. Cac file docs nguon duoc link trong section `Read more`
 4. File code se sua
 
 ## Workflow rules
 
-- Daily execution phai sync vao `plan/17_execution_tracker.md`
-- Roadmap phase lon van nam o `plan/15_todo_checklist.md`
+- Daily execution phai sync vao `docs/09_execution_tracker.md`
+- Roadmap/trang thai phase lon nam trong `docs/01_overview.md` va `docs/09_execution_tracker.md`
 - Branch that te phai theo regex:
 
 ```text
@@ -83,17 +83,14 @@ Neu repo da len target structure:
 
 ```bash
 cd Backend
-uv run ruff check src/
+uv run ruff check src tests
+uv run ruff format --check src tests
+uv run alembic upgrade head
+uv run alembic check
 uv run pytest tests/unit/ -v
 uv run pytest tests/integration/ -v
-uv run alembic upgrade head
 uv run uvicorn src.main:app
 ```
-
-Neu repo van o current MVP1 structure:
-- Doc code that te trong `Backend/app/`
-- Chay nhung test script dang ton tai trong `Backend/`
-- Neu command plan target chua ap dung duoc, phai note ro "future-state command"
 
 ## CI va PR rules
 
@@ -104,6 +101,7 @@ Required checks tren GitHub:
 - `backend-unit`
 - `backend-integration`
 - `backend-migrations`
+- `frontend-build`
 
 Rules:
 - Khong direct push vao `main`
@@ -140,7 +138,7 @@ Rules:
 - Sync tracker khi bat dau task va truoc khi dat `review_ready`
 - Boi canh hoa task bang current repo shape truoc, target shape sau
 - Kiem tra contract public bang `Frontend/src/app/types/trip.types.ts`
-- Ghi ro assumption neu phai lam viec tren current MVP1 trong khi plan dang nham den MVP2
+- Ghi ro assumption neu docs va code dang lech nhau
 
 ## Never do
 
@@ -160,3 +158,4 @@ Rules:
 - Places/Cache: `.claude/context/04_places_cache.md`
 - AI: `.claude/context/05_ai_services.md`
 - Workflow/CI: `.claude/context/06_ops_workflow_ci.md`
+- Docs chi tiet: `docs/README.md`

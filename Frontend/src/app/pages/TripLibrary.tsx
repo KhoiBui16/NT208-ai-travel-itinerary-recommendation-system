@@ -2,25 +2,18 @@ import { Link } from "react-router";
 import { Header } from "../components/Header";
 import { Plus, MapPin, Calendar, DollarSign, Heart, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
-
-// Mock trip data - in real app this would come from API/localStorage
-
+import * as itineraryService from "../services/itinerary";
+import type { ItineraryResponse } from "../services/itinerary";
 
 export default function TripLibrary() {
-  const [trips, setTrips] = useState<any[]>([]);
+  const [trips, setTrips] = useState<ItineraryResponse[]>([]);
 
   useEffect(() => {
-    const savedTripsData = localStorage.getItem("savedTrips");
-    if (savedTripsData) {
-      try {
-        const parsedTrips = JSON.parse(savedTripsData);
-        // Sắp xếp mới nhất lên đầu
-        parsedTrips.sort((a: any, b: any) => b.createdAt - a.createdAt);
-        setTrips(parsedTrips);
-      } catch (e) {
-        setTrips([]);
-      }
-    }
+    itineraryService.listItineraries(1, 100).then((res) => {
+      setTrips(res.items);
+    }).catch(() => {
+      setTrips([]);
+    });
   }, []);
 
   return (
@@ -54,7 +47,7 @@ export default function TripLibrary() {
               <Heart className="h-5 w-5 text-orange-600" />
             </div>
             <p className="text-3xl font-bold text-gray-900">
-              {trips.reduce((sum, trip) => sum + trip.savedLocationsCount, 0)}
+              {trips.reduce((sum, trip) => sum + (trip.days?.length ?? 0), 0)}
             </p>
           </div>
 
@@ -64,7 +57,7 @@ export default function TripLibrary() {
               <DollarSign className="h-5 w-5 text-green-600" />
             </div>
             <p className="text-3xl font-bold text-gray-900">
-              {(trips.reduce((sum, trip) => sum + trip.estimatedCost, 0) / 1000000).toFixed(1)}M
+              {(trips.reduce((sum, trip) => sum + (trip.budget ?? 0), 0) / 1000000).toFixed(1)}M
             </p>
           </div>
         </div>
@@ -94,14 +87,14 @@ export default function TripLibrary() {
             {trips.map((trip) => (
               <Link
                 key={trip.id}
-                to={`/daily-itinerary`}
+                to={`/trip-workspace?tripId=${trip.id}`}
                 className="group overflow-hidden rounded-2xl bg-white shadow-lg transition-all hover:shadow-2xl hover:-translate-y-1 border border-gray-200"
               >
                 {/* Cover Image */}
                 <div className="relative h-48 overflow-hidden">
                   <img
                     src={trip.coverImage}
-                    alt={trip.name}
+                    alt={trip.tripName}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
@@ -110,19 +103,19 @@ export default function TripLibrary() {
                   <div className="absolute top-4 right-4">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-bold ${
-                        trip.status === "planned"
+                        trip.days?.length
                           ? "bg-green-500 text-white"
                           : "bg-yellow-500 text-gray-900"
                       }`}
                     >
-                      {trip.status === "planned" ? "Đã lên kế hoạch" : "Nháp"}
+                      {trip.days?.length ? "Đã lên kế hoạch" : "Nháp"}
                     </span>
                   </div>
 
                   {/* Trip Name */}
                   <div className="absolute bottom-4 left-4 right-4">
                     <h3 className="mb-1 text-xl font-bold text-white">
-                      {trip.name}
+                      {trip.tripName || trip.name}
                     </h3>
                     <div className="flex items-center gap-1 text-white">
                       <MapPin className="h-4 w-4" />
@@ -146,13 +139,13 @@ export default function TripLibrary() {
                     <div className="rounded-lg bg-cyan-50 p-3 border border-cyan-100">
                       <p className="text-xs text-cyan-700 mb-1">Số ngày</p>
                       <p className="text-lg font-bold text-cyan-900">
-                        {trip.days} ngày
+                        {trip.days?.length ?? 0} ngày
                       </p>
                     </div>
                     <div className="rounded-lg bg-orange-50 p-3 border border-orange-100">
                       <p className="text-xs text-orange-700 mb-1">Chi phí dự kiến</p>
                       <p className="text-lg font-bold text-orange-900">
-                        {(trip.estimatedCost / 1000000).toFixed(1)}M
+                        {((trip.budget ?? trip.estimatedCost ?? 0) / 1000000).toFixed(1)}M
                       </p>
                     </div>
                   </div>
@@ -161,7 +154,7 @@ export default function TripLibrary() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Heart className="h-4 w-4" />
-                      <span>{trip.savedLocationsCount} địa điểm đã lưu</span>
+                      <span>{trip.savedLocationsCount ?? 0} địa điểm đã lưu</span>
                     </div>
                   </div>
                 </div>

@@ -1,50 +1,57 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useLocation } from "react-router";
 import { Header } from "../components/Header";
 import { AuthLayout } from "../components/AuthLayout";
 import { Mail, Lock, Chrome } from "lucide-react";
-import { loginUser, setCurrentUser } from "../utils/auth";
+import { useAuth } from "../contexts/AuthContext";
+import { ApiError } from "../services/api";
 import { toast } from "sonner";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     rememberMe: false,
   });
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => { //Gọi API POST /api/auth/login. Trả về JWT Token và thông tin User thực tế.
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
-    const result = loginUser(formData.email, formData.password);
-    
-    if (result.success && result.user) {
-      setCurrentUser(result.user);
-      
+    try {
+      await login(formData.email, formData.password);
+
       // Handle remember me with cookies
       if (formData.rememberMe) {
-        // Store in cookie (expires in 30 days)
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + 30);
         document.cookie = `rememberedEmail=${formData.email}; expires=${expiryDate.toUTCString()}; path=/`;
       } else {
-        // Clear cookie
         document.cookie = "rememberedEmail=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       }
-      
-      toast.success("Đăng nhập thành công!", {
-        position: "top-right",
-      });
-      navigate("/");
-    } else {
-      setError(result.error || "Đăng nhập thất bại");
+
+      toast.success("Đăng nhập thành công!", { position: "top-right" });
+      navigate(from, { replace: true });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Đăng nhập thất bại. Vui lòng thử lại.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleGoogleLogin = () => { // Tích hợp luồng đăng nhập OAuth2 Google SSO.
+  const handleGoogleLogin = () => {
     toast.info("Tính năng đăng nhập Google đang được phát triển", {
       position: "top-right",
     });
@@ -125,7 +132,7 @@ export default function Login() {
                 />
                 <span className="text-sm text-gray-700">Ghi nhớ đăng nhập</span>
               </label>
-              
+
               <Link
                 to="/forgot-password"
                 className="text-sm font-semibold text-cyan-600 hover:text-cyan-700"
@@ -136,9 +143,10 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 py-3.5 font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl"
+              disabled={loading}
+              className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 py-3.5 font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl disabled:opacity-60 disabled:hover:scale-100"
             >
-              Đăng Nhập
+              {loading ? "Đang đăng nhập..." : "Đăng Nhập"}
             </button>
           </form>
 
