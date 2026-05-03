@@ -191,7 +191,7 @@ export const useTripSync = (
 
     loadInitialData();
     return () => { isMounted = false; };
-  }, [tripIdParam, isAuthenticated]);
+  }, [tripIdParam, isAuthenticated, setCurrentTripId]);
 
   // 2. Auto-save debounce (save to sessionStorage for quick restore, API when tripId exists)
   useEffect(() => {

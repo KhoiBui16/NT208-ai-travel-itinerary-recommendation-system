@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Day, Activity, TimeConflictWarning, ExtraExpense, DayExtraExpense } from "../../types/trip.types";
-import { parseTimeToMinutes, recalculateActivityTimes } from "../../utils/timeHelpers";
+import { parseTimeToMinutes, recalculateActivityTimes, resolveTimeConflicts } from "../../utils/timeHelpers";
 import * as itineraryService from "../../services/itinerary";
 
 export const useActivityManager = (
@@ -159,10 +159,10 @@ export const useActivityManager = (
 
   /** Add an activity and sync to API if tripId exists. Returns the activity with its ID. */
   const addActivityToDay = (dayId: number, activity: Activity): Activity => {
-    // Optimistic UI update
+    // Optimistic UI update with conflict resolution
     setDays((prev: Day[]) =>
       prev.map((day: Day) =>
-        day.id !== dayId ? day : { ...day, activities: [...day.activities, activity] }
+        day.id !== dayId ? day : { ...day, activities: resolveTimeConflicts([...day.activities, activity]) }
       )
     );
 
