@@ -87,6 +87,9 @@ def yaml_config_settings() -> dict[str, Any]:
         "max_active_trips_per_user": flattened.get("security_max_active_trips_per_user"),
         "destination_cache_ttl_seconds": flattened.get("cache_destination_ttl_seconds"),
         "place_search_cache_ttl_seconds": flattened.get("cache_place_search_ttl_seconds"),
+        "etl_cities": flattened.get("etl_cities"),
+        "etl_update_interval_days": flattened.get("etl_update_interval_days"),
+        "etl_max_places_per_city": flattened.get("etl_max_places_per_city"),
     }
 
 
@@ -135,6 +138,40 @@ class AppSettings(BaseSettings):
     max_active_trips_per_user: int = 5
     destination_cache_ttl_seconds: int = 86400
     place_search_cache_ttl_seconds: int = 3600
+
+    # --- ETL ---
+    etl_cities: list[str] = [
+        "Hà Nội",
+        "TP. Hồ Chí Minh",
+        "Đà Nẵng",
+        "Hội An",
+        "Nha Trang",
+        "Phú Quốc",
+        "Sapa",
+        "Hạ Long",
+        "Vịnh Hạ Long",
+        "Huế",
+        "Đà Lạt",
+        "Vũng Tàu",
+        "Cần Thơ",
+        "Quy Nhơn",
+        "Hải Phòng",
+        "Ninh Bình",
+        "Hà Giang",
+        "Mộc Châu",
+        "Đồng Hới",
+        "Phong Nha",
+        "Phan Thiết",
+        "Mũi Né",
+        "Tuy Hòa",
+        "Buôn Ma Thuột",
+        "Pleiku",
+        "Côn Đảo",
+        "Tây Ninh",
+        "Châu Đốc",
+    ]
+    etl_update_interval_days: int = 30
+    etl_max_places_per_city: int = 75
 
     model_config = SettingsConfigDict(
         env_file=".env",

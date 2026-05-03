@@ -36,6 +36,8 @@ test_results.json
 test_results.txt
 test_output.txt
 test_full_results.json
+*-smoke.*.log
+*-smoke.result.txt
 .pytest_cache/
 pytest-cache-files-*/
 

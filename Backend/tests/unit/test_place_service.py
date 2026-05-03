@@ -27,9 +27,7 @@ def service(mock_repo: AsyncMock, mock_redis: AsyncMock) -> PlaceService:
     return svc
 
 
-def _make_destination(
-    dest_id: int = 1, name: str = "Hà Nội", slug: str = "ha-noi"
-) -> Destination:
+def _make_destination(dest_id: int = 1, name: str = "Hà Nội", slug: str = "ha-noi") -> Destination:
     dest = Destination(id=dest_id, name=name, slug=slug, image="/img/hanoi.jpg")
     dest.is_active = True
     return dest
@@ -69,9 +67,7 @@ def _make_saved(saved_id: int = 1, user_id: int = 1, place_id: int = 1) -> Saved
 # --- get_destinations ---
 
 
-async def test_get_destinations__cache_hit(
-    service: PlaceService, mock_redis: AsyncMock
-) -> None:
+async def test_get_destinations__cache_hit(service: PlaceService, mock_redis: AsyncMock) -> None:
     mock_redis.get.return_value = '[{"id":1,"name":"Hà Nội","image":"/img/hanoi.jpg"}]'
     result = await service.get_destinations()
     assert len(result) == 1
@@ -154,9 +150,7 @@ async def test_search_places__cache_miss(
     assert result[0].name == "Hoàn Kiếm"
 
 
-async def test_search_places__cache_hit(
-    service: PlaceService, mock_redis: AsyncMock
-) -> None:
+async def test_search_places__cache_hit(service: PlaceService, mock_redis: AsyncMock) -> None:
     mock_redis.get.return_value = (
         '[{"id":1,"name":"Hoàn Kiếm","type":"attraction",'
         '"image":"/img/place.jpg","location":"Hà Nội",'
@@ -169,17 +163,13 @@ async def test_search_places__cache_hit(
 # --- get_place_by_id ---
 
 
-async def test_get_place_by_id__found(
-    service: PlaceService, mock_repo: AsyncMock
-) -> None:
+async def test_get_place_by_id__found(service: PlaceService, mock_repo: AsyncMock) -> None:
     mock_repo.get_by_id.return_value = _make_place()
     result = await service.get_place_by_id(1)
     assert result.name == "Hoàn Kiếm"
 
 
-async def test_get_place_by_id__not_found(
-    service: PlaceService, mock_repo: AsyncMock
-) -> None:
+async def test_get_place_by_id__not_found(service: PlaceService, mock_repo: AsyncMock) -> None:
     mock_repo.get_by_id.return_value = None
     with pytest.raises(NotFoundException):
         await service.get_place_by_id(999)
@@ -188,9 +178,7 @@ async def test_get_place_by_id__not_found(
 # --- save_place ---
 
 
-async def test_save_place__success(
-    service: PlaceService, mock_repo: AsyncMock
-) -> None:
+async def test_save_place__success(service: PlaceService, mock_repo: AsyncMock) -> None:
     mock_repo.saved_exists.return_value = False
     mock_repo.get_by_id.return_value = _make_place()
     saved = _make_saved()
@@ -203,9 +191,7 @@ async def test_save_place__success(
     assert result.id == 1
 
 
-async def test_save_place__already_saved(
-    service: PlaceService, mock_repo: AsyncMock
-) -> None:
+async def test_save_place__already_saved(service: PlaceService, mock_repo: AsyncMock) -> None:
     mock_repo.saved_exists.return_value = True
 
     from src.schemas.place import SavedPlaceRequest
@@ -214,9 +200,7 @@ async def test_save_place__already_saved(
         await service.save_place(user_id=1, request=SavedPlaceRequest(place_id=1))
 
 
-async def test_save_place__place_not_found(
-    service: PlaceService, mock_repo: AsyncMock
-) -> None:
+async def test_save_place__place_not_found(service: PlaceService, mock_repo: AsyncMock) -> None:
     mock_repo.saved_exists.return_value = False
     mock_repo.get_by_id.return_value = None
 
@@ -229,9 +213,7 @@ async def test_save_place__place_not_found(
 # --- unsave_place ---
 
 
-async def test_unsave_place__owner_success(
-    service: PlaceService, mock_repo: AsyncMock
-) -> None:
+async def test_unsave_place__owner_success(service: PlaceService, mock_repo: AsyncMock) -> None:
     mock_repo.get_saved_by_id.return_value = _make_saved(user_id=1)
     await service.unsave_place(saved_id=1, user_id=1)
     mock_repo.unsave_place.assert_called_once_with(1)
@@ -245,9 +227,7 @@ async def test_unsave_place__not_owner__forbidden(
         await service.unsave_place(saved_id=1, user_id=2)
 
 
-async def test_unsave_place__not_found(
-    service: PlaceService, mock_repo: AsyncMock
-) -> None:
+async def test_unsave_place__not_found(service: PlaceService, mock_repo: AsyncMock) -> None:
     mock_repo.get_saved_by_id.return_value = None
     with pytest.raises(NotFoundException):
         await service.unsave_place(saved_id=999, user_id=1)
@@ -256,9 +236,7 @@ async def test_unsave_place__not_found(
 # --- list_saved ---
 
 
-async def test_list_saved(
-    service: PlaceService, mock_repo: AsyncMock
-) -> None:
+async def test_list_saved(service: PlaceService, mock_repo: AsyncMock) -> None:
     mock_repo.get_saved_by_user.return_value = [_make_saved()]
     result = await service.list_saved(user_id=1)
     assert len(result) == 1

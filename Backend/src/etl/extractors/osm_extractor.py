@@ -35,9 +35,7 @@ OSM_CATEGORY_MAP: dict[str, str] = {
 }
 
 # Build Overpass QL filter from OSM tags
-_OSM_TAGS_FILTER = "|".join(
-    f'"{k}"' if "=" not in k else k for k in OSM_CATEGORY_MAP
-)
+_OSM_TAGS_FILTER = "|".join(f'"{k}"' if "=" not in k else k for k in OSM_CATEGORY_MAP)
 
 
 class OsmExtractor(BaseExtractor):
@@ -85,16 +83,18 @@ class OsmExtractor(BaseExtractor):
             if not category:
                 continue
 
-            pois.append({
-                "name": name.strip(),
-                "category": category,
-                "lat": el.get("lat"),
-                "lng": el.get("lon"),
-                "location": tags.get("addr:street", tags.get("addr:city", "")),
-                "description": tags.get("description", ""),
-                "opening_hours": tags.get("opening_hours"),
-                "source": "osm_overpass",
-            })
+            pois.append(
+                {
+                    "name": name.strip(),
+                    "category": category,
+                    "lat": el.get("lat"),
+                    "lng": el.get("lon"),
+                    "location": tags.get("addr:street", tags.get("addr:city", "")),
+                    "description": tags.get("description", ""),
+                    "opening_hours": tags.get("opening_hours"),
+                    "source": "osm_overpass",
+                }
+            )
 
         return pois
 
@@ -108,14 +108,14 @@ class OsmExtractor(BaseExtractor):
             Overpass QL query string.
         """
         return (
-            f'[out:json][timeout:60];'
+            f"[out:json][timeout:60];"
             f'area["name"="{city}"]->.searchArea;'
-            f'('
+            f"("
             f'node["tourism"~"attraction|museum|viewpoint|artwork|gallery"](area.searchArea);'
             f'node["amenity"~"restaurant|cafe|fast_food|food_court|theatre|cinema|marketplace"](area.searchArea);'
             f'node["leisure"~"park|garden|nature_reserve"](area.searchArea);'
-            f');'
-            f'out body;'
+            f");"
+            f"out body;"
         )
 
     def _map_category(self, tags: dict) -> str | None:

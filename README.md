@@ -1,234 +1,386 @@
-# NT208-ai-travel-itinerary-recommendation-system
+# NT208 AI Travel Itinerary Recommendation System
 
-A web-based AI recommendation system that generates personalized travel itineraries from user inputs.
+DuLichViet is a web-based travel itinerary system with a React/Vite frontend,
+FastAPI backend, PostgreSQL database, Redis cache, and planned AI itinerary
+generation/chat services.
 
----
-
-## ✅ Prerequisites — Cần cài trước
-
-| Phần mềm         | Phiên bản | Kiểm tra           | Tải về                                         |
-| ---------------- | --------- | ------------------ | ---------------------------------------------- |
-| **Node.js**      | 18+       | `node --version`   | https://nodejs.org/                            |
-| **Python**       | 3.11+     | `python --version` | https://www.python.org/downloads/              |
-| **PostgreSQL**   | 16+       | `psql --version`   | https://www.postgresql.org/download/           |
-| **Git**          | 2.x       | `git --version`    | https://git-scm.com/                           |
-| **Docker** (tuỳ) | -         | `docker --version` | https://www.docker.com/products/docker-desktop |
-
-> **Lưu ý:** Nếu dùng Docker cho PostgreSQL thì **không cần** cài PostgreSQL trực tiếp.
+This README is the main local setup guide for the current MVP2 codebase.
 
 ---
 
-## 🚀 Hướng Dẫn Cài Đặt & Chạy
+## Current Status
 
-### Bước 1️⃣: Clone & Cài Frontend
+Implemented:
 
-```bash
-# Clone repository
-git clone https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system.git
-cd NT208-ai-travel-itinerary-recommendation-system
+- Frontend revamp UI under `Frontend/` with Vite + React + TypeScript.
+- Backend MVP2 foundation under `Backend/src/` with `uv`, FastAPI, async SQLAlchemy, Alembic, and centralized config.
+- Auth/users, itinerary CRUD, share token, guest claim token, places, saved places, Redis read cache.
+- ETL foundation with OSM/Goong extractors, transformers, DB upsert loader, and sample hotel data.
+- Docker Compose for Backend API + PostgreSQL + Redis.
 
-# Cài đặt FE dependencies
-npm install
+Not complete yet:
+
+- Phase C AI services are still pending. `POST /api/v1/itineraries/generate` is still a stub until the direct AI pipeline is implemented.
+- Full ETL with real place data needs `GOONG_API_KEY`.
+- Docker Compose does not yet include a dedicated frontend service. Frontend can be run with host Node.js or a temporary Node Docker container.
+- FE mock datasets are still sparser than the backend ETL data for some cities/hotels/places.
+
+---
+
+## Repository Layout
+
+```text
+.
+├── Backend/                  # FastAPI MVP2 backend
+│   ├── src/                  # Current backend source of truth
+│   ├── tests/                # Unit + integration tests
+│   ├── alembic/              # DB migrations
+│   ├── config.yaml           # Shared non-secret app config
+│   ├── .env.example          # Local env template
+│   └── README.md             # Backend-specific notes
+├── Frontend/                 # Vite React frontend
+├── plan/                     # Long-form BE/AI/ETL roadmap and tracker
+├── .claude/context/          # Condensed operational plan for agents
+├── docker-compose.yml        # API + PostgreSQL + Redis
+├── CLAUDE.md                 # Agent memory for this repo
+└── AGENTS.md                 # Agent/skill coordination guide
 ```
 
-**⏳ Lưu ý:** `npm install` có thể mất vài phút tùy thuộc vào tốc độ internet.
+---
 
-### Bước 2️⃣: Tạo Database PostgreSQL
+## Prerequisites
 
-**Cách A — Docker (khuyên dùng, nhanh nhất):**
+### Option A: Docker-only minimum
 
-```bash
-# Pull và chạy PostgreSQL container
-docker run --name dulichviet-postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=dulichviet \
-  -p 5432:5432 -d postgres:16-alpine
+Install:
 
-# Kiểm tra container đang chạy
-docker ps
+- Git
+- Docker Desktop
+
+With only Docker, you can run:
+
+- PostgreSQL
+- Redis
+- Backend API container
+- Frontend via a temporary `node:20-alpine` container
+
+### Option B: Full local development
+
+Install:
+
+- Git
+- Docker Desktop
+- Node.js 20 LTS
+- `uv` Python package manager
+
+Recommended checks:
+
+```powershell
+git --version
+docker --version
+node --version
+uv --version
 ```
 
-> Nếu lần sau muốn chạy lại: `docker start dulichviet-postgres`
+---
 
-**Cách B — Cài PostgreSQL trực tiếp:**
+## Environment Setup
 
-1. Tải PostgreSQL tại https://www.postgresql.org/download/
-2. Cài đặt với password mặc định `postgres`
-3. Mở pgAdmin hoặc psql, tạo database:
+Copy the backend environment template:
 
-```sql
-CREATE DATABASE dulichviet;
+```powershell
+copy Backend\.env.example Backend\.env
 ```
 
-### Bước 3️⃣: Setup Backend (Python)
+Never commit `Backend/.env`.
 
-```bash
-# Vào thư mục Backend
-cd Backend
+Recommended local `Backend/.env`:
 
-# Tạo virtual environment
-python -m venv venv
-
-# Kích hoạt virtual environment
-venv\Scripts\activate          # Windows (CMD hoặc PowerShell)
-# source venv/bin/activate     # Linux/Mac
-
-# Cài đặt thư viện Python
-pip install -r requirements.txt
-```
-
-### Bước 4️⃣: Cấu hình file .env
-
-```bash
-# Copy file template .env
-copy .env.example .env         # Windows
-# cp .env.example .env         # Linux/Mac
-```
-
-Mở file `Backend/.env` và sửa các giá trị:
-
-```dotenv
-# Database — sửa password nếu khác 'postgres'
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet
-
-# JWT — thay bằng chuỗi random (quan trọng cho bảo mật)
-# Tạo random: python -c "import secrets; print(secrets.token_hex(32))"
-JWT_SECRET_KEY=thay-bang-chuoi-random-cua-ban
-
-# Google Gemini API key (lấy tại https://aistudio.google.com/apikey)
-# Nếu chưa có key thì để trống — BE sẽ dùng fallback mock data
-GEMINI_API_KEY=your-gemini-api-key
-
-# CORS — port FE đang chạy
+```env
+# App
+APP_NAME=DuLichViet API
+APP_VERSION=2.0.0
+ENVIRONMENT=development
+APP_DEBUG=true
 FRONTEND_URL=http://localhost:5173
+
+# Local host database and Redis
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet
+REDIS_URL=redis://localhost:6379/0
+
+# Security
+JWT_SECRET_KEY=replace-with-a-long-random-secret-for-local-dev
+
+# AI providers
+GEMINI_API_KEY=
+GOONG_API_KEY=
+
+# Optional analytics, keep disabled until guardrails are implemented
+ENABLE_ANALYTICS=false
+ANALYTICS_DATABASE_URL=
 ```
 
-### Bước 5️⃣: Seed dữ liệu mẫu & Chạy Backend
+Generate a local JWT secret:
 
-```bash
-# Seed 22 địa điểm từ 4 thành phố
-python seed_data.py
-
-# Chạy Backend server
-uvicorn main:app --reload --port 8000
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-### Bước 6️⃣: Chạy Frontend (Terminal mới)
+If Python is not installed, use any password/secret generator and paste a long
+random string into `JWT_SECRET_KEY`.
 
-```bash
-# Mở terminal mới, quay về thư mục gốc
-cd NT208-ai-travel-itinerary-recommendation-system
+### Redis URL Rules
 
-# Chạy FE dev server
+Use this when running Backend directly on your machine:
+
+```env
+REDIS_URL=redis://localhost:6379/0
+```
+
+Use this inside Docker Compose API container:
+
+```env
+REDIS_URL=redis://redis:6379/0
+```
+
+`docker-compose.yml` already overrides container values:
+
+```yaml
+DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/dulichviet
+REDIS_URL: redis://redis:6379/0
+FRONTEND_URL: http://localhost:5173
+```
+
+So `Backend/.env` can keep `localhost` values for local host development, while
+Compose uses `db` and `redis` service names inside containers.
+
+---
+
+## Run With Docker Only
+
+Use this path when the machine only has Docker Desktop and Git.
+
+### 1. Start Backend, PostgreSQL, Redis
+
+```powershell
+docker compose up --build
+```
+
+Open:
+
+- API: http://localhost:8000
+- Swagger: http://localhost:8000/docs
+- Health: http://localhost:8000/api/v1/health
+- PostgreSQL: `localhost:5432`
+- Redis: `localhost:6379`
+
+The API container runs Alembic migrations automatically before starting Uvicorn.
+
+### 2. Run Frontend With Node Docker Container
+
+Open a second terminal at the repo root:
+
+```powershell
+docker run --rm -it `
+  --name dulichviet-fe `
+  -p 5173:5173 `
+  -v "${PWD}\Frontend:/app" `
+  -w /app `
+  node:20-alpine `
+  sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+```
+
+Open:
+
+- Frontend: http://localhost:5173
+
+Stop servers with `Ctrl+C`.
+
+Stop backend containers:
+
+```powershell
+docker compose down
+```
+
+Reset database data if needed:
+
+```powershell
+docker compose down -v
+```
+
+---
+
+## Run With Local Node + uv
+
+Use this path for normal development.
+
+### 1. Start Infrastructure
+
+```powershell
+docker compose up -d db redis
+```
+
+### 2. Start Backend
+
+```powershell
+cd Backend
+uv sync
+uv run alembic upgrade head
+uv run uvicorn src.main:app --reload --port 8000
+```
+
+Backend URLs:
+
+- API: http://localhost:8000
+- Swagger: http://localhost:8000/docs
+- Health: http://localhost:8000/api/v1/health
+
+### 3. Start Frontend
+
+Open a new terminal:
+
+```powershell
+cd Frontend
+npm ci
 npm run dev
 ```
 
-### 📱 Truy cập
+Frontend URL:
 
-| Service      | URL                          |
-| ------------ | ---------------------------- |
-| **Frontend** | http://localhost:5173        |
-| **Backend**  | http://localhost:8000        |
-| **Swagger**  | http://localhost:8000/docs   |
-| **ReDoc**    | http://localhost:8000/redoc  |
-| **Health**   | http://localhost:8000/health |
-
-**Gợi ý:** Nhấn `Ctrl + C` (hoặc `Cmd + C` trên Mac) để dừng server.
+- http://localhost:5173
 
 ---
 
-## 🏗️ Kiến trúc Dự án (MVP #1)
+## Tests And Verification
 
-### Tech Stack
+Backend gates:
 
-| Layer        | Công nghệ                                   | Vai trò                    |
-| ------------ | ------------------------------------------- | -------------------------- |
-| **Frontend** | React 18 + TypeScript + Tailwind CSS + Vite | Giao diện người dùng (SPA) |
-| **Backend**  | Python + FastAPI                            | REST API server            |
-| **Database** | PostgreSQL                                  | Lưu trữ dữ liệu            |
-| **AI**       | Google Gemini / OpenAI                      | Tạo lịch trình thông minh  |
-
-### Cấu trúc thư mục
-
+```powershell
+cd Backend
+uv run ruff check src tests
+uv run ruff format --check src tests
+uv run alembic upgrade head
+uv run alembic check
+uv run pytest tests/unit/ -v
 ```
-📁 Root
-├── Frontend/           # React app (FE code)
-│   ├── FE_docs.md      # 📋 Tài liệu FE chi tiết
-│   ├── main.tsx        # Entry point
-│   ├── app/            # Components, pages, utils
-│   └── styles/         # CSS, theme, Tailwind
-├── Backend/            # FastAPI app (BE code) — Đã triển khai ✅
-│   ├── BE_docs.md      # 📋 Tài liệu BE chi tiết
-│   ├── main.py         # FastAPI entry point
-│   ├── seed_data.py    # Seed dữ liệu mẫu
-│   ├── requirements.txt
-│   └── app/            # Config, models, schemas, routers, services
-├── Diagram/            # Sơ đồ thiết kế hệ thống
-│   ├── Database_MVP.png
-│   ├── DFD.png
-│   ├── Sequence_Guest.png
-│   ├── Sequence_Register.png
-│   ├── UML-Guest.png
-│   ├── UML-Register.png
-│   └── Diagram_docs.md  # 📋 Mô tả chi tiết diagrams
-├── md/                 # Tài liệu dự án
-│   ├── doc-MVP#1.md         # Phân tích use-cases & cạnh tranh
-│   ├── requirement_MVP#1.md # Yêu cầu MVP #1
-│   ├── MVP1_summary.md      # 📋 Tổng hợp phân tích MVP
-│   └── plan_be.md           # 📋 Kế hoạch Backend chi tiết
-├── guidelines/         # Hướng dẫn coding
-└── MVP/                # (Reserved)
+
+DB-backed integration tests:
+
+```powershell
+docker compose up -d db redis
+cd Backend
+$env:CI="true"
+uv run pytest tests/integration/ -v
+```
+
+Full backend test suite:
+
+```powershell
+cd Backend
+$env:CI="true"
+uv run pytest tests/ -v
+```
+
+Frontend build:
+
+```powershell
+cd Frontend
+npm run build
 ```
 
 ---
 
-## 📊 Tình trạng MVP #1
+## ETL
 
-### Đã hoàn thành ✅
+ETL config lives in:
 
-- [x] Frontend giao diện đầy đủ (8 pages, responsive)
-- [x] Luồng Guest: Home → Trip Planning → Itinerary View
-- [x] Luồng Registered User: Register/Login → Create → Save → View Saved
-- [x] Mock data cho phép demo offline
-- [x] Diagrams: ERD, DFD, UML, Sequence (6 files)
-- [x] Documentation: Use-cases, Requirements, Analysis
-- [x] Backend FastAPI — Auth endpoints (register/login)
-- [x] Backend FastAPI — User profile endpoints (get/update)
-- [x] Backend FastAPI — Itinerary CRUD + AI generate endpoints
-- [x] Backend FastAPI — Destinations/Places endpoints
-- [x] PostgreSQL — Database schema (4 bảng ERD + FE extensions)
-- [x] Seed data script — Import mock data từ FE
-- [x] FE-BE Integration — Frontend gọi Backend API qua api.ts service layer
-- [x] CORS — Backend cho phép FE gọi từ port 5173, 5174
+- `Backend/config.yaml`
+- `Backend/src/core/config.py`
 
-### Cần triển khai 🔧
+Configured values:
 
-- [ ] AI Enhancement — Tuning Gemini prompt cho lịch trình tốt hơn
-- [ ] Map integration — Bản đồ tương tác thực tế
-- [ ] Alembic migrations — Database version control
-- [ ] Admin panel (DFD có admin actor)
-- [ ] System Architecture Diagram — Bổ sung
+- `etl.cities`
+- `etl.update_interval_days`
+- `etl.max_places_per_city`
 
----
+Load sample hotels without Goong/Google key:
 
-## 📚 Tài liệu tham khảo
+```powershell
+cd Backend
+uv run python -m src.etl --hotels-only --cities "Hà Nội"
+```
 
-| File                      | Nội dung                                                    |
-| ------------------------- | ----------------------------------------------------------- |
-| `Frontend/FE_docs.md`     | Mô tả chi tiết từng file FE, API mapping, user flows        |
-| `Backend/BE_docs.md`      | API Reference, Database models, hướng dẫn chạy BE           |
-| `md/plan_be.md`           | Kế hoạch Backend chi tiết (endpoints, AI service, timeline) |
-| `md/MVP1_summary.md`      | Phân tích tổng hợp MVP #1 (status, gaps, priorities)        |
-| `md/doc-MVP#1.md`         | Use-cases, cạnh tranh, USP                                  |
-| `md/requirement_MVP#1.md` | Yêu cầu bắt buộc cho MVP #1                                 |
-| `Diagram/Diagram_docs.md` | Mô tả chi tiết các sơ đồ                                    |
+Run ETL for selected cities:
+
+```powershell
+cd Backend
+uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng"
+```
+
+Full real-data ETL needs:
+
+```env
+GOONG_API_KEY=your-goong-api-key
+```
+
+Do not commit real API keys.
 
 ---
 
-## � Nhóm phát triển
+## Local Ports
 
-| Vai trò            | Công nghệ                             |
-| ------------------ | ------------------------------------- |
-| Frontend Developer | React, TypeScript, Tailwind CSS       |
-| Backend Developer  | Python, FastAPI, PostgreSQL           |
-| AI Integration     | Google Gemini API, Prompt Engineering |
+| Service | Local URL / Port |
+|---|---|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:8000 |
+| Swagger | http://localhost:8000/docs |
+| Health | http://localhost:8000/api/v1/health |
+| PostgreSQL | localhost:5432 |
+| Redis | localhost:6379 |
+
+If port `8000` is blocked on Windows, run Backend on another port:
+
+```powershell
+cd Backend
+uv run uvicorn src.main:app --reload --port 8001
+```
+
+Then update frontend API config if the FE code expects port `8000`.
+
+---
+
+## What Still Needs To Be Added
+
+- Add real `GOONG_API_KEY` for full ETL runs.
+- Implement Phase C AI direct itinerary pipeline.
+- Implement AI companion chat with patch-confirm flow.
+- Persist chat history with `chat_sessions` and `chat_messages`.
+- Decide whether to add a real frontend service to `docker-compose.yml`.
+- Expand FE mock data or connect all city/hotel/place views fully to BE APIs.
+- Run final full-stack verification after API keys are configured.
+- Keep `plan/17_execution_tracker.md` updated for every branch/PR.
+
+---
+
+## Useful Docs
+
+| File | Purpose |
+|---|---|
+| `Backend/README.md` | Backend quick start and gates |
+| `plan/15_todo_checklist.md` | Long task checklist |
+| `plan/17_execution_tracker.md` | Execution tracker by branch/task |
+| `.claude/context/00_project_overview.md` | Condensed current project truth |
+| `CLAUDE.md` | Agent/project memory |
+| `AGENTS.md` | Agent and skill coordination |
+
+---
+
+## Team
+
+| Area | Stack |
+|---|---|
+| Frontend | React, TypeScript, Vite, Tailwind/MUI |
+| Backend | FastAPI, SQLAlchemy async, Alembic, PostgreSQL |
+| Cache | Redis |
+| AI | Gemini planned, direct pipeline pending |
+| ETL | OSM, Goong, YAML sample hotels |

@@ -7,6 +7,7 @@ from src.models.extras import (
     ChatSession,
     ExtraExpense,
     GuestClaimToken,
+    ScrapedSource,
     ShareLink,
     TripRating,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "Place",
     "RefreshToken",
     "SavedPlace",
+    "ScrapedSource",
     "ShareLink",
     "Trip",
     "TripDay",

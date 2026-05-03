@@ -10,6 +10,7 @@ import logging
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config import AppSettings, get_settings
 from src.core.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.models.place import Destination, Place, SavedPlace
 from src.repositories.place_repo import PlaceRepository
@@ -24,18 +25,21 @@ from src.services.base import BaseService
 
 logger = logging.getLogger(__name__)
 
-CACHE_TTL_DESTINATIONS = 3600  # 1 hour
-CACHE_TTL_SEARCH = 900  # 15 minutes
-
 
 class PlaceService(BaseService):
     """Business logic for places, destinations, and saved bookmarks."""
 
-    def __init__(self, session: AsyncSession, redis: Redis | None = None) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        redis: Redis | None = None,
+        settings: AppSettings | None = None,
+    ) -> None:
         super().__init__()
         self.session = session
         self.repo = PlaceRepository(session)
         self.redis = redis
+        self.settings = settings or get_settings()
 
     # --- Destinations (public) ---
 
@@ -47,7 +51,11 @@ class PlaceService(BaseService):
         destinations = await self.repo.get_destinations()
         items = [self._to_destination_response(d) for d in destinations]
 
-        await self._cache_set("destinations:all", json.dumps([i.model_dump() for i in items]))
+        await self._cache_set(
+            "destinations:all",
+            json.dumps([i.model_dump() for i in items]),
+            self.settings.destination_cache_ttl_seconds,
+        )
         return items
 
     async def get_destination_detail(self, name: str) -> dict:
@@ -72,7 +80,9 @@ class PlaceService(BaseService):
             "hotels": [self._to_hotel_response(h, dest).model_dump() for h in hotels],
         }
 
-        await self._cache_set(cache_key, json.dumps(result))
+        await self._cache_set(
+            cache_key, json.dumps(result), self.settings.destination_cache_ttl_seconds
+        )
         return result
 
     # --- Place search/detail (public) ---
@@ -89,15 +99,13 @@ class PlaceService(BaseService):
         if cached is not None:
             return [PlaceResponse(**p) for p in json.loads(cached)]
 
-        places = await self.repo.search(
-            query=query, city=city, category=category, limit=limit
-        )
+        places = await self.repo.search(query=query, city=city, category=category, limit=limit)
         items = [self._to_place_response(p) for p in places]
 
         await self._cache_set(
             cache_key,
             json.dumps([i.model_dump() for i in items]),
-            CACHE_TTL_SEARCH,
+            self.settings.place_search_cache_ttl_seconds,
         )
         return items
 
@@ -189,7 +197,7 @@ class PlaceService(BaseService):
             logger.warning("Redis cache read failed for key=%s", key, exc_info=True)
             return None
 
-    async def _cache_set(self, key: str, value: str, ttl: int = CACHE_TTL_DESTINATIONS) -> None:
+    async def _cache_set(self, key: str, value: str, ttl: int) -> None:
         if not self.redis:
             return
         try:

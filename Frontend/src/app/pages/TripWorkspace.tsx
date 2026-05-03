@@ -36,7 +36,7 @@ import {
 } from "../utils/timeHelpers";
 
 import { ActivityDetailModal } from "../components/ActivityDetailModal";
-import { TripSidebar } from "../components/tripSidebar";
+import { TripSidebar } from "../components/TripSidebar";
 import { TripBudgetSidebar } from "../components/TripBudgetSidebar";
 import { TripTimeline } from "../components/TripTimeline";
 import { TripAccommodation } from "../components/TripAccommodation";

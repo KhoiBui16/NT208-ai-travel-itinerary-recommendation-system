@@ -1040,57 +1040,66 @@ git push --force-with-lease origin feat/12345-b1-auth-register
 
 ### D1: ETL Pipeline
 
-- [ ] **D1.1** — `src/etl/__init__.py` + folder structure
-  - Files: `src/etl/__init__.py`, `src/etl/extractors/__init__.py`, `src/etl/transformers/__init__.py`
+- [x] **D1.1** — `src/etl/__init__.py` + folder structure + `__main__.py`
+  - Files: `src/etl/__init__.py`, `src/etl/__main__.py`, `src/etl/extractors/__init__.py`, `src/etl/transformers/__init__.py`, `src/etl/loaders/__init__.py`
   - Endpoint: N/A
   - Dependency: Phase A
   - Estimate: small
+  - Done: Module + `uv run python -m src.etl` entry point
 
-- [ ] **D1.2** — `src/etl/extractors/goong_extractor.py` (~80 lines)
-  - Files: `src/etl/extractors/goong_extractor.py`
+- [x] **D1.2** — `src/etl/base_extractor.py` + `src/etl/extractors/goong_extractor.py`
+  - Files: `src/etl/base_extractor.py`, `src/etl/extractors/goong_extractor.py`
   - Endpoint: N/A
   - Dependency: D1.1, A2.1
   - Estimate: medium
-  - Details: Goong Places API client: autocomplete → detail → geocode
+  - Done: Base class with exponential backoff (5s→15s→45s), Goong client (geocode, autocomplete, place_detail)
   - Ref: [05_data_pipeline_plan.md §2.1](05_data_pipeline_plan.md)
 
-- [ ] **D1.3** — `src/etl/extractors/osm_extractor.py` (~80 lines)
+- [x] **D1.3** — `src/etl/extractors/osm_extractor.py`
   - Files: `src/etl/extractors/osm_extractor.py`
   - Endpoint: N/A
   - Dependency: D1.1
   - Estimate: medium
-  - Details: Overpass API client: query POI by city area → parse JSON
+  - Done: Overpass API client, OSM tags → 5 valid categories mapping, `extract_pois(city)`
   - Ref: [05_data_pipeline_plan.md §2.2](05_data_pipeline_plan.md)
 
-- [ ] **D1.4** — `src/etl/transformers/place_transformer.py` (~60 lines)
-  - Files: `src/etl/transformers/place_transformer.py`
+- [x] **D1.4** — `src/etl/transformers/place_transformer.py` + `hotel_transformer.py`
+  - Files: `src/etl/transformers/place_transformer.py`, `src/etl/transformers/hotel_transformer.py`
   - Endpoint: N/A
   - Dependency: D1.2, D1.3
   - Estimate: small
-  - Details: Normalize + validate + deduplicate + VN coordinate bounds check
+  - Done: Validate (fields, category, VN coords), normalize (strip, collapse), dedup (case-insensitive name+city), hotel filter by city + amenities join
 
-- [ ] **D1.5** — `src/etl/runner.py` (~100 lines) — ETL orchestrator
-  - Files: `src/etl/runner.py`
+- [x] **D1.5** — `src/etl/loaders/db_loader.py` + `src/etl/runner.py` — ETL orchestrator
+  - Files: `src/etl/loaders/db_loader.py`, `src/etl/runner.py`
   - Endpoint: N/A (CLI only)
   - Dependency: D1.2, D1.3, D1.4
   - Estimate: medium
-  - Details: `python -m src.etl.runner --cities "Hà Nội,Đà Nẵng"` → extract → transform → upsert
+  - Done: `uv run python -m src.etl --cities "Hà Nội,Đà Nẵng"` → extract → transform → upsert. DB loader with `get_or_create_destination`, `upsert_places`, `upsert_hotels` (ON CONFLICT DO UPDATE), cache invalidation, source tracking. CLI args: `--cities`, `--dry-run`, `--hotels-only`.
   - Ref: [05_data_pipeline_plan.md §3](05_data_pipeline_plan.md)
 
-- [ ] **D1.6** — Hotels seed data (YAML → DB)
-  - Files: `src/etl/data/hotels.yaml`, `src/etl/loaders/hotel_loader.py`
+- [x] **D1.6** — Hotels test/sample data (YAML → DB) + model changes + config + tests
+  - Files: `src/etl/data/hotels.yaml`, `src/models/extras.py` (ScrapedSource), `src/models/place.py` (UniqueConstraint), `config.yaml` (etl section), `tests/unit/test_etl_transformers.py`
   - Endpoint: N/A
   - Dependency: D1.1, A4.3
   - Estimate: small
-  - Details: Manual curation → YAML → `uv run python -m src.etl.loaders.hotel_loader`
+  - Done: sample hotels across configured cities, ScrapedSource model, UniqueConstraint on Place(name, destination_id) and Hotel(name, destination_id), ETL config with 13 cities + 30-day interval, 16 unit tests
+
+- [x] **D1.7** — ETL schema/local readiness hotfix
+  - Branch: `fix/00005-d-etl-backend-readiness`
+  - Files: `alembic/versions/20260502_0002_sync_etl_schema.py`, `src/core/config.py`, `src/etl/runner.py`, `src/etl/data/hotels.yaml`, `docker-compose.yml`, `.github/workflows/backend-ci.yml`
+  - Endpoint: N/A
+  - Dependency: D1.5, D1.6
+  - Estimate: small
+  - Done: fix missing migration for `scraped_sources` + upsert unique constraints, move ETL cities/limit into `AppSettings`, expand configured cities/sample hotels, make Docker API use `db`/`redis` service hosts, add `alembic check` + FE build to CI, verify `--hotels-only` without Goong/Google API key
 
 ### D2: Integration + Final Verification
 
-- [ ] **D2.1** — Run ETL for 12 target cities
-  - Cmd: `uv run python -m src.etl.runner --cities "Hà Nội,Hồ Chí Minh,Đà Nẵng,Huế,Hội An,Nha Trang,Đà Lạt,Phú Quốc,Sapa,Hạ Long,Cần Thơ,Quy Nhơn"`
-  - Dependency: D1.5
+- [ ] **D2.1** — Run ETL with real API data (requires GOONG_API_KEY)
+  - Cmd: `uv run python -m src.etl --cities "Hà Nội" "TP. Hồ Chí Minh" "Đà Nẵng" "Huế" "Hội An" "Nha Trang" "Đà Lạt" "Phú Quốc" "Sapa" "Hạ Long" "Vịnh Hạ Long" "Cần Thơ" "Quy Nhơn" "Vũng Tàu"`
+  - Dependency: D1.5, user provides Goong/Google Maps API key
   - Estimate: medium
-  - Test: ≥25 places per city upserted
+  - Test: ≥25 places per city upserted; 1-3 test runs to verify, then set up 30-day monthly crawl
 
 - [ ] **D2.2** — FE-BE integration test
   - Dependency: All phases merged
@@ -1103,7 +1112,7 @@ git push --force-with-lease origin feat/12345-b1-auth-register
   - Estimate: medium
   - Test: `docker compose up --build` → api + db + redis healthy → Swagger UI → all 33 core endpoints render; EP-34 renders only if analytics flag enabled
 
-**Phase D Total: 9 tasks** | **PR: `feat/be-etl-integration` → main**
+**Phase D Total: 10 tasks (D1: 7 done, D2: 3 remaining)** | **PR:** `feat/00004-d-etl-pipeline` → main (#5) + `fix/00005-d-etl-backend-readiness` → main (pending)
 
 ---
 
@@ -1131,10 +1140,10 @@ git push --force-with-lease origin feat/12345-b1-auth-register
 
 ## Updated Progress Tracking
 
-> **Decision lock v5.0 (2026-04-30):** Hoán đổi thứ tự Phase C ↔ D. Làm Phase C (AI Agent)
-> trước, sau đó Phase D (ETL) khi có API keys. Lý do: AI Agent cần phân tích kỹ trước khi code,
-> còn ETL chỉ cần Goong API key là chạy được. Phase C cũng không bắt buộc phải có real data
-> — có thể dùng stub/seed data để test pipeline trước.
+> **Decision lock v5.1 (2026-05-02):** Phase D1 ETL infrastructure được làm trước để unblock
+> dữ liệu local, nhưng Phase C AI vẫn chưa bắt đầu. D2.1 full real-data ETL vẫn phụ thuộc
+> GOONG/Google Maps API key thật. MVP2 core chưa được coi là hoàn tất cho tới khi Phase C
+> và D2 local/full-stack verification pass.
 
 | Phase | Total Tasks | Done | In Progress | Remaining | % Complete | PR |
 |-------|------------|------|-------------|-----------|------------|-----|
@@ -1143,12 +1152,12 @@ git push --force-with-lease origin feat/12345-b1-auth-register
 | **B2: Itineraries** | 16 | 16 | 0 | 0 | 100% | #3 |
 | **B3: Places** | 10 | 10 | 0 | 0 | 100% | #4 |
 | **C: AI Agent** | 22 | 0 | 0 | 22 | 0% | — |
-| **D: ETL+Integration** | 9 | 0 | 0 | 9 | 0% | — |
-| **TOTAL** | **98** | **67** | **0** | **31** | **68%** |
+| **D: ETL+Integration** | 10 | 7 | 0 | 3 | 70% | #5 + fix pending |
+| **TOTAL** | **99** | **74** | **0** | **25** | **75%** |
 
 > Update bảng này mỗi khi check task `[x]`.
 
 ---
 
-> **Batch 2 hoàn tất** — Phase B3 (10 tasks) + C (14 tasks) + D (9 tasks) = **33 tasks**
-> **Grand Total:** 57 (Batch 1) + 41 (Batch 2) = **98 tasks** covering all 33 core endpoints + optional EP-34 + ETL pipeline
+> **Batch 2 status:** Phase B3 done, Phase D1 infrastructure + hotfix done, Phase C AI still pending.
+> **Grand Total:** 99 tracked tasks covering all 33 core endpoints + optional EP-34 + ETL pipeline.

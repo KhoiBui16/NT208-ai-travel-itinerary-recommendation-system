@@ -206,3 +206,204 @@ hotels:
     image: "/img/hotels/imperial.jpg"
     location: "159 Thùy Vân, Vũng Tàu"
     description: "Khách sạn 4 sao đường biển Thùy Vân"
+
+  # --- Vịnh Hạ Long alias used by FE ---
+  - name: "Paradise Suites Hạ Long"
+    city: "Vịnh Hạ Long"
+    rating: 4.5
+    review_count: 640
+    price: 2400000
+    amenities: ["wifi", "pool", "restaurant", "bar"]
+    image: "/img/hotels/paradise-suites.jpg"
+    location: "Đảo Tuần Châu, Hạ Long"
+    description: "Khách sạn gần bến du thuyền, phù hợp tour vịnh"
+
+  # --- Hải Phòng ---
+  - name: "Hotel Nikko Hải Phòng"
+    city: "Hải Phòng"
+    rating: 4.6
+    review_count: 820
+    price: 2500000
+    amenities: ["wifi", "pool", "restaurant", "gym"]
+    image: "/img/hotels/nikko-hai-phong.jpg"
+    location: "Vĩnh Niệm, Lê Chân"
+    description: "Khách sạn hiện đại gần trung tâm Hải Phòng"
+
+  - name: "Melia Vinpearl Hải Phòng Rivera"
+    city: "Hải Phòng"
+    rating: 4.5
+    review_count: 760
+    price: 2300000
+    amenities: ["wifi", "pool", "spa", "restaurant"]
+    image: "/img/hotels/melia-hai-phong.jpg"
+    location: "Vinhomes Imperia, Hồng Bàng"
+    description: "Khách sạn cao cấp trong khu đô thị ven sông"
+
+  # --- Ninh Bình ---
+  - name: "Tam Coc Garden Resort"
+    city: "Ninh Bình"
+    rating: 4.7
+    review_count: 920
+    price: 3100000
+    amenities: ["wifi", "pool", "restaurant", "garden"]
+    image: "/img/hotels/tam-coc-garden.jpg"
+    location: "Hải Nham, Hoa Lư"
+    description: "Resort yên tĩnh giữa đồng lúa Tam Cốc"
+
+  - name: "Emeralda Resort Ninh Bình"
+    city: "Ninh Bình"
+    rating: 4.5
+    review_count: 1040
+    price: 2800000
+    amenities: ["wifi", "pool", "spa", "restaurant"]
+    image: "/img/hotels/emeralda-ninh-binh.jpg"
+    location: "Vân Long, Gia Viễn"
+    description: "Resort phong cách làng quê Bắc Bộ"
+
+  # --- Hà Giang ---
+  - name: "P'apiu Resort Hà Giang"
+    city: "Hà Giang"
+    rating: 4.8
+    review_count: 420
+    price: 5200000
+    amenities: ["wifi", "restaurant", "mountain_view", "spa"]
+    image: "/img/hotels/papiu-ha-giang.jpg"
+    location: "Yên Định, Bắc Mê"
+    description: "Resort nghỉ dưỡng giữa núi rừng Hà Giang"
+
+  - name: "Phoenix Hotel Hà Giang"
+    city: "Hà Giang"
+    rating: 4.3
+    review_count: 530
+    price: 1100000
+    amenities: ["wifi", "restaurant", "parking"]
+    image: "/img/hotels/phoenix-ha-giang.jpg"
+    location: "Nguyễn Trãi, TP. Hà Giang"
+    description: "Khách sạn tiện nghi cho hành trình vòng cung đá"
+
+  # --- Mộc Châu ---
+  - name: "Mường Thanh Holiday Mộc Châu"
+    city: "Mộc Châu"
+    rating: 4.3
+    review_count: 610
+    price: 1500000
+    amenities: ["wifi", "restaurant", "gym"]
+    image: "/img/hotels/muong-thanh-moc-chau.jpg"
+    location: "Hoàng Quốc Việt, Mộc Châu"
+    description: "Khách sạn trung tâm cao nguyên Mộc Châu"
+
+  - name: "Mộc Châu Eco Garden Resort"
+    city: "Mộc Châu"
+    rating: 4.4
+    review_count: 480
+    price: 1900000
+    amenities: ["wifi", "garden", "restaurant"]
+    image: "/img/hotels/eco-garden-moc-chau.jpg"
+    location: "Bản Búa, Đông Sang"
+    description: "Khu nghỉ xanh gần đồi chè và bản làng"
+
+  # --- Đồng Hới / Phong Nha ---
+  - name: "Melia Vinpearl Quảng Bình"
+    city: "Đồng Hới"
+    rating: 4.5
+    review_count: 790
+    price: 2100000
+    amenities: ["wifi", "pool", "spa", "restaurant"]
+    image: "/img/hotels/melia-quang-binh.jpg"
+    location: "Quách Xuân Kỳ, Đồng Hới"
+    description: "Khách sạn trung tâm Đồng Hới, thuận tiện đi Phong Nha"
+
+  - name: "Phong Nha Lake House Resort"
+    city: "Phong Nha"
+    rating: 4.4
+    review_count: 560
+    price: 1300000
+    amenities: ["wifi", "pool", "restaurant", "lake_view"]
+    image: "/img/hotels/phong-nha-lake-house.jpg"
+    location: "Hưng Trạch, Bố Trạch"
+    description: "Resort ven hồ gần vườn quốc gia Phong Nha"
+
+  # --- Phan Thiết / Mũi Né ---
+  - name: "The Cliff Resort & Residences"
+    city: "Phan Thiết"
+    rating: 4.6
+    review_count: 1150
+    price: 2600000
+    amenities: ["wifi", "pool", "spa", "restaurant", "beach"]
+    image: "/img/hotels/the-cliff-phan-thiet.jpg"
+    location: "Phú Hài, Phan Thiết"
+    description: "Resort ven biển, phù hợp nghỉ dưỡng gia đình"
+
+  - name: "Anantara Mũi Né Resort"
+    city: "Mũi Né"
+    rating: 4.7
+    review_count: 980
+    price: 4300000
+    amenities: ["wifi", "pool", "spa", "restaurant", "beach"]
+    image: "/img/hotels/anantara-mui-ne.jpg"
+    location: "Nguyễn Đình Chiểu, Mũi Né"
+    description: "Resort 5 sao bên bãi biển Mũi Né"
+
+  # --- Tuy Hòa ---
+  - name: "Sala Tuy Hòa Beach Hotel"
+    city: "Tuy Hòa"
+    rating: 4.4
+    review_count: 620
+    price: 1600000
+    amenities: ["wifi", "pool", "restaurant", "beach"]
+    image: "/img/hotels/sala-tuy-hoa.jpg"
+    location: "Độc Lập, Tuy Hòa"
+    description: "Khách sạn gần biển, thuận tiện khám phá Phú Yên"
+
+  # --- Buôn Ma Thuột / Pleiku ---
+  - name: "Mường Thanh Luxury Buôn Ma Thuột"
+    city: "Buôn Ma Thuột"
+    rating: 4.3
+    review_count: 540
+    price: 1400000
+    amenities: ["wifi", "pool", "restaurant"]
+    image: "/img/hotels/muong-thanh-bmt.jpg"
+    location: "Nguyễn Đình Chiểu, Buôn Ma Thuột"
+    description: "Khách sạn trung tâm thủ phủ cà phê"
+
+  - name: "HAGL Hotel Pleiku"
+    city: "Pleiku"
+    rating: 4.2
+    review_count: 470
+    price: 1200000
+    amenities: ["wifi", "restaurant", "parking"]
+    image: "/img/hotels/hagl-pleiku.jpg"
+    location: "Phù Đổng, Pleiku"
+    description: "Khách sạn trung tâm, thuận tiện đi Biển Hồ"
+
+  # --- Côn Đảo ---
+  - name: "Poulo Condor Boutique Resort"
+    city: "Côn Đảo"
+    rating: 4.7
+    review_count: 520
+    price: 5200000
+    amenities: ["wifi", "pool", "spa", "restaurant", "beach"]
+    image: "/img/hotels/poulo-condor.jpg"
+    location: "Suối Ớt, Côn Đảo"
+    description: "Resort boutique yên tĩnh gần biển Côn Đảo"
+
+  # --- Tây Ninh / Châu Đốc ---
+  - name: "Melia Vinpearl Tây Ninh"
+    city: "Tây Ninh"
+    rating: 4.4
+    review_count: 680
+    price: 1700000
+    amenities: ["wifi", "pool", "restaurant", "gym"]
+    image: "/img/hotels/melia-tay-ninh.jpg"
+    location: "Trung tâm TP. Tây Ninh"
+    description: "Khách sạn cao tầng gần núi Bà Đen"
+
+  - name: "Victoria Núi Sam Lodge"
+    city: "Châu Đốc"
+    rating: 4.5
+    review_count: 610
+    price: 1900000
+    amenities: ["wifi", "pool", "restaurant", "mountain_view"]
+    image: "/img/hotels/victoria-nui-sam.jpg"
+    location: "Núi Sam, Châu Đốc"
+    description: "Lodge trên sườn núi, view đồng bằng An Giang"

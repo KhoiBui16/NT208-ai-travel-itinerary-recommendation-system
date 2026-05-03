@@ -120,6 +120,8 @@ def transform(raw_pois: list[dict], city: str) -> list[dict]:
 
     logger.info(
         "Transform %s: %d valid, %d skipped",
-        city, len(valid), skipped,
+        city,
+        len(valid),
+        skipped,
     )
     return valid
