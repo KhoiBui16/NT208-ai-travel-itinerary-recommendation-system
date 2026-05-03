@@ -12,7 +12,7 @@ import { toast, Toaster } from "sonner";
 import {
   Plus, Sparkles, GripVertical, Clock, MapPin, Search, Star, Heart,
   Utensils, Landmark, TreePine, Music, ShoppingBag, Trash2, X, Check,
-  ChevronRight, Calendar, Save, Bookmark, Home, CalendarDays,
+  ChevronRight, Save, Bookmark, Home,
   Hotel as HotelIcon, Wifi, Coffee, Car, AlertCircle, Eye, DollarSign,
   Users, Bike, Bus, Navigation, Minus, User, Edit
 } from "lucide-react";
@@ -113,7 +113,7 @@ export default function TripWorkspace() {
     selectedDaysForHotel, setSelectedDaysForHotel,
     bookingType, setBookingType, bookingDuration, setBookingDuration,
     getAccommodationForDay, getHotelsForCity, handleSelectHotel,
-    handleConfirmAccommodation, handleChangeAccommodation, handleDeleteAccommodation
+    handleConfirmAccommodation, handleChangeAccommodation
   } = useAccommodation(days, selectedDayId, tripId);
 
   const {
@@ -121,8 +121,6 @@ export default function TripWorkspace() {
     calculateDayCostByCategory, calculateTotalTripCost,
     calculateTotalCostByCategory, formatCurrency
   } = useTripCost(days, accommodations, travelers);
-
-  const updateNextId = (id: number) => { nextId = Math.max(nextId, id); };
 
   const { handleSaveItinerary, currentTripId } = useTripSync(
     days, setDays, setSelectedDayId, accommodations, setAccommodations,
