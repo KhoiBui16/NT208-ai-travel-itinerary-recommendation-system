@@ -9,7 +9,6 @@ import {
   Users,
   Calendar,
   Heart,
-  Share2,
   Bookmark,
 } from "lucide-react";
 import { useState, useEffect } from "react";
