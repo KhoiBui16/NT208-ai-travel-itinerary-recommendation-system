@@ -16,7 +16,7 @@ export default function Onboarding() {
   };
 
   const handleComplete = () => { // Gọi API POST /api/user/preferences để lưu thiết lập.
-    // Save preferences to localStorage
+    // Save preferences to sessionStorage
     const preferences = {
       travelType: selectedTravelType,
       interests: selectedInterests,

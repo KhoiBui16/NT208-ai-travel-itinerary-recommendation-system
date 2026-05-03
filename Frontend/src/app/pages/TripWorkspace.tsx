@@ -91,7 +91,7 @@ export default function TripWorkspace() {
   // Add to itinerary modal (from place panel)
   const [addPlaceModal, setAddPlaceModal] = useState<{ place: Place } | null>(null);
 
-  // Traveler info from localStorage
+  // Traveler info from sessionStorage
   const [travelers, setTravelers] = useState<TravelerInfo>({ adults: 2, children: 0, total: 2 });
   
   // Edit travelers modal
@@ -226,7 +226,7 @@ export default function TripWorkspace() {
           tripName={tripName || "Lịch trình mới"}
           onNameChange={(newName) => {
             setTripName(newName);
-            // Optional: Thêm logic lưu tên mới vào localStorage nếu cần
+            // Optional: Thêm logic lưu tên mới vào sessionStorage nếu cần
           }}
           onEditTravelers={() => setShowEditTravelersModal(true)}
           onSaveItinerary={handleSaveItinerary}

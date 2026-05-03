@@ -91,19 +91,25 @@ export default function ItineraryView() {
 
   useEffect(() => {
     if (!id) return;
+    let isMounted = true;
     setLoading(true);
     getItinerary(Number(id))
       .then((resp) => {
+        if (!isMounted) return;
         const local = mapApiToLocal(resp);
         setItinerary(local);
         setRating(local.rating || 0);
         setFeedback(local.feedback || "");
       })
       .catch(() => {
+        if (!isMounted) return;
         toast.error("Không tìm thấy lịch trình");
         navigate("/");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => { isMounted = false; };
   }, [id, navigate]);
 
   const handleSave = async () => {

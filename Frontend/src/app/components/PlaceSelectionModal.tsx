@@ -163,12 +163,7 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
         const match = savedList.find((p: any) => (p.placeName || p.name) === place.name);
         if (match) await unsavePlace(match.id);
       } else {
-        await savePlace({
-          placeId: 0,
-          placeName: place.name,
-          placeType: place.category === "Ẩm thực" ? "food" : place.category === "Điểm tham quan" ? "attraction" : place.category === "Thiên nhiên" ? "nature" : place.category === "Giải trí" ? "entertainment" : place.category === "Mua sắm" ? "shopping" : "attraction",
-          city: cities.find((c) => c.id === place.cityId)?.name || "",
-        });
+        await savePlace(placeId);
       }
     } catch {
       // Revert on failure

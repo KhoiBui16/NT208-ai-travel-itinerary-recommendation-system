@@ -19,14 +19,20 @@ export default function SavedItineraries() {
       return;
     }
 
+    let isMounted = true;
+
     listItineraries(1, 100)
       .then((resp) => {
-        setItineraries(resp.items);
+        if (isMounted) setItineraries(resp.items);
       })
       .catch(() => {
-        toast.error("Không thể tải danh sách lịch trình");
+        if (isMounted) toast.error("Không thể tải danh sách lịch trình");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => { isMounted = false; };
   }, [isAuthenticated, navigate]);
 
   const handleDelete = async (id: number) => {

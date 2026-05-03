@@ -105,7 +105,7 @@ export default function DailyItinerary() {
 
   // Load data from BE API on mount
   useEffect(() => {
-    // If we have a tripId in URL, fetch from API; otherwise fallback to localStorage for demo
+    // If we have a tripId in URL, fetch from API; otherwise fallback to sessionStorage
     if (tripIdParam) {
       getItinerary(Number(tripIdParam)).then((tripData) => {
         if (tripData.days && tripData.days.length > 0) {
@@ -202,12 +202,7 @@ export default function DailyItinerary() {
         const match = savedList.find((p: any) => (p.placeName || p.name) === suggestion.name);
         if (match) await unsavePlace(match.id);
       } else {
-        await savePlace({
-          placeId: 0,
-          placeName: suggestion.name,
-          placeType: suggestion.type,
-          city: suggestion.city || "",
-        });
+        await savePlace(suggestion.id);
       }
     } catch {
       // Revert on failure

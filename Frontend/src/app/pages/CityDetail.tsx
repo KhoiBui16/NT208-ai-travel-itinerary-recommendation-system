@@ -89,12 +89,7 @@ export default function CityDetail() {
         const match = savedList.find((p: any) => (p.placeName || p.name) === place.name);
         if (match) await unsavePlace(match.id);
       } else {
-        await savePlace({
-          placeId: 0,
-          placeName: place.name,
-          placeType: place.category,
-          city: city?.name || "",
-        });
+        await savePlace(placeId);
       }
     } catch {
       // Revert on failure

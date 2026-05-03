@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Header } from "../components/Header";
 import { User, Mail, Phone, Heart, Save } from "lucide-react";
@@ -21,6 +21,18 @@ export default function Profile() {
   const [success, setSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Sync form when user data changes (e.g. after refreshUser)
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        interests: user.interests || [],
+      });
+    }
+  }, [user]);
+
   if (!isAuthenticated) {
     navigate("/login");
     return null;
@@ -33,6 +45,7 @@ export default function Profile() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    const backup = { ...formData };
     try {
       await updateProfile({
         name: formData.name,
@@ -43,6 +56,7 @@ export default function Profile() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
+      setFormData(backup);
       toast.error("Cập nhật thất bại. Vui lòng thử lại.", { position: "top-right" });
     } finally {
       setSaving(false);

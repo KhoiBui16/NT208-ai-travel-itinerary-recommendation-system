@@ -5,6 +5,14 @@ import { toast } from "sonner";
 import { Day, Accommodation, TravelerInfo, Place, Activity, ExtraExpense, DayExtraExpense } from "../../types/trip.types";
 import { getItinerary, createItinerary, updateItinerary } from "../../services/itinerary";
 
+/** Convert dd/MM/yyyy → yyyy-MM-dd for API. Pass-through if already ISO or empty. */
+function toISODate(d: string): string {
+  if (!d) return d;
+  const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return d; // already ISO or other format
+}
+
 export const useTripSync = (
   days: Day[],
   setDays: React.Dispatch<React.SetStateAction<Day[]>>,
@@ -33,11 +41,14 @@ export const useTripSync = (
 
   // 1. Sync ban đầu khi vào trang
   useEffect(() => {
+    let isMounted = true;
+
     const loadInitialData = async () => {
       // If we have a tripId from URL, load from API
       if (tripIdParam && isAuthenticated) {
         try {
           const resp = await getItinerary(tripIdParam);
+          if (!isMounted) return;
           currentTripIdRef.current = resp.id;
 
           if (resp.tripName) setTripName(resp.tripName);
@@ -105,11 +116,11 @@ export const useTripSync = (
           return;
         } catch (error) {
           console.error("Error loading trip from API:", error);
-          // Fall through to localStorage fallback
+          // Fall through to sessionStorage fallback
         }
       }
 
-      // Fallback: check localStorage for workspace-passed data (wizard flow)
+      // Fallback: check sessionStorage for workspace-passed data (wizard flow)
       const savedTrip = sessionStorage.getItem("currentTrip");
       if (savedTrip) {
         try {
@@ -180,14 +191,15 @@ export const useTripSync = (
     };
 
     loadInitialData();
+    return () => { isMounted = false; };
   }, [tripIdParam, isAuthenticated]);
 
-  // 2. Auto-save debounce (save to localStorage for quick restore, API when tripId exists)
+  // 2. Auto-save debounce (save to sessionStorage for quick restore, API when tripId exists)
   useEffect(() => {
     if (isInitialMount.current) return;
     if (days.length > 0) {
       const tripData = { name: tripName, days, accommodations, totalBudget, savedAt: new Date().toISOString() };
-      // Always save to localStorage as quick-restore cache
+      // Always save to sessionStorage as quick-restore cache
       sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
     }
   }, [days, accommodations, totalBudget, tripName]);
@@ -210,7 +222,7 @@ export const useTripSync = (
           days: days.map((d, idx) => ({
             id: d.id,
             label: d.label,
-            date: d.date,
+            date: toISODate(d.date),
             destinationName: d.destinationName,
             activities: d.activities.map((a) => ({
               id: a.id,
@@ -248,8 +260,8 @@ export const useTripSync = (
         const resp = await createItinerary({
           destination: destinationNames[0] || "Việt Nam",
           tripName: tripName || "Lịch trình mới",
-          startDate: days[0]?.date || new Date().toISOString().split("T")[0],
-          endDate: days[days.length - 1]?.date || new Date().toISOString().split("T")[0],
+          startDate: toISODate(days[0]?.date) || new Date().toISOString().split("T")[0],
+          endDate: toISODate(days[days.length - 1]?.date) || new Date().toISOString().split("T")[0],
           budget: totalBudget,
         });
         currentTripIdRef.current = resp.id;
@@ -259,7 +271,7 @@ export const useTripSync = (
           days: days.map((d, idx) => ({
             id: d.id,
             label: d.label,
-            date: d.date,
+            date: toISODate(d.date),
             destinationName: d.destinationName,
             activities: d.activities.map((a) => ({
               id: a.id,
@@ -293,12 +305,12 @@ export const useTripSync = (
         });
       }
 
-      // Also save to localStorage as cache
+      // Also save to sessionStorage as cache
       sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
       toast.success("Đã lưu lịch trình thành công", { position: "top-right" });
     } catch (error) {
       console.error("Error saving itinerary:", error);
-      // Fallback: save to localStorage only
+      // Fallback: save to sessionStorage only
       sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
       toast.error("Lưu lên server thất bại, đã lưu tạm thời", { position: "top-right" });
     }

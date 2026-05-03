@@ -23,7 +23,7 @@ export default function BudgetSetup() {
   }>({ days: 0, people: 0, destinations: [] });
 
   useEffect(() => {
-    // Load trip data from localStorage
+    // Load trip data from sessionStorage
     const savedDayAllocations = sessionStorage.getItem("tripDayAllocations");
     const savedTravelers = sessionStorage.getItem("tripTravelers");
     const savedDestinations = sessionStorage.getItem("tripDestinations");
