@@ -16,6 +16,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00009 | B2/B3 | `feat/00009-b2-fe-integration` | FE integration — TripWizardContext, API+mock fallback, share/claim flow, ProtectedRoute | merged | FE build pass | #10 |
 | 00010 | B2/B3 | `feat/00010-b2-crud-api-wiring` | Wire activity/accommodation CRUD API, places search debounce, city detail BE integration | merged | FE build pass | #11 |
 | 00011 | B2/B3 | `fix/00011-b2-crud-wiring-hotfix` | resolveTimeConflicts in addActivityToDay, remove unused imports, fix duplicate updateNextId | merged | FE build pass | #12 |
+| 00012 | B2/B3 | `fix/00012-b2-createtrip-api-docs-sync` | Wire CreateTrip to createItinerary API, sync docs với actual FE-BE status | merged | FE build pass | #13 |
 
 ## Scope Task 00006
 
@@ -71,7 +72,6 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 
 ## Còn Lại Trước Phase C
 
-- `CreateTrip` chưa nối `createItinerary`/`generateItinerary` API — vẫn navigate với mock data.
 - `ItineraryView` chưa có share button — share flow nằm trong `TopActionBar` của TripWorkspace.
 - `ForgotPassword` cần BE endpoint password reset.
 - FE unit/e2e test runner (Playwright/Cypress).
