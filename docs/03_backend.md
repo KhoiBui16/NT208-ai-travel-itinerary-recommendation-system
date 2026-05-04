@@ -33,7 +33,9 @@ Các file MVP1 cũ như `Backend/BE_docs.md` và folder `Backend/app/` không c�
 - Shared: public read by shareToken (1 endpoint)
 - Places: destinations, destination detail, search, detail, saved places list/save/unsave (7 endpoints)
 
-**Total: 32 endpoints** (EP-34 `/agent/analytics` optional cho MVP2+)
+**Total: 32 endpoints** (EP-36 `/agent/analytics` optional cho MVP2+)
+
+> **Lưu ý EP numbering:** Plan gốc (plan/12_be_crud_endpoints.md) đánh EP-31 là `GET /agent/rate-limit-status` và EP-32 là `POST /itineraries/{id}/claim`. Code thực tế dùng EP-31 cho `POST /auth/forgot-password` và EP-32 cho `POST /auth/reset-password`. Guest claim đã nằm trong itineraries router (không có số EP riêng). Phase C endpoints renumbered: EP-33 rate-limit-status, EP-34 claim, EP-35 chat-history, EP-36 analytics. Tổng core sau Phase C: 34 endpoints.
 
 ### Auth endpoints chi tiết
 
