@@ -207,27 +207,73 @@ CreateTrip
 
 ## Automation Hiện Có
 
-Frontend chưa có unit/e2e test runner. Gate hiện tại:
+Frontend đã có Playwright e2e test runner (thiết lập PR #31). Gate hiện tại:
 
 ```powershell
 cd Frontend
-npm run build
+npm run build           # Production build phải pass
+npm run test:e2e        # Playwright e2e tests (cần BE chạy)
+npm run test:e2e:headed # Chạy e2e với browser hiển thị
+npm run test:e2e:ui     # Chạy e2e qua Playwright UI
 ```
 
-Smoke website:
+### Playwright E2E Tests
 
-- Start dev server bằng `npm run dev`.
-- HTTP GET `/` phải trả 200.
-- HTML phải có `id="root"`.
+11 test cases trong 3 spec files:
 
-Đã thêm script `scripts/test_fullstack_smoke.ps1` để smoke FE/BE đang chạy.
+**`tests/e2e/auth.spec.ts` (3 tests):**
+
+| Test | Flow | Mô tả |
+|---|---|---|
+| register → success → redirect home | UI form | Điền form register, submit, redirect về `/` |
+| login → success → redirect home | API + UI | Register qua API, login qua UI, redirect về `/` |
+| protected route → redirect login → login → show page | UI navigation | Truy cập `/trip-library` chưa auth → redirect `/login` → login → quay lại `/trip-library` |
+
+**`tests/e2e/trips.spec.ts` (3 tests):**
+
+| Test | Flow | Mô tả |
+|---|---|---|
+| create trip via generateItinerary → navigate to workspace | API + UI | Tạo trip qua API, navigate `/trip-workspace?tripId=...`, verify URL |
+| view trip list in TripLibrary | API + UI | Tạo trip qua API, mở TripLibrary, verify trip card hiển thị |
+| delete trip from TripHistory | API + UI | Tạo trip qua API, mở ItineraryView, click nút xóa, confirm |
+
+**`tests/e2e/public.spec.ts` (5 tests):**
+
+| Test | Mô tả |
+|---|---|
+| home page loads | Verify `/` trả banner |
+| login page loads | Verify `/login` trả heading "Chào mừng bạn trở lại!" |
+| register page loads | Verify `/register` trả heading "Đăng Ký" |
+| forgot-password page loads | Verify `/forgot-password` trả URL đúng |
+| not-found page for invalid route | Verify route không tồn tại trả heading "404" |
+
+**`tests/e2e/helpers/auth.ts` — API auth helpers:**
+
+- `apiRegister(email, password, name)` — Đăng ký user qua BE API, trả access/refresh tokens
+- `apiLogin(email, password)` — Đăng nhập qua BE API, trả tokens
+- `injectAuth(page, accessToken, refreshToken)` — Inject JWT tokens vào localStorage
+- `loginAs(page, email, password, name)` — Full flow: register + inject tokens
+
+**Cấu hình Playwright (`playwright.config.ts`):**
+
+- `baseURL`: `http://localhost:5173` (override bằng `E2E_BASE_URL` env)
+- `webServer`: Tự động start `npm run dev` nếu chưa chạy
+- Browser: Chromium only (CI), configurable locally
+- Timeout: 30 giây, retries: 2 trên CI
+
+**CI integration:**
+
+Job `frontend-e2e` trong `frontend-ci.yml` chạy Playwright tests với:
+- PostgreSQL + Redis services containers
+- BE server start trong background
+- Playwright install chromium
+- Artifact upload (report + traces) khi fail
 
 ## Known Gaps
 
 - City/hotel/place UI dùng API làm primary, mock làm fallback khi BE không có data.
 - Một số màn AI/chat vẫn mock vì BE AI chưa implement (Phase C).
-- Chưa có Playwright/Cypress.
-- Chưa có test visual/e2e cho trip workspace.
+- E2e tests chưa cover trip workspace drag-and-drop, calendar interaction, accommodation CRUD flow.
 
 ## API Integration Status (2026-05-04)
 

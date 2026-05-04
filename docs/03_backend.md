@@ -26,46 +26,88 @@ Các file MVP1 cũ như `Backend/BE_docs.md` và folder `Backend/app/` không c�
 
 ## Endpoint groups đã có
 
-- Health: `/api/v1/health` (1 endpoint)
-- Auth: register, login, refresh, logout, forgot-password, reset-password (6 endpoints)
-- Users: profile, update profile, password (3 endpoints)
-- Itineraries: create/list/get/update/delete, generate, nested activity/accommodation, share, claim, rating (14 endpoints)
-- Shared: public read by shareToken (1 endpoint)
-- Places: destinations, destination detail, search, detail, saved places list/save/unsave (7 endpoints)
-
-**Total: 32 endpoints** (EP-36 `/agent/analytics` optional cho MVP2+)
-
-> **Lưu ý EP numbering:** Plan gốc (plan/12_be_crud_endpoints.md) đánh EP-31 là `GET /agent/rate-limit-status` và EP-32 là `POST /itineraries/{id}/claim`. Code thực tế dùng EP-31 cho `POST /auth/forgot-password` và EP-32 cho `POST /auth/reset-password`. Guest claim đã nằm trong itineraries router (không có số EP riêng). Phase C endpoints renumbered: EP-33 rate-limit-status, EP-34 claim, EP-35 chat-history, EP-36 analytics. Tổng core sau Phase C: 34 endpoints.
-
-### Auth endpoints chi tiết
+### EP-0: Health
 
 | EP | Method | Path | Auth | Mô tả |
 |---|---|---|---|---|
-| EP-1 | POST | `/api/v1/auth/register` | Public | Tạo account + nhận JWT pair |
-| EP-2 | POST | `/api/v1/auth/login` | Public | Xác thực credentials + nhận JWT pair |
-| EP-3 | POST | `/api/v1/auth/refresh` | Public | Rotate refresh token + nhận JWT pair mới |
-| EP-4 | POST | `/api/v1/auth/logout` | Bearer | Revoke refresh token |
-| EP-31 | POST | `/api/v1/auth/forgot-password` | Public | Gửi email reset password (silent nếu email không tồn tại) |
-| EP-32 | POST | `/api/v1/auth/reset-password` | Public | Tiêu hao reset token + đổi mật khẩu mới |
+| EP-0 | GET | `/api/v1/health` | Public | Kiểm tra tình trạng API, trả `{"status":"healthy"}` |
 
-### Password reset flow
+### Auth endpoints (6 endpoints)
+
+| EP | Method | Path | Auth | Mô tả |
+|---|---|---|---|---|
+| EP-1 | POST | `/api/v1/auth/register` | Public | Tạo account mới + nhận JWT access/refresh token pair |
+| EP-2 | POST | `/api/v1/auth/login` | Public | Xác thực email + password, trả JWT token pair |
+| EP-3 | POST | `/api/v1/auth/refresh` | Public | Rotate refresh token cũ → nhận JWT pair mới; refresh cũ bị revoke |
+| EP-4 | POST | `/api/v1/auth/logout` | Bearer | Revoke refresh token đang dùng; client xóa token local |
+| EP-31 | POST | `/api/v1/auth/forgot-password` | Public | Gửi email chứa reset link; silent nếu email không tồn tại (chống enumeration) |
+| EP-32 | POST | `/api/v1/auth/reset-password` | Public | Tiêu hao reset token + đổi mật khẩu mới + revoke tất cả refresh tokens |
+
+**Chi tiết password reset flow:**
 
 ```text
 User nhập email
 → POST /api/v1/auth/forgot-password
 → BE tạo opaque reset token (SHA-256 hash lưu DB, raw token gửi email)
-→ User nhấn link trong email → /reset-password?token=xxx
+→ User nhấn link trong email → FE /reset-password?token=xxx
 → FE gọi POST /api/v1/auth/reset-password { token, newPassword }
 → BE verify token hash + expiry → đổi mật khẩu → clear token → revoke tất cả refresh tokens
 ```
 
-Thiết kế bảo mật:
-- Reset token lưu hash trong DB (giống refresh/share/claim tokens).
-- Token one-time use: sau khi dùng, hash + expiry bị clear.
-- Token có thời hạn (mặc định 1 giờ, cấu hình `auth.password_reset_token_expire_hours`).
-- Sau khi reset, tất cả refresh tokens bị revoke (force re-login trên mọi thiết bị).
-- `forgot-password` luôn trả success dù email không tồn tại (chống email enumeration).
-- `smtp_password` là `SecretStr`, chỉ set qua `.env` hoặc env var, không qua `config.yaml`.
+### User endpoints (3 endpoints)
+
+| EP | Method | Path | Auth | Mô tả |
+|---|---|---|---|---|
+| EP-5 | GET | `/api/v1/users/profile` | Bearer | Đọc profile user hiện tại (name, email, avatar) |
+| EP-6 | PUT | `/api/v1/users/profile` | Bearer | Cập nhật name/avatar; trả profile mới sau update |
+| EP-7 | PUT | `/api/v1/users/password` | Bearer | Đổi mật khẩu (yêu cầu currentPassword + newPassword) |
+
+### Itinerary endpoints (14 endpoints)
+
+| EP | Method | Path | Auth | Mô tả |
+|---|---|---|---|---|
+| EP-8 | POST | `/api/v1/itineraries/generate` | Optional | AI-generated itinerary; hiện là stub tạo empty trip; sẽ nối LLM pipeline ở Phase C |
+| EP-9 | POST | `/api/v1/itineraries` | Optional | Tạo manual trip; nếu có Bearer → owner trip; nếu không → guest trip + claimToken |
+| EP-10 | GET | `/api/v1/itineraries` | Bearer | Liệt kê trips của user hiện tại (paginated, sort by updated_at desc) |
+| EP-11 | GET | `/api/v1/itineraries/{tripId}` | Bearer | Đọc trip chi tiết (owner-only, bao gồm days/activities/accommodations) |
+| EP-12 | PUT | `/api/v1/itineraries/{tripId}` | Bearer | Update trip + nested days/activities/accommodations (full auto-save) |
+| EP-13 | DELETE | `/api/v1/itineraries/{tripId}` | Bearer | Xóa trip (owner-only) |
+| EP-14 | PUT | `/api/v1/itineraries/{tripId}/rating` | Bearer | Đánh giá trip 1-5 sao + feedback text |
+| EP-15 | POST | `/api/v1/itineraries/{tripId}/share` | Bearer | Tạo shareToken cho trip; trả share link URL |
+| EP-16 | POST | `/api/v1/itineraries/{tripId}/claim` | Bearer | Claim guest trip → chuyển ownership cho user đã đăng nhập |
+| EP-17 | POST | `/api/v1/itineraries/{tripId}/activities` | Bearer | Thêm activity vào day cụ thể trong trip |
+| EP-18 | PUT | `/api/v1/itineraries/{tripId}/activities/{activityId}` | Bearer | Cập nhật activity (time, name, location, cost...) |
+| EP-19 | DELETE | `/api/v1/itineraries/{tripId}/activities/{activityId}` | Bearer | Xóa activity khỏi trip |
+| EP-20 | POST | `/api/v1/itineraries/{tripId}/accommodations` | Bearer | Thêm accommodation (hotel, check-in/out, price) |
+| EP-21 | DELETE | `/api/v1/itineraries/{tripId}/accommodations/{accommodationId}` | Bearer | Xóa accommodation khỏi trip |
+
+**Lưu ý quan trọng về optional auth (EP-8, EP-9):**
+
+- Endpoint dùng `get_current_user_optional` dependency: nếu có Bearer token → user authenticated; nếu không → guest.
+- Guest tạo trip nhận thêm `claimToken` (one-time, hash + expiry) để claim ownership sau khi đăng ký/đăng nhập.
+- FE `AuthContext` thực hiện `executePendingClaim()` tự động sau khi user login/register.
+
+### Shared endpoint (1 endpoint)
+
+| EP | Method | Path | Auth | Mô tả |
+|---|---|---|---|---|
+| EP-22 | GET | `/api/v1/shared/{shareToken}` | Public | Đọc-only shared trip qua opaque shareToken (không cần đăng nhập) |
+
+### Places endpoints (7 endpoints)
+
+| EP | Method | Path | Auth | Mô tả |
+|---|---|---|---|---|
+| EP-23 | GET | `/api/v1/places/destinations` | Public | Liệt kê destinations có sẵn (Redis cache, fail-open) |
+| EP-24 | GET | `/api/v1/places/destinations/{name}` | Public | Chi tiết destination theo tên (places, hotels, description) |
+| EP-25 | GET | `/api/v1/places/search` | Public | Tìm kiếm places theo query, city, category (Redis cache) |
+| EP-26 | GET | `/api/v1/places/{placeId}` | Public | Chi tiết place theo ID |
+| EP-27 | GET | `/api/v1/places/saved/list` | Bearer | Danh sách places user đã lưu |
+| EP-28 | POST | `/api/v1/places/saved` | Bearer | Lưu place vào collection |
+| EP-29 | DELETE | `/api/v1/places/saved/{savedId}` | Bearer | Xóa place khỏi saved collection |
+
+**Tổng: 33 endpoints** (EP-0 đến EP-32; EP-34 `/agent/analytics` optional cho MVP2+)
+
+> **Lưu ý EP numbering:** Plan gốc (plan/12_be_crud_endpoints.md) đánh EP-31 là `GET /agent/rate-limit-status` và EP-32 là `POST /itineraries/{id}/claim`. Code thực tế dùng EP-31 cho `POST /auth/forgot-password` và EP-32 cho `POST /auth/reset-password`. Guest claim đã nằm trong itineraries router (không có số EP riêng). Phase C endpoints renumbered: EP-33 rate-limit-status, EP-34 claim, EP-35 chat-history, EP-36 analytics. Tổng core sau Phase C: 34 endpoints.
 
 ## Security rules
 

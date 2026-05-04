@@ -88,7 +88,8 @@ Frontend integration:
 - 8 protected routes redirect sang `/login` khi chưa đăng nhập.
 - `ItineraryView` đã có share button với share link display + copy.
 - `ForgotPassword` nối BE API thật; `ResetPassword` nhận token từ URL param.
-- Chưa có Playwright/Cypress hoặc FE unit test runner.
+- Playwright e2e tests: 11 test cases cho auth flow, trip CRUD, public pages (PR #31).
+- FE automation gate: `npm run build` + `npm run test:e2e`.
 
 ETL/data:
 
@@ -139,4 +140,4 @@ Ops:
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test (32 endpoints, 117 tests). FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. Giai đoạn tiếp theo là implement AI Phase C (direct itinerary pipeline, companion chat, chat history) và bổ sung FE e2e tests.
+Backend CRUD core đã chạy và có test (33 endpoints, 117 BE tests). FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. Frontend e2e tests đã có Playwright (11 tests). Giai đoạn tiếp theo là implement AI Phase C (direct itinerary pipeline, companion chat, chat history).

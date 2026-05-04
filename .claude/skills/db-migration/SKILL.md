@@ -19,9 +19,9 @@ Dung skill nay khi lam viec voi schema va migration cua repo nay. Day la checkli
 
 ### 1. Current-truth vs target-state check
 
-- [ ] Repo da o target Alembic structure chua?
-- [ ] Neu van o MVP1 `create_all()` mode, note ro day la khoang cach can vuot qua
-- [ ] Neu co requirement preserve production data, dung lai va danh gia lai ke hoach migration
+- [ ] Alembic da la migration source of truth (khong dung `create_all()`)
+- [ ] Core MVP2 tables da ton tai: `share_links`, `guest_claim_tokens`, `chat_sessions`, `chat_messages`
+- [ ] Neu co requirement preserve production data, danh gia lai ke hoach migration
 
 ### 2. Schema invariants cua project
 

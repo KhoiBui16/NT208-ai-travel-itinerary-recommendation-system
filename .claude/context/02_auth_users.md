@@ -7,8 +7,10 @@ Tóm tắt auth/user flow đã implement và rule an toàn khi sửa.
 ## Current truth
 
 - Auth/users đã có register, login, refresh, logout, profile, update profile, change password.
+- Forgot-password (EP-30) và reset-password (EP-31) endpoints đã implement.
 - Refresh token lưu hash trong DB.
 - JWT dependency lấy `current_user`, không tin user id từ client.
+- Register page bypass OTP phía client cho đến khi BE email OTP sẵn sàng.
 
 ## Target state
 

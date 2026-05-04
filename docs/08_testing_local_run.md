@@ -78,6 +78,8 @@ Frontend:
 ```powershell
 cd Frontend
 npm run build
+npm run test:e2e        # Playwright e2e (cần BE server chạy)
+npm run test:e2e:headed # Chạy e2e với browser hiển thị
 ```
 
 ETL smoke:
@@ -97,10 +99,11 @@ uv run python -m src.etl --hotels-only --cities "Hà Nội"
 
 ```powershell
 cd Frontend
-npm run build
+npm run build           # Production build phải pass
+npm run test:e2e        # Playwright e2e tests (cần BE chạy trên localhost:8000)
 ```
 
-FE build phải pass (production bundle). Không có FE unit/e2e test runner hiện tại — Playwright/Cypress sẽ thêm sau.
+FE build phải pass (production bundle). Playwright e2e tests kiểm tra 11 flow: auth (3), trip CRUD (3), public pages (5). Yêu cầu BE server chạy trên `localhost:8000` trước khi chạy e2e.
 
 ## Full-stack smoke script
 

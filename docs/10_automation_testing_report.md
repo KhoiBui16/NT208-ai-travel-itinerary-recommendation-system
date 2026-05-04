@@ -1,31 +1,37 @@
 # 10. Báo Cáo Automation Testing
 
-File này ghi trạng thái test mới nhất cho nhánh docs cleanup. Các kết quả cần được cập nhật lại mỗi khi chạy full verification mới.
+File này ghi trạng thái test mới nhất. Các kết quả cần được cập nhật lại mỗi khi chạy full verification mới.
 
 ## Phạm Vi Test
 
-Đã kiểm:
+### Đã kiểm
 
-- Backend lint/format.
-- Backend migration.
-- Backend unit tests.
-- Backend integration tests.
-- Backend Docker API health.
-- Frontend production build.
-- Frontend dev server smoke.
-- Full-stack API smoke cho CRUD chính.
+| Loại test | Công cụ | Số lượng | Trạng thái |
+|---|---|---|---|
+| Backend lint | `ruff check` | — | Pass |
+| Backend format | `ruff format --check` | — | Pass |
+| Backend migration | `alembic upgrade head` + `alembic check` | — | Pass |
+| Backend unit tests | `pytest tests/unit/` | 75 tests | Pass |
+| Backend integration tests | `pytest tests/integration/` | 42 tests | Pass |
+| Backend Docker API health | HTTP health check | 1 check | Pass |
+| Frontend production build | `vite build` | — | Pass |
+| Frontend e2e tests | Playwright (Chromium) | 11 tests | Pass |
+| Full-stack API smoke | `test_fullstack_smoke.ps1` | 16 flows | Pass |
 
-Không kiểm ở giai đoạn này:
+**Tổng: 117 BE tests + 11 FE e2e tests = 128 tests**
 
-- AI direct generation thật vì chưa implement.
+### Không kiểm ở giai đoạn này
+
+- AI direct generation thật vì chưa implement (generate endpoint hiện là stub).
 - AI companion chat vì chưa implement.
 - Analytics EP-34 vì chưa bật.
-- Full browser e2e bằng Playwright/Cypress vì repo chưa có runner.
-- Full ETL real data vì chưa có `GOONG_API_KEY`.
+- Trip workspace drag-and-drop (chưa có e2e test cho tính năng này).
+- Calendar modal interaction (phức tạp, cần viết test riêng).
+- Visual regression testing.
 
 ## Automation Commands
 
-Backend:
+### Backend
 
 ```powershell
 cd Backend
@@ -37,28 +43,87 @@ uv run pytest tests/unit/ -q --tb=short
 $env:CI="true"; uv run pytest tests/integration/ -q --tb=short
 ```
 
-Frontend:
+### Frontend
 
 ```powershell
 cd Frontend
-npm run build
+npm run build           # Production build
+npm run test:e2e        # Playwright e2e (cần BE chạy trên localhost:8000)
+npm run test:e2e:headed # Chạy e2e với browser hiển thị
 ```
 
-Full-stack smoke:
+### Full-stack smoke
 
 ```powershell
 .\scripts\test_fullstack_smoke.ps1
 ```
 
-Sandbox-friendly variant đã dùng trong lượt cuối:
+Sandbox-friendly variant (bỏ qua FE build):
 
 ```powershell
 .\scripts\test_fullstack_smoke.ps1 -SkipFrontendBuild
 ```
 
+## Playwright E2E Tests (PR #31)
+
+### Cấu hình
+
+- **Config file**: `Frontend/playwright.config.ts`
+- **Base URL**: `http://localhost:5173`
+- **Browser**: Chromium only
+- **Timeout**: 30 giây
+- **Retries**: 0 (local), 2 (CI)
+- **WebServer**: Tự động start `npm run dev` nếu chưa chạy
+
+### Test suites
+
+**Auth flow (3 tests):**
+
+| Test | Mô tả | Kết quả |
+|---|---|---|
+| register → success → redirect home | Điền form register, submit, redirect `/` | Pass |
+| login → success → redirect home | Register qua API, login qua UI, redirect `/` | Pass |
+| protected route → redirect login → login → show page | Access protected route → redirect login → login → access granted | Pass |
+
+**Trip CRUD (3 tests):**
+
+| Test | Mô tả | Kết quả |
+|---|---|---|
+| create trip → navigate to workspace | Tạo trip qua API, navigate TripWorkspace | Pass |
+| view trip list in TripLibrary | Tạo trip qua API, mở TripLibrary, verify card | Pass |
+| delete trip from TripHistory | Tạo trip qua API, mở ItineraryView, xóa | Pass |
+
+**Public pages (5 tests):**
+
+| Test | Mô tả | Kết quả |
+|---|---|---|
+| home page loads | Verify `/` trả banner | Pass |
+| login page loads | Verify heading "Chào mừng bạn trở lại!" | Pass |
+| register page loads | Verify heading "Đăng Ký" | Pass |
+| forgot-password page loads | Verify URL đúng | Pass |
+| not-found page | Verify heading "404" | Pass |
+
+### Test helpers
+
+File `tests/e2e/helpers/auth.ts` cung cấp:
+
+- `apiRegister(email, password, name)` — Đăng ký user qua BE API
+- `apiLogin(email, password)` — Đăng nhập qua BE API
+- `injectAuth(page, accessToken, refreshToken)` — Inject JWT vào localStorage
+- `loginAs(page, email, password, name)` — Full register + inject flow
+
+### CI integration
+
+Job `frontend-e2e` trong `.github/workflows/frontend-ci.yml`:
+1. Start PostgreSQL + Redis containers
+2. Install BE + run migrations + start BE server
+3. Install FE + Playwright browsers
+4. Run `npx playwright test` với `E2E_API_URL=http://localhost:8000`
+5. Upload Playwright report artifact khi fail
+
 ## Kịch Bản Full-Stack Smoke
 
-Script `scripts/test_fullstack_smoke.ps1` kiểm các luồng sau qua HTTP thật:
+Script `scripts/test_fullstack_smoke.ps1` kiểm 16 luồng HTTP thật:
 
 1. `GET /api/v1/health` trả healthy.
 2. `POST /api/v1/auth/register` tạo user mới.
@@ -81,28 +146,29 @@ Script `scripts/test_fullstack_smoke.ps1` kiểm các luồng sau qua HTTP thậ
 
 Đã ổn ở mức API/service test:
 
-- Auth token lifecycle.
-- User profile/password.
-- Trip create/list/get/update/delete.
+- Auth token lifecycle (register, login, refresh, logout, forgot/reset password).
+- User profile/password CRUD.
+- Trip create/list/get/update/delete + nested day/activity/accommodation.
 - Owner-only guard trên integer trip ID.
 - Share token public read.
-- Guest claim token.
-- Places public endpoints.
-- Saved places service/integration.
+- Guest claim token (one-time, hash, expiry, consume-once).
+- Places public endpoints + saved places CRUD.
+- Rating/feedback.
 
-Lỗi đã bắt được bằng live smoke và đã fix trong branch này:
+### Lỗi đã bắt và fix
 
-- `PUT /api/v1/users/profile` từng trả 500 `MissingGreenlet` vì `updated_at` bị lazy refresh sau async update. Fix: `UserRepository.update()` gọi `session.refresh(user)` sau `flush()`.
-- `POST /api/v1/itineraries` có Bearer token từng vẫn tạo guest trip vì optional auth dependency không đọc OAuth2 token. Fix: thêm `oauth2_optional_scheme` với `auto_error=False`.
-- `PUT /api/v1/itineraries/{tripId}` từng trả response không có `days` ngay sau nested update vì relation trong identity map bị stale. Fix: `TripRepository.get_with_full_data()` dùng `populate_existing=True`.
-
-Cần cải thiện khi nối FE thật:
-
-- FE auto-save nested trip cần e2e browser test — **đã nối API qua useTripSync, useActivityManager, useAccommodation**.
-- FE auth token storage/refresh đã integrate thật với API client — **AuthContext + services/api.ts**.
-- Accommodation hiện có add/delete endpoint và nested sync, chưa có endpoint update riêng.
-- Extra expenses chưa có endpoint CRUD riêng nếu FE cần chỉnh độc lập.
-- Generate vẫn là stub, không test AI quality.
+| PR | Lỗi | Fix |
+|---|---|---|
+| #7 | `PUT /users/profile` trả 500 `MissingGreenlet` sau update timestamp | `UserRepository.update()` gọi `session.refresh(user)` sau `flush()` |
+| #7 | `POST /itineraries` có Bearer vẫn tạo guest trip | Thêm `oauth2_optional_scheme` với `auto_error=False` |
+| #7 | `PUT /itineraries/{tripId}` response không có `days` sau nested update | `TripRepository.get_with_full_data()` dùng `populate_existing=True` |
+| #24 | `get_current_user_optional` không extract Bearer token từ header | Thêm `_optional_token(request)` dependency đọc Authorization header |
+| #24 | `update_profile(user: User)` truyền ORM object qua session boundary | Đổi sang `update_profile(user_id: int)` và re-fetch trong service session |
+| #24 | SQLAlchemy Identity Map cache stale sau `flush()` | Thêm `session.expire_all()` trước re-fetch |
+| #24 | Lazy relationship access trigger `MissingGreenlet` trên fresh Activity | Thêm `_activity_to_schema()` static method thay `model_validate()` |
+| #27 | TripLibrary dùng sai field names (`trip.name`, `trip.estimatedCost`) | Sửa thành `trip.tripName`, `trip.totalCost ?? trip.budget` |
+| #27 | CreateTrip gọi sai API (`createItinerary` thay vì `generateItinerary`) | Sửa API call + field names (`adults`/`children`) |
+| #28 | OTPModal block tất cả registration (random OTP không gửi email) | Bypass OTP, gọi `register()` API trực tiếp |
 
 ## Cách Đánh Giá Pass/Fail
 
@@ -110,8 +176,9 @@ Pass khi:
 
 - Lint/format pass.
 - Alembic upgrade/check pass.
-- Unit và integration tests pass.
+- Unit tests (75) và integration tests (42) pass.
 - FE build pass.
+- FE e2e tests (11) pass.
 - BE health pass.
 - Full-stack smoke không throw exception.
 
@@ -120,33 +187,26 @@ Fail nếu:
 - Bất kỳ command trả exit code khác 0.
 - API smoke không tạo/update/share/claim được trip.
 - FE smoke không trả HTTP 200 hoặc thiếu root div.
+- Playwright test fail (timeout, assertion, strict mode violation).
 
 ## Cập Nhật Kết Quả
 
-Khi chạy test mới, cập nhật mục này:
+| Ngày | Branch | BE unit | BE integration | BE e2e | Migration | FE build | FE e2e | Smoke | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| 2026-05-03 | `docs/00006-d-docs-cleanup` | 66 pass | 42 pass | — | pass | pass* | — | pass | *sandbox rerun blocked by esbuild `spawn EPERM` |
+| 2026-05-04 | `main` (post-merge #10-#14) | 66 pass | 42 pass | — | pass | pass | — | — | FE-BE integration hoàn thành |
+| 2026-05-04 | `fix/00020-b1-password-reset-endpoints` | 73 pass | 42 pass | — | pass (0003) | pass | — | — | Password reset: 7 unit tests mới |
+| 2026-05-04 | `fix/00024-b2-missing-greenlet-optional-auth` | 75 pass | 42 pass | — | pass | pass | — | — | Fix 4 critical async session bugs |
+| 2026-05-05 | `feat/00031-b3-playwright-e2e` | 75 pass | 42 pass | — | pass | pass | 11 pass | — | Playwright e2e setup + .claude/ audit + docs sync |
 
-| Ngày | Branch | Backend unit | Backend integration | Migration | FE build | Smoke | Ghi chú |
-|---|---|---|---|---|---|---|---|
-| 2026-05-03 | `docs/00006-d-docs-cleanup` | 66 passed | 42 passed | passed | passed earlier; sandbox rerun blocked by esbuild `spawn EPERM` | passed | Full smoke pass với `-SkipFrontendBuild`; FE source không đổi sau build pass trước đó |
-| 2026-05-04 | `main` (post-merge #10-#14) | 66 passed | 42 passed | passed | passed | — | FE-BE integration hoàn thành; 30 endpoints, 8 protected routes, API client layer + optimistic CRUD |
-| 2026-05-04 | `fix/00020-b1-password-reset-endpoints` | 73 passed | 42 passed | passed (0003) | passed | — | Password reset: 7 unit tests mới, 2 endpoints mới (EP-31, EP-32), aiosmtplib dep, email_service.py, migration 0003 |
+## Async Session Lifecycle Patterns
 
-## Kết Quả Chi Tiết 2026-05-03
+Các bug PR #24/#7 có chung root pattern: SQLAlchemy async session lifecycle. Ghi lại để tránh lặp:
 
-Pass:
+1. **Không truyền ORM object qua session boundary**: `get_current_user` tạo User trong session A (request-scoped), service dùng session B. Truyền `user.id` và re-fetch trong service.
 
-- `uv run ruff check src tests`
-- `uv run ruff format --check src tests`
-- `uv run alembic upgrade head`
-- `uv run alembic check`
-- `uv run pytest tests/unit/ -q --tb=short -p no:cacheprovider`: 66 passed.
-- `uv run pytest tests/integration/ -q --tb=short -p no:cacheprovider`: 42 passed.
-- `scripts/test_fullstack_smoke.ps1 -SkipFrontendBuild`: passed.
-- `docker compose ps`: API running, DB healthy, Redis healthy.
-- FE HTTP smoke: http://127.0.0.1:5173 trả 200 và có root div.
+2. **`flush()` ≠ `refresh()`**: `flush()` write SQL nhưng không reload Python object. Gọi `session.refresh(obj)` để load server-generated columns (id, timestamps, defaults).
 
-Ghi chú:
+3. **`expire_all()` trước re-fetch**: SQLAlchemy Identity Map cache object state sau `flush()`. Nếu update nested relations rồi re-fetch, gọi `session.expire_all()` trước để query fresh data.
 
-- `npm run build` đã pass trong lượt test trước cùng ngày, trước khi sửa BE; từ đó không đổi source FE.
-- Khi rerun trong sandbox, Vite/esbuild bị Windows sandbox chặn process spawn với `spawn EPERM`; đây là môi trường chạy lệnh, không phải lỗi source FE mới.
-- Frontend build vẫn cần CI/GitHub Actions xác nhận lại vì CI chạy Linux không bị sandbox Windows này.
+4. **Lazy relationship ngoài eager-load context**: `model_validate(orm_obj, from_attributes=True)` trigger `MissingGreenlet` trên lazy-loaded attrs. Build schema từ scalar fields, default lazy collections thành `[]`.

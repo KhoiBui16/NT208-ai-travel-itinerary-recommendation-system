@@ -8,7 +8,7 @@ Tóm tắt branch/commit/PR/CI sau cleanup docs.
 
 - Tracker mới: `docs/09_execution_tracker.md`.
 - Docs chính: `docs/`.
-- GitHub Actions có PR policy, backend CI và frontend build.
+- GitHub Actions có PR policy, backend CI, frontend build và frontend e2e.
 
 ## Target state
 
@@ -39,6 +39,7 @@ Required checks:
 - `backend-integration`
 - `backend-migrations`
 - `frontend-build`
+- `frontend-e2e`
 
 ## Do next
 

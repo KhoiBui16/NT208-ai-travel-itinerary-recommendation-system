@@ -22,12 +22,15 @@ Neu docs va code xung dot:
 - Sau do doi chieu voi code that te
 - Neu code da lech docs, phai noi ro mismatch truoc khi sua tiep
 
-## Current repo truth (2026-05-03)
+## Current repo truth (2026-05-05)
 
 - Backend runtime hien tai la MVP2 trong `Backend/src/`
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
+- 117 BE tests (75 unit + 42 integration)
 - Frontend runtime hien tai nam trong `Frontend/`
+- 11 Playwright e2e tests trong `Frontend/tests/e2e/`
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
+- Register page bypass OTP cho den khi BE email OTP san sang
 - `docs/` la bo tai lieu chi tiet cho user va reviewer
 - `.claude/` la lop operational memory cho Claude, phai bam theo project nay
 
@@ -93,6 +96,13 @@ uv run pytest tests/integration/ -v
 uv run uvicorn src.main:app
 ```
 
+```bash
+cd Frontend
+npm run build
+npm run test:e2e          # Playwright e2e (requires BE running)
+npm run test:e2e:headed   # headed mode
+```
+
 ## CI va PR rules
 
 Required checks tren GitHub:
@@ -103,6 +113,7 @@ Required checks tren GitHub:
 - `backend-integration`
 - `backend-migrations`
 - `frontend-build`
+- `frontend-e2e`
 
 Rules:
 
@@ -141,6 +152,7 @@ Rules:
 - Boi canh hoa task bang current repo shape truoc, target shape sau
 - Kiem tra contract public bang `Frontend/src/app/types/trip.types.ts`
 - Ghi ro assumption neu docs va code dang lech nhau
+- Khi viet Playwright test: dung `getByRole()` hoac `locator()` thay vi `getByText()` voi tieng Viet (strict mode violation do multiple matches)
 
 ## Never do
 

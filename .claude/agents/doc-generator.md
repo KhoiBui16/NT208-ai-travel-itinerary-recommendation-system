@@ -51,6 +51,8 @@ Khong duoc phat minh policy moi neu codebase/docs hien tai chua chot.
 
 - Branch/commit/PR/CI rules
 - 33 core endpoints + EP-34 optional
+- 117 BE tests (75 unit + 42 integration)
+- 11 Playwright e2e tests
 - camelCase contract theo FE
 - shareToken / claimToken / owner-only by ID
 - AI direct pipeline + patch-confirm + chat history projection

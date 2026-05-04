@@ -34,6 +34,7 @@ Tim va giai thich cac nhom rui ro sau:
 - Refresh token storage/revoke strategy
 - `shareToken` storage/use
 - `claimToken` one-time + hash + expiry + consume-once
+- Password reset token security (EP-30, EP-31) — expiry, single-use
 - Logout and token invalidation behavior
 
 ### 3. Object ownership and public access

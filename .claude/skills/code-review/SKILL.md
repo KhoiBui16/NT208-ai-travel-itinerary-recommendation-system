@@ -30,13 +30,14 @@ Dung skill nay khi review code trong repo nay. Day khong phai checklist FastAPI 
 - [ ] Guest claim can `claimToken` one-time, hash, expiry, consume-once
 - [ ] Khong co IDOR o trip, saved place, chat history, share, claim
 
-### 3. AI architecture invariants
+### 3. AI architecture invariants (Phase C — not yet implemented)
 
-- [ ] `POST /itineraries/generate` di direct `ItineraryPipeline`
-- [ ] Companion chat chi tra `requiresConfirmation` + `proposedOperations`
-- [ ] Chat khong tu persist DB neu user chua confirm
-- [ ] `SuggestionService` la DB-only, khong goi LLM
-- [ ] Analytics neu co thi van la optional va co guardrails
+- [ ] **NOTE**: AI features la Phase C, hien tai generate endpoint la stub
+- [ ] Khi Phase C: `POST /itineraries/generate` phai di direct `ItineraryPipeline`
+- [ ] Khi Phase C: Companion chat chi tra `requiresConfirmation` + `proposedOperations`
+- [ ] Khi Phase C: Chat khong tu persist DB neu user chua confirm
+- [ ] Khi Phase C: `SuggestionService` la DB-only, khong goi LLM
+- [ ] Analytics (EP-34) van la optional va can guardrails
 
 ### 4. Database and migration safety
 

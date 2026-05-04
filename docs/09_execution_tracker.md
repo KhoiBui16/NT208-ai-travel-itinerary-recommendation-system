@@ -25,6 +25,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00024 | B2 | `fix/00024-b2-missing-greenlet-optional-auth` | Fix 4 critical MissingGreenlet + optional auth bugs in BE | merged | 117 BE tests pass | #24 |
 | 00027 | B2 | `fix/00027-b2-fe-be-contract-gaps` | Fix FE-BE contract gaps — TripLibrary fields, CreateTrip generateItinerary | merged | FE build pass | #27 |
 | 00028 | B2 | `fix/00028-b2-register-otp-bypass` | Bypass client-side OTP placeholder in Register flow | merged | FE build pass | #28 |
+| 00031 | B3 | `feat/00031-b3-playwright-e2e` | Setup Playwright e2e tests, audit .claude/ operational files, đồng bộ docs/ | pending | 11/11 e2e pass, 117 BE tests pass, FE build pass | #31 |
 
 ## Scope Task 00006
 
@@ -146,18 +147,28 @@ Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycl
 - Comment out OTP state/handlers, gọi `register()` trực tiếp trong `handleSubmit`.
 - Giữ OTPModal component file cho Phase C khi BE có email OTP.
 
+## Scope Task 00031 (PR #31)
+
+- Thiết lập Playwright cho Frontend e2e testing.
+- Tạo `playwright.config.ts` với baseURL, webServer, Chromium config.
+- Tạo 11 e2e tests trong 3 spec files: auth (3), trips (3), public pages (5).
+- Tạo API auth helpers (`tests/e2e/helpers/auth.ts`) cho test setup.
+- Thêm `frontend-e2e` CI job vào `frontend-ci.yml` với PostgreSQL + Redis services.
+- Audit toàn bộ `.claude/` directory: loại bỏ dual-mode patterns lỗi thời, cập nhật current repo truth, đánh dấu AI invariants là Phase C, thêm frontend-e2e vào required checks.
+- Đồng bộ docs/ với nội dung tiếng Việt chi tiết: endpoint tables, database schema, AI roadmap, Playwright docs.
+
 ## Còn Lại Trước Phase C
 
-- FE unit/e2e test runner (Playwright/Cypress).
 - Full ETL real data sau khi có `GOONG_API_KEY`.
 - Phase C AI services (generate pipeline, companion chat, chat history).
 - Optional analytics EP-34 nếu cần.
+- Mở rộng e2e tests: trip workspace drag-and-drop, calendar, accommodation CRUD flow.
 
 ## FE-BE Integration Status (2026-05-04)
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
-Tóm tắt: 32 BE endpoints, 117 BE tests (75 unit + 42 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28).
+Tóm tắt: 33 BE endpoints (EP-0 đến EP-32), 117 BE tests (75 unit + 42 integration), 11 FE e2e tests, 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28), Playwright e2e setup (PR #31).
 
 ## Phase C Plan (2026-05-04)
 
