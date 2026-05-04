@@ -23,6 +23,7 @@ import TripWorkspace from "./pages/TripWorkspace";
 import CityList from "./pages/CityList";
 import CityDetail from "./pages/CityDetail";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import SharedTripView from "./pages/SharedTripView";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -55,6 +56,10 @@ export const router = createBrowserRouter([
   {
     path: "/forgot-password",
     Component: ForgotPassword,
+  },
+  {
+    path: "/reset-password",
+    Component: ResetPassword,
   },
   {
     path: "/shared/:token",

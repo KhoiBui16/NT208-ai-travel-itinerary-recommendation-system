@@ -1,9 +1,11 @@
-"""Auth endpoints: register, login, refresh, logout.
+"""Auth endpoints: register, login, refresh, logout, forgot-password, reset-password.
 
-EP-1: POST /api/v1/auth/register  — Create account + receive JWT pair
-EP-2: POST /api/v1/auth/login     — Verify credentials + receive JWT pair
-EP-3: POST /api/v1/auth/refresh   — Rotate refresh token + receive new JWT pair
-EP-4: POST /api/v1/auth/logout    — Revoke refresh token (requires Bearer auth)
+EP-1:  POST /api/v1/auth/register         — Create account + receive JWT pair
+EP-2:  POST /api/v1/auth/login            — Verify credentials + receive JWT pair
+EP-3:  POST /api/v1/auth/refresh          — Rotate refresh token + receive new JWT pair
+EP-4:  POST /api/v1/auth/logout           — Revoke refresh token (requires Bearer auth)
+EP-31: POST /api/v1/auth/forgot-password  — Request password reset email
+EP-32: POST /api/v1/auth/reset-password   — Consume reset token + set new password
 """
 
 from fastapi import APIRouter, Depends
@@ -16,13 +18,16 @@ from src.repositories.token_repo import RefreshTokenRepository
 from src.repositories.user_repo import UserRepository
 from src.schemas.auth import (
     AuthResponse,
+    ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
     RegisterRequest,
+    ResetPasswordRequest,
 )
 from src.schemas.common import SuccessResponse
 from src.services.auth_service import AuthService
+from src.services.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -32,6 +37,7 @@ def _auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     return AuthService(
         user_repo=UserRepository(db),
         token_repo=RefreshTokenRepository(db),
+        email_service=EmailService(),
     )
 
 
@@ -125,3 +131,53 @@ async def logout(
     """
     await service.logout(raw_refresh_token=body.refresh_token)
     return SuccessResponse(message="Logged out successfully")
+
+
+@router.post("/forgot-password", response_model=SuccessResponse)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    service: AuthService = Depends(_auth_service),
+) -> SuccessResponse:
+    """EP-31: Request a password reset email.
+
+    Always returns success even if the email does not exist,
+    to prevent email enumeration attacks.
+
+    Args:
+        body: ForgotPasswordRequest with email.
+        service: AuthService injected per request.
+
+    Returns:
+        SuccessResponse confirming the request was processed.
+    """
+    await service.forgot_password(email=body.email)
+    return SuccessResponse(
+        message="If the email exists, a reset link has been sent",
+    )
+
+
+@router.post("/reset-password", response_model=SuccessResponse)
+async def reset_password(
+    body: ResetPasswordRequest,
+    service: AuthService = Depends(_auth_service),
+) -> SuccessResponse:
+    """EP-32: Consume a reset token and set a new password.
+
+    After a successful reset, all refresh tokens are revoked — the user
+    must log in again on all devices.
+
+    Args:
+        body: ResetPasswordRequest with token and newPassword.
+        service: AuthService injected per request.
+
+    Returns:
+        SuccessResponse confirming the password was changed.
+
+    Raises:
+        401 Unauthorized: Invalid, expired, or already-used reset token.
+    """
+    await service.reset_password(
+        raw_token=body.token,
+        new_password=body.new_password,
+    )
+    return SuccessResponse(message="Password has been reset successfully")

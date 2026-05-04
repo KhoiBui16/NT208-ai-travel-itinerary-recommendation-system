@@ -1,23 +1,29 @@
 """Authentication business logic.
 
 Handles the full JWT auth lifecycle:
-  register → create user + issue token pair
-  login    → verify credentials + issue token pair
-  refresh  → revoke old refresh token + issue new pair (rotation)
-  logout   → revoke refresh token
+  register        → create user + issue token pair
+  login           → verify credentials + issue token pair
+  refresh         → revoke old refresh token + issue new pair (rotation)
+  logout          → revoke refresh token
+  forgot_password → generate reset token + send email
+  reset_password  → consume reset token + update password
 
 Security design:
   - Access tokens are short-lived JWTs (15 min default).
   - Refresh tokens are opaque, stored as SHA-256 hashes in DB.
   - Each refresh rotates both tokens — the old refresh token is revoked.
   - Logout revokes the refresh token so it cannot be reused.
+  - Password reset tokens are opaque, SHA-256 hashed, one-time use, time-limited.
 """
+
+from datetime import UTC, datetime
 
 from src.core.config import get_settings
 from src.core.exceptions import ConflictException, UnauthorizedException
 from src.core.logger import get_logger
 from src.core.security import (
     create_access_token,
+    create_password_reset_token,
     create_refresh_token,
     hash_password,
     hash_token,
@@ -28,6 +34,7 @@ from src.repositories.token_repo import RefreshTokenRepository
 from src.repositories.user_repo import UserRepository
 from src.schemas.auth import AuthResponse
 from src.schemas.user import UserResponse
+from src.services.email_service import EmailService
 
 logger = get_logger(__name__)
 
@@ -44,9 +51,11 @@ class AuthService:
         self,
         user_repo: UserRepository,
         token_repo: RefreshTokenRepository,
+        email_service: EmailService | None = None,
     ) -> None:
         self.user_repo = user_repo
         self.token_repo = token_repo
+        self.email_service = email_service or EmailService()
 
     async def register(
         self,
@@ -203,6 +212,79 @@ class AuthService:
         if stored and not stored.is_revoked:
             await self.token_repo.revoke(stored.id)
             logger.info("user_logout", user_id=stored.user_id)
+
+    async def forgot_password(self, email: str) -> None:
+        """Generate a password reset token and send it via email.
+
+        Always succeeds silently even if the email does not exist,
+        to prevent email enumeration attacks.
+
+        Args:
+            email: The email address to send the reset link to.
+        """
+        user = await self.user_repo.get_by_email(email)
+        if not user or not user.is_active:
+            # Silent return — do not reveal whether email exists
+            return
+
+        raw_token, token_hash, expires_at = create_password_reset_token()
+        await self.user_repo.update(
+            user,
+            password_reset_token_hash=token_hash,
+            password_reset_expires_at=expires_at,
+        )
+        await self.email_service.send_password_reset(
+            to_email=email,
+            reset_token=raw_token,
+        )
+        logger.info("password_reset_requested", user_id=user.id)
+
+    async def reset_password(self, raw_token: str, new_password: str) -> None:
+        """Consume a password reset token and update the user's password.
+
+        Workflow:
+          1. Hash the raw token and look up the user by token hash.
+          2. Validate token existence and expiry.
+          3. Hash the new password.
+          4. Update user: new hashed password, clear reset token fields.
+          5. Revoke all refresh tokens to force re-login.
+
+        Args:
+            raw_token: The raw reset token from the email link.
+            new_password: The new plaintext password (validated by schema).
+
+        Raises:
+            UnauthorizedException: If token is invalid, expired, or already used.
+        """
+        token_hash = hash_token(raw_token)
+        user = await self.user_repo.get_by_reset_token_hash(token_hash)
+
+        if not user:
+            raise UnauthorizedException("Invalid or expired reset token")
+
+        now = datetime.now(UTC)
+        if user.password_reset_expires_at is None or user.password_reset_expires_at < now:
+            # Consume the expired token to prevent reuse
+            await self.user_repo.update(
+                user,
+                password_reset_token_hash=None,
+                password_reset_expires_at=None,
+            )
+            raise UnauthorizedException("Reset token has expired")
+
+        # Update password and clear reset token
+        new_hashed = hash_password(new_password)
+        await self.user_repo.update(
+            user,
+            hashed_password=new_hashed,
+            password_reset_token_hash=None,
+            password_reset_expires_at=None,
+        )
+
+        # Revoke all refresh tokens to force re-login on all devices
+        await self.token_repo.revoke_all_for_user(user.id)
+
+        logger.info("password_reset_completed", user_id=user.id)
 
     async def _create_tokens(self, user: User) -> dict[str, str]:
         """Issue a new JWT access token and refresh token pair.
