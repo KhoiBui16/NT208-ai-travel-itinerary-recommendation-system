@@ -111,6 +111,18 @@ EMAIL_FROM_ADDRESS=noreply@dulichviet.local
 - **SMTP mode**: Khi `smtp_host` được cấu hình, gửi email thật qua SMTP server.
 - **Console mode**: Khi `smtp_host` trống (default), log reset link ra stdout — phù hợp local dev mà không cần SMTP server.
 
+## Async Session Lifecycle Patterns
+
+Các bug PR #24 có chung root pattern: SQLAlchemy async session lifecycle. Ghi lại để tránh lặp:
+
+1. **Không truyền ORM object qua session boundary**: `get_current_user` tạo User trong session A (request-scoped), service dùng session B. Truyền `user.id` và re-fetch trong service.
+
+2. **`flush()` ≠ `refresh()`**: `flush()` write SQL nhưng không reload Python object. Gọi `session.refresh(obj)` để load server-generated columns (id, timestamps, defaults).
+
+3. **`expire_all()` trước re-fetch**: SQLAlchemy Identity Map cache object state sau `flush()`. Nếu update nested relations rồi re-fetch, gọi `session.expire_all()` trước để query fresh data.
+
+4. **Lazy relationship ngoài eager-load context**: `model_validate(orm_obj, from_attributes=True)` trigger `MissingGreenlet` trên lazy-loaded attrs. Build schema từ scalar fields, default lazy collections thành `[]`.
+
 ## Backend còn thiếu
 
 - AI generate pipeline thật (stub hiện tại tạo empty trip).

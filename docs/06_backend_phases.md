@@ -46,6 +46,14 @@ Backend/src/
 - `GET /api/v1/users/profile`: đọc profile user hiện tại.
 - `PUT /api/v1/users/profile`: update name/phone/interests.
 - `PUT /api/v1/users/password`: đổi password sau khi verify password cũ.
+- `POST /api/v1/auth/forgot-password`: gửi email reset password (silent nếu email không tồn tại).
+- `POST /api/v1/auth/reset-password`: tiêu hao reset token + đổi mật khẩu mới.
+
+Bug fixes (PR #24):
+
+- `update_profile` và `change_password` đổi từ nhận `user: User` sang `user_id: int` — tránh cross-session ORM object access gây MissingGreenlet.
+- `UserRepository.update()` thêm `session.refresh(user)` sau `flush()` — reload server-default columns.
+- `get_current_user_optional` thêm `_optional_token(request)` dependency — FastAPI không extract Bearer token nếu chỉ dùng Python default `token: str | None = None`.
 
 Luồng chuẩn:
 
@@ -116,6 +124,15 @@ Owner POST /itineraries/{tripId}/share
 - Activity extra expenses CRUD riêng nếu FE cần endpoint tách.
 - Update accommodation hiện có add/delete và nested sync, chưa có endpoint update accommodation riêng.
 - `ItineraryView` đã có share button (PR #19) — share flow nằm trong cả `TopActionBar` (TripWorkspace) và `ItineraryView`.
+- Update trip sau `flush()` phải gọi `session.expire_all()` rồi re-fetch, nếu không SQLAlchemy Identity Map trả stale data (PR #24).
+- `ActivitySchema.model_validate(activity, from_attributes=True)` trigger MissingGreenlet trên lazy `extra_expenses`. Dùng `_activity_to_schema()` static method xây schema từ scalar fields, default `extra_expenses=[]` (PR #24).
+- `TripRepository.add_activity()`, `update_activity()`, `add_accommodation()` thêm `session.refresh()` sau `flush()` — reload server-generated columns (PR #24).
+
+Async session lifecycle patterns (rút ra từ PR #24):
+
+- Không truyền ORM object qua session boundary. Dependency `get_current_user` tạo User trong session A, nhưng service dùng session B. Giải pháp: truyền `user.id` và re-fetch trong service.
+- `flush()` commit vào DB nhưng không refresh Python object. `session.refresh(obj)` load lại server defaults. `session.expire_all()` clear Identity Map cache để query fresh.
+- Lazy relationship (`extra_expenses`) không access được ngoài eager-load context. Khi convert ORM → schema, phải build từ scalar fields thay vì dùng `model_validate(from_attributes=True)`.
 
 ## Phase B3: Places, Saved Places, Redis Cache
 

@@ -22,6 +22,8 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00015 | D | `docs/00015-d-update-docs-readme` | Update docs and README with actual FE-BE integration status, team, endpoint count | merged | FE build pass | #16 |
 | 00019 | B2 | `fix/00019-b2-itineraryview-share-button` | Add share button to ItineraryView with share link display + copy | merged | FE build pass | #19 |
 | 00020 | B1 | `fix/00020-b1-password-reset-endpoints` | Forgot/reset password BE endpoints + FE wiring + email service | merged | 115 BE tests pass, FE build pass | #20 |
+| 00024 | B2 | `fix/00024-b2-missing-greenlet-optional-auth` | Fix 4 critical MissingGreenlet + optional auth bugs in BE | merged | 115 BE tests pass | #24 |
+| 00025 | B2 | `fix/00025-b2-skip-register-otp-placeholder` | Bypass client-side OTP placeholder in Register flow | merged | FE build pass | #25 |
 
 ## Scope Task 00006
 
@@ -122,6 +124,22 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 - FE: `ResetPassword.tsx` trang mới nhận token từ URL param.
 - FE: `routes.tsx` thêm route `/reset-password`.
 
+## Scope Task 00024 (PR #24)
+
+Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycle.
+
+- **EP-9/10/11 `user_id=None`**: `get_current_user_optional` dùng `token: str | None = None` không có `Depends()`, nên FastAPI không extract Bearer token từ header. Fix: thêm `_optional_token(request: Request)` dependency đọc Authorization header.
+- **EP-6 MissingGreenlet crash**: `update_profile(user: User, ...)` nhận User ORM object từ session A (get_current_user dependency) nhưng operate trong session B (service's own session). Fix: đổi sang `update_profile(user_id: int, ...)` và re-fetch user trong service session.
+- **EP-12 days empty after update**: SQLAlchemy Identity Map cache stale sau `flush()`. Fix: thêm `session.expire_all()` trước re-fetch trong `ItineraryService.update()`.
+- **EP-16/18 MissingGreenlet on extra_expenses**: Lazy relationship access trên fresh Activity object. Fix: thêm `_activity_to_schema()` static method thay `ActivitySchema.model_validate()` + `session.refresh()` sau `flush()` trong `TripRepository`.
+
+## Scope Task 00025 (PR #25)
+
+- Bypass client-side OTP placeholder trong Register flow.
+- OTPModal so sánh `otpValue === generatedOTP` — random OTP không bao giờ gửi email, block tất cả registration.
+- Comment out OTP state/handlers, gọi `register()` trực tiếp trong `handleSubmit`.
+- Giữ OTPModal component file cho Phase C khi BE có email OTP.
+
 ## Còn Lại Trước Phase C
 
 - FE unit/e2e test runner (Playwright/Cypress).
@@ -133,7 +151,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
-Tóm tắt: 32 BE endpoints, 115 BE tests (73 unit + 42 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback.
+Tóm tắt: 32 BE endpoints, 115 BE tests (73 unit + 42 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), Register OTP bypass (PR #25).
 
 ## Phase C Plan (2026-05-04)
 
