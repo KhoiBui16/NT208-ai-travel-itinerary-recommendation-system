@@ -93,7 +93,7 @@ export default function TripLibrary() {
                 {/* Cover Image */}
                 <div className="relative h-48 overflow-hidden">
                   <img
-                    src={trip.coverImage}
+                    src={trip.coverImage ?? `https://placehold.co/600x400/cyan/white?text=${encodeURIComponent(trip.destination)}`}
                     alt={trip.tripName}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
@@ -115,7 +115,7 @@ export default function TripLibrary() {
                   {/* Trip Name */}
                   <div className="absolute bottom-4 left-4 right-4">
                     <h3 className="mb-1 text-xl font-bold text-white">
-                      {trip.tripName || trip.name}
+                      {trip.tripName}
                     </h3>
                     <div className="flex items-center gap-1 text-white">
                       <MapPin className="h-4 w-4" />
@@ -145,7 +145,7 @@ export default function TripLibrary() {
                     <div className="rounded-lg bg-orange-50 p-3 border border-orange-100">
                       <p className="text-xs text-orange-700 mb-1">Chi phí dự kiến</p>
                       <p className="text-lg font-bold text-orange-900">
-                        {((trip.budget ?? trip.estimatedCost ?? 0) / 1000000).toFixed(1)}M
+                        {((trip.totalCost ?? trip.budget ?? 0) / 1000000).toFixed(1)}M
                       </p>
                     </div>
                   </div>
@@ -154,7 +154,7 @@ export default function TripLibrary() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Heart className="h-4 w-4" />
-                      <span>{trip.savedLocationsCount ?? 0} địa điểm đã lưu</span>
+                      <span>{trip.days?.reduce((sum, d) => sum + (d.activities?.length ?? 0), 0) ?? 0} hoạt động</span>
                     </div>
                   </div>
                 </div>

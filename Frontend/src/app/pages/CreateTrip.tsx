@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { Header } from "../components/Header";
 import { CalendarModal } from "../components/CalendarModal";
 import { travelTypes, budgetLevels, interests, popularDestinations } from "../utils/tripConstants";
-import { createItinerary } from "../services/itinerary";
+import { generateItinerary } from "../services/itinerary";
 import {
   Sparkles,
   MapPin,
@@ -66,14 +66,13 @@ export default function CreateTrip() {
       const adultsMap: Record<string, number> = { solo: 1, couple: 2, family: 2, group: 4 };
       const childrenMap: Record<string, number> = { solo: 0, couple: 0, family: 1, group: 0 };
 
-      const resp = await createItinerary({
+      const resp = await generateItinerary({
         destination: destination.trim(),
-        tripName: `Chuyến đi ${destination.trim()}`,
         startDate: format(dateRange.from!, "yyyy-MM-dd"),
         endDate: format(dateRange.to!, "yyyy-MM-dd"),
         budget: budgetMap[budgetLevel] || 5000000,
-        adultsCount: adultsMap[travelType] || 2,
-        childrenCount: childrenMap[travelType] || 0,
+        adults: adultsMap[travelType] || 2,
+        children: childrenMap[travelType] || 0,
         interests: selectedInterests,
       });
 
