@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Header } from "../components/Header";
 import { AuthLayout } from "../components/AuthLayout";
-import { OTPModal } from "../components/OTPModal";
+// import { OTPModal } from "../components/OTPModal"; // TODO: re-enable when BE email OTP is ready
 import { Mail, Lock, User, Chrome } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { ApiError } from "../services/api";
@@ -20,19 +20,20 @@ export default function Register() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // OTP Modal State (client-side verification placeholder until backend email OTP)
-  const [showOTPModal, setShowOTPModal] = useState(false);
-  const [generatedOTP, setGeneratedOTP] = useState("");
-  const [otpTimestamp, setOtpTimestamp] = useState<number>(0);
+  // OTP Modal State — placeholder until backend email OTP is available.
+  // For now, skip OTP verification and register directly.
+  // const [showOTPModal, setShowOTPModal] = useState(false);
+  // const [generatedOTP, setGeneratedOTP] = useState("");
+  // const [otpTimestamp, setOtpTimestamp] = useState<number>(0);
 
-  const generateOTP = () => {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOTP(otp);
-    setOtpTimestamp(Date.now());
-    return otp;
-  };
+  // const generateOTP = () => {
+  //   const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  //   setGeneratedOTP(otp);
+  //   setOtpTimestamp(Date.now());
+  //   return otp;
+  // };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -46,11 +47,7 @@ export default function Register() {
       return;
     }
 
-    generateOTP();
-    setShowOTPModal(true);
-  };
-
-  const handleVerifySuccess = async () => {
+    // Skip OTP placeholder — register directly until BE email OTP is ready
     setLoading(true);
     try {
       await register(formData.email, formData.password, formData.name);
@@ -64,18 +61,9 @@ export default function Register() {
       } else {
         setError("Đăng ký thất bại. Vui lòng thử lại.");
       }
-      setShowOTPModal(false);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleCloseOTP = () => {
-    setShowOTPModal(false);
-  };
-
-  const handleResendOTP = () => {
-    generateOTP();
   };
 
   const handleGoogleSignup = () => {
@@ -87,16 +75,7 @@ export default function Register() {
   return (
     <>
       <Header />
-      {showOTPModal && (
-        <OTPModal
-          email={formData.email}
-          generatedOTP={generatedOTP}
-          otpTimestamp={otpTimestamp}
-          onVerifySuccess={handleVerifySuccess}
-          onClose={handleCloseOTP}
-          onResendOTP={handleResendOTP}
-        />
-      )}
+      {/* OTPModal disabled until BE email OTP is ready */}
 
       <AuthLayout>
         <div className="rounded-2xl bg-white p-8 lg:p-10 shadow-xl">
