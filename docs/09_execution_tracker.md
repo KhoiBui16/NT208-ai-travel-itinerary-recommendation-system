@@ -23,7 +23,8 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00019 | B2 | `fix/00019-b2-itineraryview-share-button` | Add share button to ItineraryView with share link display + copy | merged | FE build pass | #19 |
 | 00020 | B1 | `fix/00020-b1-password-reset-endpoints` | Forgot/reset password BE endpoints + FE wiring + email service | merged | 115 BE tests pass, FE build pass | #20 |
 | 00024 | B2 | `fix/00024-b2-missing-greenlet-optional-auth` | Fix 4 critical MissingGreenlet + optional auth bugs in BE | merged | 115 BE tests pass | #24 |
-| 00025 | B2 | `fix/00025-b2-skip-register-otp-placeholder` | Bypass client-side OTP placeholder in Register flow | merged | FE build pass | #25 |
+| 00027 | B2 | `fix/00027-b2-fe-be-contract-gaps` | Fix FE-BE contract gaps — TripLibrary fields, CreateTrip generateItinerary | merged | FE build pass | #27 |
+| 00028 | B2 | `fix/00028-b2-register-otp-bypass` | Bypass client-side OTP placeholder in Register flow | merged | FE build pass | #28 |
 
 ## Scope Task 00006
 
@@ -133,7 +134,12 @@ Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycl
 - **EP-12 days empty after update**: SQLAlchemy Identity Map cache stale sau `flush()`. Fix: thêm `session.expire_all()` trước re-fetch trong `ItineraryService.update()`.
 - **EP-16/18 MissingGreenlet on extra_expenses**: Lazy relationship access trên fresh Activity object. Fix: thêm `_activity_to_schema()` static method thay `ActivitySchema.model_validate()` + `session.refresh()` sau `flush()` trong `TripRepository`.
 
-## Scope Task 00025 (PR #25)
+## Scope Task 00027 (PR #27)
+
+- Fix TripLibrary.tsx: `trip.coverImage` → placeholder URL, `trip.name` → `trip.tripName`, `trip.estimatedCost` → `trip.totalCost ?? trip.budget`, `trip.savedLocationsCount` → count activities from `trip.days`.
+- Fix CreateTrip.tsx: đổi `createItinerary()` → `generateItinerary()` với đúng field names (`adults`/`children` thay vì `adultsCount`/`childrenCount`, bỏ `tripName`).
+
+## Scope Task 00028 (PR #28)
 
 - Bypass client-side OTP placeholder trong Register flow.
 - OTPModal so sánh `otpValue === generatedOTP` — random OTP không bao giờ gửi email, block tất cả registration.
@@ -151,7 +157,7 @@ Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycl
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
-Tóm tắt: 32 BE endpoints, 115 BE tests (73 unit + 42 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), Register OTP bypass (PR #25).
+Tóm tắt: 32 BE endpoints, 115 BE tests (73 unit + 42 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28).
 
 ## Phase C Plan (2026-05-04)
 
