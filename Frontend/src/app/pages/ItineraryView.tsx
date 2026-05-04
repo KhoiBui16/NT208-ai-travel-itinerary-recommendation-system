@@ -12,11 +12,13 @@ import {
   Map,
   Calendar,
   MessageSquare,
+  Share2,
+  Copy,
   X,
   Plus,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { getItinerary, updateItinerary, deleteItinerary as deleteItineraryApi, rateItinerary as rateItineraryApi, ItineraryResponse } from "../services/itinerary";
+import { getItinerary, updateItinerary, deleteItinerary as deleteItineraryApi, rateItinerary as rateItineraryApi, shareItinerary, ItineraryResponse } from "../services/itinerary";
 import { formatCurrency } from "../utils/itinerary";
 import { toast } from "sonner";
 
@@ -88,6 +90,8 @@ export default function ItineraryView() {
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -178,6 +182,36 @@ export default function ItineraryView() {
       toast.success("Cảm ơn bạn đã đánh giá!");
     } catch {
       toast.error("Gửi đánh giá thất bại.");
+    }
+  };
+
+  const handleShare = async () => {
+    if (!id) return;
+    setIsSharing(true);
+    try {
+      const resp = await shareItinerary(Number(id));
+      const link = `${window.location.origin}/shared/${resp.shareToken}`;
+      setShareLink(link);
+    } catch {
+      toast.error("Không thể chia sẻ lịch trình");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      toast.success("Đã sao chép liên kết chia sẻ");
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = shareLink;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      toast.success("Đã sao chép liên kết chia sẻ");
     }
   };
 
@@ -332,7 +366,38 @@ export default function ItineraryView() {
               <MessageSquare className="h-5 w-5" />
               Đánh Giá
             </button>
+            {isAuthenticated && (
+              <button
+                onClick={handleShare}
+                disabled={isSharing}
+                className="flex items-center gap-2 rounded-lg bg-white/20 px-6 py-2 font-semibold backdrop-blur-sm transition-all hover:bg-white/30 disabled:opacity-50"
+              >
+                <Share2 className="h-5 w-5" />
+                {isSharing ? "Đang chia sẻ..." : "Chia Sẻ"}
+              </button>
+            )}
           </div>
+
+          {/* Share Link Bar */}
+          {shareLink && (
+            <div className="mt-3 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
+              <Share2 className="h-4 w-4 text-blue-600 flex-shrink-0" />
+              <span className="text-sm text-gray-700 truncate flex-1">{shareLink}</span>
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 flex-shrink-0"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Sao chép
+              </button>
+              <button
+                onClick={() => setShareLink(null)}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 flex-shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Map View */}
