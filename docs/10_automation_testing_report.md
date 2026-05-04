@@ -128,7 +128,7 @@ Khi chạy test mới, cập nhật mục này:
 | Ngày | Branch | Backend unit | Backend integration | Migration | FE build | Smoke | Ghi chú |
 |---|---|---|---|---|---|---|---|
 | 2026-05-03 | `docs/00006-d-docs-cleanup` | 66 passed | 44 passed | passed | passed earlier; sandbox rerun blocked by esbuild `spawn EPERM` | passed | Full smoke pass với `-SkipFrontendBuild`; FE source không đổi sau build pass trước đó |
-| 2026-05-04 | `main` (post-merge #10-#14) | 66 passed | 44 passed | passed | passed | — | FE-BE integration hoàn thành; 33 endpoints, 8 protected routes, API client layer + optimistic CRUD |
+| 2026-05-04 | `main` (post-merge #10-#14) | 66 passed | 44 passed | passed | passed | — | FE-BE integration hoàn thành; 30 endpoints, 8 protected routes, API client layer + optimistic CRUD |
 
 ## Kết Quả Chi Tiết 2026-05-03
 

@@ -17,7 +17,7 @@ This README is the single source of truth for running the project locally.
 - Share/claim: public `shareToken`, one-time `claimToken` with hash + expiry.
 - Places: destinations, destination detail, place search/detail, saved places, Redis read cache.
 - ETL: OSM/Goong extractors, transformers, DB upsert loader, sample hotel data.
-- **33 API endpoints** registered, 110 tests (66 unit + 44 integration) passing.
+- **30 API endpoints** registered, 110 tests (66 unit + 44 integration) passing.
 
 ### Implemented (FE)
 
@@ -130,7 +130,7 @@ uv run alembic upgrade head
 uv run uvicorn src.main:app --reload --port 8000
 ```
 
-Verify: open http://localhost:8000/docs — you should see Swagger UI with 33 endpoints.
+Verify: open http://localhost:8000/docs — you should see Swagger UI with 30 endpoints.
 
 ### Step 4: Start Frontend
 
@@ -356,6 +356,8 @@ All FE pages connect to the backend via an API client layer (`Frontend/src/app/s
 | `docs/04_frontend.md` | Frontend routes, mock/API integration status |
 | `docs/05_database_etl.md` | Database, Redis, ETL details |
 | `docs/06_backend_phases.md` | Implemented Backend phases |
+| `docs/06_ai_roadmap.md` | AI services target and roadmap |
+| `docs/07_workflow_ci.md` | Workflow, branch, commit, PR and CI rules |
 | `docs/08_testing_local_run.md` | Local run and test guide |
 | `docs/09_execution_tracker.md` | Execution tracker by branch/task |
 | `docs/10_automation_testing_report.md` | Latest automation testing report |
