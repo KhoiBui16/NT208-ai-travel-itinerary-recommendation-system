@@ -16,7 +16,7 @@ from src.core.exceptions import (
 )
 from src.core.security import create_opaque_token, hash_token
 from src.models.extras import GuestClaimToken
-from src.models.trip import Trip, TripDay
+from src.models.trip import Activity, Trip, TripDay
 from src.repositories.trip_repo import TripRepository
 from src.schemas.common import PaginatedResponse
 from src.schemas.itinerary import (
@@ -132,7 +132,8 @@ class ItineraryService(BaseService):
         trip.total_cost = self._calculate_total_cost(trip)
         await self.session.flush()
 
-        # Re-fetch with fresh relations
+        # Expire cached relations so re-fetch loads fresh data from DB
+        self.session.expire_all()
         trip = await self.repo.get_with_full_data(trip_id)
         return await self._to_response(trip)
 
@@ -255,7 +256,7 @@ class ItineraryService(BaseService):
             taxi_cost=data.taxi_cost,
             order_index=0,
         )
-        return ActivitySchema.model_validate(activity, from_attributes=True)
+        return self._activity_to_schema(activity)
 
     async def update_activity(
         self, trip_id: int, activity_id: int, data: ActivitySchema, user_id: int
@@ -270,7 +271,7 @@ class ItineraryService(BaseService):
             if k not in ("id", "extra_expenses")
         }
         activity = await self.repo.update_activity(activity, **updates)
-        return ActivitySchema.model_validate(activity, from_attributes=True)
+        return self._activity_to_schema(activity)
 
     async def delete_activity(self, trip_id: int, activity_id: int, user_id: int) -> None:
         await self._verify_owner(trip_id, user_id)
@@ -495,6 +496,33 @@ class ItineraryService(BaseService):
         for acc in trip.accommodations:
             total += acc.total_price or 0
         return total
+
+    @staticmethod
+    def _activity_to_schema(activity: Activity) -> ActivitySchema:
+        """Convert Activity ORM to ActivitySchema without triggering lazy loads.
+
+        Using model_validate on a fresh Activity triggers MissingGreenlet
+        because extra_expenses is a lazy relationship.  Instead we build
+        the schema from eagerly-available scalar fields and default
+        extra_expenses to [].
+        """
+        return ActivitySchema(
+            id=activity.id,
+            name=activity.name,
+            time=activity.time,
+            end_time=activity.end_time,
+            type=activity.type,
+            location=activity.location,
+            description=activity.description,
+            image=activity.image,
+            transportation=activity.transportation,
+            adult_price=activity.adult_price,
+            child_price=activity.child_price,
+            custom_cost=activity.custom_cost,
+            bus_ticket_price=activity.bus_ticket_price,
+            taxi_cost=activity.taxi_cost,
+            extra_expenses=[],
+        )
 
     async def _to_response(self, trip: Trip) -> ItineraryResponse:
         days = []

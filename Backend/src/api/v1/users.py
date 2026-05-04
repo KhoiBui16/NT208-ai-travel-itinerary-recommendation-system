@@ -66,7 +66,7 @@ async def update_profile(
         401 Unauthorized: Missing or invalid Bearer token.
     """
     return await service.update_profile(
-        user=user,
+        user_id=user.id,
         name=body.name,
         phone=body.phone,
         interests=body.interests,
@@ -95,7 +95,7 @@ async def change_password(
         401 Unauthorized: Current password is incorrect or missing Bearer token.
     """
     await service.change_password(
-        user=user,
+        user_id=user.id,
         current_password=body.current_password,
         new_password=body.new_password,
     )
