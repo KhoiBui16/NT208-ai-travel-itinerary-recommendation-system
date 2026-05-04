@@ -18,7 +18,7 @@ This README is the single source of truth for running the project locally.
 - Share/claim: public `shareToken`, one-time `claimToken` with hash + expiry.
 - Places: destinations, destination detail, place search/detail, saved places, Redis read cache.
 - ETL: OSM/Goong extractors, transformers, DB upsert loader, sample hotel data.
-- **32 API endpoints** registered, 117 tests (75 unit + 42 integration) passing.
+- **33 API endpoints** registered (EP-0 to EP-32), 117 tests (75 unit + 42 integration) passing.
 
 ### Implemented (FE)
 
@@ -38,7 +38,7 @@ This README is the single source of truth for running the project locally.
 
 - **Phase C AI**: `POST /itineraries/generate` is a stub (creates empty trip, no LLM call). No companion chat, no patch-confirm flow, no chat history API.
 - Full ETL with real place data needs `GOONG_API_KEY`.
-- No Playwright/Cypress or FE unit test runner.
+- Playwright e2e tests exist (11 tests) but don't yet cover trip workspace drag-and-drop, calendar interaction, or accommodation CRUD.
 
 ---
 
@@ -119,7 +119,7 @@ uv run alembic upgrade head
 uv run uvicorn src.main:app --reload --port 8000
 ```
 
-Verify: open http://localhost:8000/docs — you should see Swagger UI with 32 endpoints.
+Verify: open http://localhost:8000/docs — you should see Swagger UI with 33 endpoints.
 
 ### Step 4: Start Frontend
 
@@ -211,7 +211,7 @@ REDIS_URL=redis://localhost:6379/0
 │   │       ├── data/                       #     hotels.yaml sample data
 │   │       └── runner.py                   #     ETL CLI entry point
 │   ├── tests/                              # Unit + integration tests
-│   │   ├── unit/                           #   9 test modules (73 tests)
+│   │   ├── unit/                           #   9 test modules (75 tests)
 │   │   └── integration/                    #   5 test modules (42 tests)
 │   ├── alembic/                            # DB migrations (3 revisions)
 │   ├── config.yaml                         # Shared non-secret app config
@@ -298,7 +298,7 @@ REDIS_URL=redis://localhost:6379/0
 │   ├── PULL_REQUEST_TEMPLATE.md            # PR template (4 required Vietnamese sections)
 │   └── workflows/
 │       ├── backend-ci.yml                  #   BE lint, unit, integration, migration checks
-│       ├── frontend-ci.yml                 #   FE production build check
+│       ├── frontend-ci.yml                 #   FE production build + e2e checks
 │       └── pr-policy.yml                   #   Branch regex, commit format, PR body validation
 ├── docker-compose.yml                      # API + PostgreSQL + Redis
 ├── CLAUDE.md                               # Agent/project memory
@@ -347,11 +347,13 @@ $env:CI="true"
 uv run pytest tests/ -v
 ```
 
-### Frontend build check
+### Frontend build check + e2e tests
 
 ```powershell
 cd Frontend
 npm run build
+npm run test:e2e        # Playwright e2e (needs BE running on localhost:8000)
+npm run test:e2e:headed # Run e2e with visible browser
 ```
 
 ---
@@ -527,7 +529,7 @@ Frontend (FloatingAIChat.tsx)
 - Implement Phase C AI direct itinerary pipeline (replace stub with Gemini call).
 - Implement AI companion chat with patch-confirm flow.
 - Persist chat history with `chat_sessions` and `chat_messages`.
-- Add Playwright/Cypress for FE e2e tests.
+- Expand Playwright e2e tests (trip workspace, calendar, accommodation).
 - Add real `GOONG_API_KEY` for full ETL runs.
 - Keep `docs/09_execution_tracker.md` updated for every branch/PR.
 
