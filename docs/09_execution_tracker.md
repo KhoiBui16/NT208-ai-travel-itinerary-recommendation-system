@@ -21,8 +21,8 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00014 | B2/B3 | `fix/00014-b2-docs-errorboundary` | Fix outdated docs (CreateTrip status), add ErrorBoundary, update tracker | merged | FE build pass | #14 |
 | 00015 | D | `docs/00015-d-update-docs-readme` | Update docs and README with actual FE-BE integration status, team, endpoint count | merged | FE build pass | #16 |
 | 00019 | B2 | `fix/00019-b2-itineraryview-share-button` | Add share button to ItineraryView with share link display + copy | merged | FE build pass | #19 |
-| 00020 | B1 | `fix/00020-b1-password-reset-endpoints` | Forgot/reset password BE endpoints + FE wiring + email service | merged | 115 BE tests pass, FE build pass | #20 |
-| 00024 | B2 | `fix/00024-b2-missing-greenlet-optional-auth` | Fix 4 critical MissingGreenlet + optional auth bugs in BE | merged | 115 BE tests pass | #24 |
+| 00020 | B1 | `fix/00020-b1-password-reset-endpoints` | Forgot/reset password BE endpoints + FE wiring + email service | merged | 117 BE tests pass, FE build pass | #20 |
+| 00024 | B2 | `fix/00024-b2-missing-greenlet-optional-auth` | Fix 4 critical MissingGreenlet + optional auth bugs in BE | merged | 117 BE tests pass | #24 |
 | 00027 | B2 | `fix/00027-b2-fe-be-contract-gaps` | Fix FE-BE contract gaps — TripLibrary fields, CreateTrip generateItinerary | merged | FE build pass | #27 |
 | 00028 | B2 | `fix/00028-b2-register-otp-bypass` | Bypass client-side OTP placeholder in Register flow | merged | FE build pass | #28 |
 
@@ -94,7 +94,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 ## Scope Task 00015 (PR #16)
 
 - Cập nhật toàn bộ docs/ và README.md cho đúng thực tế code sau PRs #10-#14.
-- Số liệu: 32 endpoints, 8 protected routes, 115 tests, team 3 thành viên.
+- Số liệu: 32 endpoints, 8 protected routes, 117 tests, team 3 thành viên.
 - FE-BE integration table 16 hàng, xoá claim localStorage cũ.
 - Thêm TripWizardContext, useTripSync, ErrorBoundary vào docs.
 
@@ -157,7 +157,7 @@ Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycl
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
-Tóm tắt: 32 BE endpoints, 115 BE tests (73 unit + 42 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28).
+Tóm tắt: 32 BE endpoints, 117 BE tests (75 unit + 42 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28).
 
 ## Phase C Plan (2026-05-04)
 
