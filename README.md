@@ -12,18 +12,19 @@ This README is the single source of truth for running the project locally.
 
 ### Implemented (BE)
 
-- Auth: register, login, refresh-token rotation, logout, profile, change password.
+- Auth: register, login, refresh-token rotation, logout, profile, change password, forgot-password, reset-password.
+- Email service: `aiosmtplib` (async SMTP) + console fallback for local dev.
 - Itinerary CRUD: create/list/get/update/delete, nested days/activities/accommodations, owner-only check, rating.
 - Share/claim: public `shareToken`, one-time `claimToken` with hash + expiry.
 - Places: destinations, destination detail, place search/detail, saved places, Redis read cache.
 - ETL: OSM/Goong extractors, transformers, DB upsert loader, sample hotel data.
-- **30 API endpoints** registered, 110 tests (66 unit + 44 integration) passing.
+- **32 API endpoints** registered, 115 tests (73 unit + 42 integration) passing.
 
 ### Implemented (FE)
 
 - UI under `Frontend/` with Vite + React + TypeScript + Tailwind/MUI.
-- Full route set: home, city list/detail, auth, trip setup/workspace, history, saved places/itineraries, settings, profile, shared trip view.
-- API client layer with JWT auto-refresh (`Frontend/src/app/services/`): `api.ts`, `auth.ts`, `itinerary.ts`, `places.ts`, `users.ts`.
+- Full route set: home, city list/detail, auth, trip setup/workspace, history, saved places/itineraries, settings, profile, shared trip view, forgot-password, reset-password.
+- API client layer with JWT auto-refresh (`Frontend/src/app/services/`): `api.ts`, `auth.ts` (incl. forgotPassword/resetPassword), `itinerary.ts`, `places.ts`, `users.ts`.
 - `AuthContext` manages JWT state + guest-to-owner claim flow; **8 protected routes** redirect to `/login`.
 - `TripWizardContext` replaces 6 sessionStorage keys for wizard flow (destinations, allocations, travelers, budget).
 - `useTripSync` auto-saves via BE API (`createItinerary`/`updateItinerary`); sessionStorage only as quick-restore cache.
@@ -36,8 +37,6 @@ This README is the single source of truth for running the project locally.
 ### Not yet implemented
 
 - **Phase C AI**: `POST /itineraries/generate` is a stub (creates empty trip, no LLM call). No companion chat, no patch-confirm flow, no chat history API.
-- `ItineraryView` lacks share button — share flow lives in `TopActionBar` of TripWorkspace.
-- `ForgotPassword` has UI but BE endpoint for password reset is missing.
 - Full ETL with real place data needs `GOONG_API_KEY`.
 - No Playwright/Cypress or FE unit test runner.
 
@@ -97,6 +96,13 @@ JWT_SECRET_KEY=<paste-your-random-secret-here>
 # AI providers (leave empty until Phase C)
 GEMINI_API_KEY=
 GOONG_API_KEY=
+
+# SMTP (optional — if empty, password reset links log to console)
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+EMAIL_FROM_ADDRESS=noreply@dulichviet.local
 
 # Optional analytics
 ENABLE_ANALYTICS=false

@@ -20,6 +20,8 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00013 | B2/B3 | `fix/00013-b2-createtrip-api-docs-sync` | Wire CreateTrip to createItinerary API, sync docs với actual FE-BE status | merged | FE build pass | #13 |
 | 00014 | B2/B3 | `fix/00014-b2-docs-errorboundary` | Fix outdated docs (CreateTrip status), add ErrorBoundary, update tracker | merged | FE build pass | #14 |
 | 00015 | D | `docs/00015-d-update-docs-readme` | Update docs and README with actual FE-BE integration status, team, endpoint count | merged | FE build pass | #16 |
+| 00019 | B2 | `fix/00019-b2-itineraryview-share-button` | Add share button to ItineraryView with share link display + copy | pending | FE build pass | #19 |
+| 00020 | B1 | `fix/00020-b1-password-reset-endpoints` | Forgot/reset password BE endpoints + FE wiring + email service | pending | 115 BE tests pass, FE build pass | #20 |
 
 ## Scope Task 00006
 
@@ -89,14 +91,39 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 ## Scope Task 00015 (PR #16)
 
 - Cập nhật toàn bộ docs/ và README.md cho đúng thực tế code sau PRs #10-#14.
-- Số liệu: 30 endpoints, 8 protected routes, 110 tests, team 3 thành viên.
+- Số liệu: 32 endpoints, 8 protected routes, 115 tests, team 3 thành viên.
 - FE-BE integration table 16 hàng, xoá claim localStorage cũ.
 - Thêm TripWizardContext, useTripSync, ErrorBoundary vào docs.
 
+## Scope Task 00019 (PR #19)
+
+- Thêm share button vào `ItineraryView.tsx` với share link display + copy.
+- Import `Share2`, `Copy` icons, `shareItinerary` API.
+- Thêm state `shareLink`, `isSharing` và handlers `handleShare`, `handleCopyLink`.
+- Share button chỉ hiện khi `isAuthenticated`.
+- Share link bar với nút Sao chép và Đóng (pattern giống `TopActionBar`).
+
+## Scope Task 00020 (PR #20)
+
+- Alembic migration `20260504_0003`: thêm `password_reset_token_hash`, `password_reset_expires_at` vào `users`.
+- `User` model: thêm 2 field mới.
+- `security.py`: thêm `create_password_reset_token()` utility.
+- `config.py`: thêm `password_reset_token_expire_hours`, SMTP config.
+- `config.yaml`: thêm `auth.password_reset_token_expire_hours` và `email` section.
+- `schemas/auth.py`: thêm `ForgotPasswordRequest`, `ResetPasswordRequest`.
+- `email_service.py`: gửi email qua `aiosmtplib`, fallback log-to-console khi chưa có SMTP.
+- `auth_service.py`: thêm `forgot_password()`, `reset_password()` methods.
+- `user_repo.py`: thêm `get_by_reset_token_hash()`.
+- `auth.py` router: thêm EP-31 forgot-password, EP-32 reset-password.
+- `pyproject.toml`: thêm `aiosmtplib` dependency.
+- 7 unit tests mới cho password reset flow.
+- FE: `services/auth.ts` thêm `forgotPassword()`, `resetPassword()`.
+- FE: `ForgotPassword.tsx` thay OTP mock bằng gọi API thật, hiện thông báo kiểm tra email.
+- FE: `ResetPassword.tsx` trang mới nhận token từ URL param.
+- FE: `routes.tsx` thêm route `/reset-password`.
+
 ## Còn Lại Trước Phase C
 
-- `ItineraryView` chưa có share button — share flow nằm trong `TopActionBar` của TripWorkspace.
-- `ForgotPassword` cần BE endpoint password reset.
 - FE unit/e2e test runner (Playwright/Cypress).
 - Full ETL real data sau khi có `GOONG_API_KEY`.
 - Phase C AI services (generate pipeline, companion chat, chat history).
@@ -106,7 +133,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
-Tóm tắt: 30 BE endpoints, 110 BE tests (66 unit + 44 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback.
+Tóm tắt: 32 BE endpoints, 115 BE tests (73 unit + 42 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback.
 
 ## Phase C Plan (2026-05-04)
 
@@ -118,5 +145,4 @@ Thứ tự ưu tiên:
 2. SuggestionService (`suggestion_service.py`) — DB-only, dễ implement
 3. Companion chat (`companion_service.py` + `agent.py`) — phức tạp nhất
 4. Chat history (`chat_service.py` + `chat.py`) — cần khi companion hoạt động
-5. Password reset — user cần
-6. Analytics EP-34 — optional
+5. Analytics EP-34 — optional
