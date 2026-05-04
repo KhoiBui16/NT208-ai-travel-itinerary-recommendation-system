@@ -236,7 +236,7 @@ Smoke website:
 | Page | API endpoint | Trạng thái |
 |---|---|---|
 | Login | `POST /auth/login` | Done |
-| Register | `POST /auth/register` | Done |
+| Register | `POST /auth/register` | Done (OTP bypassed until BE email OTP) |
 | ForgotPassword | `POST /auth/forgot-password` | Done |
 | ResetPassword | `POST /auth/reset-password` | Done |
 | Account | `GET/PUT /users/profile`, `PUT /users/password` | Done |
@@ -257,3 +257,20 @@ Smoke website:
 Protected routes (8 routes) đã được bọc bằng `ProtectedRoute` — redirect sang `/login` nếu chưa đăng nhập.
 
 AI generate endpoint (`POST /itineraries/generate`) vẫn là stub — tạo empty trip, chưa gọi LLM. Sẽ được implement ở Phase C.
+
+## OTP Registration Note (PR #25)
+
+Register page hiện bypass OTP verification. Lý do:
+
+- `OTPModal.tsx` so sánh `otpValue === generatedOTP` — random OTP chỉ tồn tại trong browser state, không bao giờ gửi email.
+- Backend `POST /auth/register` tạo user trực tiếp, không yêu cầu OTP.
+- Fix: comment out OTP state/handlers, gọi `register()` API trực tiếp trong `handleSubmit`.
+- `OTPModal.tsx` component vẫn giữ trong codebase, sẽ re-enable khi BE có email OTP service (Phase C).
+
+## FE-BE Contract Gaps (post-analysis)
+
+Phân tích FE trip flow phát hiện một số mismatch cần fix:
+
+- **TripLibrary.tsx**: Dùng `trip.name` (BE: `tripName`), `trip.estimatedCost` (BE: `totalCost`), `trip.coverImage` và `trip.savedLocationsCount` (không có trong BE response).
+- **ItineraryView.tsx**: Expect `rating` và `feedback` fields trong ItineraryResponse, nhưng BE schema hiện không include các field này.
+- **CreateTrip.tsx**: Button "Tạo Lịch Trình Với AI" gọi `createItinerary()` thay vì `generateItinerary()` — tạo empty trip thay vì AI-generated.
