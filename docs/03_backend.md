@@ -29,9 +29,9 @@ Các file MVP1 cũ như `Backend/BE_docs.md` và folder `Backend/app/` không c�
 - Health: `/api/v1/health` (1 endpoint)
 - Auth: register, login, refresh, logout, forgot-password, reset-password (6 endpoints)
 - Users: profile, update profile, password (3 endpoints)
-- Itineraries: create/list/get/update/delete, generate, nested day/activity/accommodation, share, claim, rating (16 endpoints)
+- Itineraries: create/list/get/update/delete, generate, nested activity/accommodation, share, claim, rating (14 endpoints)
 - Shared: public read by shareToken (1 endpoint)
-- Places: destinations, destination detail, search, detail, saved places CRUD (8 endpoints)
+- Places: destinations, destination detail, search, detail, saved places list/save/unsave (7 endpoints)
 
 **Total: 32 endpoints** (EP-34 `/agent/analytics` optional cho MVP2+)
 
