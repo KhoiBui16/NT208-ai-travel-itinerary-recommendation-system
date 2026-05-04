@@ -75,6 +75,14 @@ Thiết kế bảo mật:
 
 ## Config cần biết
 
+Trước khi chạy lần đầu, copy template:
+
+```powershell
+Copy-Item Backend\.env.example Backend\.env
+```
+
+Sửa `Backend/.env` — bắt buộc set `JWT_SECRET_KEY`. Xem chi tiết trong file `.env.example`.
+
 `Backend/.env` local nên có:
 
 ```env

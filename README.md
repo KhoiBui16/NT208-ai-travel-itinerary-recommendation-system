@@ -64,8 +64,18 @@ uv --version
 
 ### Step 1: Configure environment
 
+Copy the env templates to create your local `.env` files:
+
+**PowerShell:**
 ```powershell
-copy Backend\.env.example Backend\.env
+Copy-Item Backend\.env.example  Backend\.env
+Copy-Item Frontend\.env.example Frontend\.env
+```
+
+**Bash / Git Bash / Linux:**
+```bash
+cp Backend/.env.example  Backend/.env
+cp Frontend/.env.example Frontend/.env
 ```
 
 Edit `Backend/.env` — at minimum set `JWT_SECRET_KEY` to a long random string:
@@ -76,38 +86,11 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 Paste the output into `JWT_SECRET_KEY`. Never commit `Backend/.env`.
 
-Full recommended `.env`:
+**SMTP for password reset** (optional): If `SMTP_HOST` is empty (default), reset links are logged to the BE console instead of being emailed. To send real emails, fill `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` in `Backend/.env`.
 
-```env
-# App
-APP_NAME=DuLichViet API
-APP_VERSION=2.0.0
-ENVIRONMENT=development
-APP_DEBUG=true
-FRONTEND_URL=http://localhost:5173
+**Frontend `.env`**: `Frontend/.env` only needs `VITE_API_URL=http://localhost:8000` (the default). Change it only if BE runs on a different port.
 
-# Local host database and Redis (used when running BE locally)
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet
-REDIS_URL=redis://localhost:6379/0
-
-# Security
-JWT_SECRET_KEY=<paste-your-random-secret-here>
-
-# AI providers (leave empty until Phase C)
-GEMINI_API_KEY=
-GOONG_API_KEY=
-
-# SMTP (optional — if empty, password reset links log to console)
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_USERNAME=
-SMTP_PASSWORD=
-EMAIL_FROM_ADDRESS=noreply@dulichviet.local
-
-# Optional analytics
-ENABLE_ANALYTICS=false
-ANALYTICS_DATABASE_URL=
-```
+See `Backend/.env.example` and `Frontend/.env.example` for the full list of variables with comments.
 
 ### Step 2: Start infrastructure (Docker)
 
@@ -136,7 +119,7 @@ uv run alembic upgrade head
 uv run uvicorn src.main:app --reload --port 8000
 ```
 
-Verify: open http://localhost:8000/docs — you should see Swagger UI with 30 endpoints.
+Verify: open http://localhost:8000/docs — you should see Swagger UI with 32 endpoints.
 
 ### Step 4: Start Frontend
 
@@ -212,114 +195,115 @@ REDIS_URL=redis://localhost:6379/0
 
 ```text
 .
-├── Backend/                          # FastAPI MVP2 backend
-│   ├── src/                          # Current backend source of truth
-│   │   ├── main.py                   # App factory, mount router /api/v1
-│   │   ├── api/v1/                   # Routers (auth, users, itineraries, places, shared, health)
-│   │   ├── core/                     # Config, database, security, dependencies, Redis, middleware
-│   │   ├── models/                   # SQLAlchemy ORM (user, trip, place, extras)
-│   │   ├── repositories/             # DB query layer (user, trip, place, token repos)
-│   │   ├── schemas/                  # Pydantic request/response (auth, user, itinerary, place)
-│   │   ├── services/                 # Business logic (auth, user, itinerary, place services)
-│   │   └── etl/                      # ETL pipeline
-│   │       ├── extractors/           # OSM + Goong extractors
-│   │       ├── transformers/         # Hotel + place transformers
-│   │       ├── loaders/              # DB upsert loader
-│   │       ├── data/                 # hotels.yaml sample data
-│   │       └── runner.py             # ETL CLI entry point
-│   ├── tests/                        # Unit + integration tests
-│   │   ├── unit/                     # 8 test modules (auth, user, itinerary, place, config, security, ETL, schema)
-│   │   └── integration/             # 5 test modules (auth, itinerary, place, health, ETL loader endpoints)
-│   ├── alembic/                      # DB migrations
-│   ├── config.yaml                   # Shared non-secret app config
-│   ├── pyproject.toml                # uv dependencies
-│   ├── .env.example                  # Local env template
-│   └── README.md                     # Backend-specific notes
-├── Frontend/                         # Vite React frontend
+├── Backend/                                # FastAPI MVP2 backend
+│   ├── src/                                # Current backend source of truth
+│   │   ├── main.py                         #   App factory, mount router /api/v1
+│   │   ├── api/v1/                         #   Routers (auth, users, itineraries, places, shared, health)
+│   │   ├── core/                           #   Config, database, security, dependencies, Redis, middleware
+│   │   ├── models/                         #   SQLAlchemy ORM (user, trip, place, extras)
+│   │   ├── repositories/                   #   DB query layer (user, trip, place, token repos)
+│   │   ├── schemas/                        #   Pydantic request/response (auth, user, itinerary, place)
+│   │   ├── services/                       #   Business logic (auth, user, itinerary, place, email services)
+│   │   └── etl/                            #   ETL pipeline
+│   │       ├── extractors/                 #     OSM + Goong extractors
+│   │       ├── transformers/               #     Hotel + place transformers
+│   │       ├── loaders/                    #     DB upsert loader
+│   │       ├── data/                       #     hotels.yaml sample data
+│   │       └── runner.py                   #     ETL CLI entry point
+│   ├── tests/                              # Unit + integration tests
+│   │   ├── unit/                           #   9 test modules (73 tests)
+│   │   └── integration/                    #   5 test modules (42 tests)
+│   ├── alembic/                            # DB migrations (3 revisions)
+│   ├── config.yaml                         # Shared non-secret app config
+│   ├── pyproject.toml                      # uv dependencies
+│   ├── .env.example                        # Local env template — copy to .env before running
+│   └── README.md                           # Backend-specific notes
+├── Frontend/                               # Vite React frontend
 │   ├── src/
-│   │   ├── main.tsx                  # Entry point
+│   │   ├── main.tsx                        #   Entry point
 │   │   ├── app/
-│   │   │   ├── App.tsx               # Root component (ErrorBoundary > AuthProvider > TripWizardProvider > Router)
-│   │   │   ├── routes.tsx            # Route definitions + ProtectedRoute guards
-│   │   │   ├── services/             # API client layer
-│   │   │   │   ├── api.ts            # Fetch wrapper, JWT Bearer injection, auto-refresh on 401
-│   │   │   │   ├── auth.ts           # login, register, logout, refresh
-│   │   │   │   ├── itinerary.ts      # CRUD, generate, share, claim, rating
-│   │   │   │   ├── places.ts         # destinations, search, saved places
-│   │   │   │   └── users.ts          # profile, password
-│   │   │   ├── contexts/             # React Context providers
-│   │   │   │   ├── AuthContext.tsx    # JWT state, login/logout/register, guest→owner claim
-│   │   │   │   └── TripWizardContext.tsx  # Wizard flow (destinations, allocations, travelers, budget)
-│   │   │   ├── hooks/                # Custom hooks
-│   │   │   │   ├── useTripCost.ts    # Budget calculations
-│   │   │   │   ├── useTripState.ts   # Trip state helpers
-│   │   │   │   └── trips/            # BE API integration hooks
-│   │   │   │       ├── useTripSync.ts        # Auto-save create/update/get itinerary
-│   │   │   │       ├── useActivityManager.ts  # Activity CRUD + optimistic update
-│   │   │   │       ├── useAccommodation.ts    # Accommodation CRUD + optimistic update
-│   │   │   │       └── usePlacesManager.ts    # Debounced search, save/unsave, add to itinerary
-│   │   │   ├── pages/                # 26 page components (see Route Map in docs/04_frontend.md)
-│   │   │   ├── components/           # Shared UI components
-│   │   │   │   ├── ErrorBoundary.tsx # React crash recovery
-│   │   │   │   ├── ProtectedRoute.tsx  # Auth guard for 8 protected routes
-│   │   │   │   ├── TopActionBar.tsx  # Trip workspace actions (save, share, edit travelers)
-│   │   │   │   ├── Header.tsx        # Navigation header with auth state
-│   │   │   │   ├── FloatingAIChat.tsx      # AI chat UI (mock, Phase C will replace with real LLM)
-│   │   │   │   ├── AIPromoBubble.tsx       # AI promo tooltip (mock)
-│   │   │   │   ├── ContextualSuggestionsPanel.tsx  # Contextual tips (mock)
-│   │   │   │   ├── companion/        # AI companion sub-components (mock)
+│   │   │   ├── App.tsx                     #     Root component (ErrorBoundary > AuthProvider > TripWizardProvider > Router)
+│   │   │   ├── routes.tsx                  #     Route definitions + ProtectedRoute guards
+│   │   │   ├── services/                   #     API client layer
+│   │   │   │   ├── api.ts                  #       Fetch wrapper, JWT Bearer injection, auto-refresh on 401
+│   │   │   │   ├── auth.ts                 #       login, register, logout, forgotPassword, resetPassword
+│   │   │   │   ├── itinerary.ts            #       CRUD, generate, share, claim, rating
+│   │   │   │   ├── places.ts               #       destinations, search, saved places
+│   │   │   │   └── users.ts                #       profile, password
+│   │   │   ├── contexts/                   #     React Context providers
+│   │   │   │   ├── AuthContext.tsx          #       JWT state, login/logout/register, guest→owner claim
+│   │   │   │   └── TripWizardContext.tsx    #       Wizard flow (destinations, allocations, travelers, budget)
+│   │   │   ├── hooks/                      #     Custom hooks
+│   │   │   │   ├── useTripCost.ts          #       Budget calculations
+│   │   │   │   ├── useTripState.ts         #       Trip state helpers
+│   │   │   │   └── trips/                  #       BE API integration hooks
+│   │   │   │       ├── useTripSync.ts      #         Auto-save create/update/get itinerary
+│   │   │   │       ├── useActivityManager.ts #       Activity CRUD + optimistic update
+│   │   │   │       ├── useAccommodation.ts #         Accommodation CRUD + optimistic update
+│   │   │   │       └── usePlacesManager.ts #         Debounced search, save/unsave, add to itinerary
+│   │   │   ├── pages/                      #     27 page components (see Route Map in docs/04_frontend.md)
+│   │   │   ├── components/                 #     Shared UI components
+│   │   │   │   ├── ErrorBoundary.tsx       #       React crash recovery
+│   │   │   │   ├── ProtectedRoute.tsx      #       Auth guard for 8 protected routes
+│   │   │   │   ├── TopActionBar.tsx        #       Trip workspace actions (save, share, edit travelers)
+│   │   │   │   ├── Header.tsx              #       Navigation header with auth state
+│   │   │   │   ├── FloatingAIChat.tsx      #       AI chat UI (mock, Phase C will replace with real LLM)
+│   │   │   │   ├── AIPromoBubble.tsx       #       AI promo tooltip (mock)
+│   │   │   │   ├── ContextualSuggestionsPanel.tsx #  Contextual tips (mock)
+│   │   │   │   ├── companion/              #       AI companion sub-components (mock)
 │   │   │   │   │   ├── DailyBrief.tsx
 │   │   │   │   │   ├── LiveBudgetBar.tsx
 │   │   │   │   │   ├── PlaceSuggestions.tsx
 │   │   │   │   │   └── SmartReminders.tsx
-│   │   │   │   ├── figma/            # Design-to-code components
-│   │   │   │   └── ui/               # shadcn/ui primitives (40+ components)
-│   │   │   ├── types/                # TypeScript type definitions
-│   │   │   │   └── trip.types.ts     # Itinerary contract (Activity, Day, Accommodation, etc.)
-│   │   │   ├── data/                 # Static/mock data (fallback when BE has no data)
+│   │   │   │   ├── figma/                  #       Design-to-code components
+│   │   │   │   └── ui/                     #       shadcn/ui primitives (40+ components)
+│   │   │   ├── types/                      #     TypeScript type definitions
+│   │   │   │   └── trip.types.ts           #       Itinerary contract (Activity, Day, Accommodation, etc.)
+│   │   │   ├── data/                       #     Static/mock data (fallback when BE has no data)
 │   │   │   │   ├── cities.ts, destinations.ts, places.ts, trips.ts
-│   │   │   │   ├── suggestions.ts, budget.ts, homeData.ts
-│   │   │   └── utils/                # Utility functions
-│   │   │       ├── tripConstants.ts  # Initial data, filters, labels, colors
-│   │   │       ├── timeHelpers.ts    # Time parsing, conflict resolution
-│   │   │       ├── itinerary.ts      # Itinerary helpers
-│   │   │       └── analytics.ts      # Analytics utilities
-│   │   ├── styles/                   # CSS (fonts, theme, tailwind, index)
-│   │   └── imports/                  # Design audit JSON
+│   │   │   │   └── suggestions.ts, budget.ts, homeData.ts
+│   │   │   └── utils/                      #     Utility functions
+│   │   │       ├── tripConstants.ts        #       Initial data, filters, labels, colors
+│   │   │       ├── timeHelpers.ts          #       Time parsing, conflict resolution
+│   │   │       ├── itinerary.ts            #       Itinerary helpers
+│   │   │       └── analytics.ts            #       Analytics utilities
+│   │   ├── styles/                         # CSS (fonts, theme, tailwind, index)
+│   │   └── imports/                        # Design audit JSON
+│   ├── .env.example                        # Local env template — copy to .env before running
 │   ├── package.json
 │   └── vite.config.ts
-├── docs/                             # Project documentation source of truth
-│   ├── 01_overview.md                # MVP2 status, reading order, doc rules
-│   ├── 02_architecture.md            # System architecture (FE, BE, DB, Redis, ETL, AI target)
-│   ├── 03_backend.md                 # Backend modules, endpoints, config
-│   ├── 04_frontend.md                # Frontend routes, components, API integration status
-│   ├── 05_database_etl.md            # Database, Redis, ETL details
-│   ├── 06_backend_phases.md          # Implemented Backend phases (A, B1-B3, D)
-│   ├── 06_ai_roadmap.md              # AI services target and roadmap (Phase C)
-│   ├── 07_workflow_ci.md             # Workflow, branch, commit, PR and CI rules
-│   ├── 08_testing_local_run.md       # Local run and test guide
-│   ├── 09_execution_tracker.md       # Execution tracker by branch/task
-│   └── 10_automation_testing_report.md  # Latest automation testing report
+├── docs/                                   # Project documentation source of truth
+│   ├── 01_overview.md                      #   MVP2 status, reading order, doc rules
+│   ├── 02_architecture.md                  #   System architecture (FE, BE, DB, Redis, ETL, AI target)
+│   ├── 03_backend.md                       #   Backend modules, endpoints, config
+│   ├── 04_frontend.md                      #   Frontend routes, components, API integration status
+│   ├── 05_database_etl.md                  #   Database, Redis, ETL details
+│   ├── 06_backend_phases.md                #   Implemented Backend phases (A, B1-B3, D)
+│   ├── 06_ai_roadmap.md                    #   AI services target and roadmap (Phase C)
+│   ├── 07_workflow_ci.md                   #   Workflow, branch, commit, PR and CI rules
+│   ├── 08_testing_local_run.md             #   Local run and test guide
+│   ├── 09_execution_tracker.md             #   Execution tracker by branch/task
+│   └── 10_automation_testing_report.md     #   Latest automation testing report
 ├── scripts/
-│   └── test_fullstack_smoke.ps1      # Full-stack smoke test script (16 HTTP checks)
-├── .claude/context/                  # Condensed operational plan for agents
-│   ├── 00_project_overview.md        # Current repo truth and target state
-│   ├── 01_foundation.md              # Phase A foundation details
-│   ├── 02_auth_users.md              # Phase B1 auth/users
-│   ├── 03_itineraries_share_claim.md # Phase B2 itinerary/share/claim
-│   ├── 04_places_cache.md            # Phase B3 places/cache
-│   ├── 05_ai_services.md             # Phase C AI target architecture
-│   └── 06_ops_workflow_ci.md         # Ops/workflow/CI details
+│   └── test_fullstack_smoke.ps1            # Full-stack smoke test script (16 HTTP checks)
+├── .claude/context/                        # Condensed operational plan for agents
+│   ├── 00_project_overview.md              #   Current repo truth and target state
+│   ├── 01_foundation.md                    #   Phase A foundation details
+│   ├── 02_auth_users.md                    #   Phase B1 auth/users
+│   ├── 03_itineraries_share_claim.md       #   Phase B2 itinerary/share/claim
+│   ├── 04_places_cache.md                  #   Phase B3 places/cache
+│   ├── 05_ai_services.md                   #   Phase C AI target architecture
+│   └── 06_ops_workflow_ci.md               #   Ops/workflow/CI details
 ├── .github/
-│   ├── PULL_REQUEST_TEMPLATE.md      # PR template (4 required Vietnamese sections)
+│   ├── PULL_REQUEST_TEMPLATE.md            # PR template (4 required Vietnamese sections)
 │   └── workflows/
-│       ├── backend-ci.yml            # BE lint, unit, integration, migration checks
-│       ├── frontend-ci.yml           # FE production build check
-│       └── pr-policy.yml             # Branch regex, commit format, PR body validation
-├── docker-compose.yml                # API + PostgreSQL + Redis
-├── CLAUDE.md                         # Agent/project memory
-├── AGENTS.md                         # Agent and skill coordination guide
-└── README.md                         # This file
+│       ├── backend-ci.yml                  #   BE lint, unit, integration, migration checks
+│       ├── frontend-ci.yml                 #   FE production build check
+│       └── pr-policy.yml                   #   Branch regex, commit format, PR body validation
+├── docker-compose.yml                      # API + PostgreSQL + Redis
+├── CLAUDE.md                               # Agent/project memory
+├── AGENTS.md                               # Agent and skill coordination guide
+└── README.md                               # This file
 ```
 
 ### Legacy folders (not active, kept for reference)
@@ -418,6 +402,7 @@ All FE pages connect to the backend via an API client layer (`Frontend/src/app/s
 | FE Feature | Status | API Endpoint |
 |---|---|---|
 | Auth (login/register/logout) | Done | `POST /auth/login`, `POST /auth/register`, `POST /auth/logout` |
+| Forgot/Reset password | Done | `POST /auth/forgot-password`, `POST /auth/reset-password` |
 | User profile | Done | `GET /users/profile`, `PUT /users/profile` |
 | Password change | Done | `PUT /users/password` |
 | Trip CRUD (list/create/update/delete) | Done | `POST /itineraries`, `GET /itineraries`, `PUT /itineraries/{id}`, `DELETE /itineraries/{id}` |
@@ -429,7 +414,7 @@ All FE pages connect to the backend via an API client layer (`Frontend/src/app/s
 | Places search (debounced 300ms) | Done | `GET /places/search?query=...&city=...` |
 | Places/saved (all pages) | Done | `GET /places/saved`, `POST /places/saved`, `DELETE /places/saved/{id}` |
 | City detail | Done | `GET /places/destinations/{name}` + mock fallback |
-| Share trip | Done | `POST /itineraries/{id}/share` → `TopActionBar` |
+| Share trip | Done | `POST /itineraries/{id}/share` → `TopActionBar` + `ItineraryView` |
 | View shared trip | Done | `GET /shared/{shareToken}` → `SharedTripView` |
 | Guest claim | Done | `POST /itineraries/{id}/claim` → `AuthContext` after login |
 | Destinations list | Hardcoded | `GET /places/destinations` (pending ETL data) |
@@ -542,8 +527,6 @@ Frontend (FloatingAIChat.tsx)
 - Implement Phase C AI direct itinerary pipeline (replace stub with Gemini call).
 - Implement AI companion chat with patch-confirm flow.
 - Persist chat history with `chat_sessions` and `chat_messages`.
-- Add share button to `ItineraryView` (share flow currently in `TopActionBar` only).
-- Implement `ForgotPassword` BE endpoint for password reset.
 - Add Playwright/Cypress for FE e2e tests.
 - Add real `GOONG_API_KEY` for full ETL runs.
 - Keep `docs/09_execution_tracker.md` updated for every branch/PR.

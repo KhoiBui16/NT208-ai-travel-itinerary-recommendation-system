@@ -3,7 +3,8 @@
 ## Docker-only
 
 ```powershell
-copy Backend\.env.example Backend\.env
+Copy-Item Backend\.env.example  Backend\.env
+Copy-Item Frontend\.env.example Frontend\.env
 docker compose up --build
 ```
 
@@ -26,6 +27,15 @@ docker run --rm -it `
 ```
 
 ## Local development
+
+**Trước khi chạy lần đầu**, copy env template:
+
+```powershell
+Copy-Item Backend\.env.example  Backend\.env
+Copy-Item Frontend\.env.example Frontend\.env
+```
+
+Sửa `Backend/.env` — bắt buộc set `JWT_SECRET_KEY` (xem hướng dẫn trong file `.env.example`). Nếu cần gửi email reset password thật, điền thêm `SMTP_*`.
 
 Terminal 1:
 
