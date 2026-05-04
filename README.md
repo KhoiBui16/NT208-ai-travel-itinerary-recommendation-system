@@ -17,7 +17,7 @@ This README is the single source of truth for running the project locally.
 - Share/claim: public `shareToken`, one-time `claimToken` with hash + expiry.
 - Places: destinations, destination detail, place search/detail, saved places, Redis read cache.
 - ETL: OSM/Goong extractors, transformers, DB upsert loader, sample hotel data.
-- **30 API endpoints** registered, 110 tests (66 unit + 44 integration) passing.
+- **30 API endpoints** registered, 108 tests (66 unit + 42 integration) passing.
 
 ### Implemented (FE)
 

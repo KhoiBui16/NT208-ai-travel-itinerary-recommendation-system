@@ -42,7 +42,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 - Tạo `ProtectedRoute` (`Frontend/src/app/components/ProtectedRoute.tsx`) cho protected routes.
 - Nối FE-BE: Login, Register, Account, TripLibrary, SavedPlaces, ManualTripSetup, Header, usePlacesManager — thay localStorage bằng API calls.
 - Cập nhật `docs/04_frontend.md` với API integration status.
-- 110 BE tests pass (66 unit + 44 integration). FE build pass.
+- 108 BE tests pass (66 unit + 42 integration). FE build pass.
 
 ## Scope Task 00009 (PR #10)
 
@@ -89,7 +89,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 ## Scope Task 00015 (PR #16)
 
 - Cập nhật toàn bộ docs/ và README.md cho đúng thực tế code sau PRs #10-#14.
-- Số liệu: 30 endpoints, 8 protected routes, 110 tests, team 3 thành viên.
+- Số liệu: 30 endpoints, 8 protected routes, 108 tests, team 3 thành viên.
 - FE-BE integration table 16 hàng, xoá claim localStorage cũ.
 - Thêm TripWizardContext, useTripSync, ErrorBoundary vào docs.
 
@@ -106,7 +106,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
-Tóm tắt: 30 BE endpoints, 110 BE tests (66 unit + 44 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback.
+Tóm tắt: 30 BE endpoints, 108 BE tests (66 unit + 42 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback.
 
 ## Phase C Plan (2026-05-04)
 
