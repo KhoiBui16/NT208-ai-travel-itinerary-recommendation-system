@@ -17,6 +17,9 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00010 | B2/B3 | `feat/00010-b2-crud-api-wiring` | Wire activity/accommodation CRUD API, places search debounce, city detail BE integration | merged | FE build pass | #11 |
 | 00011 | B2/B3 | `fix/00011-b2-crud-wiring-hotfix` | resolveTimeConflicts in addActivityToDay, remove unused imports, fix duplicate updateNextId | merged | FE build pass | #12 |
 | 00012 | B2/B3 | `fix/00012-b2-createtrip-api-docs-sync` | Wire CreateTrip to createItinerary API, sync docs với actual FE-BE status | merged | FE build pass | #13 |
+| 00013 | B2/B3 | `fix/00013-b2-createtrip-api-docs-sync` | Wire CreateTrip to createItinerary API, sync docs với actual FE-BE status | merged | FE build pass | #13 |
+| 00014 | B2/B3 | `fix/00014-b2-docs-errorboundary` | Fix outdated docs (CreateTrip status), add ErrorBoundary, update tracker | merged | FE build pass | #14 |
+| 00015 | D | `docs/00015-d-update-docs-readme` | Update docs and README with actual FE-BE integration status, team, endpoint count | merged | FE build pass | #16 |
 
 ## Scope Task 00006
 
@@ -39,7 +42,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 - Tạo `ProtectedRoute` (`Frontend/src/app/components/ProtectedRoute.tsx`) cho protected routes.
 - Nối FE-BE: Login, Register, Account, TripLibrary, SavedPlaces, ManualTripSetup, Header, usePlacesManager — thay localStorage bằng API calls.
 - Cập nhật `docs/04_frontend.md` với API integration status.
-- 108 BE tests pass (66 unit + 42 integration). FE build pass.
+- 110 BE tests pass (66 unit + 44 integration). FE build pass.
 
 ## Scope Task 00009 (PR #10)
 
@@ -70,6 +73,26 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 - Remove unused `handleDeleteAccommodation` destructure.
 - Add `setCurrentTripId` vào useEffect dependency array.
 
+## Scope Task 00013 (PR #13)
+
+- Wire `CreateTrip` page to `createItinerary` API thay vì mock navigation.
+- Map budget level/travel type sang BE-accepted params (budget, adultsCount, childrenCount).
+- Navigate to `/trip-workspace?tripId={resp.id}` sau khi tạo thành công.
+- Sync docs với actual FE-BE status.
+
+## Scope Task 00014 (PR #14)
+
+- Fix docs outdated: CreateTrip status từ "Chưa nối API" thành "Done".
+- Thêm `ErrorBoundary` component bọc toàn app cho graceful crash recovery.
+- Update tracker với PR #13 scope.
+
+## Scope Task 00015 (PR #16)
+
+- Cập nhật toàn bộ docs/ và README.md cho đúng thực tế code sau PRs #10-#14.
+- Số liệu: 30 endpoints, 8 protected routes, 110 tests, team 3 thành viên.
+- FE-BE integration table 16 hàng, xoá claim localStorage cũ.
+- Thêm TripWizardContext, useTripSync, ErrorBoundary vào docs.
+
 ## Còn Lại Trước Phase C
 
 - `ItineraryView` chưa có share button — share flow nằm trong `TopActionBar` của TripWorkspace.
@@ -83,4 +106,4 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
-Tóm tắt: 33 BE endpoints, 110 BE tests (66 unit + 44 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback.
+Tóm tắt: 30 BE endpoints, 110 BE tests (66 unit + 44 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback.

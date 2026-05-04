@@ -33,7 +33,7 @@ Các file MVP1 cũ như `Backend/BE_docs.md` và folder `Backend/app/` không c�
 - Shared: public read by shareToken (1 endpoint)
 - Places: destinations, destination detail, search, detail, saved places CRUD (8 endpoints)
 
-**Total: 33 endpoints** (EP-34 `/agent/analytics` optional cho MVP2+)
+**Total: 30 endpoints** (EP-34 `/agent/analytics` optional cho MVP2+, password reset 2 endpoints chưa implement)
 
 ## Security rules
 
