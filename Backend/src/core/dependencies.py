@@ -15,7 +15,7 @@ Usage in endpoints:
 
 from collections.abc import AsyncGenerator
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from redis.asyncio import Redis
 from sqlalchemy import select
@@ -30,6 +30,19 @@ from src.models.user import User
 
 # Points to the login endpoint so Swagger UI can generate the "Authorize" dialog
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+
+async def _optional_token(request: Request) -> str | None:
+    """Extract Bearer token from the request, returning None if absent.
+
+    Unlike OAuth2PasswordBearer which raises 401 when no token is present,
+    this dependency silently returns None so that endpoints can serve both
+    authenticated and anonymous users.
+    """
+    auth: str | None = request.headers.get("authorization")
+    if not auth or not auth.lower().startswith("bearer "):
+        return None
+    return auth[7:]
 
 
 async def get_current_user(
@@ -68,7 +81,7 @@ async def get_current_user(
 
 
 async def get_current_user_optional(
-    token: str | None = None,
+    token: str | None = Depends(_optional_token),
     db: AsyncSession = Depends(get_db),
 ) -> User | None:
     """Resolve the user when a valid token is present; otherwise return None.

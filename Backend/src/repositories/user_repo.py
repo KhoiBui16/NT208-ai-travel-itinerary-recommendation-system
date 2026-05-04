@@ -91,4 +91,5 @@ class UserRepository:
             if value is not None:
                 setattr(user, key, value)
         await self.session.flush()
+        await self.session.refresh(user)
         return user

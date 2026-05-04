@@ -117,6 +117,7 @@ class TripRepository:
         activity = Activity(**kwargs)  # type: ignore[arg-type]
         self.session.add(activity)
         await self.session.flush()
+        await self.session.refresh(activity)
         return activity
 
     async def update_activity(self, activity: Activity, **kwargs: object) -> Activity:
@@ -124,6 +125,7 @@ class TripRepository:
             if value is not None:
                 setattr(activity, key, value)
         await self.session.flush()
+        await self.session.refresh(activity)
         return activity
 
     async def delete_activity(self, activity: Activity) -> None:
@@ -140,6 +142,7 @@ class TripRepository:
         acc = Accommodation(**kwargs)  # type: ignore[arg-type]
         self.session.add(acc)
         await self.session.flush()
+        await self.session.refresh(acc)
         return acc
 
     async def delete_accommodation(self, acc: Accommodation) -> None:
