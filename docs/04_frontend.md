@@ -258,7 +258,7 @@ Protected routes (8 routes) đã được bọc bằng `ProtectedRoute` — redi
 
 AI generate endpoint (`POST /itineraries/generate`) vẫn là stub — tạo empty trip, chưa gọi LLM. Sẽ được implement ở Phase C.
 
-## OTP Registration Note (PR #25)
+## OTP Registration Note (PR #28)
 
 Register page hiện bypass OTP verification. Lý do:
 
@@ -267,10 +267,8 @@ Register page hiện bypass OTP verification. Lý do:
 - Fix: comment out OTP state/handlers, gọi `register()` API trực tiếp trong `handleSubmit`.
 - `OTPModal.tsx` component vẫn giữ trong codebase, sẽ re-enable khi BE có email OTP service (Phase C).
 
-## FE-BE Contract Gaps (post-analysis)
+## FE-BE Contract Gaps (fixed in PR #27)
 
-Phân tích FE trip flow phát hiện một số mismatch cần fix:
-
-- **TripLibrary.tsx**: Dùng `trip.name` (BE: `tripName`), `trip.estimatedCost` (BE: `totalCost`), `trip.coverImage` và `trip.savedLocationsCount` (không có trong BE response).
-- **ItineraryView.tsx**: Expect `rating` và `feedback` fields trong ItineraryResponse, nhưng BE schema hiện không include các field này.
-- **CreateTrip.tsx**: Button "Tạo Lịch Trình Với AI" gọi `createItinerary()` thay vì `generateItinerary()` — tạo empty trip thay vì AI-generated.
+- **TripLibrary.tsx**: `trip.coverImage` → placeholder URL, `trip.name` → `trip.tripName`, `trip.estimatedCost` → `trip.totalCost ?? trip.budget`, `trip.savedLocationsCount` → count activities.
+- **CreateTrip.tsx**: Đổi `createItinerary()` → `generateItinerary()` với đúng field names.
+- **ItineraryView.tsx**: Expect `rating`/`feedback` trong ItineraryResponse — BE chưa include, FE default 0/"" gracefully. Cần BE thêm field này.
