@@ -107,3 +107,16 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
 Tóm tắt: 30 BE endpoints, 110 BE tests (66 unit + 44 integration), 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback.
+
+## Phase C Plan (2026-05-04)
+
+Xem chi tiết tại `docs/06_ai_roadmap.md` và `docs/02_architecture.md`.
+
+Thứ tự ưu tiên:
+
+1. Generate pipeline (`itinerary_pipeline.py`) — core value
+2. SuggestionService (`suggestion_service.py`) — DB-only, dễ implement
+3. Companion chat (`companion_service.py` + `agent.py`) — phức tạp nhất
+4. Chat history (`chat_service.py` + `chat.py`) — cần khi companion hoạt động
+5. Password reset — user cần
+6. Analytics EP-34 — optional
