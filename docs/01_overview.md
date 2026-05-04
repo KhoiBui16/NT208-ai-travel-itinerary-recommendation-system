@@ -138,4 +138,4 @@ Ops:
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test (30 endpoints, 110 tests). FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip. Giai đoạn tiếp theo là implement AI Phase C (direct itinerary pipeline, companion chat, chat history) và bổ sung FE e2e tests.
+Backend CRUD core đã chạy và có test (30 endpoints, 108 tests). FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip. Giai đoạn tiếp theo là implement AI Phase C (direct itinerary pipeline, companion chat, chat history) và bổ sung FE e2e tests.

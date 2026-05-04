@@ -127,8 +127,8 @@ Khi chạy test mới, cập nhật mục này:
 
 | Ngày | Branch | Backend unit | Backend integration | Migration | FE build | Smoke | Ghi chú |
 |---|---|---|---|---|---|---|---|
-| 2026-05-03 | `docs/00006-d-docs-cleanup` | 66 passed | 44 passed | passed | passed earlier; sandbox rerun blocked by esbuild `spawn EPERM` | passed | Full smoke pass với `-SkipFrontendBuild`; FE source không đổi sau build pass trước đó |
-| 2026-05-04 | `main` (post-merge #10-#14) | 66 passed | 44 passed | passed | passed | — | FE-BE integration hoàn thành; 30 endpoints, 8 protected routes, API client layer + optimistic CRUD |
+| 2026-05-03 | `docs/00006-d-docs-cleanup` | 66 passed | 42 passed | passed | passed earlier; sandbox rerun blocked by esbuild `spawn EPERM` | passed | Full smoke pass với `-SkipFrontendBuild`; FE source không đổi sau build pass trước đó |
+| 2026-05-04 | `main` (post-merge #10-#14) | 66 passed | 42 passed | passed | passed | — | FE-BE integration hoàn thành; 30 endpoints, 8 protected routes, API client layer + optimistic CRUD |
 
 ## Kết Quả Chi Tiết 2026-05-03
 
@@ -139,7 +139,7 @@ Pass:
 - `uv run alembic upgrade head`
 - `uv run alembic check`
 - `uv run pytest tests/unit/ -q --tb=short -p no:cacheprovider`: 66 passed.
-- `uv run pytest tests/integration/ -q --tb=short -p no:cacheprovider`: 44 passed.
+- `uv run pytest tests/integration/ -q --tb=short -p no:cacheprovider`: 42 passed.
 - `scripts/test_fullstack_smoke.ps1 -SkipFrontendBuild`: passed.
 - `docker compose ps`: API running, DB healthy, Redis healthy.
 - FE HTTP smoke: http://127.0.0.1:5173 trả 200 và có root div.
