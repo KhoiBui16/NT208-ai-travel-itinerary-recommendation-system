@@ -141,6 +141,25 @@ def create_opaque_token(prefix: str) -> tuple[str, str]:
     return raw_token, hash_token(raw_token)
 
 
+def create_password_reset_token() -> tuple[str, str, datetime]:
+    """Create a password reset token and its hash with expiry.
+
+    Workflow:
+      1. Generate 48-byte random URL-safe string with "reset_" prefix.
+      2. Hash with SHA-256 for DB storage.
+      3. Compute expiry from config (default 1 hour).
+
+    Returns:
+        Tuple of (raw_token, sha256_hash, expires_at_datetime).
+    """
+    settings = get_settings()
+    raw_token = f"reset_{token_urlsafe(48)}"
+    expires_at = datetime.now(UTC) + timedelta(
+        hours=settings.password_reset_token_expire_hours,
+    )
+    return raw_token, hash_token(raw_token), expires_at
+
+
 def verify_access_token(token: str) -> dict[str, Any] | None:
     """Decode and verify a JWT access token.
 

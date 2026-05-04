@@ -74,6 +74,15 @@ def yaml_config_settings() -> dict[str, Any]:
         "access_token_expire_minutes": flattened.get("auth_access_token_expire_minutes"),
         "refresh_token_expire_days": flattened.get("auth_refresh_token_expire_days"),
         "min_password_length": flattened.get("auth_min_password_length"),
+        "password_reset_token_expire_hours": flattened.get(
+            "auth_password_reset_token_expire_hours",
+        ),
+        "smtp_host": flattened.get("email_smtp_host"),
+        "smtp_port": flattened.get("email_smtp_port"),
+        "smtp_username": flattened.get("email_smtp_username"),
+        # smtp_password is a SecretStr — set via .env or env var only
+        "email_from_address": flattened.get("email_from_address"),
+        "email_from_name": flattened.get("email_from_name"),
         "agent_model": flattened.get("ai_model"),
         "agent_temperature": flattened.get("ai_temperature"),
         "agent_max_retries": flattened.get("ai_max_retries"),
@@ -120,6 +129,15 @@ class AppSettings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
     min_password_length: int = 6
+    password_reset_token_expire_hours: int = 1
+
+    # --- Email ---
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: SecretStr = SecretStr("")
+    email_from_address: str = "noreply@dulichviet.local"
+    email_from_name: str = "DuLichViet"
 
     # --- AI Agent ---
     agent_model: str = "gemini-2.5-flash"
