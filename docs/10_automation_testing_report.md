@@ -140,7 +140,7 @@ Pass:
 - `uv run alembic upgrade head`
 - `uv run alembic check`
 - `uv run pytest tests/unit/ -q --tb=short -p no:cacheprovider`: 66 passed.
-- `uv run pytest tests/integration/ -q --tb=short -p no:cacheprovider`: 44 passed.
+- `uv run pytest tests/integration/ -q --tb=short -p no:cacheprovider`: 42 passed.
 - `scripts/test_fullstack_smoke.ps1 -SkipFrontendBuild`: passed.
 - `docker compose ps`: API running, DB healthy, Redis healthy.
 - FE HTTP smoke: http://127.0.0.1:5173 trả 200 và có root div.

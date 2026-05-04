@@ -33,6 +33,19 @@ class LogoutRequest(CamelCaseModel):
     refresh_token: str = Field(min_length=1)
 
 
+class ForgotPasswordRequest(CamelCaseModel):
+    """Forgot-password request — triggers a reset email."""
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(CamelCaseModel):
+    """Reset-password request — consumes the reset token."""
+
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=6, max_length=128)
+
+
 class TokenResponse(CamelCaseModel):
     """Access and refresh token response."""
 

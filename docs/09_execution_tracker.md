@@ -20,8 +20,8 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00013 | B2/B3 | `fix/00013-b2-createtrip-api-docs-sync` | Wire CreateTrip to createItinerary API, sync docs với actual FE-BE status | merged | FE build pass | #13 |
 | 00014 | B2/B3 | `fix/00014-b2-docs-errorboundary` | Fix outdated docs (CreateTrip status), add ErrorBoundary, update tracker | merged | FE build pass | #14 |
 | 00015 | D | `docs/00015-d-update-docs-readme` | Update docs and README with actual FE-BE integration status, team, endpoint count | merged | FE build pass | #16 |
-| 00019 | B2 | `fix/00019-b2-itineraryview-share-button` | Add share button to ItineraryView with share link display + copy | pending | FE build pass | #19 |
-| 00020 | B1 | `fix/00020-b1-password-reset-endpoints` | Forgot/reset password BE endpoints + FE wiring + email service | pending | 115 BE tests pass, FE build pass | #20 |
+| 00019 | B2 | `fix/00019-b2-itineraryview-share-button` | Add share button to ItineraryView with share link display + copy | merged | FE build pass | #19 |
+| 00020 | B1 | `fix/00020-b1-password-reset-endpoints` | Forgot/reset password BE endpoints + FE wiring + email service | merged | 115 BE tests pass, FE build pass | #20 |
 
 ## Scope Task 00006
 
@@ -44,7 +44,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 - Tạo `ProtectedRoute` (`Frontend/src/app/components/ProtectedRoute.tsx`) cho protected routes.
 - Nối FE-BE: Login, Register, Account, TripLibrary, SavedPlaces, ManualTripSetup, Header, usePlacesManager — thay localStorage bằng API calls.
 - Cập nhật `docs/04_frontend.md` với API integration status.
-- 110 BE tests pass (66 unit + 44 integration). FE build pass.
+- 108 BE tests pass (66 unit + 42 integration). FE build pass.
 
 ## Scope Task 00009 (PR #10)
 

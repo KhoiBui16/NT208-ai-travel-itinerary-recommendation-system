@@ -46,6 +46,20 @@ class UserRepository:
         result = await self.session.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
+    async def get_by_reset_token_hash(self, token_hash: str) -> User | None:
+        """Fetch a user by password reset token hash.
+
+        Args:
+            token_hash: SHA-256 hash of the raw reset token.
+
+        Returns:
+            User instance or None if not found.
+        """
+        result = await self.session.execute(
+            select(User).where(User.password_reset_token_hash == token_hash)
+        )
+        return result.scalar_one_or_none()
+
     async def create(self, **kwargs: object) -> User:
         """Create a new user record.
 
