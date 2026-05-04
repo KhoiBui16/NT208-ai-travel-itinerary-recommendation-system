@@ -39,7 +39,8 @@ Backend:
 
 - Foundation `Backend/src/` với FastAPI app factory, `uv`, async SQLAlchemy, Alembic, Docker.
 - Config tập trung trong `Backend/config.yaml` và `Backend/src/core/config.py`.
-- Auth/users: register, login, refresh rotation, logout, profile, update profile, change password.
+- Auth/users: register, login, refresh rotation, logout, profile, update profile, change password, forgot-password, reset-password.
+- Email service: `aiosmtplib` (async SMTP) + console fallback khi chưa cấu hình SMTP.
 - Itinerary core: create/list/get/update/delete, nested days/activities/accommodations, owner check, rating.
 - Share/claim: public `shareToken`, guest `claimToken` one-time, token hash trong DB.
 - Places/cache: destinations, destination detail, place search/detail, saved places, Redis read cache fail-open.
@@ -49,10 +50,10 @@ Backend:
 Frontend:
 
 - FE revamp UI trong `Frontend/` với Vite, React, TypeScript.
-- Route set đầy đủ cho home, city list/detail, auth, trip setup, trip workspace, saved/history/settings, shared trip view.
+- Route set đầy đủ cho home, city list/detail, auth, trip setup, trip workspace, saved/history/settings, shared trip view, forgot-password, reset-password.
 - FE type contract quan trọng nằm ở `Frontend/src/app/types/trip.types.ts`.
 - Root build đã trỏ đúng `Frontend/src/main.tsx`.
-- API client layer (`services/api.ts` + 4 modules) với JWT auto-refresh.
+- API client layer (`services/api.ts` + 4 modules) với JWT auto-refresh, forgot/reset password API.
 - `AuthContext` quản lý JWT state + guest→owner claim flow; **8 protected routes**.
 - `TripWizardContext` thay 6 sessionStorage keys cho wizard flow.
 - `useTripSync` auto-save qua BE API; sessionStorage chỉ làm quick-restore cache.
@@ -80,13 +81,13 @@ AI:
 Frontend integration:
 
 - API client layer đã triển khai (`services/api.ts` + 4 service modules).
-- **Tất cả trang chính đã nối BE API**: auth, profile, trip CRUD, activity/accommodation CRUD, places search/saved, share/claim, city detail, CreateTrip.
+- **Tất cả trang chính đã nối BE API**: auth, profile, trip CRUD, activity/accommodation CRUD, places search/saved, share/claim, city detail, CreateTrip, forgot-password, reset-password.
 - `AuthContext` quản lý JWT state + guest→owner claim flow.
 - `TripWizardContext` thay 6 sessionStorage keys cho wizard flow.
 - `useTripSync` auto-save qua BE API, sessionStorage chỉ làm quick-restore cache.
 - 8 protected routes redirect sang `/login` khi chưa đăng nhập.
-- `ItineraryView` chưa có share button — share flow nằm trong `TopActionBar` của TripWorkspace.
-- `ForgotPassword` có UI nhưng BE chưa có endpoint.
+- `ItineraryView` đã có share button với share link display + copy.
+- `ForgotPassword` nối BE API thật; `ResetPassword` nhận token từ URL param.
 - Chưa có Playwright/Cypress hoặc FE unit test runner.
 
 ETL/data:
@@ -138,4 +139,4 @@ Ops:
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test (30 endpoints, 108 tests). FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip. Giai đoạn tiếp theo là implement AI Phase C (direct itinerary pipeline, companion chat, chat history) và bổ sung FE e2e tests.
+Backend CRUD core đã chạy và có test (32 endpoints, 115 tests). FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. Giai đoạn tiếp theo là implement AI Phase C (direct itinerary pipeline, companion chat, chat history) và bổ sung FE e2e tests.

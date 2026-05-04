@@ -106,18 +106,19 @@ EP-34 analytics là optional. Nếu bật Text-to-SQL:
 - Max rows.
 - Audit log.
 
-## Password reset (không phải AI, nhưng cùng Phase C)
+## Password reset (đã implement — PR #20)
 
-`ForgotPassword` FE có UI nhưng chưa có BE endpoint. Cần implement:
+`ForgotPassword` FE đã nối BE API. Reset password flow hoàn chỉnh:
 
-- `POST /api/v1/auth/forgot-password` — Gửi email reset token
-- `POST /api/v1/auth/reset-password` — Verify token + đổi password
+- `POST /api/v1/auth/forgot-password` — Gửi email reset token (silent nếu email không tồn tại)
+- `POST /api/v1/auth/reset-password` — Verify token + đổi password + revoke tất cả refresh tokens
 
-Yêu cầu:
+Thiết kế:
 
-- Cấu hình SMTP hoặc email service.
-- Reset token có expiry.
-- Không cho reuse token.
+- `aiosmtplib` (async SMTP) + console fallback khi chưa cấu hình SMTP.
+- Reset token hash SHA-256 trong DB, one-time use, có expiry (mặc định 1 giờ).
+- `smtp_password` là `SecretStr`, chỉ set qua `.env`.
+- FE: `ForgotPassword` gọi forgot-password API; `ResetPassword` nhận token từ URL param.
 
 ## Thứ tự ưu tiên implement Phase C
 
@@ -125,5 +126,4 @@ Yêu cầu:
 2. **SuggestionService** — DB-only, không cần LLM, dễ implement
 3. **Companion chat** — Phức tạp nhất, cần intent routing
 4. **Chat history** — Cần khi companion chat hoạt động
-5. **Password reset** — Không phải AI nhưng user cần
-6. **Analytics** — Optional, cuối cùng
+5. **Analytics** — Optional, cuối cùng

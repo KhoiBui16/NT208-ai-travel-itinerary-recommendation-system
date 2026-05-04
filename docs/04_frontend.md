@@ -18,7 +18,7 @@ Frontend/
 │   │   ├── pages/
 │   │   ├── services/         # API client layer
 │   │   │   ├── api.ts        # fetch wrapper, JWT, auto-refresh
-│   │   │   ├── auth.ts       # login, register, logout
+│   │   │   ├── auth.ts       # login, register, logout, forgotPassword, resetPassword
 │   │   │   ├── itinerary.ts  # CRUD, generate, share, claim
 │   │   │   ├── places.ts     # destinations, search, saved
 │   │   │   └── users.ts      # profile, password
@@ -57,7 +57,8 @@ Root `index.html` trỏ tới `Frontend/src/main.tsx`, nên lệnh build trong `
 | `/shared/:token` | `SharedTripView` | API: getSharedItinerary (public) |
 | `/login` | `Login` | API: auth login |
 | `/register` | `Register` | API: auth register |
-| `/forgot-password` | `ForgotPassword` | UI, BE chưa có endpoint |
+| `/forgot-password` | `ForgotPassword` | API: forgotPassword |
+| `/reset-password` | `ResetPassword` | API: resetPassword (nhận token từ URL param) |
 | `/profile` | `Profile` | API: updateProfile (protected) |
 | `/saved-itineraries` | `SavedItineraries` | API: list/delete itineraries (protected) |
 | `*` | `NotFound` | done |
@@ -223,8 +224,6 @@ Smoke website:
 
 ## Known Gaps
 
-- `ItineraryView` chưa có share button — share flow nằm trong `TopActionBar` của TripWorkspace.
-- `ForgotPassword` có UI nhưng BE chưa có endpoint password reset.
 - City/hotel/place UI dùng API làm primary, mock làm fallback khi BE không có data.
 - Một số màn AI/chat vẫn mock vì BE AI chưa implement (Phase C).
 - Chưa có Playwright/Cypress.
@@ -238,6 +237,8 @@ Smoke website:
 |---|---|---|
 | Login | `POST /auth/login` | Done |
 | Register | `POST /auth/register` | Done |
+| ForgotPassword | `POST /auth/forgot-password` | Done |
+| ResetPassword | `POST /auth/reset-password` | Done |
 | Account | `GET/PUT /users/profile`, `PUT /users/password` | Done |
 | Profile | `PUT /users/profile` | Done |
 | TripLibrary | `GET /itineraries` | Done |
@@ -246,7 +247,7 @@ Smoke website:
 | SavedItineraries | `GET /itineraries`, `DELETE /itineraries/{id}` | Done |
 | ManualTripSetup | Auth check via `useAuth()` | Done |
 | TripWorkspace | `POST/PUT/GET /itineraries`, nested activity CRUD, nested accommodation CRUD, `GET /places/search`, `POST/DELETE /places/saved` | Done |
-| ItineraryView | `GET /itineraries/{id}`, `PUT /itineraries/{id}`, `PUT /itineraries/{id}/rating`, `DELETE /itineraries/{id}` | Done |
+| ItineraryView | `GET /itineraries/{id}`, `PUT /itineraries/{id}`, `PUT /itineraries/{id}/rating`, `DELETE /itineraries/{id}`, `POST /itineraries/{id}/share` | Done |
 | SharedTripView | `GET /shared/{shareToken}` | Done |
 | CityDetail | `GET /places/destinations/{name}`, `GET/POST/DELETE /places/saved` | Done |
 | DailyItinerary | `GET /itineraries/{id}` + sessionStorage fallback | Done |
