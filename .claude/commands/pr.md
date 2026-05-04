@@ -60,3 +60,4 @@ $ARGUMENTS
 - `backend-integration`
 - `backend-migrations`
 - `frontend-build`
+- `frontend-e2e`

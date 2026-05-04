@@ -14,12 +14,10 @@ allowed-tools: Bash(uv:*), Read, Edit
 
 ## Your Task
 
-Detect repo mode truoc:
+Repo da o target structure voi `Backend/pyproject.toml` + `Backend/src/`.
 
-- Neu da co `Backend/pyproject.toml` + `Backend/src/`, uu tien `uv run ruff ...`
-- Neu chua co target structure, lint phai bam vao current files that te trong `Backend/`
-- Khong hardcode `app/` hoac root `pyproject.toml` neu repo chua co
-- Neu chỉ check-only, khong duoc sua file
+- Uu tien `uv run ruff ...` trong `Backend/`
+- Neu chi check-only, khong duoc sua file
 
 $ARGUMENTS
 

@@ -14,35 +14,22 @@ allowed-tools: Bash(uv:*), Bash(pytest:*), Bash(python:*), Read, Edit
 
 ## Your Task
 
-Detect repo mode truoc khi chay test:
+Repo da o target structure voi `Backend/src/` + `Backend/tests/`.
 
-### Mode A - Current repo truth
-
-Dung mode nay neu backend van o dang:
-- `Backend/app/`
-- `Backend/main.py`
-- `Backend/requirements.txt`
-- chua co `Backend/src/` + `Backend/tests/` theo target plan
-
-Trong mode nay:
-- Tim nhung test script that su ton tai trong `Backend/`
-- Chay nhung test phu hop voi current structure
-- Neu unit/integration layout chua ton tai, note ro day la current limitation
-
-### Mode B - Target repo truth
-
-Dung mode nay neu da co:
-- `Backend/pyproject.toml`
-- `Backend/src/`
-- `Backend/tests/unit/`
-- `Backend/tests/integration/`
-
-Trong mode nay, uu tien:
+### Backend tests
 
 ```bash
 cd Backend
 uv run pytest tests/unit/ -v
 uv run pytest tests/integration/ -v
+```
+
+### Frontend e2e tests (requires BE running)
+
+```bash
+cd Frontend
+npm run test:e2e          # headless
+npm run test:e2e:headed   # with browser
 ```
 
 $ARGUMENTS

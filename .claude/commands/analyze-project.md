@@ -15,8 +15,9 @@ allowed-tools: Read, Grep, Glob, Bash(rg:*), Bash(git:*)
 ## Rules
 
 - Luon phan biet `current repo truth` va `target MVP2 plan`
-- Khong gia dinh `Backend/src/`, `Backend/pyproject.toml`, `alembic.ini`, hay `tests/` da ton tai
-- Repo nay hien tai co current backend o `Backend/app/`, `Backend/main.py`, `Backend/requirements.txt`
+- Backend source of truth la `Backend/src/` voi `pyproject.toml`, `uv.lock`, Alembic
+- 33 core endpoints (EP-0 to EP-32), EP-34 optional
+- 117 BE tests (75 unit + 42 integration), 11 Playwright e2e tests
 - Public contract cho FE lay tu `Frontend/src/app/types/trip.types.ts`
 
 ## Your task

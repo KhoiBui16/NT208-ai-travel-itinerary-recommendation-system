@@ -8,6 +8,10 @@ Tóm tắt current repo, trạng thái MVP2 và quy tắc workflow sau khi tài 
 
 - Backend source of truth là `Backend/src/`, chạy bằng `uv`, Alembic, FastAPI async.
 - Frontend source of truth là `Frontend/`, chạy bằng Vite + React + TypeScript.
+- 33 core endpoints (EP-0 to EP-32), EP-34 optional.
+- 117 BE tests (75 unit + 42 integration).
+- 11 Playwright e2e tests trong `Frontend/tests/e2e/`.
+- Register bypass OTP cho đến khi BE email OTP sẵn sàng.
 - Tài liệu chính nằm trong `docs/`; các folder legacy như `plan/`, `md/`, `Diagram/`, `References/`, `guidelines/` không còn active.
 - Execution tracker nằm ở `docs/09_execution_tracker.md`.
 
