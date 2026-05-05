@@ -64,10 +64,10 @@ MVP1
 | Docs file | Source code tương ứng |
 |---|---|
 | `02_architecture.md` | `Backend/src/main.py`, `Frontend/src/app/App.tsx`, `Frontend/src/app/routes.tsx` |
-| `03_backend.md` | `Backend/src/api/v1/*.py`, `Backend/src/services/*.py`, `Backend/src/repositories/*.py`, `Backend/src/core/*.py` |
+| `03_backend.md` | `Backend/src/auth/*.py`, `Backend/src/itineraries/*.py`, `Backend/src/places/*.py`, `Backend/src/core/*.py` |
 | `04_frontend.md` | `Frontend/src/app/services/*.ts`, `Frontend/src/app/contexts/*.tsx`, `Frontend/src/app/hooks/**/*.ts`, `Frontend/src/app/types/trip.types.ts` |
-| `05_database_etl.md` | `Backend/src/models/*.py`, `Backend/alembic/versions/*.py`, `Backend/src/etl/` |
-| `06_ai_roadmap.md` | `Backend/src/services/itinerary_service.py` (stub), `Backend/src/models/extras.py` (ChatSession/ChatMessage) |
+| `05_database_etl.md` | `Backend/src/auth/models.py`, `Backend/src/itineraries/models/*.py`, `Backend/src/places/models.py`, `Backend/alembic/versions/*.py`, `Backend/src/etl/` |
+| `06_ai_roadmap.md` | `Backend/src/itineraries/service.py` (stub generate), `Backend/src/itineraries/models/extras.py` (ChatSession/ChatMessage) |
 | `07_workflow_ci.md` | `.github/workflows/`, `Backend/pyproject.toml`, `Frontend/package.json` |
 | `08_testing_local_run.md` | `scripts/test_fullstack_smoke.ps1`, `docker-compose.yml` |
 | `09_execution_tracker.md` | Git branch/PR history |

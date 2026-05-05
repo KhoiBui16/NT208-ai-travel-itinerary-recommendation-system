@@ -18,7 +18,7 @@ This README is the single source of truth for running the project locally.
 - Share/claim: public `shareToken`, one-time `claimToken` with hash + expiry.
 - Places: destinations, destination detail, place search/detail, saved places, Redis read cache.
 - ETL: OSM/Goong extractors, transformers, DB upsert loader, sample hotel data.
-- **33 API endpoints** registered (EP-0 to EP-32), 117 tests (75 unit + 42 integration) passing.
+- **32 API endpoint methods** registered across 27 paths (28 implemented + health + 5 Phase C stubs), 111 tests (75 unit + 36 integration) passing.
 
 ### Implemented (FE)
 
@@ -119,7 +119,7 @@ uv run alembic upgrade head
 uv run uvicorn src.main:app --reload --port 8000
 ```
 
-Verify: open http://localhost:8000/docs — you should see Swagger UI with 33 endpoints.
+Verify: open http://localhost:8000/docs — you should see Swagger UI with all registered endpoints.
 
 ### Step 4: Start Frontend
 
@@ -198,12 +198,11 @@ REDIS_URL=redis://localhost:6379/0
 ├── Backend/                                # FastAPI MVP2 backend
 │   ├── src/                                # Current backend source of truth
 │   │   ├── main.py                         #   App factory, mount router /api/v1
-│   │   ├── api/v1/                         #   Routers (auth, users, itineraries, places, shared, health)
+│   │   ├── auth/                           #   Auth domain (router, service, repo, models, schemas, deps, email)
+│   │   ├── itineraries/                    #   Itinerary domain (router, service, repo, schemas, models/)
+│   │   ├── places/                         #   Places domain (router, service, repo, models, schemas)
+│   │   ├── shared/                         #   Shared utilities (CacheClient, pagination, BaseService)
 │   │   ├── core/                           #   Config, database, security, dependencies, Redis, middleware
-│   │   ├── models/                         #   SQLAlchemy ORM (user, trip, place, extras)
-│   │   ├── repositories/                   #   DB query layer (user, trip, place, token repos)
-│   │   ├── schemas/                        #   Pydantic request/response (auth, user, itinerary, place)
-│   │   ├── services/                       #   Business logic (auth, user, itinerary, place, email services)
 │   │   └── etl/                            #   ETL pipeline
 │   │       ├── extractors/                 #     OSM + Goong extractors
 │   │       ├── transformers/               #     Hotel + place transformers
@@ -212,7 +211,7 @@ REDIS_URL=redis://localhost:6379/0
 │   │       └── runner.py                   #     ETL CLI entry point
 │   ├── tests/                              # Unit + integration tests
 │   │   ├── unit/                           #   9 test modules (75 tests)
-│   │   └── integration/                    #   5 test modules (42 tests)
+│   │   └── integration/                    #   5 test modules (36 tests)
 │   ├── alembic/                            # DB migrations (3 revisions)
 │   ├── config.yaml                         # Shared non-secret app config
 │   ├── pyproject.toml                      # uv dependencies
@@ -444,7 +443,7 @@ Phase C will add AI capabilities to the existing system. Here is how each piece 
 Frontend (CreateTrip.tsx)
   → POST /api/v1/itineraries/generate
   → Backend validation
-  → ItineraryPipeline (new: Backend/src/services/itinerary_pipeline.py)
+  → ItineraryPipeline (new: Backend/src/itineraries/pipeline.py)
   → Gemini LLM structured output
   → Pydantic validation + retry
   → save trip/day/activity/accommodation to DB
@@ -453,8 +452,8 @@ Frontend (CreateTrip.tsx)
 ```
 
 **New Backend files needed:**
-- `Backend/src/services/itinerary_pipeline.py` — LLM orchestration, structured output parsing
-- `Backend/src/schemas/generate.py` — Request/response schemas for AI generation
+- `Backend/src/itineraries/pipeline.py` — LLM orchestration, structured output parsing
+- `Backend/src/itineraries/schemas.py` (extend) — Request/response schemas for AI generation
 - Config: `GEMINI_API_KEY` in `.env`
 
 **FE changes:** `CreateTrip.tsx` already calls `createItinerary` API. When generate endpoint is real, it will return a full itinerary instead of an empty one — no FE wiring change needed.
@@ -476,9 +475,9 @@ Frontend (FloatingAIChat.tsx)
 ```
 
 **New Backend files needed:**
-- `Backend/src/api/v1/agent.py` — Chat + apply-patch routers
-- `Backend/src/services/companion_service.py` — Intent routing, tool-calling
-- `Backend/src/services/suggestion_service.py` — DB-only suggestions (no LLM)
+- `Backend/src/itineraries/router.py` (extend) — Chat + apply-patch endpoints
+- `Backend/src/itineraries/companion.py` — Intent routing, tool-calling
+- `Backend/src/places/suggestion_service.py` — DB-only suggestions (no LLM)
 
 **New/modified FE files:**
 - `FloatingAIChat.tsx` — Replace mock with real API calls
@@ -492,9 +491,9 @@ Frontend (FloatingAIChat.tsx)
 **Current state:** `chat_sessions` and `chat_messages` tables exist in DB schema but no API endpoints.
 
 **New Backend files needed:**
-- `Backend/src/api/v1/chat.py` — Chat session/message endpoints
-- `Backend/src/repositories/chat_repo.py`
-- `Backend/src/services/chat_service.py`
+- `Backend/src/itineraries/router.py` (extend) — Chat history endpoints
+- `Backend/src/itineraries/repository.py` (extend) — Chat DB queries
+- `Backend/src/itineraries/chat_service.py`
 
 ### 4. Analytics (Optional EP-34)
 
@@ -506,14 +505,14 @@ Frontend (FloatingAIChat.tsx)
 
 | New Backend File | Purpose |
 |---|---|
-| `src/services/itinerary_pipeline.py` | LLM orchestration for generate |
-| `src/services/companion_service.py` | Intent routing, tool-calling for chat |
-| `src/services/suggestion_service.py` | DB-only place suggestions |
-| `src/services/chat_service.py` | Chat session/message management |
-| `src/api/v1/agent.py` | Chat + apply-patch endpoints |
-| `src/api/v1/chat.py` | Chat history endpoints |
-| `src/schemas/generate.py` | AI generate request/response |
-| `src/repositories/chat_repo.py` | Chat DB queries |
+| `src/itineraries/pipeline.py` | LLM orchestration for generate |
+| `src/itineraries/companion.py` | Intent routing, tool-calling for chat |
+| `src/places/suggestion_service.py` | DB-only place suggestions |
+| `src/itineraries/chat_service.py` | Chat session/message management |
+| `src/itineraries/router.py` (extend) | Chat + apply-patch endpoints |
+| `src/itineraries/router.py` (extend) | Chat history endpoints |
+| `src/itineraries/schemas.py` (extend) | AI generate request/response |
+| `src/itineraries/repository.py` (extend) | Chat DB queries |
 
 | New/Modified Frontend File | Purpose |
 |---|---|
