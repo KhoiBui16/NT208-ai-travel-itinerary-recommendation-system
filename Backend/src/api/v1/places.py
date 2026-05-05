@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, Query
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.auth.dependencies import get_current_user
 from src.core.database import get_db
-from src.core.dependencies import get_current_user, get_redis
+from src.core.dependencies import get_redis
 from src.models.user import User
 from src.schemas.place import (
     DestinationResponse,

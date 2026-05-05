@@ -3,8 +3,8 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.auth.dependencies import get_current_user, get_current_user_optional
 from src.core.database import get_db
-from src.core.dependencies import get_current_user, get_current_user_optional
 from src.core.schema import PaginatedResponse, SuccessResponse
 from src.models.user import User
 from src.schemas.itinerary import (

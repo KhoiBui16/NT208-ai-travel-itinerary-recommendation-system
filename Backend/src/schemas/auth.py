@@ -1,70 +1,23 @@
-"""Authentication request and response schemas."""
+"""Backward-compatibility shim — auth schemas moved to auth.schemas."""
 
-from pydantic import EmailStr, Field
+from src.auth.schemas import (
+    AuthResponse,
+    ForgotPasswordRequest,
+    LoginRequest,
+    LogoutRequest,
+    RefreshRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+    TokenResponse,
+)
 
-from src.core.schema import CamelCaseModel
-
-
-class RegisterRequest(CamelCaseModel):
-    """Registration request."""
-
-    email: EmailStr
-    password: str = Field(min_length=6, max_length=128)
-    name: str = Field(min_length=1, max_length=100)
-    phone: str | None = Field(default=None, max_length=30)
-
-
-class LoginRequest(CamelCaseModel):
-    """Login request."""
-
-    email: EmailStr
-    password: str = Field(min_length=1, max_length=128)
-
-
-class RefreshRequest(CamelCaseModel):
-    """Refresh-token request."""
-
-    refresh_token: str = Field(min_length=1)
-
-
-class LogoutRequest(CamelCaseModel):
-    """Logout request."""
-
-    refresh_token: str = Field(min_length=1)
-
-
-class ForgotPasswordRequest(CamelCaseModel):
-    """Forgot-password request — triggers a reset email."""
-
-    email: EmailStr
-
-
-class ResetPasswordRequest(CamelCaseModel):
-    """Reset-password request — consumes the reset token."""
-
-    token: str = Field(min_length=1)
-    new_password: str = Field(min_length=6, max_length=128)
-
-
-class TokenResponse(CamelCaseModel):
-    """Access and refresh token response."""
-
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-
-
-class AuthResponse(CamelCaseModel):
-    """Auth response with user profile and tokens."""
-
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    user: "UserResponse"
-
-
-from src.schemas.user import UserResponse  # noqa: E402
-
-AuthResponse.model_rebuild()
+__all__ = [
+    "AuthResponse",
+    "ForgotPasswordRequest",
+    "LoginRequest",
+    "LogoutRequest",
+    "RefreshRequest",
+    "RegisterRequest",
+    "ResetPasswordRequest",
+    "TokenResponse",
+]
