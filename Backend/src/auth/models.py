@@ -9,9 +9,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.core.database import Base
 
 if TYPE_CHECKING:
-    from src.models.extras import ChatSession
-    from src.models.place import SavedPlace
-    from src.models.trip import Trip
+    from src.itineraries.models.chat import ChatSession
+    from src.itineraries.models.trip import Trip
+    from src.places.models import SavedPlace
 
 
 class User(Base):

@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import Field, field_validator
 
 from src.core.schema import CamelCaseModel
-from src.schemas.place import HotelResponse
+from src.places.schemas import HotelResponse
 
 ActivityType = Literal["food", "attraction", "nature", "entertainment", "shopping"]
 TransportType = Literal["walk", "bike", "bus", "taxi"]

@@ -4,7 +4,6 @@ from src.itineraries.models.chat import ChatMessage, ChatSession
 from src.itineraries.models.extras import (
     Accommodation,
     GuestClaimToken,
-    ScrapedSource,
     ShareLink,
     TripRating,
 )
@@ -17,7 +16,6 @@ __all__ = [
     "ChatSession",
     "ExtraExpense",
     "GuestClaimToken",
-    "ScrapedSource",
     "ShareLink",
     "Trip",
     "TripDay",

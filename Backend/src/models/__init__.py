@@ -6,12 +6,11 @@ from src.itineraries.models.chat import ChatMessage, ChatSession
 from src.itineraries.models.extras import (
     Accommodation,
     GuestClaimToken,
-    ScrapedSource,
     ShareLink,
     TripRating,
 )
 from src.itineraries.models.trip import Activity, ExtraExpense, Trip, TripDay
-from src.models.place import Destination, Hotel, Place, SavedPlace
+from src.places.models import Destination, Hotel, Place, SavedPlace, ScrapedSource
 
 __all__ = [
     "Base",

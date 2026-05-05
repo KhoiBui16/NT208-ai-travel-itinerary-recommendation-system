@@ -30,7 +30,7 @@ if TYPE_CHECKING:
         ShareLink,
         TripRating,
     )
-    from src.models.place import Place
+    from src.places.models import Place
 
 
 class Trip(Base):
