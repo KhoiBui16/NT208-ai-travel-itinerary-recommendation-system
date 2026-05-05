@@ -78,19 +78,28 @@ cp Backend/.env.example  Backend/.env
 cp Frontend/.env.example Frontend/.env
 ```
 
-Edit `Backend/.env` — at minimum set `JWT_SECRET_KEY` to a long random string:
+#### Backend `.env` variables
 
-```powershell
-python -c "import secrets; print(secrets.token_hex(32))"
-```
+After copying, edit `Backend/.env`. Only **one variable is required**; all others have safe defaults:
 
-Paste the output into `JWT_SECRET_KEY`. Never commit `Backend/.env`.
+| Variable | Required? | Default | What to do |
+|----------|-----------|---------|------------|
+| `JWT_SECRET_KEY` | **Yes** | *(empty)* | Generate: `python -c "import secrets; print(secrets.token_hex(32))"` then paste the output here. The server will warn on startup if this is missing. |
+| `DATABASE_URL` | No | `postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet` | Keep default if using `docker compose up -d db` |
+| `REDIS_URL` | No | `redis://localhost:6379/0` | Keep default if using `docker compose up -d redis` |
+| `GEMINI_API_KEY` | No | *(empty)* | Leave empty until Phase C |
+| `GOONG_API_KEY` | No | *(empty)* | Leave empty; only needed for real ETL data |
+| `SMTP_HOST` | No | *(empty)* | Leave empty — password reset links log to console instead of email |
+| `SMTP_PORT` | No | `587` | Only matters if `SMTP_HOST` is set |
+| `SMTP_USERNAME` | No | *(empty)* | Only if using real SMTP |
+| `SMTP_PASSWORD` | No | *(empty)* | Only if using real SMTP |
+| `ENABLE_ANALYTICS` | No | `false` | Keep disabled — no guardrails yet |
 
-**SMTP for password reset** (optional): If `SMTP_HOST` is empty (default), reset links are logged to the BE console instead of being emailed. To send real emails, fill `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` in `Backend/.env`.
+Never commit `Backend/.env` (it is gitignored).
 
-**Frontend `.env`**: `Frontend/.env` only needs `VITE_API_URL=http://localhost:8000` (the default). Change it only if BE runs on a different port.
+#### Frontend `.env`
 
-See `Backend/.env.example` and `Frontend/.env.example` for the full list of variables with comments.
+`Frontend/.env` only needs `VITE_API_URL=http://localhost:8000` (the default). Change it only if BE runs on a different port.
 
 ### Step 2: Start infrastructure (Docker)
 
@@ -283,8 +292,8 @@ REDIS_URL=redis://localhost:6379/0
 │   ├── 08_testing_local_run.md             #   Local run and test guide
 │   ├── 09_execution_tracker.md             #   Execution tracker by branch/task
 │   └── 10_automation_testing_report.md     #   Latest automation testing report
-├── scripts/
-│   └── test_fullstack_smoke.ps1            # Full-stack smoke test script (16 HTTP checks)
+├── scripts/                               # Full-stack smoke test
+│   └── test_fullstack_smoke.ps1            #   16 HTTP checks (PowerShell)
 ├── .claude/context/                        # Condensed operational plan for agents
 │   ├── 00_project_overview.md              #   Current repo truth and target state
 │   ├── 01_foundation.md                    #   Phase A foundation details
