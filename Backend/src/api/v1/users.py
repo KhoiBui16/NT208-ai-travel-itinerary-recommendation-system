@@ -13,9 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
 from src.core.dependencies import get_current_user
+from src.core.schema import SuccessResponse
 from src.models.user import User
 from src.repositories.user_repo import UserRepository
-from src.schemas.common import SuccessResponse
 from src.schemas.user import ChangePasswordRequest, UpdateProfileRequest, UserResponse
 from src.services.user_service import UserService
 

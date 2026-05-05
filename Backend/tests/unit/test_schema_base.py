@@ -1,6 +1,6 @@
 """Tests for shared schema behavior."""
 
-from src.base.schema import CamelCaseModel
+from src.core.schema import CamelCaseModel
 
 
 class ExampleSchema(CamelCaseModel):

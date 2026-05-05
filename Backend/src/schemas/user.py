@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import EmailStr, Field
 
-from src.base.schema import CamelCaseModel
+from src.core.schema import CamelCaseModel
 
 
 class UserResponse(CamelCaseModel):
