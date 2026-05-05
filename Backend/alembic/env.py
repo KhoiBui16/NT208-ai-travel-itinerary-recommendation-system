@@ -15,8 +15,11 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 ROOT_DIR = Path(__file__).resolve().parents[1]
 path.insert(0, str(ROOT_DIR))
 
+from src.auth import models as _auth_models  # noqa: E402,F401
 from src.core.config import get_settings  # noqa: E402
-from src.models import Base  # noqa: E402,F401
+from src.core.database import Base  # noqa: E402
+from src.itineraries import models as _itin_models  # noqa: E402,F401
+from src.places import models as _place_models  # noqa: E402,F401
 
 config = context.config
 

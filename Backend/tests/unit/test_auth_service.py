@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from src.auth.models import RefreshToken, User
+from src.auth.service import AuthService
 from src.core.exceptions import ConflictException, UnauthorizedException
 from src.core.security import hash_password
-from src.models.user import RefreshToken, User
-from src.services.auth_service import AuthService
 
 
 @pytest.fixture()

@@ -11,7 +11,7 @@ from sqlalchemy import delete, select
 
 from src.core.database import AsyncSessionLocal
 from src.etl.loaders.db_loader import upsert_hotels, upsert_places
-from src.models.place import Destination, Hotel, Place
+from src.places.models import Destination, Hotel, Place
 
 IN_CI = os.getenv("CI") == "true"
 

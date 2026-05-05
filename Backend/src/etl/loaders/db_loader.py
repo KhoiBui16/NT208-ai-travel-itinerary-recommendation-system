@@ -12,8 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.extras import ScrapedSource
-from src.models.place import Destination, Hotel, Place
+from src.places.models import Destination, Hotel, Place, ScrapedSource
 
 logger = logging.getLogger(__name__)
 
