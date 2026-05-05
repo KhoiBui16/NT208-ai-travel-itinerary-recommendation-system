@@ -1,109 +1,21 @@
-"""FastAPI dependency providers.
+"""FastAPI infrastructure dependency providers.
 
-Dependency injection chain:
+Auth-specific dependencies (get_current_user, get_current_user_optional)
+have moved to auth/dependencies.py to eliminate core→auth model dependency.
+
+Remaining providers:
   get_db()           → AsyncSession (one per request, auto-closes)
   get_redis()        → Redis client (one per request, auto-closes)
   get_rate_limiter() → RateLimiter(redis, settings)
-  get_current_user() → User (requires valid Bearer JWT, raises 401 if invalid)
-  get_current_user_optional() → User | None (returns None if no/invalid token)
-
-Usage in endpoints:
-    @router.get("/profile")
-    async def get_profile(user: User = Depends(get_current_user)):
-        ...
 """
 
 from collections.abc import AsyncGenerator
 
-from fastapi import Depends, Request
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends
 from redis.asyncio import Redis
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import AppSettings, get_settings
-from src.core.database import get_db
-from src.core.exceptions import UnauthorizedException
 from src.core.rate_limiter import RateLimiter
-from src.core.security import verify_access_token
-from src.models.user import User
-
-# Points to the login endpoint so Swagger UI can generate the "Authorize" dialog
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
-
-
-async def _optional_token(request: Request) -> str | None:
-    """Extract Bearer token from the request, returning None if absent.
-
-    Unlike OAuth2PasswordBearer which raises 401 when no token is present,
-    this dependency silently returns None so that endpoints can serve both
-    authenticated and anonymous users.
-    """
-    auth: str | None = request.headers.get("authorization")
-    if not auth or not auth.lower().startswith("bearer "):
-        return None
-    return auth[7:]
-
-
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    """Resolve the current authenticated user from a Bearer token.
-
-    Workflow:
-      1. Extract token from Authorization: Bearer <token> header.
-      2. Decode and verify the JWT.
-      3. Look up the user by ID from the "sub" claim.
-      4. Raise UnauthorizedException if any step fails.
-
-    Args:
-        token: JWT string from the OAuth2 scheme.
-        db: AsyncSession for user lookup.
-
-    Returns:
-        The authenticated User ORM instance.
-
-    Raises:
-        UnauthorizedException: If token is invalid, expired, or user not found.
-    """
-    # Step 1-2: Verify JWT
-    payload = verify_access_token(token)
-    if not payload or "sub" not in payload:
-        raise UnauthorizedException("Invalid or expired token")
-
-    # Step 3-4: Look up user
-    result = await db.execute(select(User).where(User.id == int(payload["sub"])))
-    user = result.scalar_one_or_none()
-    if user is None or not user.is_active:
-        raise UnauthorizedException("User not found or inactive")
-    return user
-
-
-async def get_current_user_optional(
-    token: str | None = Depends(_optional_token),
-    db: AsyncSession = Depends(get_db),
-) -> User | None:
-    """Resolve the user when a valid token is present; otherwise return None.
-
-    Used for endpoints that behave differently for authenticated vs
-    anonymous users (e.g. public share links with optional auth).
-
-    Args:
-        token: JWT string (optional — may be absent).
-        db: AsyncSession for user lookup.
-
-    Returns:
-        User if valid token present, None otherwise.
-    """
-    if not token:
-        return None
-    # Decode token — return None silently if invalid
-    payload = verify_access_token(token)
-    if not payload or "sub" not in payload:
-        return None
-    result = await db.execute(select(User).where(User.id == int(payload["sub"])))
-    return result.scalar_one_or_none()
 
 
 async def get_redis(settings: AppSettings = Depends(get_settings)) -> AsyncGenerator[Redis, None]:
