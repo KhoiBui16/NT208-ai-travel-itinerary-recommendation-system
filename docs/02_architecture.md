@@ -371,7 +371,7 @@ KEY: Generate KHÔNG qua Supervisor — gọi direct ItineraryPipeline.
 
 ```text
 FE hoặc companion context
-→ SuggestionService (src/services/suggestion_service.py — chưa tạo)
+→ SuggestionService (src/places/suggestion_service.py — chưa tạo)
 → Query destinations/places/hotels từ DB theo filters
 → Return gợi ý (KHÔNG gọi LLM)
 
@@ -385,14 +385,14 @@ Không cần "sáng tạo" nội dung mới, chỉ lọc và xếp hạng.
 
 | File Backend | Mục đích | Layer |
 |---|---|---|
-| `src/services/itinerary_pipeline.py` | LLM orchestration cho generate | Service |
-| `src/services/companion_service.py` | Intent routing, tool-calling cho chat | Service |
-| `src/services/suggestion_service.py` | Gợi ý DB-only (không LLM) | Service |
-| `src/services/chat_service.py` | Quản lý chat session/message | Service |
-| `src/api/v1/agent.py` | Chat + apply-patch endpoints | Router |
-| `src/api/v1/chat.py` | Chat history endpoints | Router |
-| `src/schemas/generate.py` | AI generate request/response | Schema |
-| `src/repositories/chat_repo.py` | Chat DB queries | Repository |
+| `src/itineraries/pipeline.py` | LLM orchestration cho generate | Service |
+| `src/itineraries/companion.py` | Intent routing, tool-calling cho chat | Service |
+| `src/places/suggestion_service.py` | Gợi ý DB-only (không LLM) | Service |
+| `src/itineraries/chat_service.py` | Quản lý chat session/message | Service |
+| `src/itineraries/router.py` (mở rộng) | Chat + apply-patch endpoints | Router |
+| `src/itineraries/router.py` (mở rộng) | Chat history endpoints | Router |
+| `src/itineraries/schemas.py` (mở rộng) | AI generate request/response | Schema |
+| `src/itineraries/repository.py` (mở rộng) | Chat DB queries | Repository |
 
 | File Frontend | Mục đích |
 |---|---|

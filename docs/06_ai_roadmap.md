@@ -102,8 +102,8 @@ ItineraryPipeline.generate()
 
 | File Backend | Mục đích | Layer |
 |---|---|---|
-| `src/services/itinerary_pipeline.py` | LLM orchestration, prompt building, structured output parsing, retry | Service |
-| `src/schemas/generate.py` | `GenerateItineraryResponse` (cần tạo, `GenerateItineraryRequest` đã có) | Schema |
+| `src/itineraries/pipeline.py` | LLM orchestration, prompt building, structured output parsing, retry | Service |
+| `src/itineraries/schemas.py` (mở rộng) | `GenerateItineraryResponse` (cần tạo, `GenerateItineraryRequest` đã có) | Schema |
 
 | File Frontend | Mục đích |
 |---|---|
@@ -247,8 +247,8 @@ AI_RATE_LIMIT_DAILY=3           # Giới hạn generate/ngày cho free user
 
 | File Backend | Mục đích | Layer |
 |---|---|---|
-| `src/api/v1/agent.py` | Chat + apply-patch endpoints | Router |
-| `src/services/companion_service.py` | Intent routing, tool-calling, LLM chat | Service |
+| `src/itineraries/router.py` (mở rộng) | Chat + apply-patch endpoints | Router |
+| `src/itineraries/companion.py` | Intent routing, tool-calling, LLM chat | Service |
 
 | File Frontend | Mục đích |
 |---|---|
@@ -267,7 +267,7 @@ AI_RATE_LIMIT_DAILY=3           # Giới hạn generate/ngày cho free user
 │              SUGGESTION SERVICE (DB-Only)                     │
 │                                                              │
 │  FE hoặc companion context                                   │
-│  → SuggestionService (src/services/suggestion_service.py)    │
+│  → SuggestionService (src/places/suggestion_service.py)    │
 │                                                              │
 │  ┌─ Suggest flow ──────────────────────────────────────────┐ │
 │  │  Input: destination, budget?, interests?, category?      │ │
@@ -294,7 +294,7 @@ AI_RATE_LIMIT_DAILY=3           # Giới hạn generate/ngày cho free user
 
 | File | Mục đích | Layer |
 |---|---|---|
-| `src/services/suggestion_service.py` | Query DB + filter + sort | Service |
+| `src/places/suggestion_service.py` | Query DB + filter + sort | Service |
 
 | File Frontend | Mục đích |
 |---|---|
@@ -320,9 +320,9 @@ DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn qua Alembic),
 
 | File | Mục đích | Layer |
 |---|---|---|
-| `src/api/v1/chat.py` | Chat history endpoints | Router |
-| `src/services/chat_service.py` | Chat session/message CRUD | Service |
-| `src/repositories/chat_repo.py` | Chat DB queries | Repository |
+| `src/itineraries/router.py` (mở rộng) | Chat history endpoints | Router |
+| `src/itineraries/chat_service.py` | Chat session/message CRUD | Service |
+| `src/itineraries/repository.py` (mở rộng) | Chat DB queries | Repository |
 
 ---
 
@@ -396,14 +396,14 @@ Nếu bật Text-to-SQL analytics (EP-34), **bắt buộc** có các guardrails:
 
 | File Backend | Mục đích | Layer |
 |---|---|---|
-| `src/services/itinerary_pipeline.py` | LLM orchestration cho generate | Service |
-| `src/services/companion_service.py` | Intent routing, tool-calling cho chat | Service |
-| `src/services/suggestion_service.py` | Gợi ý DB-only (không LLM) | Service |
-| `src/services/chat_service.py` | Quản lý chat session/message | Service |
-| `src/api/v1/agent.py` | Chat + apply-patch endpoints | Router |
-| `src/api/v1/chat.py` | Chat history endpoints | Router |
-| `src/schemas/generate.py` | AI generate response schema | Schema |
-| `src/repositories/chat_repo.py` | Chat DB queries | Repository |
+| `src/itineraries/pipeline.py` | LLM orchestration cho generate | Service |
+| `src/itineraries/companion.py` | Intent routing, tool-calling cho chat | Service |
+| `src/places/suggestion_service.py` | Gợi ý DB-only (không LLM) | Service |
+| `src/itineraries/chat_service.py` | Quản lý chat session/message | Service |
+| `src/itineraries/router.py` (mở rộng) | Chat + apply-patch endpoints | Router |
+| `src/itineraries/router.py` (mở rộng) | Chat history endpoints | Router |
+| `src/itineraries/schemas.py` (mở rộng) | AI generate response schema | Schema |
+| `src/itineraries/repository.py` (mở rộng) | Chat DB queries | Repository |
 
 | File Frontend | Mục đích |
 |---|---|
