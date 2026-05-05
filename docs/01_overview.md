@@ -1,19 +1,41 @@
 # 01. Tổng Quan MVP2
 
-DuLichViet MVP2 hiện là hệ thống web du lịch gồm Frontend React/Vite, Backend FastAPI, PostgreSQL, Redis và ETL dữ liệu địa điểm/khách sạn. AI itinerary/chat vẫn là phase kế tiếp, chưa được xem là tính năng hoàn thành trong code hiện tại.
+## Mục đích
+
+File này là **entry point** cho toàn bộ docs. Đọc file này đầu tiên để hiểu bức tranh tổng thể, sau đó follow link đến file chi tiết.
+
+---
 
 ## Thứ Tự Đọc Docs
 
-1. **01_overview.md** (file này): trạng thái MVP2 hiện tại, phần đã làm, phần chưa làm.
-2. [02_architecture.md](02_architecture.md): kiến trúc tổng thể FE, BE, DB, Redis, ETL và boundary AI pending.
-3. [03_backend.md](03_backend.md): Backend FastAPI, module, endpoint, flow service/repository, config.
-4. [04_frontend.md](04_frontend.md): Frontend Vite/React, route map, dữ liệu mock/localStorage, điểm cần nối BE.
-5. [05_database_etl.md](05_database_etl.md): schema, migration, Redis, ETL cities/places/hotels.
-6. [06_backend_phases.md](06_backend_phases.md): các phase Backend đã implement thật.
-7. [07_workflow_ci.md](07_workflow_ci.md): branch, commit, PR, CI/CD, GitHub rules.
-8. [08_testing_local_run.md](08_testing_local_run.md): cách chạy local, Docker, uv, npm, smoke test.
-9. [09_execution_tracker.md](09_execution_tracker.md): tracker task/branch/PR hiện tại.
-10. [10_automation_testing_report.md](10_automation_testing_report.md): báo cáo automation test BE/FE mới nhất.
+```text
+1. ★ 01_overview.md (file này)     → Bức tranh tổng thể, trạng thái, invariant
+2. ★ 02_architecture.md             → Kiến trúc hệ thống FE-BE-DB-Redis-AI
+3. ★ 03_backend.md                  → Backend chi tiết: endpoint, service flow, config
+4. ★ 04_frontend.md                 → Frontend chi tiết: component, hook flow, API client
+5. ★ 05_database_etl.md             → Database ERD, column detail, Redis, ETL pipeline
+6. ★ 06_ai_roadmap.md               → AI Phase C target architecture
+7.    07_workflow_ci.md              → Branch, commit, PR, CI/CD rules
+8.    08_testing_local_run.md        → Cách chạy local, test gates
+9.    09_execution_tracker.md        → Task/branch/PR tracker
+10.   10_automation_testing_report.md → Báo cáo test mới nhất
+```
+
+**Quick reference:**
+
+| Câu hỏi | Đọc file nào |
+|---|---|
+| "Hệ thống hoạt động thế nào?" | `02_architecture.md` |
+| "Endpoint X làm gì, flow ra sao?" | `03_backend.md` |
+| "Component X lấy data từ đâu?" | `04_frontend.md` |
+| "Bảng X có những cột gì, relationship gì?" | `05_database_etl.md` |
+| "AI Phase C sẽ implement thế nào?" | `06_ai_roadmap.md` |
+| "Branch/commit/PR format sao?" | `07_workflow_ci.md` |
+| "Chạy local/test thế nào?" | `08_testing_local_run.md` |
+| "Task/PR hiện tại ở đâu?" | `09_execution_tracker.md` |
+| "Test pass/fail gì gần nhất?" | `10_automation_testing_report.md` |
+
+---
 
 ## Quy Tắc Viết Docs
 
@@ -21,7 +43,9 @@ DuLichViet MVP2 hiện là hệ thống web du lịch gồm Frontend React/Vite,
 - Phần AI hiện là pending; không tạo tài liệu như một service đã chạy thật.
 - Khi đổi API contract, schema, config, CI, README hoặc flow local run, cập nhật `docs/` trong cùng branch.
 - `docs/09_execution_tracker.md` phải được sync trước khi branch chuyển sang review.
-- Các folder/file legacy đã loại khỏi workflow active: `plan/`, `md/`, `Diagram/`, `References/`, `guidelines/`, `Backend/BE_docs.md`, `PR_DESCRIPTIONS.md`. Nếu cần phục hồi, lấy từ git history và đối chiếu code hiện tại.
+- Các folder/file legacy đã loại khỏi workflow active: `plan/`, `md/`, `Diagram/`, `References/`, `guidelines/`, `Backend/BE_docs.md`, `PR_DESCRIPTIONS.md`.
+
+---
 
 ## Trạng Thái Ngắn Gọn
 
@@ -33,26 +57,43 @@ MVP1
 → AI Phase C pending
 ```
 
+---
+
+## Cross-Reference: Docs ↔ Code
+
+| Docs file | Source code tương ứng |
+|---|---|
+| `02_architecture.md` | `Backend/src/main.py`, `Frontend/src/app/App.tsx`, `Frontend/src/app/routes.tsx` |
+| `03_backend.md` | `Backend/src/api/v1/*.py`, `Backend/src/services/*.py`, `Backend/src/repositories/*.py`, `Backend/src/core/*.py` |
+| `04_frontend.md` | `Frontend/src/app/services/*.ts`, `Frontend/src/app/contexts/*.tsx`, `Frontend/src/app/hooks/**/*.ts`, `Frontend/src/app/types/trip.types.ts` |
+| `05_database_etl.md` | `Backend/src/models/*.py`, `Backend/alembic/versions/*.py`, `Backend/src/etl/` |
+| `06_ai_roadmap.md` | `Backend/src/services/itinerary_service.py` (stub), `Backend/src/models/extras.py` (ChatSession/ChatMessage) |
+| `07_workflow_ci.md` | `.github/workflows/`, `Backend/pyproject.toml`, `Frontend/package.json` |
+| `08_testing_local_run.md` | `scripts/test_fullstack_smoke.ps1`, `docker-compose.yml` |
+| `09_execution_tracker.md` | Git branch/PR history |
+| `10_automation_testing_report.md` | `Backend/tests/`, `Frontend/tests/e2e/` |
+
+---
+
 ## Đã Hoàn Thành
 
-Backend:
+### Backend
 
 - Foundation `Backend/src/` với FastAPI app factory, `uv`, async SQLAlchemy, Alembic, Docker.
-- Config tập trung trong `Backend/config.yaml` và `Backend/src/core/config.py`.
+- Config tập trung: `config.yaml` (non-secret) + `.env` (secret) + `AppSettings` (pydantic-settings).
 - Auth/users: register, login, refresh rotation, logout, profile, update profile, change password, forgot-password, reset-password.
 - Email service: `aiosmtplib` (async SMTP) + console fallback khi chưa cấu hình SMTP.
 - Itinerary core: create/list/get/update/delete, nested days/activities/accommodations, owner check, rating.
 - Share/claim: public `shareToken`, guest `claimToken` one-time, token hash trong DB.
 - Places/cache: destinations, destination detail, place search/detail, saved places, Redis read cache fail-open.
 - ETL D1: OSM/Goong extractors, transformers, DB upsert loader, `hotels.yaml`, `scraped_sources`.
-- Tests: unit + integration cho backend, CI lint/unit/integration/migration, frontend build.
+- Tests: 117 BE tests (75 unit + 42 integration), CI lint/unit/integration/migration.
 
-Frontend:
+### Frontend
 
 - FE revamp UI trong `Frontend/` với Vite, React, TypeScript.
-- Route set đầy đủ cho home, city list/detail, auth, trip setup, trip workspace, saved/history/settings, shared trip view, forgot-password, reset-password.
-- FE type contract quan trọng nằm ở `Frontend/src/app/types/trip.types.ts`.
-- Root build đã trỏ đúng `Frontend/src/main.tsx`.
+- Route set đầy đủ cho 27 pages.
+- FE type contract: `Frontend/src/app/types/trip.types.ts`.
 - API client layer (`services/api.ts` + 4 modules) với JWT auto-refresh, forgot/reset password API.
 - `AuthContext` quản lý JWT state + guest→owner claim flow; **8 protected routes**.
 - `TripWizardContext` thay 6 sessionStorage keys cho wizard flow.
@@ -60,83 +101,72 @@ Frontend:
 - `useActivityManager`/`useAccommodation`/`usePlacesManager` — optimistic CRUD + revert.
 - `CreateTrip` nối `createItinerary` API, navigate TripWorkspace với tripId.
 - `ErrorBoundary` bọc toàn app.
-- Hầu hết trang đã nối BE API thật; mock chỉ làm fallback khi BE không có data.
+- Playwright e2e tests: 11 test cases cho auth flow, trip CRUD, public pages.
+- **Tất cả trang chính đã nối BE API**; mock chỉ làm fallback khi BE không có data.
 
-Docs/ops:
+### Docs/Ops
 
-- Legacy docs/folder đã được dọn khỏi workflow active.
-- `docs/` là tài liệu chính.
+- `docs/` là tài liệu chính với 10 file chi tiết.
 - `README.md` có hướng dẫn Docker-only, local `uv`, Redis URL, ETL, test.
 - Branch/commit/PR/CI rules đã chuẩn hóa.
+- CI required checks: `pr-policy`, `backend-lint`, `backend-unit`, `backend-integration`, `backend-migrations`, `frontend-build`, `frontend-e2e`.
+
+---
 
 ## Chưa Hoàn Thành
 
-AI:
+### AI (Phase C)
 
 - `POST /api/v1/itineraries/generate` vẫn là stub, chưa gọi LLM pipeline thật.
 - Chưa có direct itinerary pipeline, structured output validation, retry, hoặc guardrails hoàn chỉnh.
 - Chưa có AI companion chat, patch-confirm flow, chat history API.
 - Analytics EP-34 chưa bật và chưa có SQL guardrails.
 
-Frontend integration:
-
-- API client layer đã triển khai (`services/api.ts` + 4 service modules).
-- **Tất cả trang chính đã nối BE API**: auth, profile, trip CRUD, activity/accommodation CRUD, places search/saved, share/claim, city detail, CreateTrip, forgot-password, reset-password.
-- `AuthContext` quản lý JWT state + guest→owner claim flow.
-- `TripWizardContext` thay 6 sessionStorage keys cho wizard flow.
-- `useTripSync` auto-save qua BE API, sessionStorage chỉ làm quick-restore cache.
-- 8 protected routes redirect sang `/login` khi chưa đăng nhập.
-- `ItineraryView` đã có share button với share link display + copy.
-- `ForgotPassword` nối BE API thật; `ResetPassword` nhận token từ URL param.
-- Playwright e2e tests: 11 test cases cho auth flow, trip CRUD, public pages (PR #31).
-- FE automation gate: `npm run build` + `npm run test:e2e`.
-
-ETL/data:
+### ETL/Data
 
 - Full ETL real data cần `GOONG_API_KEY`.
 - Cần chạy ETL cho danh sách city chính sau khi có key/network.
 - Cần kiểm số lượng destination/place/hotel sau crawl.
 
-Docker/deploy:
+### Docker/Deploy
 
 - Docker Compose hiện chạy API, PostgreSQL, Redis.
-- Chưa có service frontend chính thức trong Compose; README đang hướng dẫn host Node hoặc Node container tạm.
+- Chưa có service frontend chính thức trong Compose.
 - Chưa tự động deploy; CI/CD hiện là quality gate.
+- **Deploy target:** FE → Vercel, BE → Render (planned).
+
+---
 
 ## MVP2 Cải Tiến So Với MVP1
 
-Backend:
+| Aspect | MVP1 | MVP2 |
+|---|---|---|
+| Backend architecture | Đơn giản | Router/Service/Repository/Schema/Model |
+| Database migration | `create_all()` | Alembic migration |
+| Auth | Cơ bản | JWT access + refresh rotation + revoke + reset password |
+| Trip access | Public by ID | Owner-only ID + opaque shareToken |
+| Guest claim | `user_id IS NULL` | claimToken hash + expiry + consume |
+| Data source | Mock thuần | ETL places/hotels + Redis cache |
+| FE architecture | localStorage | API client + optimistic CRUD + revert |
+| Testing | Không có | 117 BE tests + 11 FE e2e |
+| CI/CD | Không có | 7 required checks |
 
-- Từ MVP1 đơn giản sang kiến trúc router/service/repository/schema/model rõ ràng.
-- Từ tạo bảng trực tiếp sang Alembic migration.
-- Từ auth cơ bản sang JWT access token + refresh token rotation + revoke.
-- Từ trip ID dễ rủi ro sang owner-only ID endpoints.
-- Từ public trip by ID sang public share bằng opaque `shareToken`.
-- Từ guest claim theo `user_id IS NULL` sang `claimToken` hash, expiry, consume.
-- Từ data mock thuần sang ETL places/hotels có upsert và Redis cache.
-
-Frontend:
-
-- UI được mở rộng thành nhiều workflow thực tế hơn: city browsing, trip setup, workspace, history, saved places/itineraries, shared trip view.
-- Contract itinerary mới dùng `Activity.name`, `adultPrice`, `childPrice`, `extraExpenses`, `Day.activities`.
-- API client layer + optimistic CRUD + revert-on-failure cho trip, activity, accommodation.
-- Hầu hết trang đã nối BE API thật; mock chỉ dùng fallback khi BE không có data.
-- `TripWizardContext` thay sessionStorage cho wizard flow state.
-- `ErrorBoundary` bắt lỗi React runtime, hiển thị UI recover.
-
-Ops:
-
-- Có Docker Compose, CI, PR policy, branch/commit convention, execution tracker.
-- Có README và docs mới để người khác clone repo có thể chạy local.
+---
 
 ## Invariant Cần Giữ
 
-- Public API JSON dùng `camelCase`.
-- Endpoint theo integer ID phải owner-only.
-- Public share chỉ qua `shareToken`.
-- Guest claim phải dùng `claimToken` one-time, hash trong DB, có expiry/consume.
-- AI chat sau này không được tự ghi DB trước khi user confirm patch.
-- Redis cache places có thể fail-open; AI/rate-limit trả phí không được fail-open im lặng.
+| Invariant | Chi tiết | Khi nào review |
+|---|---|---|
+| Public API JSON dùng `camelCase` | `CamelCaseModel` serialize | Locked — không review |
+| Endpoint theo integer ID phải owner-only | `trip.user_id == user.id` | Locked |
+| Public share chỉ qua `shareToken` | Opaque, không đoán được | Locked |
+| Guest claim phải dùng `claimToken` one-time | Hash + expiry + consumed_at | Locked |
+| AI chat không tự ghi DB trước khi confirm | Patch-confirm flow | Khi implement Phase C |
+| Redis cache places fail-open | Query DB trực tiếp khi Redis down | Locked |
+| AI rate limit KHÔNG fail-open | Trả lỗi thay vì cho request qua | Khi implement Phase C |
+| Activity dùng `name` không dùng `title` | FE contract đã chốt | Locked |
+
+---
 
 ## Kết Luận Hiện Tại
 
