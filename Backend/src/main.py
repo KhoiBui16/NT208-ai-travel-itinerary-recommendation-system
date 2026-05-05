@@ -7,7 +7,7 @@ from fastapi import APIRouter, FastAPI
 from sqlalchemy import text
 
 from src.auth.router import auth_router, user_router
-from src.core.config import get_settings
+from src.core.config import DEV_JWT_SECRET, get_settings
 from src.core.database import engine
 from src.core.logger import configure_logging, get_logger
 from src.core.middlewares import setup_middlewares
@@ -38,6 +38,13 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     except Exception:
         logger.exception("database_connection_failed")
         raise
+
+    settings = get_settings()
+    if settings.jwt_secret_key.get_secret_value() in ("", DEV_JWT_SECRET):
+        logger.warning(
+            "jwt_secret_key_not_set",
+            action='Generate one: python -c "import secrets; print(secrets.token_hex(32))"',
+        )
 
     yield
 

@@ -96,15 +96,20 @@ cd Backend
 copy .env.example .env
 ```
 
-Edit `.env` and fill in the required values:
+Edit `.env` — only **one variable is required**; all others have safe defaults:
 
-```env
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet
-JWT_SECRET_KEY=<your-secret-key>
-REDIS_URL=redis://localhost:6379/0
-GEMINI_API_KEY=          # Optional for now (Phase C)
-GOONG_API_KEY=           # Optional (ETL with real data)
-```
+| Variable | Required? | Default | What to do |
+|----------|-----------|---------|------------|
+| `JWT_SECRET_KEY` | **Yes** | *(empty)* | Generate: `python -c "import secrets; print(secrets.token_hex(32))"` then paste. The server warns on startup if missing. |
+| `DATABASE_URL` | No | `postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet` | Keep default if using `docker compose up -d db` |
+| `REDIS_URL` | No | `redis://localhost:6379/0` | Keep default if using `docker compose up -d redis` |
+| `GEMINI_API_KEY` | No | *(empty)* | Leave empty until Phase C |
+| `GOONG_API_KEY` | No | *(empty)* | Leave empty; only needed for real ETL data |
+| `SMTP_HOST` | No | *(empty)* | Leave empty — reset links log to console |
+| `SMTP_PORT` | No | `587` | Only matters if `SMTP_HOST` is set |
+| `SMTP_USERNAME` | No | *(empty)* | Only if using real SMTP |
+| `SMTP_PASSWORD` | No | *(empty)* | Only if using real SMTP |
+| `ENABLE_ANALYTICS` | No | `false` | Keep disabled — no guardrails yet |
 
 ### 4. Install dependencies and run migrations
 
