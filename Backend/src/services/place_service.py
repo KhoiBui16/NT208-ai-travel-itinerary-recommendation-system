@@ -21,7 +21,7 @@ from src.schemas.place import (
     SavedPlaceRequest,
     SavedPlaceResponse,
 )
-from src.services.base import BaseService
+from src.shared.service import BaseService
 
 logger = logging.getLogger(__name__)
 

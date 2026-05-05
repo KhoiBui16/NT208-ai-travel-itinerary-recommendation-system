@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from src.base.schema import CamelCaseModel
+from src.core.schema import CamelCaseModel
 
 PlaceType = Literal["food", "attraction", "nature", "entertainment", "shopping"]
 

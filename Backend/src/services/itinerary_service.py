@@ -14,11 +14,11 @@ from src.core.exceptions import (
     ForbiddenException,
     NotFoundException,
 )
+from src.core.schema import PaginatedResponse
 from src.core.security import create_opaque_token, hash_token
 from src.models.extras import GuestClaimToken
 from src.models.trip import Activity, Trip, TripDay
 from src.repositories.trip_repo import TripRepository
-from src.schemas.common import PaginatedResponse
 from src.schemas.itinerary import (
     AccommodationSchema,
     ActivitySchema,
@@ -32,7 +32,7 @@ from src.schemas.itinerary import (
     TravelerInfo,
     UpdateTripRequest,
 )
-from src.services.base import BaseService
+from src.shared.service import BaseService
 
 MAX_ACTIVE_TRIPS = 5
 

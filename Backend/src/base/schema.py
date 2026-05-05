@@ -1,14 +1,5 @@
-"""Base Pydantic schema with camelCase aliases for FE compatibility."""
+"""Backward-compatibility shim — CamelCaseModel moved to core.schema."""
 
-from pydantic import BaseModel, ConfigDict
-from pydantic.alias_generators import to_camel
+from src.core.schema import CamelCaseModel
 
-
-class CamelCaseModel(BaseModel):
-    """Base schema: snake_case in Python, camelCase in public JSON."""
-
-    model_config = ConfigDict(
-        from_attributes=True,
-        alias_generator=to_camel,
-        populate_by_name=True,
-    )
+__all__ = ["CamelCaseModel"]
