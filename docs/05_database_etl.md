@@ -1,179 +1,731 @@
 # 05. Database, Redis và ETL
 
-## Database
+## Mục đích
 
-PostgreSQL dùng Alembic làm migration source of truth. Không dùng `create_all()` trong production.
+File này mô tả **chi tiết toàn bộ database schema** — từng bảng, từng cột, từng constraint, từng mối quan hệ — cộng với Redis cache strategy và ETL pipeline. Đọc file này khi cần hiểu data model, viết migration mới, hoặc debug query.
 
-### Migration history
+**Khi nào đọc file này:**
+- Thêm bảng/cột mới → hiểu bảng nào liên quan, constraint nào cần giữ
+- Viết Alembic migration → xem migration history và naming convention
+- Debug query chậm → xem index và relationship
+- Thiết kế ETL mới → xem upsert strategy và scraped_sources
+- Code review schema change → kiểm tra invariant (hash token, owner-only, camelCase)
 
-| Migration | Ngày | Nội dung |
+---
+
+## 1. ERD — Entity Relationship Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              AUTH DOMAIN                                    │
+│                                                                             │
+│  ┌─────────── users ───────────┐     ┌────── refresh_tokens ──────┐       │
+│  │ PK  id             int      │1──N│ PK  id              int     │       │
+│  │     email          varchar  │     │ FK  user_id         int     │       │
+│  │     hashed_password varchar │     │     token_hash      varchar │       │
+│  │     name           varchar  │     │     expires_at      timestmp│       │
+│  │     phone          varchar? │     │     is_revoked      bool    │       │
+│  │     interests      json     │     │     created_at      timestmp│       │
+│  │     is_active      bool     │     └────────────────────────────┘       │
+│  │     password_reset_token_hash│                                          │
+│  │     password_reset_expires_at│                                          │
+│  │     created_at     timestmp │                                          │
+│  │     updated_at     timestmp │                                          │
+│  └──────────┬──────────────────┘                                          │
+│             │1                                                              │
+│             │                                                               │
+└─────────────┼───────────────────────────────────────────────────────────────┘
+              │
+              │ N (trips.user_id nullable cho guest)
+              ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            TRIP DOMAIN                                      │
+│                                                                             │
+│  ┌────────────────── trips ──────────────────┐                              │
+│  │ PK  id                  int                │                              │
+│  │ FK  user_id             int?               │ ← nullable: guest trip      │
+│  │     destination         varchar            │                              │
+│  │     trip_name           varchar            │                              │
+│  │     start_date          date               │                              │
+│  │     end_date            date               │                              │
+│  │     budget              int                │                              │
+│  │     total_cost          int                │                              │
+│  │     adults_count        int                │                              │
+│  │     children_count      int                │                              │
+│  │     interests           json               │                              │
+│  │     status              varchar            │                              │
+│  │     ai_generated        bool               │                              │
+│  │     created_at          timestmp           │                              │
+│  │     updated_at          timestmp           │                              │
+│  └───┬──────────┬────────────┬───────────────┘                              │
+│      │1         │1            │1                                              │
+│      │N         │N            │1                                              │
+│      ▼          ▼             ▼                                               │
+│  ┌──────── trip_days ──────┐ ┌──── accommodations ────┐ ┌─ trip_ratings ─┐  │
+│  │ PK id           int     │ │ PK id            int    │ │ PK id     int  │  │
+│  │ FK trip_id      int     │ │ FK trip_id       int    │ │ FK trip_id int │  │
+│  │    day_number   int     │ │ FK hotel_id?     int    │ │    rating  int │  │
+│  │    label        varchar │ │    name          varchar │ │    feedback txt│  │
+│  │    date         varchar │ │    check_in      varchar │ │    created_at  │  │
+│  │    destination_name?    │ │    check_out     varchar │ └────────────────┘  │
+│  └──┬──────────────────────┘ │    price_per_night int   │                     │
+│     │1                       │    total_price    int    │ ┌─ share_links ──┐  │
+│     │N                       │    booking_type?  varchar│ │ PK id     int  │  │
+│     ▼                        │    duration?      int    │ │ FK trip_id int │  │
+│  ┌──────── activities ─────┐ │    day_ids       json   │ │    token_hash   │  │
+│  │ PK id            int    │ │    booking_url?  varchar│ │ FK created_by   │  │
+│  │ FK trip_day_id   int    │ └────────────────────────┘ │    permission   │  │
+│  │ FK place_id?     int    │                             │    expires_at?  │  │
+│  │    name          varchar│                             │    revoked_at?  │  │
+│  │    time          varchar│                             └─────────────────┘  │
+│  │    end_time?     varchar│                                                  │
+│  │    type          varchar│ ┌─── guest_claim_tokens ──┐                     │
+│  │    location      varchar│ │ PK id           int     │                     │
+│  │    description   text   │ │ FK trip_id      int     │                     │
+│  │    image         varchar│ │    token_hash   varchar  │                     │
+│  │    transportation?      │ │    expires_at   timestmp │                     │
+│  │    adult_price?  int    │ │    consumed_at? timestmp │                     │
+│  │    child_price?  int    │ └─────────────────────────┘                     │
+│  │    custom_cost?  int    │                                                  │
+│  │    bus_ticket_price?    │                                                  │
+│  │    taxi_cost?    int    │                                                  │
+│  │    order_index   int    │                                                  │
+│  └──┬──────────────────────┘                                                  │
+│     │1                                                                        │
+│     │N (nullable — hoặc gắn vào trip_day)                                    │
+│     ▼                                                                         │
+│  ┌────── extra_expenses ──────┐                                               │
+│  │ PK id           int        │                                               │
+│  │ FK activity_id? int ───────│─ gắn vào activity HOẶC                       │
+│  │ FK trip_day_id? int ───────│─ gắn vào trip_day (chỉ 1 trong 2)            │
+│  │    name         varchar    │                                               │
+│  │    amount       int        │                                               │
+│  │    category     varchar    │                                               │
+│  └────────────────────────────┘                                               │
+│                                                                                │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           PLACES DOMAIN                                     │
+│                                                                             │
+│  ┌──────── destinations ────────┐                                           │
+│  │ PK  id              int      │1──N                                       │
+│  │     name            varchar  │──────────────────┐                        │
+│  │     slug            varchar  │                  │                        │
+│  │     description     text     │                  │                        │
+│  │     image           varchar  │                  │                        │
+│  │     latitude        float?   │                  ▼                        │
+│  │     longitude       float?   │     ┌───────── places ───────────┐       │
+│  │     is_active       bool     │     │ PK  id             int     │       │
+│  │     places_count    int      │N──1 │ FK  destination_id  int     │       │
+│  │     last_etl_at     timestmp?│     │     name            varchar │       │
+│  └──────────────────────────────┘     │     category        varchar │       │
+│                                       │     description     text    │       │
+│     ┌───────── hotels ──────────┐     │     location        varchar │       │
+│     │ PK  id             int    │     │     latitude        float?  │       │
+│     │ FK  destination_id  int   │     │     longitude       float?  │       │
+│     │     name            varchar│     │     avg_cost        int     │       │
+│     │     price_per_night int   │     │     rating          float   │       │
+│     │     rating          float │     │     review_count    int     │       │
+│     │     review_count    int   │     │     image           varchar │       │
+│     │     location        varchar│     │     opening_hours?  varchar │       │
+│     │     image           varchar│     │     source          varchar │       │
+│     │     booking_url?    varchar│     └──────┬─────────────────────┘       │
+│     │     amenities       text   │            │1                             │
+│     │     description     text   │            │N                             │
+│     └────────────────────────────┘            ▼                              │
+│                                   ┌──── saved_places ────┐                   │
+│                                   │ PK  id        int    │                   │
+│                                   │ FK  user_id   int    │ ← users.id       │
+│                                   │ FK  place_id  int    │ ← places.id      │
+│                                   │     created_at timest│                   │
+│                                   └──────────────────────┘                   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          AI/CHAT DOMAIN (schema sẵn, chưa có API)          │
+│                                                                             │
+│  ┌──────── chat_sessions ──────────┐     ┌──── chat_messages ────────────┐ │
+│  │ PK  id               int        │1──N │ PK  id                int     │ │
+│  │ FK  trip_id           int        │     │ FK  session_id         int     │ │
+│  │ FK  user_id?          int        │     │     role               varchar │ │
+│  │     thread_id        varchar     │     │     content            text    │ │
+│  │     status           varchar     │     │     proposed_operations json   │ │
+│  │     created_at       timestmp    │     │     requires_confirmation bool │ │
+│  │     updated_at       timestmp    │     │     created_at          timestm│ │
+│  └──────────────────────────────────┘     └──────────────────────────────┘ │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           ETL TRACKING                                      │
+│                                                                             │
+│  ┌──────── scraped_sources ────────┐                                        │
+│  │ PK  id              int         │                                        │
+│  │     source_name     varchar     │ ← ví dụ: "osm", "goong", "hotels_yaml"│
+│  │     city            varchar?    │ ← ví dụ: "Hà Nội", "Đà Nẵng"         │
+│  │     url             text?       │                                        │
+│  │     last_crawled    timestmp    │                                        │
+│  │     items_count     int         │                                        │
+│  │     status          varchar     │ ← "pending" | "success" | "error"     │
+│  │     error_message   text?       │                                        │
+│  │     created_at      timestmp    │                                        │
+│  └─────────────────────────────────┘                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Chi tiết từng bảng — Column-level
+
+### 2.1 `users` — Thông tin tài khoản
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | Integer PK, FE dùng `id: number` |
+| `email` | `varchar(255)` | UNIQUE, NOT NULL, INDEX | — | Email đăng nhập, case-sensitive |
+| `hashed_password` | `varchar(255)` | NOT NULL | — | bcrypt hash, không lưu plaintext |
+| `name` | `varchar(100)` | NOT NULL | — | Tên hiển thị |
+| `phone` | `varchar(30)` | NULLABLE | — | Số điện thoại (chưa dùng trong API hiện tại) |
+| `interests` | `json` | NOT NULL | `[]` | List string — ví dụ `["food","nature"]` |
+| `is_active` | `bool` | NOT NULL | `true` | Deactivate account mà không xóa |
+| `password_reset_token_hash` | `varchar(255)` | NULLABLE, INDEX | — | SHA-256 hash của reset token, NULL khi chưa yêu cầu |
+| `password_reset_expires_at` | `timestamptz` | NULLABLE | — | Thời hạn reset token (mặc định 1 giờ) |
+| `created_at` | `timestamptz` | NOT NULL | `now()` | Server-generated, không set từ client |
+| `updated_at` | `timestamptz` | NOT NULL | `now()` | Auto-update khi record thay đổi (`onupdate=now()`) |
+
+**Relationships:**
+
+| Relationship | Type | Target | Cascade |
+|---|---|---|---|
+| `trips` | 1:N | `Trip` | `all, delete-orphan` |
+| `saved_places` | 1:N | `SavedPlace` | — |
+| `refresh_tokens` | 1:N | `RefreshToken` | `all, delete-orphan` |
+| `chat_sessions` | 1:N | `ChatSession` | — |
+
+**Tại sao dùng `password_reset_token_hash` thay vì raw token:** Raw token chỉ xuất hiện 1 lần trong email và response. DB chỉ lưu hash để chống lộ token nếu DB bị compromise. Tương tự pattern cho refresh_token, share_token, claim_token.
+
+---
+
+### 2.2 `refresh_tokens` — Refresh token rotation
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `user_id` | `int` | FK → `users.id` (CASCADE), NOT NULL, INDEX | — | Owner của token |
+| `token_hash` | `varchar(255)` | NOT NULL, INDEX | — | SHA-256 hash, không lưu raw token |
+| `expires_at` | `timestamptz` | NOT NULL | — | Thời hạn (mặc định 7 ngày) |
+| `is_revoked` | `bool` | NOT NULL | `false` | `true` khi logout hoặc rotate |
+| `created_at` | `timestamptz` | NOT NULL | `now()` | — |
+
+**Rotation flow:**
+
+```text
+1. User login → tạo refresh token → lưu hash + expires_at
+2. User gọi /auth/refresh → hash raw token → tìm match → check !revoked + !expired
+3. Revoke token cũ (is_revoked = true)
+4. Tạo token mới → lưu hash mới → trả raw token mới cho client
+5. Client thay thế refresh token cũ bằng mới trong localStorage
+```
+
+**Tại sao `is_revoked` thay vì xóa record:** Giữ audit trail. Khi logout, token bị revoke nhưng record vẫn tồn tại để debug nếu cần. Giữ record cũng giúp phát hiện replay attack — nếu ai đó cố dùng token đã revoke.
+
+---
+
+### 2.3 `trips` — Lịch trình chính
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | Integer PK, owner-only access |
+| `user_id` | `int` | FK → `users.id` (CASCADE), NULLABLE, INDEX | — | `NULL` = guest trip, cần claim |
+| `destination` | `varchar(100)` | NOT NULL, INDEX | — | Tên điểm đến (VD: "Đà Nẵng") |
+| `trip_name` | `varchar(200)` | NOT NULL | — | Tên hiển thị trip |
+| `start_date` | `date` | NOT NULL | — | Ngày bắt đầu |
+| `end_date` | `date` | NOT NULL | — | Ngày kết thúc |
+| `budget` | `int` | NOT NULL | — | Ngân sách (VND) |
+| `total_cost` | `int` | NOT NULL | `0` | Tổng chi phí, tự tính bởi `_calculate_total_cost()` |
+| `adults_count` | `int` | NOT NULL | `1` | Số người lớn |
+| `children_count` | `int` | NOT NULL | `0` | Số trẻ em |
+| `interests` | `json` | NOT NULL | `[]` | List string — sở thích |
+| `status` | `varchar(20)` | NOT NULL | `"draft"` | `"draft"` | `"completed"` |
+| `ai_generated` | `bool` | NOT NULL | `false` | `true` nếu tạo qua AI pipeline |
+| `created_at` | `timestamptz` | NOT NULL, INDEX | `now()` | — |
+| `updated_at` | `timestamptz` | NOT NULL | `now()` | Auto-update |
+
+**Relationships:**
+
+| Relationship | Type | Target | Cascade | Note |
+|---|---|---|---|---|
+| `user` | N:1 | `User` | — | `NULL` cho guest |
+| `days` | 1:N | `TripDay` | `all, delete-orphan` | `order_by=day_number` |
+| `accommodations` | 1:N | `Accommodation` | `all, delete-orphan` | — |
+| `rating` | 1:1 | `TripRating` | `all, delete-orphan` | `uselist=False` |
+| `share_link` | 1:1 | `ShareLink` | `all, delete-orphan` | `uselist=False` |
+| `claim_tokens` | 1:N | `GuestClaimToken` | `all, delete-orphan` | — |
+| `chat_sessions` | 1:N | `ChatSession` | `all, delete-orphan` | — |
+
+**Tại sao `user_id` nullable:** Guest tạo trip mà chưa đăng nhập. Trip tồn tại với `user_id = NULL`. Khi guest đăng ký/đăng nhập, claim flow chuyển ownership qua `claim_tokens`.
+
+**Tại sao `total_cost` là cột riêng thay vì tính runtime:** Auto-save flow gửi toàn bộ trip data mỗi lần save. Tính `total_cost` trong service layer sau `flush()` đảm bảo consistency. Không phụ thuộc FE tính đúng.
+
+---
+
+### 2.4 `trip_days` — Ngày trong chuyến đi
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `trip_id` | `int` | FK → `trips.id` (CASCADE), NOT NULL, INDEX | — | — |
+| `day_number` | `int` | NOT NULL | — | 1, 2, 3... |
+| `label` | `varchar(50)` | NOT NULL | — | VD: "Ngày 1 - Hà Nội" |
+| `date` | `varchar(20)` | NOT NULL | — | Format `dd/MM/yyyy` (string, FE convention) |
+| `destination_name` | `varchar(100)` | NULLABLE | — | Tên điểm đến trong ngày (khác destination trip) |
+
+**Unique constraint:** `uq_trip_days_trip_number` trên `(trip_id, day_number)` — không cho 2 ngày cùng số trong 1 trip.
+
+**Tại sao `date` là `varchar` thay vì `Date`:** FE dùng format `dd/MM/yyyy` string. Chuyển đổi qua lại dễ gây bug timezone. Lưu string giữ nguyên format FE gửi.
+
+---
+
+### 2.5 `activities` — Hoạt động trong ngày
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `trip_day_id` | `int` | FK → `trip_days.id` (CASCADE), NOT NULL, INDEX | — | — |
+| `place_id` | `int` | FK → `places.id`, NULLABLE | — | Liên kết place từ DB (nếu có) |
+| `name` | `varchar(200)` | NOT NULL | — | **LUÔN dùng `name`**, không dùng `title` |
+| `time` | `varchar(10)` | NOT NULL | — | Format `HH:mm` |
+| `end_time` | `varchar(10)` | NULLABLE | — | Format `HH:mm` |
+| `type` | `varchar(30)` | NOT NULL | — | `food/attraction/nature/entertainment/shopping` |
+| `location` | `varchar(300)` | NOT NULL | `""` | Địa chỉ |
+| `description` | `text` | NOT NULL | `""` | Mô tả chi tiết |
+| `image` | `varchar(500)` | NOT NULL | `""` | URL hình ảnh |
+| `transportation` | `varchar(50)` | NULLABLE | — | `walk/bike/bus/taxi` |
+| `adult_price` | `int` | NULLABLE | — | Giá người lớn (VND) |
+| `child_price` | `int` | NULLABLE | — | Giá trẻ em (VND) |
+| `custom_cost` | `int` | NULLABLE | — | Chi phí tùy chỉnh |
+| `bus_ticket_price` | `int` | NULLABLE | — | Giá vé xe buýt |
+| `taxi_cost` | `int` | NULLABLE | — | Chi phí taxi |
+| `order_index` | `int` | NOT NULL | `0` | Thứ tự trong ngày (drag-and-drop) |
+| `created_at` | `timestamptz` | NOT NULL | `now()` | — |
+
+**Relationships:**
+
+| Relationship | Type | Target | Note |
+|---|---|---|---|
+| `trip_day` | N:1 | `TripDay` | — |
+| `place` | N:1 | `Place` | Nullable — activity không nhất thiết liên kết place |
+| `extra_expenses` | 1:N | `ExtraExpense` | Cascade delete |
+
+**Tại sao giá là `int` nullable thay vì `0`:** `NULL` = chưa nhập giá (FE hiện "—"). `0` = miễn phí. Phân biệt 2 trạng thái này.
+
+---
+
+### 2.6 `accommodations` — Chỗ ở
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `trip_id` | `int` | FK → `trips.id` (CASCADE), NOT NULL, INDEX | — | — |
+| `hotel_id` | `int` | FK → `hotels.id`, NULLABLE | — | Liên kết hotel từ DB (nếu có) |
+| `name` | `varchar(200)` | NOT NULL | — | Tên khách sạn |
+| `check_in` | `varchar(20)` | NOT NULL | — | Ngày check-in |
+| `check_out` | `varchar(20)` | NOT NULL | — | Ngày check-out |
+| `price_per_night` | `int` | NOT NULL | `0` | Giá/đêm (VND) |
+| `total_price` | `int` | NOT NULL | `0` | Tổng giá |
+| `booking_url` | `varchar(500)` | NULLABLE | — | Link đặt phòng |
+| `booking_type` | `varchar(20)` | NULLABLE | — | `hourly/nightly/daily` |
+| `duration` | `int` | NULLABLE | — | Số đêm/ngày |
+| `day_ids` | `json` | NOT NULL | `[]` | List int — IDs ngày cover bởi accommodation |
+
+**Tại sao `day_ids` là JSON array:** Một accommodation có thể cover nhiều ngày (VD: khách sạn 3 đêm). Thay vì tạo bảng trung gian, dùng JSON array vì: (1) query theo accommodation → trip, không cần query ngược; (2) ít record; (3) đơn giản cho FE.
+
+---
+
+### 2.7 `extra_expenses` — Chi phí phát sinh
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `activity_id` | `int` | FK → `activities.id` (CASCADE), NULLABLE, INDEX | — | Gắn vào activity HOẶC |
+| `trip_day_id` | `int` | FK → `trip_days.id` (CASCADE), NULLABLE, INDEX | — | Gắn vào trip_day (chỉ 1 trong 2) |
+| `name` | `varchar(200)` | NOT NULL | — | Tên chi phí |
+| `amount` | `int` | NOT NULL | — | Số tiền (VND) |
+| `category` | `varchar(30)` | NOT NULL | — | `food/attraction/entertainment/transportation/shopping` |
+
+**Check constraint:** `ck_extra_expenses_single_parent` — đảm bảo chỉ gắn vào MỘT parent (activity HOẶC trip_day, không cả hai).
+
+```sql
+CHECK (
+  (activity_id IS NOT NULL AND trip_day_id IS NULL) OR
+  (activity_id IS NULL AND trip_day_id IS NOT NULL)
+)
+```
+
+---
+
+### 2.8 `share_links` — Chia sẻ trip công khai
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `trip_id` | `int` | FK → `trips.id` (CASCADE), NOT NULL, UNIQUE | — | 1 trip chỉ có 1 share link |
+| `token_hash` | `varchar(255)` | UNIQUE, NOT NULL | — | SHA-256 hash, không lưu raw token |
+| `created_by_user_id` | `int` | FK → `users.id` (CASCADE), NOT NULL, INDEX | — | Ai tạo share link |
+| `permission` | `varchar(20)` | NOT NULL | `"view"` | Chỉ `"view"` hiện tại |
+| `expires_at` | `timestamptz` | NULLABLE | — | `NULL` = không hết hạn |
+| `revoked_at` | `timestamptz` | NULLABLE | — | `NOT NULL` = đã revoke |
+| `created_at` | `timestamptz` | NOT NULL | `now()` | — |
+
+**Unique constraint:** `uq_share_links_trip_id` — 1 trip chỉ tạo 1 share link. Share lại trả token cũ (redacted vì không recover raw token từ hash).
+
+**Tại sao share_token là opaque thay vì integer ID:** Không cho đoán được link share. Nếu dùng `trip_id`, ai biết ID có thể xem trip bất kỳ. Opaque token = không đoán được.
+
+---
+
+### 2.9 `guest_claim_tokens` — Claim guest trip
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `trip_id` | `int` | FK → `trips.id` (CASCADE), NOT NULL, INDEX | — | — |
+| `token_hash` | `varchar(255)` | UNIQUE, NOT NULL | — | SHA-256 hash |
+| `expires_at` | `timestamptz` | NOT NULL | — | Mặc định 24 giờ |
+| `consumed_at` | `timestamptz` | NULLABLE | — | `NOT NULL` = đã sử dụng |
+| `created_at` | `timestamptz` | NOT NULL | `now()` | — |
+
+**Tại sao one-time (consumed_at):** Chống replay. Nếu chỉ check `user_id IS NULL`, ai biết claimToken có thể claim trip nhiều lần. Check `consumed_at IS NULL` đảm bảo token chỉ dùng 1 lần.
+
+---
+
+### 2.10 `trip_ratings` — Đánh giá trip
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `trip_id` | `int` | FK → `trips.id` (CASCADE), NOT NULL, UNIQUE | — | 1 trip chỉ 1 rating |
+| `rating` | `int` | NOT NULL | — | 1-5 sao |
+| `feedback` | `text` | NULLABLE | — | Nhận xét text |
+| `created_at` | `timestamptz` | NOT NULL | `now()` | — |
+
+**Check constraint:** `ck_trip_ratings_rating_range` — `rating >= 1 AND rating <= 5`.
+
+---
+
+### 2.11 `destinations` — Thành phố/điểm đến
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `name` | `varchar(100)` | UNIQUE, NOT NULL | — | Tên thành phố |
+| `slug` | `varchar(100)` | UNIQUE, NOT NULL | — | URL-safe slug |
+| `description` | `text` | NOT NULL | `""` | — |
+| `image` | `varchar(500)` | NOT NULL | `""` | — |
+| `latitude` | `float` | NULLABLE | — | — |
+| `longitude` | `float` | NULLABLE | — | — |
+| `is_active` | `bool` | NOT NULL | `true` | — |
+| `places_count` | `int` | NOT NULL | `0` | Đếm số places (cập nhật bởi ETL) |
+| `last_etl_at` | `timestamptz` | NULLABLE | — | Lần cuối ETL crawl destination này |
+
+---
+
+### 2.12 `places` — Địa điểm tham quan
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `destination_id` | `int` | FK → `destinations.id` (CASCADE), NOT NULL, INDEX | — | — |
+| `name` | `varchar(200)` | NOT NULL, INDEX | — | Tên địa điểm |
+| `category` | `varchar(30)` | NOT NULL, INDEX | — | VD: `attraction`, `restaurant`, `museum` |
+| `description` | `text` | NOT NULL | `""` | — |
+| `location` | `varchar(300)` | NOT NULL | `""` | Địa chỉ |
+| `latitude` | `float` | NULLABLE | — | — |
+| `longitude` | `float` | NULLABLE | — | — |
+| `avg_cost` | `int` | NOT NULL | `0` | Chi phí trung bình (VND) |
+| `rating` | `float` | NOT NULL | `0` | Điểm rating |
+| `review_count` | `int` | NOT NULL | `0` | Số review |
+| `image` | `varchar(500)` | NOT NULL | `""` | — |
+| `opening_hours` | `varchar(100)` | NULLABLE | — | Giờ mở cửa |
+| `source` | `varchar(30)` | NOT NULL | `"seed"` | `"seed"` / `"osm"` / `"goong"` |
+| `updated_at` | `timestamptz` | NOT NULL | `now()` | Auto-update |
+
+**Unique constraint:** `uq_places_name_dest` trên `(name, destination_id)` — không trùng tên trong cùng destination.
+
+---
+
+### 2.13 `hotels` — Khách sạn
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `destination_id` | `int` | FK → `destinations.id` (CASCADE), NOT NULL, INDEX | — | — |
+| `name` | `varchar(200)` | NOT NULL | — | — |
+| `price_per_night` | `int` | NOT NULL | `0` | VND |
+| `rating` | `float` | NOT NULL | `0` | — |
+| `review_count` | `int` | NOT NULL | `0` | — |
+| `location` | `varchar(300)` | NOT NULL | `""` | — |
+| `image` | `varchar(500)` | NOT NULL | `""` | — |
+| `booking_url` | `varchar(500)` | NULLABLE | — | Link đặt phòng |
+| `amenities` | `text` | NOT NULL | `""` | Comma-separated (VD: "WiFi,Pool,Gym") |
+| `description` | `text` | NOT NULL | `""` | — |
+
+**Unique constraint:** `uq_hotels_name_dest` trên `(name, destination_id)`.
+
+---
+
+### 2.14 `saved_places` — Places user đã lưu
+
+| Column | Type | Constraint | Default | Mô tả |
+|---|---|---|---|---|
+| `id` | `int` | PK, auto-increment | — | — |
+| `user_id` | `int` | FK → `users.id` (CASCADE), NOT NULL, INDEX | — | — |
+| `place_id` | `int` | FK → `places.id` (CASCADE), NOT NULL, INDEX | — | — |
+| `created_at` | `timestamptz` | NOT NULL | `now()` | — |
+
+**Unique constraint:** `uq_saved_places_user_place` trên `(user_id, place_id)` — không lưu trùng.
+
+---
+
+### 2.15 `chat_sessions` / `chat_messages` — AI Chat (Phase C)
+
+Schema đã có trong DB qua Alembic migration, nhưng chưa có API endpoints.
+
+**`chat_sessions`:**
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| `id` | `int` | PK | — |
+| `trip_id` | `int` | FK → `trips.id` (CASCADE), NOT NULL | Session gắn với trip |
+| `user_id` | `int` | FK → `users.id` (SET NULL), NULLABLE | `NULL` khi user bị xóa |
+| `thread_id` | `varchar(120)` | UNIQUE, NOT NULL | LangGraph thread mapping |
+| `status` | `varchar(20)` | NOT NULL, default `"active"` | `"active"` / `"archived"` |
+| `created_at` / `updated_at` | `timestamptz` | — | — |
+
+**`chat_messages`:**
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| `id` | `int` | PK | — |
+| `session_id` | `int` | FK → `chat_sessions.id` (CASCADE), NOT NULL | — |
+| `role` | `varchar(20)` | NOT NULL | `"user"` / `"assistant"` / `"system"` |
+| `content` | `text` | NOT NULL | Nội dung tin nhắn |
+| `proposed_operations` | `json` | NOT NULL, default `[]` | Patch-confirm operations |
+| `requires_confirmation` | `bool` | NOT NULL, default `false` | `true` = cần user confirm |
+| `created_at` | `timestamptz` | NOT NULL | — |
+
+---
+
+### 2.16 `scraped_sources` — ETL Tracking
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| `id` | `int` | PK | — |
+| `source_name` | `varchar(100)` | NOT NULL | `"osm"` / `"goong"` / `"hotels_yaml"` |
+| `city` | `varchar(100)` | NULLABLE | `"Hà Nội"` / `"Đà Nẵng"` |
+| `url` | `text` | NULLABLE | URL nguồn crawl |
+| `last_crawled` | `timestamptz` | NOT NULL | Lần crawl cuối |
+| `items_count` | `int` | NOT NULL, default `0` | Số item crawl được |
+| `status` | `varchar(20)` | NOT NULL, default `"pending"` | `"pending"` / `"success"` / `"error"` |
+| `error_message` | `text` | NULLABLE | Lỗi nếu `status = "error"` |
+| `created_at` | `timestamptz` | NOT NULL | — |
+
+---
+
+## 3. Migration History
+
+| Migration | Ngày | Nội dung | Bảng thêm/sửa |
+|---|---|---|---|
+| `20260428_0001_initial_mvp2_schema` | 2026-04-28 | Schema MVP2 ban đầu | `users`, `refresh_tokens`, `trips`, `trip_days`, `activities`, `accommodations`, `extra_expenses`, `destinations`, `places`, `hotels`, `saved_places`, `share_links`, `guest_claim_tokens`, `trip_ratings`, `chat_sessions`, `chat_messages`, `scraped_sources` |
+| `20260502_0002_sync_etl_schema` | 2026-05-02 | Bổ sung ETL tracking | `scraped_sources` thêm `source_name`, `city`, `url`, `items_count`, `status`, `error_message`; unique constraints cho places/hotels upsert |
+| `20260504_0003_add_password_reset_fields` | 2026-05-04 | Password reset | `users` thêm `password_reset_token_hash`, `password_reset_expires_at` |
+
+**Nguyên tắc migration:**
+- Alembic là source of truth — không dùng `create_all()` trong production.
+- Mỗi migration phải có `upgrade()` và `downgrade()`.
+- Naming convention: `YYYYMMDD_NNNN_description.py`.
+- Chạy `alembic upgrade head` trước khi start BE.
+
+---
+
+## 4. Redis Cache Strategy
+
+### Cache key patterns
+
+| Key pattern | TTL | Khi nào invalidate | Dữ liệu cache |
+|---|---|---|---|
+| `destinations:all` | 1 giờ (configurable) | ETL reload destinations | `list[DestinationResponse]` JSON |
+| `destinations:detail:{name}` | 1 giờ | ETL reload destination đó | `{ destination, places, hotels }` JSON |
+| `places:search:{query}:{city}:{category}:{limit}` | 30 phút (configurable) | ETL reload places | `list[PlaceResponse]` JSON |
+
+### Cache flow
+
+```text
+FE gọi GET /places/destinations
+  │
+  ├── PlaceService.get_destinations()
+  │     ├── Redis GET "destinations:all"
+  │     │     ├── HIT → parse JSON → return
+  │     │     └── MISS → query DB → cache result → return
+  │     └── Nếu Redis lỗi → log warning → query DB trực tiếp (fail-open)
+  │
+  └── FE nhận data (từ cache hoặc DB)
+```
+
+### Fail-open vs Fail-closed
+
+| Context | Redis down | Tại sao |
 |---|---|---|
-| `20260428_0001_initial_mvp2_schema.py` | 2026-04-28 | Schema MVP2 ban đầu: users, trips, places, share/claim |
-| `20260502_0002_sync_etl_schema.py` | 2026-05-02 | Bổ sung `scraped_sources` + unique constraints cho ETL upsert |
-| `20260504_0003_password_reset.py` | 2026-05-04 | Thêm `password_reset_token_hash`, `password_reset_expires_at` vào `users` |
-
-### Nhóm bảng chính
-
-#### Auth/User
-
-| Bảng | Mô tả | Columns quan trọng |
-|---|---|---|
-| `users` | Thông tin tài khoản | `id`, `email` (unique), `name`, `hashed_password`, `is_active`, `avatar_url`, `password_reset_token_hash`, `password_reset_expires_at`, `created_at`, `updated_at` |
-| `refresh_tokens` | Refresh token rotation | `id`, `token_hash` (unique), `user_id` (FK → users), `expires_at`, `revoked_at` |
-
-**Lưu ý bảo mật:**
-- Tất cả token (refresh, share, claim, reset) đều lưu **hash** trong DB, không lưu raw token.
-- `password_reset_token_hash` + `password_reset_expires_at`: one-time use, sau khi dùng sẽ clear.
-- Khi reset password, tất cả refresh tokens của user bị revoke (force re-login).
-
-#### Trips
-
-| Bảng | Mô tả | Columns quan trọng |
-|---|---|---|
-| `trips` | Lịch trình chính | `id`, `user_id` (FK → users, nullable cho guest), `destination`, `trip_name`, `start_date`, `end_date`, `budget`, `adults_count`, `children_count`, `interests` (JSON), `total_cost`, `cover_image`, `created_at`, `updated_at` |
-| `trip_days` | Ngày trong chuyến đi | `id`, `trip_id` (FK → trips), `label`, `date`, `destination_name` |
-| `activities` | Hoạt động trong ngày | `id`, `day_id` (FK → trip_days), `time`, `end_time`, `name`, `location`, `description`, `type` (food/attraction/nature/entertainment/shopping), `image`, `transportation`, `adult_price`, `child_price`, `custom_cost`, `bus_ticket_price`, `taxi_cost` |
-| `accommodations` | Chỗ ở | `id`, `trip_id` (FK → trips), `day_ids` (JSON array), `booking_type` (hourly/nightly/daily), `duration`, `name`, `check_in`, `check_out`, `price_per_night`, `total_price`, `hotel_id` (FK → hotels, nullable) |
-| `extra_expenses` | Chi phí phát sinh | `id`, `day_id` (FK → trip_days, nullable), `activity_id` (FK → activities, nullable), `name`, `amount`, `category` (food/attraction/entertainment/transportation/shopping) |
-
-**Mối quan hệ:**
-- `trips` 1:N `trip_days` 1:N `activities`
-- `trips` 1:N `accommodations` (một accommodation có thể cover nhiều ngày qua `day_ids`)
-- `extra_expenses` có thể gắn vào `trip_day` hoặc `activity` (nullable FK)
-
-#### Places
-
-| Bảng | Mô tả | Columns quan trọng |
-|---|---|---|
-| `destinations` | Thành phố/điểm đến | `id`, `name` (unique), `description`, `image`, `country`, `latitude`, `longitude` |
-| `places` | Địa điểm tham quan | `id`, `destination_id` (FK → destinations), `name`, `description`, `category`, `image`, `address`, `latitude`, `longitude`, `rating`, `price_level` |
-| `hotels` | Khách sạn | `id`, `destination_id` (FK → destinations), `name`, `description`, `image`, `address`, `latitude`, `longitude`, `star_rating`, `price_per_night`, `amenities` (JSON) |
-| `saved_places` | Places user đã lưu | `id`, `user_id` (FK → users), `place_id` (FK → places), `created_at` |
-
-#### Share/Claim/Rating
-
-| Bảng | Mô tả | Columns quan trọng |
-|---|---|---|
-| `share_links` | Chia sẻ trip công khai | `id`, `trip_id` (FK → trips), `share_token` (unique), `created_at`, `expires_at` (nullable) |
-| `guest_claim_tokens` | Claim guest trip | `id`, `trip_id` (FK → trips), `token_hash` (unique), `expires_at`, `consumed_at` (nullable) |
-| `trip_ratings` | Đánh giá trip | `id`, `trip_id` (FK → trips), `user_id` (FK → users), `rating` (1-5), `feedback`, `created_at` |
-
-**Share flow:**
-1. Owner gọi `POST /itineraries/{tripId}/share` → tạo `share_token` (opaque, unique)
-2. Public user truy cập `GET /shared/{shareToken}` → đọc-only, không cần auth
-3. `share_token` có thể có expiry, nhưng default là không hết hạn
-
-**Claim flow:**
-1. Guest tạo trip (không auth) → response chứa `claimToken` (raw, chỉ hiển thị 1 lần)
-2. DB lưu `token_hash` (SHA-256) + `expires_at`
-3. User đăng ký/đăng nhập → FE gọi `POST /itineraries/{tripId}/claim` với claimToken
-4. BE hash token → tìm match → check expiry + chưa consumed → transfer ownership → set `consumed_at`
-
-#### AI/Chat (schema sẵn, chưa có API)
-
-| Bảng | Mô tả | Columns quan trọng |
-|---|---|---|
-| `chat_sessions` | Phiên chat | `id`, `user_id` (FK → users), `trip_id` (FK → trips, nullable), `title`, `created_at`, `updated_at` |
-| `chat_messages` | Tin nhắn trong session | `id`, `session_id` (FK → chat_sessions), `role` (user/assistant/system), `content`, `metadata` (JSON, nullable), `created_at` |
-
-#### ETL Tracking
-
-| Bảng | Mô tả | Columns quan trọng |
-|---|---|---|
-| `scraped_sources` | Theo dõi nguồn đã crawl | `id`, `source_type`, `source_id`, `city`, `scraped_at` |
-
-## Redis
-
-Redis dùng cho read cache places/destinations và hạ tầng rate limit/cache.
-
-### Cache strategy
-
-| Key pattern | TTL | Mô tả |
-|---|---|---|
-| `destinations:all` | 1 giờ | Cache danh sách destinations |
-| `destinations:{name}` | 1 giờ | Cache chi tiết destination theo tên |
-| `places:search:{query}:{city}:{category}` | 30 phút | Cache kết quả search places |
-
-### Fail-open policy
-
-- Places/destinations cache có thể **fail-open**: nếu Redis tạm down, API vẫn query thẳng DB và trả kết quả.
-- AI rate limit **không được fail-open im lặng**: nếu Redis down khi check rate limit, phải return lỗi thay vì cho phép request đi qua.
+| Places/destinations cache | **Fail-open**: query DB trực tiếp | App vẫn chạy, chỉ chậm hơn |
+| AI rate limit | **Fail-closed**: return lỗi | Không cho request đi qua khi không kiểm soát được rate |
 
 ### Kết nối
 
-Local host:
+| Môi trường | URL |
+|---|---|
+| Local dev | `redis://localhost:6379/0` |
+| Docker Compose | `redis://redis:6379/0` |
 
-```env
-REDIS_URL=redis://localhost:6379/0
-```
+---
 
-Docker Compose API container:
+## 5. ETL Pipeline
 
-```env
-REDIS_URL=redis://redis:6379/0
-```
-
-## ETL Pipeline
-
-Luồng xử lý:
+### Luồng tổng thể
 
 ```text
-extractors → transformers → loaders → database + cache invalidation
-```
-
-### Nguồn dữ liệu
-
-| Nguồn | Mô tả | Yêu cầu API key |
-|---|---|---|
-| OSM/Overpass | POI (Point of Interest) từ OpenStreetMap | Không |
-| Goong | Geocode, place detail, search | Có (`GOONG_API_KEY`) |
-| `hotels.yaml` | Sample hotels dữ liệu tĩnh | Không |
-
-### Chạy ETL
-
-Hotels-only (không cần API key):
-
-```powershell
-cd Backend
-uv run python -m src.etl --hotels-only --cities "Hà Nội"
-```
-
-Full selected cities:
-
-```powershell
-cd Backend
-uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng"
+┌─────────────────────────────────────────────────────────────┐
+│                    ETL PIPELINE                              │
+│                                                              │
+│  CLI: python -m src.etl --cities "Hà Nội" "Đà Nẵng"        │
+│    │                                                         │
+│    ▼                                                         │
+│  ┌───── runner.py (orchestrator) ─────────────────────────┐ │
+│  │  1. Parse CLI args (--cities, --hotels-only)            │ │
+│  │  2. For each city:                                      │ │
+│  │     ├── Extractor: fetch data từ nguồn                  │ │
+│  │     ├── Transformer: chuẩn hóa format                   │ │
+│  │     └── Loader: upsert vào DB                           │ │
+│  │  3. Update scraped_sources tracking                     │ │
+│  │  4. Invalidate Redis cache                              │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                                                              │
+│  Sources:                                                    │
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐  │
+│  │ OSM/Overpass  │  │ Goong API     │  │ hotels.yaml    │  │
+│  │ (POI data)    │  │ (geocode,     │  │ (static test   │  │
+│  │ No API key    │  │  place detail)│  │  data)         │  │
+│  │               │  │ Cần API key   │  │ No API key     │  │
+│  └───────┬───────┘  └───────┬───────┘  └───────┬────────┘  │
+│          │                  │                   │            │
+│          ▼                  ▼                   ▼            │
+│  ┌─────────────┐  ┌────────────────┐  ┌────────────────┐  │
+│  │ osm_        │  │ goong_         │  │ hotel_         │  │
+│  │ extractor   │  │ extractor      │  │ transformer    │  │
+│  └──────┬──────┘  └───────┬────────┘  └───────┬────────┘  │
+│         │                 │                    │            │
+│         ▼                 ▼                    ▼            │
+│  ┌──────────────────────────────────────────────────┐      │
+│  │           place_transformer / hotel_transformer  │      │
+│  │           Chuẩn hóa data → DB schema format       │      │
+│  └──────────────────────┬───────────────────────────┘      │
+│                          ▼                                   │
+│  ┌──────────────────────────────────────────────────┐      │
+│  │              db_loader (upsert)                   │      │
+│  │  • Check unique constraint (name + destination)  │      │
+│  │  • Insert mới HOẶC Update existing              │      │
+│  │  • Update scraped_sources tracking               │      │
+│  └──────────────────────┬───────────────────────────┘      │
+│                          ▼                                   │
+│                   PostgreSQL + Redis                         │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### ETL modules
 
 ```text
 Backend/src/etl/
-├── runner.py           # ETL orchestrator
-├── __main__.py         # CLI entry point
+├── runner.py                # ETL orchestrator — điều phối extract/transform/load
+├── __main__.py              # CLI entry point — `python -m src.etl`
 ├── extractors/
-│   ├── osm_extractor.py    # OSM/Overpass POI extraction
-│   └── goong_extractor.py  # Goong geocode/detail (cần API key)
+│   ├── osm_extractor.py     # OSM/Overpass POI extraction (không cần API key)
+│   └── goong_extractor.py   # Goong geocode/detail (cần GOONG_API_KEY)
 ├── transformers/
-│   ├── hotel_transformer.py  # Chuẩn hóa hotel data
-│   └── place_transformer.py  # Chuẩn hóa place data
+│   ├── hotel_transformer.py # Chuẩn hóa hotel data → hotels schema
+│   └── place_transformer.py # Chuẩn hóa place data → places schema
 ├── loaders/
-│   └── db_loader.py       # DB upsert loader
+│   └── db_loader.py         # DB upsert loader — insert hoặc update
 └── data/
-    └── hotels.yaml        # Sample hotel data cho test
+    └── hotels.yaml          # Sample hotel data cho test (không cần API key)
 ```
 
 ### Upsert strategy
 
-ETL dùng upsert (insert hoặc update) thay vì insert-only:
-- Dựa trên unique constraint (`source_type` + `source_id`) trong `scraped_sources`
-- Nếu dữ liệu đã tồn tại, update thay vì duplicate
-- Đảm bảo chạy ETL nhiều lần không tạo bản ghi trùng
+```text
+1. Query: SELECT FROM places WHERE name = ? AND destination_id = ?
+   ├── Tồn tại → UPDATE các trường thay đổi
+   └── Không tồn tại → INSERT record mới
 
-## Việc còn thiếu
+2. Update scraped_sources:
+   ├── source_name = "osm" / "goong" / "hotels_yaml"
+   ├── city = "Hà Nội"
+   ├── items_count = số record đã insert/update
+   ├── status = "success" / "error"
+   └── last_crawled = now()
+
+3. Invalidate Redis cache:
+   ├── Xóa key "destinations:all"
+   ├── Xóa key "destinations:detail:{city}"
+   └── Xóa key pattern "places:search:*"
+```
+
+### Chạy ETL
+
+```powershell
+# Hotels-only (không cần API key)
+cd Backend
+uv run python -m src.etl --hotels-only --cities "Hà Nội"
+
+# Full selected cities (cần GOONG_API_KEY)
+uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng"
+```
+
+---
+
+## 6. Index Strategy
+
+| Bảng | Column(s) | Index Type | Mục đích |
+|---|---|---|---|
+| `users` | `email` | UNIQUE | Login lookup |
+| `users` | `password_reset_token_hash` | B-tree | Reset token lookup |
+| `refresh_tokens` | `user_id` | B-tree | List tokens by user |
+| `refresh_tokens` | `token_hash` | B-tree | Token rotation lookup |
+| `trips` | `user_id` | B-tree | List trips by owner |
+| `trips` | `destination` | B-tree | Search by destination |
+| `trips` | `created_at` | B-tree | Sort by newest |
+| `trip_days` | `trip_id` | B-tree | List days by trip |
+| `trip_days` | `(trip_id, day_number)` | UNIQUE | Prevent duplicate day number |
+| `activities` | `trip_day_id` | B-tree | List activities by day |
+| `places` | `name` | B-tree | Search by name |
+| `places` | `category` | B-tree | Filter by category |
+| `places` | `destination_id` | B-tree | List by destination |
+| `places` | `(name, destination_id)` | UNIQUE | Prevent duplicate in same dest |
+| `hotels` | `destination_id` | B-tree | List by destination |
+| `hotels` | `(name, destination_id)` | UNIQUE | Prevent duplicate in same dest |
+| `saved_places` | `user_id` | B-tree | List by user |
+| `saved_places` | `place_id` | B-tree | Check if saved |
+| `saved_places` | `(user_id, place_id)` | UNIQUE | Prevent double-save |
+| `share_links` | `trip_id` | UNIQUE | 1 share per trip |
+| `guest_claim_tokens` | `trip_id` | B-tree | Find tokens for trip |
+
+---
+
+## 7. Việc còn thiếu
 
 - Cung cấp `GOONG_API_KEY` để chạy full ETL (geocode + detail).
 - Chạy full ETL cho danh sách city chính (Hà Nội, Đà Nẵng, TP.HCM, Phú Quốc, Hội An...).
 - Kiểm tra số lượng places/hotels sau crawl — hiện DB có thể trống nếu chưa chạy ETL.
 - Thiết lập lịch crawl định kỳ nếu cần dữ liệu mới (gợi ý: cron 30 ngày/lần).
 - ETL chưa có incremental update — mỗi lần chạy reload toàn bộ city.
+- Phase C: `chat_sessions` / `chat_messages` cần API endpoints.

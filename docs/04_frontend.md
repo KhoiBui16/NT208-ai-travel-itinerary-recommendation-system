@@ -1,283 +1,482 @@
 # 04. Frontend MVP2
 
-Frontend source nằm trong `Frontend/`, dùng Vite + React + TypeScript. Hiện UI revamp đã rộng hơn MVP1. Auth, trip, places đã nối BE qua API client layer. AI và một số flow phụ vẫn pending.
+## Mục đích
 
-## Runtime Structure
+File này mô tả **chi tiết kiến trúc Frontend** — component hierarchy, hook data flow, API client layer, routing, auth context, và integration status với BE. Đọc khi cần hiểu FE data flow, debug API integration, hoặc thêm page/component mới.
+
+**Khi nào đọc file này:**
+- Thêm page mới → hiểu route map, ProtectedRoute pattern
+- Debug API call → trace từ component → hook → service → api.ts
+- Thêm hook mới → hiểu optimistic update pattern
+- Code review FE-BE contract → kiểm tra camelCase field names
+
+---
+
+## 1. Runtime Structure
 
 ```text
 Frontend/
 ├── src/
-│   ├── main.tsx
+│   ├── main.tsx                    # Entry point → App.tsx
 │   ├── app/
-│   │   ├── App.tsx
-│   │   ├── routes.tsx
+│   │   ├── App.tsx                 # Root: ErrorBoundary > AuthProvider > TripWizardProvider > Router
+│   │   ├── routes.tsx              # Route definitions (public, protected, catch-all)
 │   │   ├── components/
-│   │   ├── contexts/         # AuthContext (JWT state), TripWizardContext (wizard flow)
-│   │   ├── data/
+│   │   │   ├── ui/                 # 40+ shadcn/ui components (Button, Dialog, Card, etc.)
+│   │   │   ├── ErrorBoundary.tsx   # Catch React runtime errors → show recovery UI
+│   │   │   ├── ProtectedRoute.tsx  # Redirect /login if not authenticated
+│   │   │   ├── Header.tsx         # Navigation bar, auth state
+│   │   │   ├── TripSidebar.tsx    # Day list in workspace
+│   │   │   ├── TripTimeline.tsx   # Activity timeline per day
+│   │   │   ├── TripAccommodation.tsx  # Hotel/accommodation panel
+│   │   │   ├── TripBudgetSidebar.tsx  # Budget summary
+│   │   │   ├── TopActionBar.tsx   # Share, save, export actions
+│   │   │   ├── ActivityDetailModal.tsx # Edit activity popup
+│   │   │   ├── AddPlaceModal.tsx  # Add place from search
+│   │   │   ├── PlaceSelectionModal.tsx # Choose place for activity
+│   │   │   ├── CalendarModal.tsx  # Date picker
+│   │   │   ├── BudgetTracker.tsx  # Budget progress
+│   │   │   ├── FloatingAIChat.tsx # AI companion chat (mock)
+│   │   │   ├── AIPromoBubble.tsx  # AI promo (mock)
+│   │   │   ├── ContextualSuggestionsPanel.tsx # Suggestions (mock)
+│   │   │   ├── SavedSuggestions.tsx
+│   │   │   └── SimpleFooter.tsx
+│   │   ├── contexts/
+│   │   │   ├── AuthContext.tsx     # JWT state, login/logout/register, pending claim
+│   │   │   └── TripWizardContext.tsx # Wizard flow state (destinations → allocations → travelers → budget)
+│   │   ├── data/                   # Static/mock fallback data
+│   │   │   ├── cities.ts
+│   │   │   ├── destinations.ts
+│   │   │   ├── places.ts
+│   │   │   ├── trips.ts
+│   │   │   ├── suggestions.ts
+│   │   │   └── budget.ts
 │   │   ├── hooks/
-│   │   ├── pages/
-│   │   ├── services/         # API client layer
-│   │   │   ├── api.ts        # fetch wrapper, JWT, auto-refresh
-│   │   │   ├── auth.ts       # login, register, logout, forgotPassword, resetPassword
-│   │   │   ├── itinerary.ts  # CRUD, generate, share, claim
-│   │   │   ├── places.ts     # destinations, search, saved
-│   │   │   └── users.ts      # profile, password
+│   │   │   ├── useTripState.ts    # Minimal trip state hook
+│   │   │   ├── useTripCost.ts     # Cost calculation (activities, hotels, transport, VND format)
+│   │   │   └── trips/
+│   │   │       ├── useTripSync.ts         # Main trip data sync (create/update/get, sessionStorage fallback)
+│   │   │       ├── useActivityManager.ts  # Activity CRUD + drag-and-drop + time conflict
+│   │   │       ├── useAccommodation.ts    # Accommodation CRUD + hotel selection
+│   │   │       └── usePlacesManager.ts    # Debounced searchPlaces + save/unsave + add suggestion
+│   │   ├── pages/                  # 27 page components
+│   │   ├── services/               # API client layer
+│   │   │   ├── api.ts             # fetch wrapper + JWT Bearer + auto-refresh on 401
+│   │   │   ├── auth.ts            # login, register, logout, forgotPassword, resetPassword
+│   │   │   ├── itinerary.ts       # CRUD, generate, share, claim, nested activity/accommodation
+│   │   │   ├── places.ts          # destinations, search, saved
+│   │   │   └── users.ts           # profile, password
 │   │   ├── types/
+│   │   │   └── trip.types.ts      # FE-BE contract: Activity, Day, Place, Accommodation, etc.
 │   │   └── utils/
-│   ├── styles/
-│   └── imports/
+│   │       └── tripConstants.ts   # Trip constants
+│   ├── styles/                     # Tailwind + global CSS
+│   └── imports/                    # Shared imports
+├── tests/e2e/                      # Playwright e2e tests
+│   ├── auth.spec.ts
+│   ├── trips.spec.ts
+│   ├── public.spec.ts
+│   └── helpers/auth.ts
+├── playwright.config.ts
 ├── package.json
 └── vite.config.ts
 ```
 
-Root `index.html` trỏ tới `Frontend/src/main.tsx`, nên lệnh build trong `Frontend/` và root Vite đều đọc đúng app.
+---
 
-## Route Map
-
-| Path | Page | Trạng thái |
-|---|---|---|
-| `/` | `Home` | UI/data FE |
-| `/cities` | `CityList` | chủ yếu data FE |
-| `/cities/:cityId` | `CityDetail` | API: getDestinationDetail + mock fallback |
-| `/onboarding` | `Onboarding` | flow FE |
-| `/trip-library` | `TripLibrary` | API: list itineraries (protected) |
-| `/saved-places` | `SavedPlaces` | API: list/save/unsave places (protected) |
-| `/account` | `Account` | API: profile/update/password (protected) |
-| `/trip-history` | `TripHistory` | API: list/update/delete itineraries (protected) |
-| `/settings` | `Settings` | local UI (protected) |
-| `/daily-itinerary` | `DailyItinerary` | API: getItinerary + sessionStorage fallback |
-| `/create-trip` | `CreateTrip` | API: createItinerary |
-| `/budget-setup` | `BudgetSetup` | flow FE (TripWizardContext) |
-| `/travelers-selection` | `TravelersSelection` | flow FE (TripWizardContext) |
-| `/manual-trip-setup` | `ManualTripSetup` | API: auth check (protected) |
-| `/day-allocation` | `DayAllocation` | flow FE (TripWizardContext) |
-| `/trip-workspace` | `TripWorkspace` | API: full CRUD + places search (protected) |
-| `/trip-planning` | `TripPlanning` | legacy/planning UI |
-| `/itinerary/:id` | `ItineraryView` | API: get/rate/update/delete itinerary |
-| `/shared/:token` | `SharedTripView` | API: getSharedItinerary (public) |
-| `/login` | `Login` | API: auth login |
-| `/register` | `Register` | API: auth register |
-| `/forgot-password` | `ForgotPassword` | API: forgotPassword |
-| `/reset-password` | `ResetPassword` | API: resetPassword (nhận token từ URL param) |
-| `/profile` | `Profile` | API: updateProfile (protected) |
-| `/saved-itineraries` | `SavedItineraries` | API: list/delete itineraries (protected) |
-| `*` | `NotFound` | done |
-
-## Component Groups
-
-Trip workspace:
-
-- `TripSidebar`
-- `TripTimeline`
-- `TripAccommodation`
-- `TripBudgetSidebar`
-- `TopActionBar`
-- `ActivityDetailModal`
-- `AddPlaceModal`
-- `PlaceSelectionModal`
-- `BudgetTracker`
-
-AI/companion UI hiện chủ yếu demo/mock:
-
-- `FloatingAIChat`
-- `AIPromoBubble`
-- `ContextualSuggestionsPanel`
-- `components/companion/*`
-
-Shared UI:
-
-- `components/ui/*`
-- `Header`
-- `SimpleFooter`
-- Auth modals/layout.
-
-## Data Và Hooks
-
-Static/mock data (fallback khi BE không có data):
-
-- `data/cities.ts`
-- `data/destinations.ts`
-- `data/places.ts`
-- `data/trips.ts`
-- `data/suggestions.ts`
-- `data/budget.ts`
-- `utils/tripConstants.ts`
-
-Contexts:
-
-- `contexts/AuthContext.tsx` — JWT state, login/logout/register, pending claim flow
-- `contexts/TripWizardContext.tsx` — Wizard flow state (destinations, allocations, travelers, budget) thay thế sessionStorage
-
-Trip state/hooks:
-
-- `hooks/useTripState.ts`
-- `hooks/useTripCost.ts`
-- `hooks/trips/useTripSync.ts` — BE API auto-save (create/update/get itinerary), sessionStorage chỉ làm quick-restore cache
-- `hooks/trips/useActivityManager.ts` — Activity CRUD API (add/update/delete) với optimistic update + revert
-- `hooks/trips/useAccommodation.ts` — Accommodation CRUD API (add/delete) với optimistic update + revert
-- `hooks/trips/usePlacesManager.ts` — Debounced searchPlaces API, save/unsave place API, addActivity API cho suggestion
-
-Ý nghĩa hiện tại:
-
-- FE đã có UX/workflow để quản lý trip phức tạp.
-- **Tất cả trang chính đã nối BE API**: auth, profile, trip CRUD, activity/accommodation CRUD, places search/saved, share/claim, city detail, CreateTrip.
-- Mock data chỉ làm fallback khi BE không có data hoặc API fail.
-- `ErrorBoundary` bọc toàn app, hiển thị UI recover khi React runtime error.
-
-## Contract Quan Trọng
-
-`Frontend/src/app/types/trip.types.ts` là file cần đối chiếu khi sửa itinerary schema.
-
-Các field cần giữ:
-
-- `Activity.name`, không dùng `title`.
-- `adultPrice`, `childPrice`, `extraExpenses`.
-- `Day.activities`.
-- `Accommodation.dayIds`, `bookingType`, `duration`.
-- Public API dùng `camelCase`.
-
-Backend hiện dùng `CamelCaseModel`, nên Python nội bộ `adult_price` sẽ serialize thành `adultPrice`.
-
-## Flow FE Đã Nối BE
-
-Auth:
+## 2. Component Hierarchy
 
 ```text
-Login/Register page
-→ POST /api/v1/auth/login hoặc /register
-→ lưu accessToken/refreshToken an toàn
-→ GET /api/v1/users/profile
-→ executePendingClaim() cho guest→owner
+App.tsx
+└── ErrorBoundary
+    └── AuthProvider (AuthContext)
+        └── TripWizardProvider (TripWizardContext)
+            └── Router (routes.tsx)
+                │
+                ├── Public routes (không cần login)
+                │   ├── /               → Home
+                │   ├── /cities         → CityList
+                │   ├── /cities/:cityId → CityDetail
+                │   ├── /onboarding     → Onboarding
+                │   ├── /create-trip    → CreateTrip
+                │   ├── /daily-itinerary → DailyItinerary
+                │   ├── /login          → Login
+                │   ├── /register       → Register
+                │   ├── /forgot-password → ForgotPassword
+                │   ├── /reset-password → ResetPassword
+                │   ├── /budget-setup   → BudgetSetup (wizard)
+                │   ├── /travelers-selection → TravelersSelection (wizard)
+                │   ├── /day-allocation → DayAllocation (wizard)
+                │   ├── /trip-planning  → TripPlanning
+                │   └── /shared/:token  → SharedTripView
+                │
+                ├── Protected routes (cần login → redirect /login)
+                │   ├── /trip-library     → TripLibrary
+                │   ├── /saved-places     → SavedPlaces
+                │   ├── /account          → Account
+                │   ├── /trip-history     → TripHistory
+                │   ├── /settings         → Settings
+                │   ├── /manual-trip-setup → ManualTripSetup
+                │   ├── /trip-workspace   → TripWorkspace
+                │   ├── /itinerary/:id    → ItineraryView
+                │   ├── /profile          → Profile
+                │   └── /saved-itineraries → SavedItineraries
+                │
+                └── * → NotFound (404)
 ```
 
-Trip CRUD:
+---
+
+## 3. API Client Layer — Data Flow
+
+### 3.1 api.ts — Core fetch wrapper
 
 ```text
-TripWorkspace
-→ POST /api/v1/itineraries (create)
-→ PUT /api/v1/itineraries/{tripId} (update)
-→ GET /api/v1/itineraries/{tripId} (load)
-→ POST/PUT/DELETE /api/v1/itineraries/{tripId}/activities (nested CRUD)
-→ POST/DELETE /api/v1/itineraries/{tripId}/accommodations (nested CRUD)
+Component gọi service function (createItinerary, updateActivity, ...)
+  │
+  └── Service gọi apiRequest() từ api.ts
+        │
+        ├── Thêm Authorization: Bearer {accessToken}
+        ├── Gửi HTTP request đến BE (VITE_API_URL)
+        │
+        ├── 200 OK → parse JSON → return data
+        │
+        ├── 401 Unauthorized → tự động refresh
+        │     ├── Đọc refreshToken từ localStorage
+        │     ├── POST /api/v1/auth/refresh {refreshToken}
+        │     │     ├── Refresh thành công
+        │     │     │   ├── Lưu accessToken + refreshToken mới vào localStorage
+        │     │     │   └── Retry request gốc với accessToken mới
+        │     │     └── Refresh thất bại
+        │     │           ├── Xóa tokens khỏi localStorage
+        │     │           └── Redirect /login
+        │     └── Nếu không có refreshToken → redirect /login
+        │
+        └── Other error → throw ApiError { status, message, data }
 ```
 
-Trip list/history:
+### 3.2 Optimistic Update Pattern
 
 ```text
-TripHistory/SavedItineraries/TripLibrary
-→ GET /api/v1/itineraries
-→ DELETE /api/v1/itineraries/{tripId}
+┌──────────────────────────────────────────────────────────┐
+│               OPTIMISTIC UPDATE FLOW                      │
+│                                                           │
+│  1. User thay đổi UI (VD: kéo activity, sửa tên)        │
+│  2. Hook cập nhật local state NGAY LẬP TỨC               │
+│     → UI hiển thị thay đổi ngay, không chờ API          │
+│  3. Hook gọi API trong background                         │
+│     ├── API success → state đã đúng, không cần revert    │
+│     └── API failure → REVERT state về giá trị trước      │
+│         → User thấy UI quay lại trạng thái cũ            │
+│         → Hiển thị error toast                            │
+│                                                           │
+│  Ví dụ: useActivityManager.updateActivity()               │
+│  ├── setDays(updatedDays)         // optimistic update    │
+│  ├── try { updateActivityAPI() }  // background API call  │
+│  └── catch { setDays(prevDays) }  // revert on failure    │
+└──────────────────────────────────────────────────────────┘
 ```
 
-Places:
+---
+
+## 4. Auth Context Flow
+
+### 4.1 AuthContext — State Management
 
 ```text
-CityDetail
-→ GET /api/v1/places/destinations/{name}
-
-TripWorkspace (usePlacesManager)
-→ GET /api/v1/places/search?query=...&city=...&category=...
-→ POST/DELETE /api/v1/places/saved/{placeId}
-
-SavedPlaces
-→ GET/POST/DELETE /api/v1/places/saved...
+AuthContext
+  │
+  ├── State:
+  │   ├── user: User | null
+  │   ├── accessToken: string | null (localStorage)
+  │   ├── refreshToken: string | null (localStorage)
+  │   ├── isAuthenticated: boolean
+  │   ├── isLoading: boolean
+  │   └── pendingClaims: { tripId, claimToken }[] (localStorage)
+  │
+  ├── Methods:
+  │   ├── login(email, password) → API call → save tokens → load profile → executePendingClaim()
+  │   ├── register(email, password, name) → API call → save tokens → executePendingClaim()
+  │   ├── logout() → API call revoke → clear tokens → clear user
+  │   ├── refreshUser() → GET /users/profile → update user state
+  │   ├── storePendingClaim(tripId, claimToken) → save to localStorage
+  │   └── executePendingClaim() → for each pending: POST /itineraries/{id}/claim
+  │
+  └── Auto-check on mount:
+      ├── Read tokens from localStorage
+      ├── If tokens exist → GET /users/profile → set user
+      └── If tokens invalid → clear tokens → user = null
 ```
 
-Share/Claim:
+### 4.2 Guest → Owner Claim Flow
 
 ```text
-TripWorkspace (TopActionBar)
-→ POST /api/v1/itineraries/{tripId}/share
-
-SharedTripView
-→ GET /api/v1/shared/{shareToken}
-
-AuthContext (after login/register)
-→ POST /api/v1/itineraries/{tripId}/claim (claimToken one-time)
+┌──────────────────────────────────────────────────────────┐
+│           GUEST → OWNER CLAIM FLOW (FE side)             │
+│                                                           │
+│  1. Guest tạo trip (không login)                         │
+│     → POST /itineraries (không Bearer)                   │
+│     → Response chứa claimToken                            │
+│     → AuthContext.storePendingClaim(tripId, claimToken)   │
+│     → Lưu vào localStorage: pendingClaims[]              │
+│                                                           │
+│  2. Guest đăng nhập hoặc đăng ký                         │
+│     → Login/Register success → tokens saved              │
+│     → AuthContext.executePendingClaim()                   │
+│     → For each pending:                                   │
+│         POST /itineraries/{tripId}/claim                  │
+│           { claimToken: "raw_token_from_localStorage" }   │
+│         → Success: trip now owned by user                │
+│         → Remove from pendingClaims                      │
+│                                                           │
+│  3. Result: Guest trip → Owner trip                       │
+└──────────────────────────────────────────────────────────┘
 ```
 
-CreateTrip:
+---
+
+## 5. TripWizard Context Flow
 
 ```text
-CreateTrip
-→ POST /api/v1/itineraries (createItinerary)
-→ navigate /trip-workspace?tripId={resp.id}
-→ TripWorkspace load trip via useTripSync
+┌──────────────────────────────────────────────────────────┐
+│              TRIP WIZARD FLOW                             │
+│                                                           │
+│  Step 1: CreateTrip (/create-trip)                       │
+│     → Chọn destination, dates, budget level, travel type │
+│     → TripWizardContext.setDestination()                  │
+│     → TripWizardContext.setDates()                        │
+│                                                           │
+│  Step 2: DayAllocation (/day-allocation)                  │
+│     → Phân bổ số ngày cho mỗi điểm đến                   │
+│     → TripWizardContext.setAllocations()                  │
+│                                                           │
+│  Step 3: TravelersSelection (/travelers-selection)        │
+│     → Chọn số người lớn, trẻ em                          │
+│     → TripWizardContext.setTravelers()                    │
+│                                                           │
+│  Step 4: BudgetSetup (/budget-setup)                      │
+│     → Chọn ngân sách chi tiết                            │
+│     → TripWizardContext.setBudget()                       │
+│                                                           │
+│  Step 5: Create trip                                      │
+│     → CreateTrip.tsx gọi createItinerary() API            │
+│     → Navigate /trip-workspace?tripId={id}                │
+│     → TripWizardContext.resetWizard()                     │
+│                                                           │
+│  Storage: sessionStorage (persist across page navigation) │
+│  → Không dùng 6 sessionStorage keys riêng lẻ nữa         │
+│  → Dùng 1 context object thống nhất                      │
+└──────────────────────────────────────────────────────────┘
 ```
 
-## Automation Hiện Có
+---
 
-Frontend đã có Playwright e2e test runner (thiết lập PR #31). Gate hiện tại:
+## 6. Hook Data Flow Diagrams
 
-```powershell
-cd Frontend
-npm run build           # Production build phải pass
-npm run test:e2e        # Playwright e2e tests (cần BE chạy)
-npm run test:e2e:headed # Chạy e2e với browser hiển thị
-npm run test:e2e:ui     # Chạy e2e qua Playwright UI
+### 6.1 useTripSync — Main trip data hook
+
+```text
+TripWorkspace mount
+  │
+  ├── URL có tripId?
+  │   ├── YES → load existing trip
+  │   │   ├── GET /itineraries/{tripId} (BE API)
+  │   │   │   ├── Success → setDays, setAccommodations
+  │   │   │   └── Fail → fallback to sessionStorage("currentTrip")
+  │   │   └── Save to sessionStorage as quick-restore cache
+  │   │
+  │   └── NO → new trip from wizard
+  │       ├── Read TripWizardContext state
+  │       ├── Build trip data from wizard selections
+  │       └── POST /itineraries (create new)
+  │           ├── Success → set tripId, save to sessionStorage
+  │           └── If guest → storePendingClaim(claimToken)
+  │
+  ├── Auto-save on changes:
+  │   ├── Debounce 500ms sau last change
+  │   └── PUT /itineraries/{tripId} (full trip state)
+  │
+  └── Manual save:
+      └── PUT /itineraries/{tripId}
 ```
 
-### Playwright E2E Tests
+### 6.2 useActivityManager — Activity CRUD + drag-and-drop
 
-11 test cases trong 3 spec files:
+```text
+┌────────────────────────────────────────────────────────┐
+│         useActivityManager FLOW                         │
+│                                                         │
+│  addActivityToDay(dayId, activityData)                  │
+│    ├── resolveTimeConflicts() → shift times nếu conflict│
+│    ├── Optimistic: thêm vào local days state            │
+│    ├── POST /itineraries/{tripId}/activities (API)      │
+│    └── On fail → revert local state                     │
+│                                                         │
+│  updateActivity(activityId, updates)                    │
+│    ├── Optimistic: cập nhật local state                 │
+│    ├── PUT /itineraries/{tripId}/activities/{id} (API)  │
+│    └── On fail → revert                                 │
+│                                                         │
+│  deleteActivity(activityId)                             │
+│    ├── Optimistic: xóa khỏi local state                 │
+│    ├── DELETE /itineraries/{tripId}/activities/{id}     │
+│    └── On fail → revert                                 │
+│                                                         │
+│  Drag-and-drop reorder:                                 │
+│    ├── Reorder in local state                           │
+│    ├── Recalculate order_index cho mỗi activity         │
+│    └── Trigger auto-save (useTripSync)                  │
+│                                                         │
+│  Extra expenses:                                        │
+│    ├── addExtraExpense(dayId/activityId, expense)       │
+│    └── removeExtraExpense(expenseId)                    │
+│    └── Trigger auto-save                                │
+└────────────────────────────────────────────────────────┘
+```
 
-**`tests/e2e/auth.spec.ts` (3 tests):**
+### 6.3 useAccommodation — Accommodation management
 
-| Test | Flow | Mô tả |
-|---|---|---|
-| register → success → redirect home | UI form | Điền form register, submit, redirect về `/` |
-| login → success → redirect home | API + UI | Register qua API, login qua UI, redirect về `/` |
-| protected route → redirect login → login → show page | UI navigation | Truy cập `/trip-library` chưa auth → redirect `/login` → login → quay lại `/trip-library` |
+```text
+┌────────────────────────────────────────────────────────┐
+│         useAccommodation FLOW                           │
+│                                                         │
+│  addAccommodation(data)                                 │
+│    ├── Optimistic: thêm vào accommodations state        │
+│    ├── POST /itineraries/{tripId}/accommodations (API)  │
+│    └── On fail → revert                                 │
+│                                                         │
+│  deleteAccommodation(accId)                             │
+│    ├── Optimistic: xóa khỏi state                       │
+│    ├── DELETE /itineraries/{tripId}/accommodations/{id} │
+│    └── On fail → revert                                 │
+│                                                         │
+│  Hotel selection:                                       │
+│    ├── Filter hotels by city (from places data)         │
+│    ├── Select hotel → populate accommodation fields     │
+│    └── Booking types: hourly / nightly / daily          │
+│                                                         │
+│  Multi-day booking:                                     │
+│    └── dayIds: [1, 2, 3] → cover 3 ngày               │
+└────────────────────────────────────────────────────────┘
+```
 
-**`tests/e2e/trips.spec.ts` (3 tests):**
+### 6.4 usePlacesManager — Place search + save
 
-| Test | Flow | Mô tả |
-|---|---|---|
-| create trip via generateItinerary → navigate to workspace | API + UI | Tạo trip qua API, navigate `/trip-workspace?tripId=...`, verify URL |
-| view trip list in TripLibrary | API + UI | Tạo trip qua API, mở TripLibrary, verify trip card hiển thị |
-| delete trip from TripHistory | API + UI | Tạo trip qua API, mở ItineraryView, click nút xóa, confirm |
+```text
+┌────────────────────────────────────────────────────────┐
+│         usePlacesManager FLOW                           │
+│                                                         │
+│  searchPlaces(query, city?, category?)                  │
+│    ├── Debounce 300ms                                   │
+│    ├── GET /places/search?query=...&city=...&category=  │
+│    ├── Success → set searchResults                      │
+│    └── Fail → fallback to mock data                     │
+│                                                         │
+│  savePlace(placeId)                                     │
+│    ├── POST /places/saved { placeId }                   │
+│    └── Optimistic: thêm vào savedPlaces                 │
+│                                                         │
+│  unsavePlace(savedId)                                   │
+│    ├── DELETE /places/saved/{savedId}                   │
+│    └── Optimistic: xóa khỏi savedPlaces                 │
+│                                                         │
+│  addSuggestionToItinerary(place, dayId)                 │
+│    ├── Build ActivitySchema từ place data               │
+│    ├── addActivityToDay(dayId, activity) → useActivity  │
+│    └── Trigger auto-save                                │
+└────────────────────────────────────────────────────────┘
+```
 
-**`tests/e2e/public.spec.ts` (5 tests):**
+### 6.5 useTripCost — Cost calculation
 
-| Test | Mô tả |
-|---|---|
-| home page loads | Verify `/` trả banner |
-| login page loads | Verify `/login` trả heading "Chào mừng bạn trở lại!" |
-| register page loads | Verify `/register` trả heading "Đăng Ký" |
-| forgot-password page loads | Verify `/forgot-password` trả URL đúng |
-| not-found page for invalid route | Verify route không tồn tại trả heading "404" |
+```text
+┌────────────────────────────────────────────────────────┐
+│         useTripCost FLOW                                │
+│                                                         │
+│  Input: days[], accommodations[]                        │
+│                                                         │
+│  Tính tổng chi phí:                                     │
+│  ├── For each activity:                                 │
+│  │   ├── adultPrice × adultsCount                      │
+│  │   ├── childPrice × childrenCount                    │
+│  │   ├── customCost                                    │
+│  │   ├── busTicketPrice                                │
+│  │   ├── taxiCost                                      │
+│  │   └── extraExpenses[].amount                        │
+│  ├── For each day:                                      │
+│  │   └── dayExtraExpenses[].amount                     │
+│  ├── For each accommodation:                            │
+│  │   └── totalPrice                                    │
+│  └── Format: VND (vi-VN locale)                        │
+│                                                         │
+│  Category breakdown:                                    │
+│  ├── food, attraction, nature, entertainment, shopping  │
+│  └── transportation (bus + taxi)                        │
+└────────────────────────────────────────────────────────┘
+```
 
-**`tests/e2e/helpers/auth.ts` — API auth helpers:**
+---
 
-- `apiRegister(email, password, name)` — Đăng ký user qua BE API, trả access/refresh tokens
-- `apiLogin(email, password)` — Đăng nhập qua BE API, trả tokens
-- `injectAuth(page, accessToken, refreshToken)` — Inject JWT tokens vào localStorage
-- `loginAs(page, email, password, name)` — Full flow: register + inject tokens
+## 7. Route Map
 
-**Cấu hình Playwright (`playwright.config.ts`):**
+| Path | Page | Auth | API Connected | Trạng thái |
+|---|---|---|---|---|
+| `/` | Home | Public | — | Done |
+| `/cities` | CityList | Public | — | Done (mock data) |
+| `/cities/:cityId` | CityDetail | Public | `GET /places/destinations/{name}` | Done (API + mock fallback) |
+| `/onboarding` | Onboarding | Public | — | Done |
+| `/create-trip` | CreateTrip | Public | `POST /itineraries` | Done |
+| `/budget-setup` | BudgetSetup | Public | — | Done (wizard context) |
+| `/travelers-selection` | TravelersSelection | Public | — | Done (wizard context) |
+| `/day-allocation` | DayAllocation | Public | — | Done (wizard context) |
+| `/daily-itinerary` | DailyItinerary | Public | `GET /itineraries/{id}` | Done (sessionStorage fallback) |
+| `/login` | Login | Public | `POST /auth/login` | Done |
+| `/register` | Register | Public | `POST /auth/register` | Done (OTP bypassed) |
+| `/forgot-password` | ForgotPassword | Public | `POST /auth/forgot-password` | Done |
+| `/reset-password` | ResetPassword | Public | `POST /auth/reset-password` | Done |
+| `/shared/:token` | SharedTripView | Public | `GET /shared/{shareToken}` | Done |
+| `/trip-planning` | TripPlanning | Public | — | Done |
+| `/trip-library` | TripLibrary | Protected | `GET /itineraries` | Done |
+| `/saved-places` | SavedPlaces | Protected | `GET/POST/DELETE /places/saved/*` | Done |
+| `/account` | Account | Protected | `GET/PUT /users/profile`, `PUT /users/password` | Done |
+| `/trip-history` | TripHistory | Protected | `GET /itineraries`, `DELETE /itineraries/{id}` | Done |
+| `/settings` | Settings | Protected | — | Done (local UI) |
+| `/manual-trip-setup` | ManualTripSetup | Protected | Auth check | Done |
+| `/trip-workspace` | TripWorkspace | Protected | Full CRUD API | Done |
+| `/itinerary/:id` | ItineraryView | Protected | `GET/PUT/DELETE /itineraries/{id}`, share, rating | Done |
+| `/profile` | Profile | Protected | `PUT /users/profile` | Done |
+| `/saved-itineraries` | SavedItineraries | Protected | `GET /itineraries`, `DELETE /itineraries/{id}` | Done |
+| `*` | NotFound | — | — | Done |
 
-- `baseURL`: `http://localhost:5173` (override bằng `E2E_BASE_URL` env)
-- `webServer`: Tự động start `npm run dev` nếu chưa chạy
-- Browser: Chromium only (CI), configurable locally
-- Timeout: 30 giây, retries: 2 trên CI
+---
 
-**CI integration:**
+## 8. Contract Quan Trọng
 
-Job `frontend-e2e` trong `frontend-ci.yml` chạy Playwright tests với:
-- PostgreSQL + Redis services containers
-- BE server start trong background
-- Playwright install chromium
-- Artifact upload (report + traces) khi fail
+`Frontend/src/app/types/trip.types.ts` là **FE-BE contract source of truth**.
 
-## Known Gaps
+### Key field name rules
 
-- City/hotel/place UI dùng API làm primary, mock làm fallback khi BE không có data.
-- Một số màn AI/chat vẫn mock vì BE AI chưa implement (Phase C).
-- E2e tests chưa cover trip workspace drag-and-drop, calendar interaction, accommodation CRUD flow.
+| BE Python (snake_case) | BE JSON (camelCase) | FE TypeScript | Ghi chú |
+|---|---|---|---|
+| `trip_name` | `tripName` | `tripName` | Không dùng `name` cho trip |
+| `adult_price` | `adultPrice` | `adultPrice` | Không dùng `price` |
+| `child_price` | `childPrice` | `childPrice` | — |
+| `extra_expenses` | `extraExpenses` | `extraExpenses` | Array |
+| `day_ids` | `dayIds` | `dayIds` | JSON array |
+| `booking_type` | `bookingType` | `bookingType` | `hourly/nightly/daily` |
+| `order_index` | `orderIndex` | `orderIndex` | Drag-and-drop sort |
 
-## API Integration Status (2026-05-04)
+### Activity name rule
 
-Đã triển khai API client layer (`services/api.ts`) với JWT Bearer injection và auto-refresh trên 401. Tất cả API call dùng optimistic update + revert-on-failure, với mock fallback khi BE không có data.
+- **LUÔN dùng `name`** — không dùng `title`.
+- BE: `Activity.name` (varchar 200)
+- FE: `Activity.name` (string)
+
+---
+
+## 9. FE-BE Integration Status (2026-05-05)
+
+Tất cả trang chính đã nối BE API. Mock chỉ dùng fallback.
 
 | Page | API endpoint | Trạng thái |
 |---|---|---|
@@ -289,32 +488,101 @@ Job `frontend-e2e` trong `frontend-ci.yml` chạy Playwright tests với:
 | Profile | `PUT /users/profile` | Done |
 | TripLibrary | `GET /itineraries` | Done |
 | SavedPlaces | `GET/POST/DELETE /places/saved/*` | Done |
-| TripHistory | `GET /itineraries`, `PUT /itineraries/{id}`, `DELETE /itineraries/{id}` | Done |
+| TripHistory | `GET /itineraries`, `PUT/DELETE /itineraries/{id}` | Done |
 | SavedItineraries | `GET /itineraries`, `DELETE /itineraries/{id}` | Done |
 | ManualTripSetup | Auth check via `useAuth()` | Done |
-| TripWorkspace | `POST/PUT/GET /itineraries`, nested activity CRUD, nested accommodation CRUD, `GET /places/search`, `POST/DELETE /places/saved` | Done |
-| ItineraryView | `GET /itineraries/{id}`, `PUT /itineraries/{id}`, `PUT /itineraries/{id}/rating`, `DELETE /itineraries/{id}`, `POST /itineraries/{id}/share` | Done |
+| TripWorkspace | Full CRUD + nested activity/accommodation + places search | Done |
+| ItineraryView | `GET/PUT/DELETE /itineraries/{id}`, rating, share | Done |
 | SharedTripView | `GET /shared/{shareToken}` | Done |
-| CityDetail | `GET /places/destinations/{name}`, `GET/POST/DELETE /places/saved` | Done |
+| CityDetail | `GET /places/destinations/{name}` | Done (API + mock fallback) |
 | DailyItinerary | `GET /itineraries/{id}` + sessionStorage fallback | Done |
+| CreateTrip | `POST /itineraries` | Done |
 | Header | Auth state via `AuthContext` | Done |
-| CreateTrip | `POST /itineraries` (createItinerary) | Done |
 
-Protected routes (8 routes) đã được bọc bằng `ProtectedRoute` — redirect sang `/login` nếu chưa đăng nhập.
+---
 
-AI generate endpoint (`POST /itineraries/generate`) vẫn là stub — tạo empty trip, chưa gọi LLM. Sẽ được implement ở Phase C.
+## 10. Playwright E2E Tests
 
-## OTP Registration Note (PR #28)
+### Cấu hình
 
-Register page hiện bypass OTP verification. Lý do:
+- **Config file**: `Frontend/playwright.config.ts`
+- **Base URL**: `http://localhost:5173` (override bằng `E2E_BASE_URL`)
+- **Browser**: Chromium only
+- **Timeout**: 30 giây, retries: 2 trên CI
+- **WebServer**: Tự động start `npm run dev` nếu chưa chạy
 
-- `OTPModal.tsx` so sánh `otpValue === generatedOTP` — random OTP chỉ tồn tại trong browser state, không bao giờ gửi email.
-- Backend `POST /auth/register` tạo user trực tiếp, không yêu cầu OTP.
-- Fix: comment out OTP state/handlers, gọi `register()` API trực tiếp trong `handleSubmit`.
-- `OTPModal.tsx` component vẫn giữ trong codebase, sẽ re-enable khi BE có email OTP service (Phase C).
+### Test suites (11 tests)
 
-## FE-BE Contract Gaps (fixed in PR #27)
+**Auth flow (3 tests):**
 
-- **TripLibrary.tsx**: `trip.coverImage` → placeholder URL, `trip.name` → `trip.tripName`, `trip.estimatedCost` → `trip.totalCost ?? trip.budget`, `trip.savedLocationsCount` → count activities.
-- **CreateTrip.tsx**: Đổi `createItinerary()` → `generateItinerary()` với đúng field names.
-- **ItineraryView.tsx**: Expect `rating`/`feedback` trong ItineraryResponse — BE chưa include, FE default 0/"" gracefully. Cần BE thêm field này.
+| Test | Flow | Mô tả |
+|---|---|---|
+| register → success → redirect home | UI form | Điền form, submit, redirect `/` |
+| login → success → redirect home | API + UI | Register qua API, login qua UI |
+| protected route → redirect login → login → show page | UI navigation | `/trip-library` chưa auth → `/login` → login → access granted |
+
+**Trip CRUD (3 tests):**
+
+| Test | Flow | Mô tả |
+|---|---|---|
+| create trip → navigate to workspace | API + UI | Tạo trip qua API, navigate workspace |
+| view trip list in TripLibrary | API + UI | Tạo trip, mở TripLibrary, verify card |
+| delete trip from TripHistory | API + UI | Tạo trip, mở ItineraryView, xóa |
+
+**Public pages (5 tests):**
+
+| Test | Mô tả |
+|---|---|
+| home page loads | Verify `/` trả banner |
+| login page loads | Verify heading "Chào mừng bạn trở lại!" |
+| register page loads | Verify heading "Đăng Ký" |
+| forgot-password page loads | Verify URL đúng |
+| not-found page | Verify heading "404" |
+
+### Test helpers
+
+`tests/e2e/helpers/auth.ts`:
+
+```typescript
+apiRegister(email, password, name)    // Register qua BE API
+apiLogin(email, password)             // Login qua BE API
+injectAuth(page, accessToken, refreshToken) // Inject JWT vào localStorage
+loginAs(page, email, password, name)  // Full register + inject flow
+```
+
+### CI integration
+
+Job `frontend-e2e` trong `frontend-ci.yml`:
+1. Start PostgreSQL + Redis containers
+2. Install BE + run migrations + start BE server
+3. Install FE + Playwright browsers
+4. Run `npx playwright test` với `E2E_API_URL=http://localhost:8000`
+5. Upload Playwright report artifact khi fail
+
+---
+
+## 11. Known Gaps
+
+- AI/chat UI vẫn mock vì BE AI chưa implement (Phase C).
+- E2E chưa cover: trip workspace drag-and-drop, calendar interaction, accommodation CRUD.
+- CityList chủ yếu dùng mock data (BE cần nhiều destinations hơn).
+- Visual regression testing chưa có.
+
+---
+
+## 12. OTP Registration Note (PR #28)
+
+Register page hiện **bypass OTP verification**:
+
+```text
+Lý do:
+  OTPModal.tsx so sánh otpValue === generatedOTP
+  → Random OTP chỉ tồn tại trong browser state
+  → Không bao giờ gửi email
+  → Block TẤT CẢ registration
+
+Fix:
+  Comment out OTP state/handlers
+  Gọi register() API trực tiếp trong handleSubmit
+  OTPModal.tsx component giữ nguyên → re-enable khi BE có email OTP (Phase C)
+```
