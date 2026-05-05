@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.core.exceptions import ConflictException, ForbiddenException, NotFoundException
-from src.models.extras import GuestClaimToken, ShareLink
-from src.models.trip import Trip
-from src.services.itinerary_service import MAX_ACTIVE_TRIPS, ItineraryService
+from src.itineraries.models.extras import GuestClaimToken, ShareLink
+from src.itineraries.models.trip import Trip
+from src.itineraries.service import MAX_ACTIVE_TRIPS, ItineraryService
 
 
 @pytest.fixture()
@@ -63,7 +63,7 @@ async def test_create_manual__auth_user__success(
     mock_repo.create_trip.return_value = trip
     mock_repo.get_with_full_data.return_value = trip
 
-    from src.schemas.itinerary import CreateTripRequest
+    from src.itineraries.schemas import CreateTripRequest
 
     req = CreateTripRequest(
         destination="Hà Nội",
@@ -82,7 +82,7 @@ async def test_create_manual__trip_limit_exceeded(
 ) -> None:
     mock_repo.count_active_by_user.return_value = MAX_ACTIVE_TRIPS
 
-    from src.schemas.itinerary import CreateTripRequest
+    from src.itineraries.schemas import CreateTripRequest
 
     req = CreateTripRequest(
         destination="Hà Nội",
@@ -103,7 +103,7 @@ async def test_create_manual__guest__gets_claim_token(
     mock_repo.get_with_full_data.return_value = trip
     mock_repo.create_claim_token.return_value = MagicMock()
 
-    from src.schemas.itinerary import CreateTripRequest
+    from src.itineraries.schemas import CreateTripRequest
 
     req = CreateTripRequest(
         destination="Hà Nội",
@@ -205,7 +205,7 @@ async def test_claim__valid_token__success(service: ItineraryService, mock_repo:
     )
     mock_repo.get_claim_tokens_for_trip.return_value = [claim_token]
 
-    from src.schemas.itinerary import ClaimTripRequest
+    from src.itineraries.schemas import ClaimTripRequest
 
     req = ClaimTripRequest(claim_token="claim_abc123")
     with patch("src.itineraries.service.hash_token", return_value="hashed"):
@@ -218,7 +218,7 @@ async def test_claim__already_owned__conflict(
 ) -> None:
     mock_repo.get_by_id.return_value = _make_trip(user_id=1)
 
-    from src.schemas.itinerary import ClaimTripRequest
+    from src.itineraries.schemas import ClaimTripRequest
 
     req = ClaimTripRequest(claim_token="claim_abc123")
     with pytest.raises(ConflictException):

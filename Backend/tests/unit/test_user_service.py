@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from src.auth.models import User
+from src.auth.profile_service import UserService
 from src.core.exceptions import UnauthorizedException
 from src.core.security import hash_password
-from src.models.user import User
-from src.services.user_service import UserService
 
 
 @pytest.fixture()

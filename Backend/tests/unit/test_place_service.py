@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.core.exceptions import ConflictException, ForbiddenException, NotFoundException
-from src.models.place import Destination, Place, SavedPlace
-from src.services.place_service import PlaceService
+from src.places.models import Destination, Place, SavedPlace
+from src.places.service import PlaceService
 
 
 @pytest.fixture()
@@ -185,7 +185,7 @@ async def test_save_place__success(service: PlaceService, mock_repo: AsyncMock) 
     mock_repo.save_place.return_value = saved
     mock_repo.get_saved_by_id.return_value = saved
 
-    from src.schemas.place import SavedPlaceRequest
+    from src.places.schemas import SavedPlaceRequest
 
     result = await service.save_place(user_id=1, request=SavedPlaceRequest(place_id=1))
     assert result.id == 1
@@ -194,7 +194,7 @@ async def test_save_place__success(service: PlaceService, mock_repo: AsyncMock) 
 async def test_save_place__already_saved(service: PlaceService, mock_repo: AsyncMock) -> None:
     mock_repo.saved_exists.return_value = True
 
-    from src.schemas.place import SavedPlaceRequest
+    from src.places.schemas import SavedPlaceRequest
 
     with pytest.raises(ConflictException):
         await service.save_place(user_id=1, request=SavedPlaceRequest(place_id=1))
@@ -204,7 +204,7 @@ async def test_save_place__place_not_found(service: PlaceService, mock_repo: Asy
     mock_repo.saved_exists.return_value = False
     mock_repo.get_by_id.return_value = None
 
-    from src.schemas.place import SavedPlaceRequest
+    from src.places.schemas import SavedPlaceRequest
 
     with pytest.raises(NotFoundException):
         await service.save_place(user_id=1, request=SavedPlaceRequest(place_id=999))

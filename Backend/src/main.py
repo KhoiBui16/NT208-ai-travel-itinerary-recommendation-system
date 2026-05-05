@@ -3,14 +3,27 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from sqlalchemy import text
 
-from src.api.v1.router import api_v1_router
+from src.auth.router import auth_router, user_router
 from src.core.config import get_settings
 from src.core.database import engine
 from src.core.logger import configure_logging, get_logger
 from src.core.middlewares import setup_middlewares
+from src.itineraries.router import router as itineraries_router
+from src.itineraries.router import shared_router
+from src.places.router import router as places_router
+
+# Minimal health-check router (single endpoint, no domain package needed)
+health_router = APIRouter(tags=["health"])
+
+
+@health_router.get("/health", summary="Health check")
+async def health_check() -> dict[str, str]:
+    """Return API health status."""
+    return {"status": "healthy"}
+
 
 logger = get_logger(__name__)
 
@@ -43,7 +56,16 @@ def create_app(verify_database: bool = True) -> FastAPI:
         lifespan=lifespan if verify_database else None,
     )
     setup_middlewares(app, settings)
-    app.include_router(api_v1_router, prefix="/api/v1")
+
+    api_v1 = APIRouter()
+    api_v1.include_router(health_router)
+    api_v1.include_router(auth_router)
+    api_v1.include_router(user_router)
+    api_v1.include_router(places_router)
+    api_v1.include_router(itineraries_router)
+    api_v1.include_router(shared_router)
+
+    app.include_router(api_v1, prefix="/api/v1")
     return app
 
 
