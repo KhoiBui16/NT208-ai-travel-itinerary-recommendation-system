@@ -2,18 +2,16 @@
 
 from src.auth.models import RefreshToken, User
 from src.core.database import Base
-from src.models.extras import (
+from src.itineraries.models.chat import ChatMessage, ChatSession
+from src.itineraries.models.extras import (
     Accommodation,
-    ChatMessage,
-    ChatSession,
-    ExtraExpense,
     GuestClaimToken,
     ScrapedSource,
     ShareLink,
     TripRating,
 )
+from src.itineraries.models.trip import Activity, ExtraExpense, Trip, TripDay
 from src.models.place import Destination, Hotel, Place, SavedPlace
-from src.models.trip import Activity, Trip, TripDay
 
 __all__ = [
     "Base",

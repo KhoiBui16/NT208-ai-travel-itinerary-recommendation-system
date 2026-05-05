@@ -1,4 +1,4 @@
-"""Backward-compatibility shim — extras/chat models moved to itineraries.models."""
+"""Itineraries ORM model exports."""
 
 from src.itineraries.models.chat import ChatMessage, ChatSession
 from src.itineraries.models.extras import (
@@ -8,13 +8,18 @@ from src.itineraries.models.extras import (
     ShareLink,
     TripRating,
 )
+from src.itineraries.models.trip import Activity, ExtraExpense, Trip, TripDay
 
 __all__ = [
     "Accommodation",
+    "Activity",
     "ChatMessage",
     "ChatSession",
+    "ExtraExpense",
     "GuestClaimToken",
     "ScrapedSource",
     "ShareLink",
+    "Trip",
+    "TripDay",
     "TripRating",
 ]

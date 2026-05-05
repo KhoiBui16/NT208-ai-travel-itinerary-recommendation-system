@@ -208,7 +208,7 @@ async def test_claim__valid_token__success(service: ItineraryService, mock_repo:
     from src.schemas.itinerary import ClaimTripRequest
 
     req = ClaimTripRequest(claim_token="claim_abc123")
-    with patch("src.services.itinerary_service.hash_token", return_value="hashed"):
+    with patch("src.itineraries.service.hash_token", return_value="hashed"):
         result = await service.claim(1, user_id=5, request=req)
     assert result["claimed"] is True
 
