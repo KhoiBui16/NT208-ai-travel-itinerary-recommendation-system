@@ -4,10 +4,10 @@ from src.itineraries.models.chat import ChatMessage, ChatSession
 from src.itineraries.models.extras import (
     Accommodation,
     GuestClaimToken,
-    ScrapedSource,
     ShareLink,
     TripRating,
 )
+from src.places.models import ScrapedSource
 
 __all__ = [
     "Accommodation",

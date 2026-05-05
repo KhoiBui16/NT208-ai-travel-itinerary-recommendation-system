@@ -124,30 +124,3 @@ class GuestClaimToken(Base):
     )
 
     trip: Mapped["Trip"] = relationship(back_populates="claim_tokens")
-
-
-class ScrapedSource(Base):
-    """ETL run tracking — when each source was last crawled.
-
-    Temporary home in itineraries — moves to places/models.py in PR 4.
-    """
-
-    __tablename__ = "scraped_sources"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    source_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    last_crawled: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
-    )
-    items_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
-    )
