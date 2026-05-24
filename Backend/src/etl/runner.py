@@ -32,6 +32,7 @@ from src.etl.transformers.place_transformer import transform
 logger = logging.getLogger(__name__)
 
 HOTELS_YAML = Path(__file__).parent / "data" / "hotels.yaml"
+MIN_GOONG_PLACES_BEFORE_OSM_FALLBACK = 10
 
 
 async def run_etl(
@@ -74,11 +75,21 @@ async def run_etl(
             if not hotels_only:
                 for city in target_cities:
                     try:
-                        # Extract
-                        raw_pois = await osm.extract_pois(city)
-                        logger.info("Extracted %d POIs for %s", len(raw_pois), city)
+                        # Extract — Goong first, OSM fallback for resilience.
+                        raw_pois = []
+                        if goong:
+                            raw_pois = await goong.extract_pois(
+                                city,
+                                max_items=settings.etl_max_places_per_city,
+                            )
+                            logger.info("Goong extracted %d POIs for %s", len(raw_pois), city)
 
-                        # Geocode missing coords
+                        if not goong or len(raw_pois) < MIN_GOONG_PLACES_BEFORE_OSM_FALLBACK:
+                            osm_pois = await osm.extract_pois(city)
+                            logger.info("OSM extracted %d POIs for %s", len(osm_pois), city)
+                            raw_pois.extend(osm_pois)
+
+                        # Geocode missing coords with Goong when available.
                         if goong:
                             for poi in raw_pois:
                                 if not poi.get("lat"):

@@ -14,6 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import Base
@@ -66,6 +67,8 @@ class Place(Base):
     review_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     image: Mapped[str] = mapped_column(String(500), default="", nullable=False)
     opening_hours: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    raw_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     source: Mapped[str] = mapped_column(String(30), default="seed", nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -70,6 +70,14 @@ async def upsert_places(session: AsyncSession, places: list[dict]) -> int:
         city = place_data["destination"]
         dest = await get_or_create_destination(session, city)
 
+        external_id = place_data.get("external_id")
+        if external_id:
+            existing = await _get_place_by_external_id(session, str(external_id))
+            if existing:
+                await _update_existing_place(existing, place_data, dest.id)
+                count += 1
+                continue
+
         stmt = insert(Place).values(
             destination_id=dest.id,
             name=place_data["name"],
@@ -80,8 +88,11 @@ async def upsert_places(session: AsyncSession, places: list[dict]) -> int:
             longitude=place_data.get("longitude"),
             avg_cost=place_data.get("avg_cost", 0),
             rating=place_data.get("rating", 0),
+            review_count=place_data.get("review_count", 0),
             image=place_data.get("image", ""),
             opening_hours=place_data.get("opening_hours"),
+            external_id=external_id,
+            raw_metadata=place_data.get("raw_metadata"),
             source=place_data.get("source", "etl"),
         )
         stmt = stmt.on_conflict_do_update(
@@ -93,6 +104,9 @@ async def upsert_places(session: AsyncSession, places: list[dict]) -> int:
                 "latitude": stmt.excluded.latitude,
                 "longitude": stmt.excluded.longitude,
                 "rating": stmt.excluded.rating,
+                "review_count": stmt.excluded.review_count,
+                "external_id": stmt.excluded.external_id,
+                "raw_metadata": stmt.excluded.raw_metadata,
                 "source": stmt.excluded.source,
             },
         )
@@ -111,6 +125,34 @@ async def upsert_places(session: AsyncSession, places: list[dict]) -> int:
 
     await session.flush()
     return count
+
+
+async def _get_place_by_external_id(session: AsyncSession, external_id: str) -> Place | None:
+    """Return a place by provider id when ETL source supplies one."""
+    result = await session.execute(select(Place).where(Place.external_id == external_id))
+    return result.scalar_one_or_none()
+
+
+async def _update_existing_place(
+    place: Place,
+    place_data: dict,
+    destination_id: int,
+) -> None:
+    """Update a previously imported place matched by external_id."""
+    place.destination_id = destination_id
+    place.name = place_data["name"]
+    place.category = place_data["category"]
+    place.description = place_data.get("description", "")
+    place.location = place_data.get("location", "")
+    place.latitude = place_data.get("latitude")
+    place.longitude = place_data.get("longitude")
+    place.avg_cost = place_data.get("avg_cost", 0)
+    place.rating = place_data.get("rating", 0)
+    place.review_count = place_data.get("review_count", 0)
+    place.image = place_data.get("image", "")
+    place.opening_hours = place_data.get("opening_hours")
+    place.raw_metadata = place_data.get("raw_metadata")
+    place.source = place_data.get("source", "etl")
 
 
 async def upsert_hotels(session: AsyncSession, hotels: list[dict]) -> int:
