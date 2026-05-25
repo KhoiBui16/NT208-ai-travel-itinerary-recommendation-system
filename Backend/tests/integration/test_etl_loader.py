@@ -28,6 +28,8 @@ async def test_etl_loader__upsert_places_and_hotels_twice__is_idempotent() -> No
             "description": "Museum for ETL smoke test",
             "location": "1 Test Street",
             "rating": 4.5,
+            "external_id": "goong-test-museum",
+            "raw_metadata": {"provider": "goong"},
             "source": "test",
         }
     ]
@@ -68,6 +70,8 @@ async def test_etl_loader__upsert_places_and_hotels_twice__is_idempotent() -> No
                 )
 
                 assert len(place_count) == 1
+                assert place_count[0].external_id == "goong-test-museum"
+                assert place_count[0].raw_metadata == {"provider": "goong"}
                 assert len(hotel_count) == 1
     finally:
         async with AsyncSessionLocal() as session:

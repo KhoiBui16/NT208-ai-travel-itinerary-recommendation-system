@@ -26,6 +26,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00027 | B2 | `fix/00027-b2-fe-be-contract-gaps` | Fix FE-BE contract gaps — TripLibrary fields, CreateTrip generateItinerary | merged | FE build pass | #27 |
 | 00028 | B2 | `fix/00028-b2-register-otp-bypass` | Bypass client-side OTP placeholder in Register flow | merged | FE build pass | #28 |
 | 00031 | B3 | `feat/00031-b3-playwright-e2e` | Setup Playwright e2e tests, audit .claude/ operational files, đồng bộ docs/ | pending | 11/11 e2e pass, 117 BE tests pass, FE build pass | #31 |
+| 00040 | C | `feat/00040-c-goong-etl-readiness` | Goong-first ETL readiness, place metadata migration, extractor/client tests | in_progress | BE lint/unit/integration/migration pass; real Goong smoke pending key load | pending |
 
 ## Scope Task 00006
 

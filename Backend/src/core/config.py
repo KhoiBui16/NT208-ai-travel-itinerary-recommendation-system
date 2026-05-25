@@ -22,10 +22,11 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 CONFIG_FILE = Path(__file__).resolve().parents[2] / "config.yaml"
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 DEV_JWT_SECRET = "local-development-change-me-minimum-32-chars"
 
 
@@ -113,7 +114,10 @@ class AppSettings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet"
     jwt_secret_key: SecretStr = SecretStr(DEV_JWT_SECRET)
     gemini_api_key: SecretStr = SecretStr("")
-    goong_api_key: SecretStr = SecretStr("")
+    goong_api_key: SecretStr = Field(
+        default=SecretStr(""),
+        validation_alias=AliasChoices("GOONG_API_KEY", "GOONG_MAP_KEY"),
+    )
     redis_url: str = "redis://localhost:6379/0"
     analytics_database_url: SecretStr = SecretStr("")
 
@@ -192,7 +196,7 @@ class AppSettings(BaseSettings):
     etl_max_places_per_city: int = 75
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILE,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

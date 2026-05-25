@@ -97,10 +97,13 @@ def transform(raw_pois: list[dict], city: str) -> list[dict]:
             "latitude": poi.get("lat"),
             "longitude": poi.get("lng"),
             "avg_cost": 0,
-            "rating": 0,
+            "rating": poi.get("rating", 0),
+            "review_count": poi.get("review_count", 0),
             "description": poi.get("description", ""),
             "image": "",
             "opening_hours": poi.get("opening_hours"),
+            "external_id": poi.get("external_id"),
+            "raw_metadata": poi.get("raw_metadata"),
             "source": poi.get("source", "etl"),
         }
 

@@ -32,6 +32,7 @@ from src.etl.transformers.place_transformer import transform
 logger = logging.getLogger(__name__)
 
 HOTELS_YAML = Path(__file__).parent / "data" / "hotels.yaml"
+MIN_GOONG_PLACES_BEFORE_OSM_FALLBACK = 10
 
 
 async def run_etl(
@@ -70,33 +71,19 @@ async def run_etl(
     total_hotels = 0
 
     async with AsyncSessionLocal() as session:
-        async with session.begin():
-            if not hotels_only:
-                for city in target_cities:
-                    try:
-                        # Extract
-                        raw_pois = await osm.extract_pois(city)
-                        logger.info("Extracted %d POIs for %s", len(raw_pois), city)
+        if not hotels_only:
+            for city in target_cities:
+                try:
+                    places = await _extract_places_for_city(
+                        city=city,
+                        goong=goong,
+                        osm=osm,
+                        max_places=settings.etl_max_places_per_city,
+                    )
 
-                        # Geocode missing coords
-                        if goong:
-                            for poi in raw_pois:
-                                if not poi.get("lat"):
-                                    coords = await goong.geocode(f"{poi['name']} {city}")
-                                    if coords:
-                                        poi["lat"] = coords["lat"]
-                                        poi["lng"] = coords["lng"]
-
-                        # Transform
-                        places = transform(raw_pois, city)[: settings.etl_max_places_per_city]
-                        logger.info("Transformed %d valid places for %s", len(places), city)
-
-                        # Load
-                        if not dry_run and places:
+                    if not dry_run and places:
+                        async with session.begin():
                             count = await upsert_places(session, places)
-                            total_places += count
-                            logger.info("Loaded %d places for %s", count, city)
-
                             await update_source_tracking(
                                 session,
                                 source_name="etl_pipeline",
@@ -104,28 +91,24 @@ async def run_etl(
                                 items_count=count,
                                 status="success",
                             )
+                        total_places += count
+                        logger.info("Loaded %d places for %s", count, city)
 
-                    except Exception:
-                        logger.error("ETL failed for %s", city, exc_info=True)
-                        if not dry_run:
-                            await update_source_tracking(
-                                session,
-                                source_name="etl_pipeline",
-                                city=city,
-                                items_count=0,
-                                status="failed",
-                                error_message="See logs",
-                            )
+                except Exception:
+                    logger.error("ETL failed for %s", city, exc_info=True)
+                    if not dry_run:
+                        await _record_failed_source(session, city)
 
-            # Load hotels from YAML
-            if HOTELS_YAML.exists():
-                raw_hotels = _load_hotels_yaml()
-                for city in target_cities:
-                    hotels = transform_hotels(raw_hotels, city)
-                    if not dry_run and hotels:
+        # Load hotels from YAML
+        if HOTELS_YAML.exists():
+            raw_hotels = _load_hotels_yaml()
+            for city in target_cities:
+                hotels = transform_hotels(raw_hotels, city)
+                if not dry_run and hotels:
+                    async with session.begin():
                         count = await upsert_hotels(session, hotels)
-                        total_hotels += count
-                        logger.info("Loaded %d hotels for %s", count, city)
+                    total_hotels += count
+                    logger.info("Loaded %d hotels for %s", count, city)
 
     # Invalidate Redis cache after all writes
     if not dry_run and redis:
@@ -139,6 +122,65 @@ async def run_etl(
         total_places,
         total_hotels,
     )
+
+
+async def _extract_places_for_city(
+    *,
+    city: str,
+    goong: GoongExtractor | None,
+    osm: OsmExtractor,
+    max_places: int,
+) -> list[dict]:
+    """Extract, enrich, and normalize places for one city."""
+    raw_pois = []
+    if goong:
+        try:
+            raw_pois = await goong.extract_pois(city, max_items=max_places)
+            logger.info("Goong extracted %d POIs for %s", len(raw_pois), city)
+        except Exception:
+            logger.warning("Goong extraction failed for %s; falling back to OSM", city)
+
+    if not goong or len(raw_pois) < MIN_GOONG_PLACES_BEFORE_OSM_FALLBACK:
+        osm_pois = await osm.extract_pois(city)
+        logger.info("OSM extracted %d POIs for %s", len(osm_pois), city)
+        raw_pois.extend(osm_pois)
+
+    if goong:
+        await _geocode_missing_coordinates(goong, raw_pois, city)
+
+    places = transform(raw_pois, city)[:max_places]
+    logger.info("Transformed %d valid places for %s", len(places), city)
+    return places
+
+
+async def _geocode_missing_coordinates(
+    goong: GoongExtractor,
+    raw_pois: list[dict],
+    city: str,
+) -> None:
+    """Fill missing POI coordinates with Goong geocoding when possible."""
+    for poi in raw_pois:
+        if not poi.get("lat"):
+            coords = await goong.geocode(f"{poi['name']} {city}")
+            if coords:
+                poi["lat"] = coords["lat"]
+                poi["lng"] = coords["lng"]
+
+
+async def _record_failed_source(session, city: str) -> None:
+    """Persist ETL failure tracking in a fresh transaction."""
+    try:
+        async with session.begin():
+            await update_source_tracking(
+                session,
+                source_name="etl_pipeline",
+                city=city,
+                items_count=0,
+                status="failed",
+                error_message="See logs",
+            )
+    except Exception:
+        logger.warning("Could not persist ETL failure tracking for %s", city, exc_info=True)
 
 
 def _load_hotels_yaml() -> list[dict]:

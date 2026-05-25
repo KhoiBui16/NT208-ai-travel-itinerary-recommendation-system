@@ -83,6 +83,24 @@ def test_transform__deduplicates():
     assert len(result) == 1
 
 
+def test_transform__preserves_goong_metadata():
+    raw = [
+        {
+            "name": "Văn Miếu",
+            "category": "attraction",
+            "lat": 21.028,
+            "lng": 105.835,
+            "external_id": "goong-1",
+            "source": "goong_places",
+            "raw_metadata": {"provider": "goong"},
+        },
+    ]
+    result = transform(raw, "Hà Nội")
+    assert result[0]["external_id"] == "goong-1"
+    assert result[0]["raw_metadata"] == {"provider": "goong"}
+    assert result[0]["source"] == "goong_places"
+
+
 def test_transform__skips_no_name():
     raw = [
         {"category": "food"},
