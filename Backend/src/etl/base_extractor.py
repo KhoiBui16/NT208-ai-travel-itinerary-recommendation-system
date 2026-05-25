@@ -10,6 +10,7 @@ import logging
 import httpx
 
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_BASE_DELAY = 5.0
@@ -83,7 +84,9 @@ class BaseExtractor:
                     await asyncio.sleep(delay)
                     last_error = exc
                     continue
-                raise
+                raise RuntimeError(
+                    f"HTTP {exc.response.status_code} while fetching {url}"
+                ) from None
 
             except (httpx.ConnectError, httpx.ReadError) as exc:
                 delay = self.base_delay * (3**attempt)

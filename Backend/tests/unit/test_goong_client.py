@@ -55,3 +55,17 @@ async def test_goong_client__geocode_parses_coordinates(monkeypatch):
     result = await client.geocode("Hà Nội")
 
     assert result == {"lat": 21.03, "lng": 105.85}
+
+
+@pytest.mark.asyncio
+async def test_goong_client__geocode_runtime_error_returns_none(monkeypatch):
+    client = GoongClient(api_key="test-key")
+
+    async def fake_fetch(url: str, params: dict | None = None, headers: dict | None = None):
+        raise RuntimeError("HTTP 403 while fetching https://rsapi.goong.io/geocode")
+
+    monkeypatch.setattr(client, "fetch", fake_fetch)
+
+    result = await client.geocode("Hà Nội")
+
+    assert result is None

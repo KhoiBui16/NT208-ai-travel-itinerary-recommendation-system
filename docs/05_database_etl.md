@@ -449,10 +449,14 @@ CHECK (
 | `review_count` | `int` | NOT NULL | `0` | Số review |
 | `image` | `varchar(500)` | NOT NULL | `""` | — |
 | `opening_hours` | `varchar(100)` | NULLABLE | — | Giờ mở cửa |
-| `source` | `varchar(30)` | NOT NULL | `"seed"` | `"seed"` / `"osm"` / `"goong"` |
+| `external_id` | `varchar(512)` | NULLABLE, INDEX | — | Provider place id; Goong `place_id` có thể rất dài |
+| `raw_metadata` | `jsonb` | NULLABLE | — | Sanitized provider detail/prediction, không chứa API key |
+| `source` | `varchar(30)` | NOT NULL | `"seed"` | `"seed"` / `"osm_overpass"` / `"goong_places"` |
 | `updated_at` | `timestamptz` | NOT NULL | `now()` | Auto-update |
 
 **Unique constraint:** `uq_places_name_dest` trên `(name, destination_id)` — không trùng tên trong cùng destination.
+
+**Goong metadata:** `external_id` được ưu tiên khi upsert để rerun ETL không tạo duplicate lớn; nếu thiếu `external_id`, loader fallback về `(name, destination_id)`.
 
 ---
 
@@ -613,15 +617,16 @@ FE gọi GET /places/destinations
 │                                                              │
 │  Sources:                                                    │
 │  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐  │
-│  │ OSM/Overpass  │  │ Goong API     │  │ hotels.yaml    │  │
-│  │ (POI data)    │  │ (geocode,     │  │ (static test   │  │
-│  │ No API key    │  │  place detail)│  │  data)         │  │
+│  │ Goong API     │  │ OSM/Overpass  │  │ hotels.yaml    │  │
+│  │ autocomplete, │  │ fallback POI  │  │ static hotel   │  │
+│  │ detail,       │  │ no API key    │  │ seed data      │  │
+│  │ geocode       │  │               │  │                │  │
 │  │               │  │ Cần API key   │  │ No API key     │  │
 │  └───────┬───────┘  └───────┬───────┘  └───────┬────────┘  │
 │          │                  │                   │            │
 │          ▼                  ▼                   ▼            │
 │  ┌─────────────┐  ┌────────────────┐  ┌────────────────┐  │
-│  │ osm_        │  │ goong_         │  │ hotel_         │  │
+│  │ goong_      │  │ osm_           │  │ hotel_         │  │
 │  │ extractor   │  │ extractor      │  │ transformer    │  │
 │  └──────┬──────┘  └───────┬────────┘  └───────┬────────┘  │
 │         │                 │                    │            │
@@ -633,8 +638,8 @@ FE gọi GET /places/destinations
 │                          ▼                                   │
 │  ┌──────────────────────────────────────────────────┐      │
 │  │              db_loader (upsert)                   │      │
-│  │  • Check unique constraint (name + destination)  │      │
-│  │  • Insert mới HOẶC Update existing              │      │
+│  │  • Match external_id first, fallback name+dest   │      │
+│  │  • Insert mới HOẶC update existing              │      │
 │  │  • Update scraped_sources tracking               │      │
 │  └──────────────────────┬───────────────────────────┘      │
 │                          ▼                                   │
@@ -650,7 +655,7 @@ Backend/src/etl/
 ├── __main__.py              # CLI entry point — `python -m src.etl`
 ├── extractors/
 │   ├── osm_extractor.py     # OSM/Overpass POI extraction (không cần API key)
-│   └── goong_extractor.py   # Goong geocode/detail (cần GOONG_API_KEY)
+│   └── goong_extractor.py   # Goong autocomplete/detail/geocode
 ├── transformers/
 │   ├── hotel_transformer.py # Chuẩn hóa hotel data → hotels schema
 │   └── place_transformer.py # Chuẩn hóa place data → places schema
@@ -663,18 +668,23 @@ Backend/src/etl/
 ### Upsert strategy
 
 ```text
-1. Query: SELECT FROM places WHERE name = ? AND destination_id = ?
+1. Nếu provider có `external_id`:
+   ├── Query: SELECT FROM places WHERE external_id = ?
    ├── Tồn tại → UPDATE các trường thay đổi
+   └── Không tồn tại → tiếp tục insert/upsert theo unique constraint
+
+2. Fallback unique constraint:
+   ├── ON CONFLICT (name, destination_id) DO UPDATE
    └── Không tồn tại → INSERT record mới
 
-2. Update scraped_sources:
-   ├── source_name = "osm" / "goong" / "hotels_yaml"
+3. Update scraped_sources:
+   ├── source_name = "etl_pipeline"
    ├── city = "Hà Nội"
    ├── items_count = số record đã insert/update
    ├── status = "success" / "error"
    └── last_crawled = now()
 
-3. Invalidate Redis cache:
+4. Invalidate Redis cache:
    ├── Xóa key "destinations:all"
    ├── Xóa key "destinations:detail:{city}"
    └── Xóa key pattern "places:search:*"
@@ -689,7 +699,19 @@ uv run python -m src.etl --hotels-only --cities "Hà Nội"
 
 # Full selected cities (cần GOONG_API_KEY)
 uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng"
+
+# Dry-run Goong-first ETL, không ghi DB
+uv run python -m src.etl --cities "Hà Nội" --dry-run
 ```
+
+### Goong-first ETL readiness
+
+- `GOONG_API_KEY`, `GOONG_MAP_KEY`, và `GOONG_MAP_API_KEY` đều được nhận bởi config; dùng một key REST ở BE/ETL, không đưa key REST vào FE.
+- Goong endpoint chuẩn: `/place/autocomplete`, `/place/detail`, `/geocode`.
+- Luồng hiện tại: Goong autocomplete theo keyword/category → place detail → transform/dedupe → DB upsert; OSM chỉ là fallback khi Goong lỗi hoặc trả quá ít dữ liệu.
+- ETL CLI import đủ ORM registry để chạy độc lập ngoài FastAPI app bootstrap.
+- HTTP provider logs được giảm xuống mức warning để tránh log query string chứa API key.
+- Local smoke 2026-05-25: `Hà Nội` dry-run trả 75 candidates, 60 valid places; write load được 60 places + 3 hotels và invalidate Redis cache.
 
 ---
 
@@ -710,6 +732,7 @@ uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng"
 | `places` | `name` | B-tree | Search by name |
 | `places` | `category` | B-tree | Filter by category |
 | `places` | `destination_id` | B-tree | List by destination |
+| `places` | `external_id` | B-tree | Idempotent provider upsert |
 | `places` | `(name, destination_id)` | UNIQUE | Prevent duplicate in same dest |
 | `hotels` | `destination_id` | B-tree | List by destination |
 | `hotels` | `(name, destination_id)` | UNIQUE | Prevent duplicate in same dest |
@@ -723,9 +746,8 @@ uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng"
 
 ## 7. Việc còn thiếu
 
-- Cung cấp `GOONG_API_KEY` để chạy full ETL (geocode + detail).
-- Chạy full ETL cho danh sách city chính (Hà Nội, Đà Nẵng, TP.HCM, Phú Quốc, Hội An...).
-- Kiểm tra số lượng places/hotels sau crawl — hiện DB có thể trống nếu chưa chạy ETL.
+- Chạy full ETL cho các city chính còn lại (Đà Nẵng, TP.HCM, Phú Quốc, Hội An...).
+- Kiểm tra số lượng places/hotels sau crawl trước khi test AI generate cho city đó.
 - Thiết lập lịch crawl định kỳ nếu cần dữ liệu mới (gợi ý: cron 30 ngày/lần).
 - ETL chưa có incremental update — mỗi lần chạy reload toàn bộ city.
 - Phase C: `chat_sessions` / `chat_messages` cần API endpoints.

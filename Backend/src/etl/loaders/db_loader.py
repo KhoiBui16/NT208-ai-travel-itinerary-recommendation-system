@@ -12,6 +12,10 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# ETL runs outside the FastAPI app bootstrap, so import related ORM modules here
+# to register string-based relationships such as Place.activities -> Activity.
+import src.auth.models  # noqa: F401
+import src.itineraries.models  # noqa: F401
 from src.places.models import Destination, Hotel, Place, ScrapedSource
 
 logger = logging.getLogger(__name__)
