@@ -1,0 +1,317 @@
+"""Unit tests for C.1 itinerary generation pipeline."""
+
+import json
+from datetime import date, datetime
+from typing import Any
+
+import pytest
+
+from src.core.config import AppSettings
+from src.core.exceptions import ValidationException
+from src.itineraries.models.extras import Accommodation
+from src.itineraries.models.trip import Activity, Trip, TripDay
+from src.itineraries.pipeline import ItineraryPipeline
+from src.itineraries.schemas import GenerateItineraryRequest
+from src.places.models import Destination, Hotel, Place
+
+
+class FakeSession:
+    async def flush(self) -> None:
+        return None
+
+    def expire_all(self) -> None:
+        return None
+
+
+class FakeLLM:
+    def __init__(self, responses: list[dict[str, Any]]) -> None:
+        self.responses = responses
+        self.calls = 0
+        self.prompts: list[str] = []
+
+    async def generate_text(self, prompt: str) -> str:
+        self.prompts.append(prompt)
+        self.calls += 1
+        index = min(self.calls - 1, len(self.responses) - 1)
+        return json.dumps(self.responses[index])
+
+
+class FakeRepo:
+    def __init__(self, *, places: list[Place]) -> None:
+        self.destination = Destination(id=1, name="Hà Nội", slug="ha-noi", places_count=len(places))
+        self.places = places
+        self.hotels = [
+            Hotel(
+                id=1,
+                destination_id=1,
+                name="Hotel A",
+                price_per_night=500000,
+                rating=4.5,
+                review_count=100,
+                location="Hoàn Kiếm",
+                amenities="wifi",
+                description="",
+                image="",
+            )
+        ]
+        self.trip: Trip | None = None
+        self._day_id = 10
+        self._activity_id = 20
+
+    async def resolve_destination_for_ai(self, destination: str) -> Destination | None:
+        return self.destination if destination == "Hà Nội" else None
+
+    async def search_places_for_ai(
+        self,
+        destination_id: int,
+        categories: list[str] | None = None,
+        limit: int = 30,
+    ) -> list[Place]:
+        if categories:
+            return [place for place in self.places if place.category in categories][:limit]
+        return self.places[:limit]
+
+    async def get_hotels_for_ai(self, destination_id: int, limit: int = 8) -> list[Hotel]:
+        return self.hotels[:limit]
+
+    async def create_trip(self, **kwargs: object) -> Trip:
+        self.trip = Trip(
+            id=1,
+            created_at=datetime(2026, 5, 25),
+            updated_at=datetime(2026, 5, 25),
+            **kwargs,
+        )
+        self.trip.days = []
+        self.trip.accommodations = []
+        return self.trip
+
+    async def add_day(self, **kwargs: object) -> TripDay:
+        assert self.trip is not None
+        self._day_id += 1
+        day = TripDay(id=self._day_id, **kwargs)
+        day.activities = []
+        day.extra_expenses = []
+        self.trip.days.append(day)
+        return day
+
+    async def add_activity(self, **kwargs: object) -> Activity:
+        assert self.trip is not None
+        self._activity_id += 1
+        activity = Activity(id=self._activity_id, **kwargs)
+        activity.extra_expenses = []
+        self.trip.days[-1].activities.append(activity)
+        return activity
+
+    async def add_accommodation(self, **kwargs: object) -> Accommodation:
+        assert self.trip is not None
+        acc = Accommodation(id=1, **kwargs)
+        self.trip.accommodations.append(acc)
+        return acc
+
+    async def get_with_full_data(self, trip_id: int) -> Trip | None:
+        return self.trip
+
+
+def _make_request(days: int = 2) -> GenerateItineraryRequest:
+    return GenerateItineraryRequest(
+        destination="Hà Nội",
+        startDate=date(2026, 6, 1),
+        endDate=date(2026, 6, days),
+        budget=5000000,
+        adults=2,
+        children=0,
+        interests=["food", "culture"],
+    )
+
+
+def _make_places(count: int = 4) -> list[Place]:
+    categories = ["food", "attraction", "food", "attraction", "shopping", "nature"]
+    return [
+        Place(
+            id=idx + 1,
+            destination_id=1,
+            name=f"Place {idx + 1}",
+            category=categories[idx],
+            description="",
+            location="Hà Nội",
+            latitude=21.0 + idx,
+            longitude=105.0 + idx,
+            avg_cost=50000,
+            rating=4.5,
+            review_count=100,
+            image="",
+            source="goong_places",
+        )
+        for idx in range(count)
+    ]
+
+
+def _valid_ai_payload() -> dict[str, Any]:
+    return {
+        "tripName": "AI Hà Nội Trip",
+        "totalCost": 1200000,
+        "days": [
+            {
+                "dayNumber": 1,
+                "label": "Ngày 1",
+                "activities": [
+                    {
+                        "time": "09:00",
+                        "name": "Place 1",
+                        "type": "food",
+                        "location": "Hà Nội",
+                        "placeId": 1,
+                        "adultPrice": 50000,
+                    },
+                    {
+                        "time": "14:00",
+                        "name": "Unknown place",
+                        "type": "attraction",
+                        "location": "Hà Nội",
+                        "placeId": 999,
+                        "adultPrice": 100000,
+                    },
+                    {
+                        "time": "18:00",
+                        "name": "Place 4",
+                        "type": "attraction",
+                        "location": "Hà Nội",
+                        "placeId": 4,
+                        "adultPrice": 80000,
+                    },
+                    {
+                        "time": "20:00",
+                        "name": "Place 5",
+                        "type": "shopping",
+                        "location": "Hà Nội",
+                        "placeId": 5,
+                        "adultPrice": 30000,
+                    },
+                    {
+                        "time": "21:30",
+                        "name": "Place 6",
+                        "type": "nature",
+                        "location": "Hà Nội",
+                        "placeId": 6,
+                        "adultPrice": 0,
+                    },
+                ],
+            },
+            {
+                "dayNumber": 2,
+                "label": "Ngày 2",
+                "activities": [
+                    {
+                        "time": "09:00",
+                        "name": "Place 2",
+                        "type": "attraction",
+                        "location": "Hà Nội",
+                        "placeId": 2,
+                        "adultPrice": 100000,
+                    },
+                    {
+                        "time": "18:00",
+                        "name": "Place 3",
+                        "type": "food",
+                        "location": "Hà Nội",
+                        "placeId": 3,
+                        "adultPrice": 50000,
+                    },
+                    {
+                        "time": "20:00",
+                        "name": "Place 4",
+                        "type": "attraction",
+                        "location": "Hà Nội",
+                        "placeId": 4,
+                        "adultPrice": 80000,
+                    },
+                    {
+                        "time": "21:00",
+                        "name": "Place 5",
+                        "type": "shopping",
+                        "location": "Hà Nội",
+                        "placeId": 5,
+                        "adultPrice": 30000,
+                    },
+                    {
+                        "time": "22:00",
+                        "name": "Place 6",
+                        "type": "nature",
+                        "location": "Hà Nội",
+                        "placeId": 6,
+                        "adultPrice": 0,
+                    },
+                ],
+            },
+        ],
+        "accommodations": [
+            {
+                "name": "Hotel A",
+                "hotelId": 1,
+                "checkIn": "2026-06-01",
+                "checkOut": "2026-06-02",
+                "pricePerNight": 500000,
+                "totalPrice": 500000,
+                "bookingType": "nightly",
+                "duration": 1,
+                "dayIds": [1, 2],
+            }
+        ],
+    }
+
+
+@pytest.mark.asyncio
+async def test_pipeline__not_enough_places__does_not_call_llm() -> None:
+    llm = FakeLLM([_valid_ai_payload()])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=[]),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    with pytest.raises(ValidationException):
+        await pipeline.generate(_make_request(), user_id=None)
+
+    assert llm.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_pipeline__persists_generated_trip_and_nulls_unknown_place() -> None:
+    llm = FakeLLM([_valid_ai_payload()])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places()),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    trip = await pipeline.generate(_make_request(), user_id=7)
+
+    assert trip.user_id == 7
+    assert trip.ai_generated is True
+    assert len(trip.days) == 2
+    assert trip.days[0].activities[0].place_id == 1
+    assert trip.days[0].activities[1].place_id is None
+    assert trip.accommodations[0].hotel_id == 1
+    assert "5 to 5 activities" in llm.prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_pipeline__retries_invalid_output_then_accepts_valid() -> None:
+    invalid = {**_valid_ai_payload(), "days": [_valid_ai_payload()["days"][0]]}
+    llm = FakeLLM([invalid, _valid_ai_payload()])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places()),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    trip = await pipeline.generate(_make_request(), user_id=None)
+
+    assert trip.trip_name == "AI Hà Nội Trip"
+    assert llm.calls == 2

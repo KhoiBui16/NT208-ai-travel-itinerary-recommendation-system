@@ -85,10 +85,15 @@ export interface Hotel {
 }
 
 export interface Accommodation {
-  hotel: Hotel;
+  hotel?: Hotel | null;
   dayIds: number[];
   bookingType?: 'hourly' | 'nightly' | 'daily';
   duration?: number;
+  name?: string;
+  checkIn?: string;
+  checkOut?: string;
+  pricePerNight?: number;
+  totalPrice?: number;
 }
 
 export interface TravelerInfo {

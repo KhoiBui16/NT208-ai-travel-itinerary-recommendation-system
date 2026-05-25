@@ -26,7 +26,10 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00027 | B2 | `fix/00027-b2-fe-be-contract-gaps` | Fix FE-BE contract gaps — TripLibrary fields, CreateTrip generateItinerary | merged | FE build pass | #27 |
 | 00028 | B2 | `fix/00028-b2-register-otp-bypass` | Bypass client-side OTP placeholder in Register flow | merged | FE build pass | #28 |
 | 00031 | B3 | `feat/00031-b3-playwright-e2e` | Setup Playwright e2e tests, audit .claude/ operational files, đồng bộ docs/ | pending | 11/11 e2e pass, 117 BE tests pass, FE build pass | #31 |
-| 00040 | C | `feat/00040-c-goong-etl-readiness` | Goong-first ETL readiness, place metadata migration, extractor/client tests | in_progress | BE lint/unit/integration/migration pass; real Goong smoke pending key load | pending |
+| 00040 | C | `feat/00040-c-goong-etl-readiness` | Goong-first ETL readiness, place metadata migration, extractor/client tests | ready_for_pr | BE lint/format/unit/integration/migration pass; real Goong ETL Hà Nội loaded 60 places + 3 hotels | pending |
+| 00041 | C | `feat/00041-c-generate-pipeline` | C.1 AI generate pipeline with DB recommendation context, Gemini structured JSON, user/guest AI quota | ready_for_pr | BE lint/format/unit/integration/migration pass; FE build pass; Playwright 11/11 pass; browser AI smoke 1-day 201 and workspace loads generated trip | pending |
+=======
+
 
 ## Scope Task 00006
 
@@ -160,16 +163,45 @@ Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycl
 
 ## Còn Lại Trước Phase C
 
-- Full ETL real data sau khi có `GOONG_API_KEY`.
-- Phase C AI services (generate pipeline, companion chat, chat history).
+- Full ETL real data cho các city còn lại sau Hà Nội.
+- Phase C AI services còn lại: C.2 suggestion, C.3 companion chat, C.4 chat history, C.5 optional analytics.
 - Optional analytics EP-34 nếu cần.
 - Mở rộng e2e tests: trip workspace drag-and-drop, calendar, accommodation CRUD flow.
+
+## Scope Task 00040
+
+- Thêm Goong REST client dùng chung: autocomplete, place detail, geocode.
+- Chuẩn hóa Goong endpoints sang lowercase path theo docs.
+- Chuyển ETL sang Goong-first: autocomplete/detail theo keyword category, OSM fallback khi Goong lỗi hoặc quá ít data.
+- Thêm `places.external_id` và `places.raw_metadata` để lưu sanitized provider metadata, không chứa API key.
+- Mở rộng `external_id` lên `varchar(512)` sau khi real Goong smoke cho thấy `place_id` dài hơn 120 ký tự.
+- Upsert ưu tiên `external_id`, fallback unique `(name, destination_id)`.
+- ETL CLI import đủ ORM registry để chạy ngoài FastAPI app.
+- Giảm log `httpx` để tránh leak Goong key trong query string.
+- Local smoke 2026-05-25: `uv run python -m src.etl --cities "Hà Nội"` load 60 places + 3 hotels, invalidate Redis cache.
+
+## Scope Task 00041
+
+- Tạo shared AI infra tối thiểu cho C.1: `src/agent/config.py`, `src/agent/llm.py`, prompt/schema packages.
+- Tạo `src/itineraries/pipeline.py` theo by-domain: resolve destination, query DB recommendation context, gọi Gemini, validate output, persist trip.
+- `POST /api/v1/itineraries/generate` thay stub bằng pipeline thật.
+- Rate limit AI cho auth user và guest fingerprint; Redis down vẫn fail-closed.
+- Empty-context guard: nếu destination chưa có đủ places thì trả 422 trước khi gọi Gemini.
+- Prompt compact, activity pacing configurable qua `AGENT_MIN_ACTIVITIES_PER_DAY` / `AGENT_MAX_ACTIVITIES_PER_DAY` (default 5/ngày).
+- FE không đổi UI/UX; dùng service layer hiện có.
+- Local smoke 2026-05-25: generate 1 ngày pass với timeout default 30s; generate 3 ngày pass khi `.env` local set `AGENT_TIMEOUT_SECONDS=60`.
+- Sau pacing configurable default `5-5`, generate output phải có đúng 5 activities/ngày.
+- Added structured AI debug logs for context size, prompt size, Gemini duration, validation retries, and persist summary.
+- Browser investigation 2026-05-25: fixed guest pending-claim storage, login return URL with query string, and generated accommodation cost fallback when `hotel` is null.
+- Browser investigation 2026-05-25: fixed `useTripSync` effect loop so `TripWorkspace` loads generated trip by `tripId` with a single `GET /itineraries/{id}` instead of repeated requests.
+- Browser e2e pass 11/11 sau khi bổ sung CORS origin `http://127.0.0.1:5173`.
+- Authenticated browser AI smoke 2026-05-25: FE `127.0.0.1:5173` → BE `127.0.0.1:8020`, `POST /itineraries/generate` trả 201, trip 129 có 5 activities, workspace render đúng generated data.
 
 ## FE-BE Integration Status (2026-05-04)
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
-Tóm tắt: 33 BE endpoints (EP-0 đến EP-32), 117 BE tests (75 unit + 42 integration), 11 FE e2e tests, 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28), Playwright e2e setup (PR #31).
+Tóm tắt: 33 BE core endpoints (EP-0 đến EP-32), current branch có 93 unit tests + 42 integration tests, 11 FE e2e tests, 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28), Playwright e2e setup (PR #31).
 
 ## Phase C Plan (2026-05-04)
 

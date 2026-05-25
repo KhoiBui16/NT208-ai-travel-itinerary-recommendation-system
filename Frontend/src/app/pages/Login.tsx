@@ -19,7 +19,12 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
+  const fromLocation = (
+    location.state as { from?: { pathname: string; search?: string } } | null
+  )?.from;
+  const from = fromLocation
+    ? `${fromLocation.pathname}${fromLocation.search ?? ""}`
+    : "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

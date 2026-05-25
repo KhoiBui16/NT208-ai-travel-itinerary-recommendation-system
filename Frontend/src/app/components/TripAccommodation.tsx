@@ -372,6 +372,12 @@ export function TripAccommodation({
     const hotel = accommodation.hotel;
     const bType = accommodation.bookingType || 'nightly';
     const typeLabel = bType === 'hourly' ? 'giờ' : bType === 'nightly' ? 'đêm' : 'ngày';
+    const accommodationName = hotel?.name || accommodation.name || "Nơi ở đã chọn";
+    const accommodationLocation = hotel?.location || "";
+    const accommodationDuration = accommodation.duration || 1;
+    const accommodationTotalCost =
+      accommodation.totalPrice ??
+      calculateHotelCost(hotel?.price ?? accommodation.pricePerNight ?? 0, bType, accommodationDuration);
 
     return (
       <div className="max-w-2xl mx-auto pb-10">
@@ -382,13 +388,19 @@ export function TripAccommodation({
 
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden mb-6">
           <div className="relative h-48">
-            <img src={hotel.image} alt={hotel.name} className="h-full w-full object-cover" />
+            {hotel?.image ? (
+              <img src={hotel.image} alt={accommodationName} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-cyan-50">
+                <HotelIcon className="h-16 w-16 text-cyan-500" />
+              </div>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
             <div className="absolute bottom-4 left-4 right-4">
-              <h4 className="text-xl font-bold text-white mb-1">{hotel.name}</h4>
+              <h4 className="text-xl font-bold text-white mb-1">{accommodationName}</h4>
               <div className="flex items-center gap-2 text-white/90">
                 <MapPin className="h-4 w-4" />
-                <span className="text-sm">{hotel.location}</span>
+                <span className="text-sm">{accommodationLocation || "Theo lịch trình"}</span>
               </div>
             </div>
           </div>
@@ -398,13 +410,13 @@ export function TripAccommodation({
                 <div>
                   <p className="text-sm font-medium text-cyan-700">Tổng thời gian thuê</p>
                   <p className="text-xl font-bold text-cyan-900">
-                    {accommodation.duration} {typeLabel}
+                    {accommodationDuration} {typeLabel}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-cyan-700">Tổng chi phí dự kiến</p>
                   <p className="text-2xl font-bold text-cyan-900">
-                    {calculateHotelCost(hotel.price, bType, accommodation.duration || 1).toLocaleString('vi-VN')}₫
+                    {accommodationTotalCost.toLocaleString('vi-VN')}₫
                   </p>
                 </div>
             </div>

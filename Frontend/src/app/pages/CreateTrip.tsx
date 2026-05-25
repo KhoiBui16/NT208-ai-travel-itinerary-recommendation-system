@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { format } from "date-fns";
 import { Header } from "../components/Header";
 import { CalendarModal } from "../components/CalendarModal";
+import { storePendingClaim } from "../contexts/AuthContext";
 import { travelTypes, budgetLevels, interests, popularDestinations } from "../utils/tripConstants";
 import { generateItinerary } from "../services/itinerary";
 import {
@@ -75,6 +76,10 @@ export default function CreateTrip() {
         children: childrenMap[travelType] || 0,
         interests: selectedInterests,
       });
+
+      if (resp.claimToken) {
+        storePendingClaim(resp.id, resp.claimToken);
+      }
 
       navigate(`/trip-workspace?tripId=${resp.id}`);
     } catch {

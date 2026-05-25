@@ -2,7 +2,7 @@
 
 ## Mục đích
 
-File này mô tả **chi tiết kiến trúc AI target** cho Phase C — generate pipeline, companion chat, suggestion service, chat history. Tất cả chưa implement. Đọc file này khi bắt đầu Phase C để hiểu đúng design đã chốt.
+File này mô tả **chi tiết kiến trúc AI cho Phase C** — generate pipeline, companion chat, suggestion service, chat history. C.1 direct generate pipeline đã được implement trong branch `feat/00041-c-generate-pipeline`; các phần C.2-C.5 vẫn theo roadmap.
 
 **Khi nào đọc file này:**
 - Bắt đầu implement Phase C → hiểu pipeline architecture
@@ -14,10 +14,11 @@ File này mô tả **chi tiết kiến trúc AI target** cho Phase C — generat
 
 ## 1. Trạng thái hiện tại
 
-- `POST /api/v1/itineraries/generate` là **stub** — tạo empty trip, không gọi LLM.
+- `POST /api/v1/itineraries/generate` đã chạy **C.1 direct pipeline**: build recommendation context từ DB, gọi Gemini JSON, validate, persist trip/day/activity/accommodation.
 - Chat/companion UI ở FE là **mock/demo**, không nối API thật.
 - DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn), nhưng chưa có API.
-- Chưa có `ItineraryPipeline`, `CompanionService`, `SuggestionService`, `ChatService`.
+- Chưa có `CompanionService`, `SuggestionService`, `ChatService`, analytics.
+- C.1 không phải multi-agent; LangGraph/tool-calling để dành cho C.3 Companion Chat.
 
 ---
 
@@ -35,24 +36,21 @@ File này mô tả **chi tiết kiến trúc AI target** cho Phase C — generat
 │      adults, children, interests }                            │
 │                                                              │
 │  ┌─ ItineraryService.generate() ───────────────────────────┐ │
-│  │  1. Validate request (dates valid, budget > 0)          │ │
-│  │  2. _create_trip_record() → Trip ORM (ai_generated=True)│ │
-│  │  3. ItineraryPipeline.generate(request, trip)            │ │
-│  │     ├── Build prompt từ destination + params             │ │
-│  │     │   ├── System prompt: role, output format, rules    │ │
-│  │     │   └── User prompt: destination, dates, budget,     │ │
-│  │     │       travelers, interests, constraints            │ │
-│  │     ├── Call Gemini LLM (structured output JSON mode)    │ │
-│  │     │   ├── model: gemini-2.0-flash (configurable)       │ │
-│  │     │   ├── timeout: 30 giây                             │ │
-│  │     │   └── response_schema: DaySchema[] + Accommodation │ │
-│  │     ├── Pydantic validation (retry tối đa 3 lần)        │ │
-│  │     │   ├── Valid → return DaySchema[] + Accommodation[] │ │
-│  │     │   └── Invalid → retry with error feedback          │ │
-│  │     └── Return validated data                            │ │
-│  │  4. Save days + activities + accommodations to DB        │ │
-│  │  5. Calculate total_cost                                 │ │
-│  │  6. Return ItineraryResponse (camelCase)                 │ │
+│  │  1. Router enforce AI rate limit                         │ │
+│  │     ├── user: rate:ai:user:{id}:{YYYYMMDD}               │ │
+│  │     └── guest: rate:ai:guest:{hash(ip+ua)}:{YYYYMMDD}    │ │
+│  │  2. ItineraryPipeline.generate()                         │ │
+│  │     ├── Resolve destination string → Destination          │ │
+│  │     ├── Query Goong-enriched places/hotels from DB        │ │
+│  │     ├── Build compact Recommendation Context              │ │
+│  │     ├── Call Gemini JSON mode                             │ │
+│  │     │   ├── model: gemini-2.5-flash                       │ │
+│  │     │   ├── timeout: config agent_timeout_seconds         │ │
+│  │     │   └── output schema: AgentItinerary                 │ │
+│  │     ├── Pydantic validation + retry invalid output        │ │
+│  │     └── Persist Trip/Days/Activities/Accommodations       │ │
+│  │  3. Guest nhận claimToken                                 │ │
+│  │  4. Return ItineraryResponse (camelCase)                  │ │
 │  └──────────────────────────────────────────────────────────┘ │
 │                                                              │
 │  FE navigate /trip-workspace?tripId={id}                     │
@@ -82,7 +80,7 @@ ItineraryPipeline.generate()
   │   └── FAIL → raise LLMGenerationError
   │       └── Service trả error response cho FE
   │
-  └── Maximum 3 retries → không loop vô hạn
+  └── Maximum 2 retries (3 attempts) → không loop vô hạn
 ```
 
 ### 2.3 Yêu cầu kỹ thuật
@@ -90,34 +88,56 @@ ItineraryPipeline.generate()
 | Yêu cầu | Chi tiết | Tại sao |
 |---|---|---|
 | Structured output | Gemini JSON mode ép output theo schema | Không parse text tự do, giảm hallucination |
-| Schema validation | Pydantic `GenerateItineraryResponse` | Catch lỗi type, missing field, value range |
-| Retry hữu hạn | Tối đa 3 lần; sau đó return error | Không loop vô hạn, không treo request |
+| Schema validation | Pydantic `AgentItinerary` | Catch lỗi type, missing field, value range |
+| Retry hữu hạn | `agent_max_retries=2`, tổng 3 attempts cho invalid output | Không loop vô hạn |
 | Field names | `name` (không `title`), `adultPrice`/`childPrice` | FE contract đã chốt |
 | camelCase contract | `CamelCaseModel` serializes | Khớp `trip.types.ts` |
-| Rate limit | 3 generates/ngày cho free user | Chống abuse, tiết kiệm API cost |
-| Timeout | LLM call timeout 30 giây | Không treo request |
+| Rate limit | 3 AI calls/ngày cho user/guest | Chống abuse, tiết kiệm API cost |
+| Timeout | Code/config default 30s; local 3-day smoke khuyến nghị `AGENT_TIMEOUT_SECONDS=60` | Không treo request nhưng đủ thời gian cho Gemini |
+| Activity pacing | Default exactly `5` activities/ngày, cấu hình bằng env/config | Không hardcode smoke-test limit vào product behavior |
 | Owner-check | Generate cho user authenticated hoặc guest | Guest nhận claimToken |
+| Empty context guard | Không đủ places → 422 trước khi gọi Gemini | Không sinh itinerary từ context rỗng |
+| Debug logging | Log metadata cho context/prompt/attempt/duration | Không log API key, không dump full prompt |
 
 ### 2.4 File cần tạo
 
 | File Backend | Mục đích | Layer |
 |---|---|---|
-| `src/itineraries/pipeline.py` | LLM orchestration, prompt building, structured output parsing, retry | Service |
-| `src/itineraries/schemas.py` (mở rộng) | `GenerateItineraryResponse` (cần tạo, `GenerateItineraryRequest` đã có) | Schema |
+| `src/itineraries/pipeline.py` | C.1 orchestration, recommendation context, LLM call, validation, persistence | Domain service |
+| `src/agent/llm.py` | Gemini client wrapper + JSON parsing helpers | Shared AI infra |
+| `src/agent/prompts/itinerary_prompts.py` | Compact JSON-first prompt builder | Shared AI infra |
+| `src/agent/schemas/itinerary_schemas.py` | `AgentItinerary`, `AgentDay`, `AgentActivity` output schemas | Shared AI infra |
 
 | File Frontend | Mục đích |
 |---|---|
-| `CreateTrip.tsx` | Không cần sửa — đã gọi `generateItinerary` API |
+| `CreateTrip.tsx` | Gọi `generateItinerary`; guest lưu `claimToken` vào pending claim trước khi vào route protected |
+| `Login.tsx` | Sau login quay lại đúng `pathname + search` để giữ `tripId` |
 
 ### 2.5 Config cần thêm
 
 ```env
 GEMINI_API_KEY=<api-key>        # Bắt buộc cho Phase C
-GEMINI_MODEL=gemini-2.0-flash   # Model mặc định
-AI_GENERATE_TIMEOUT=30          # Timeout giây
-AI_MAX_RETRIES=3                # Số lần retry khi output invalid
-AI_RATE_LIMIT_DAILY=3           # Giới hạn generate/ngày cho free user
+GOONG_API_KEY=<api-key>         # Bắt buộc để ETL tạo DB recommendation context
+AGENT_MODEL=gemini-2.5-flash    # Code default
+AGENT_TIMEOUT_SECONDS=60        # Local smoke 3 ngày; code/config default 30
+AGENT_MAX_RETRIES=2             # 2 retries, tổng 3 attempts khi output invalid
+AGENT_MIN_ACTIVITIES_PER_DAY=5  # Default product pacing
+AGENT_MAX_ACTIVITIES_PER_DAY=5
 ```
+
+### 2.6 Local smoke đã xác nhận
+
+Ngày 2026-05-25:
+
+- Goong ETL Hà Nội: 60 places + 3 hotels được load vào DB.
+- `GET /api/v1/places/search?city=Hà Nội&limit=5` trả dữ liệu từ DB.
+- Generate 1 ngày với timeout 30s trả `201 Created`.
+- Generate 3 ngày cần `AGENT_TIMEOUT_SECONDS=60` trong `.env`, trả `201 Created`, có `claimToken` cho guest.
+- Sau khi bật pacing default `5-5`, smoke phải trả đúng 5 activities/ngày để giữ chất lượng nhưng tránh output quá dài.
+- Browser debug 4 ngày: prompt khoảng 6.4k chars (~1.6k token), response khoảng 11.7k chars; timeout không do context window mà do latency/output length của Gemini.
+- Guest browser flow: API trả `201`, FE lưu `pendingClaim` vào `sessionStorage`, rồi route protected chuyển login; authenticated flow vào workspace và load trip từ BE.
+- FE/BE browser e2e pass 11/11 khi FE `127.0.0.1:5173` gọi BE local qua `E2E_API_URL`; CORS đã bổ sung origin `127.0.0.1:5173`.
+- Browser AI smoke sau fix: authenticated generate 1 ngày trả 201, workspace load đúng generated trip từ BE và `useTripSync` chỉ gọi `GET /itineraries/{id}` một lần.
 
 ---
 
@@ -382,7 +402,7 @@ Nếu bật Text-to-SQL analytics (EP-34), **bắt buộc** có các guardrails:
 
 | Risk | Mức độ | Mitigation | Giải thích |
 |---|---|---|---|
-| LLM output không khớp schema | Cao | Structured output + Pydantic + retry 3 lần | LLM có thể trả sai format, thiếu field |
+| LLM output không khớp schema | Cao | Structured output + Pydantic + 2 retries (3 attempts) | LLM có thể trả sai format, thiếu field |
 | LLM hallucination (tạo địa điểm không tồn tại) | Cao | Cross-reference DB places; flag unverified | LLM có thể "bịa" tên địa điểm |
 | Rate limit abuse | Trung bình | Redis rate limiter; không fail-open | Chống gọi LLM quá nhiều |
 | Prompt injection qua chat | Trung bình | Input sanitization; không expose SQL/tools | User cố gắng inject prompt |

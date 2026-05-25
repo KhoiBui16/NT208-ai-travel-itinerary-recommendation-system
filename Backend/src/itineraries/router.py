@@ -7,12 +7,14 @@ Shared endpoint (EP-15):
   read-only access via shareToken
 """
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.dependencies import get_current_user, get_current_user_optional
 from src.auth.models import User
 from src.core.database import get_db
+from src.core.dependencies import get_rate_limiter
+from src.core.rate_limiter import RateLimiter
 from src.core.schema import PaginatedResponse, SuccessResponse
 from src.itineraries.schemas import (
     AccommodationSchema,
@@ -40,11 +42,20 @@ def get_itinerary_service(session: AsyncSession = Depends(get_db)) -> ItineraryS
 
 @router.post("/generate", response_model=ItineraryResponse, status_code=201)
 async def generate_itinerary(
-    request: GenerateItineraryRequest,
+    body: GenerateItineraryRequest,
+    request: Request,
     user: User | None = Depends(get_current_user_optional),
     service: ItineraryService = Depends(get_itinerary_service),
+    rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> ItineraryResponse:
-    return await service.generate(request, user_id=user.id if user else None)
+    if user:
+        await rate_limiter.enforce_ai_limit(user.id)
+    else:
+        await rate_limiter.enforce_ai_guest_limit(
+            ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    return await service.generate(body, user_id=user.id if user else None)
 
 
 @router.post("", response_model=ItineraryResponse, status_code=201)

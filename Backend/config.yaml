@@ -8,6 +8,7 @@ app:
 cors:
   origins:
     - "http://localhost:5173"
+    - "http://127.0.0.1:5173"
     - "http://localhost:3000"
 
 auth:
@@ -29,6 +30,8 @@ ai:
   temperature: 0.7
   max_retries: 2
   timeout_seconds: 30
+  min_activities_per_day: 5
+  max_activities_per_day: 5
   calls_per_day: 3
   rate_limit_fail_mode: "closed"
   companion_requires_confirmation: true
