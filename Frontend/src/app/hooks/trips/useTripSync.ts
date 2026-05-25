@@ -36,10 +36,10 @@ export const useTripSync = (
   const isInitialMount = useRef(true);
   const currentTripIdRef = useRef<number | null>(tripIdParam ?? null);
   const [currentTripId, _setCurrentTripId] = useState<number | null>(tripIdParam ?? null);
-  const setCurrentTripId = (id: number | null) => {
+  const setCurrentTripId = useCallback((id: number | null) => {
     currentTripIdRef.current = id;
     _setCurrentTripId(id);
-  };
+  }, []);
   const { destinations: wizardDestinations, dayAllocations: wizardAllocations, budget: wizardBudget, resetWizard } = useTripWizard();
 
   // Sync auth state

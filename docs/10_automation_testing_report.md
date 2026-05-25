@@ -11,23 +11,32 @@ File này ghi trạng thái test mới nhất. Các kết quả cần được c
 | Backend lint | `ruff check` | — | Pass |
 | Backend format | `ruff format --check` | — | Pass |
 | Backend migration | `alembic upgrade head` + `alembic check` | — | Pass |
-| Backend unit tests | `pytest tests/unit/` | 75 tests | Pass |
-| Backend integration tests | `pytest tests/integration/` | 42 tests | Pass |
+| Backend unit tests | `pytest tests/unit/` | 93 tests | Pass |
+| Backend integration tests | `pytest tests/integration/` | 42 collected | 36 pass, 6 skipped |
 | Backend Docker API health | HTTP health check | 1 check | Pass |
 | Frontend production build | `vite build` | — | Pass |
 | Frontend e2e tests | Playwright (Chromium) | 11 tests | Pass |
 | Full-stack API smoke | `test_fullstack_smoke.ps1` | 16 flows | Pass |
+| AI browser smoke | Playwright + real local Gemini key | 1 generated trip | Pass |
 
-**Tổng: 117 BE tests + 11 FE e2e tests = 128 tests**
+**Tổng current branch: 93 BE unit tests + 42 BE integration tests collected + 11 FE e2e tests.**
 
 ### Không kiểm ở giai đoạn này
 
-- AI direct generation thật vì chưa implement (generate endpoint hiện là stub).
+- AI direct generation real-provider chỉ kiểm local/manual vì CI dùng dummy key và mock external calls.
 - AI companion chat vì chưa implement.
 - Analytics EP-34 vì chưa bật.
 - Trip workspace drag-and-drop (chưa có e2e test cho tính năng này).
 - Calendar modal interaction (phức tạp, cần viết test riêng).
 - Visual regression testing.
+
+### AI browser smoke 2026-05-25
+
+- FE: `http://127.0.0.1:5173`
+- BE: `http://127.0.0.1:8020`
+- Flow: authenticated `CreateTrip` → `POST /api/v1/itineraries/generate` → `/trip-workspace?tripId=129`
+- Result: API `201 Created`, generated trip rendered in workspace, 5 activities for the generated day, no browser console errors.
+- Extra check: reopening `/trip-workspace?tripId=129` after `useTripSync` fix triggers a single `GET /api/v1/itineraries/129`.
 
 ## Automation Commands
 

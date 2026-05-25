@@ -198,22 +198,29 @@ cd Backend
 uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng"
 ```
 
-## Phase C: AI Pending
+## Phase C: AI Services
+
+Đã implement C.1 trong branch `feat/00041-c-generate-pipeline`:
+
+- Direct AI itinerary pipeline cho `POST /api/v1/itineraries/generate`.
+- Build recommendation context từ Goong-enriched places/hotels trong DB.
+- Gemini structured JSON output với Pydantic validation và retry.
+- Persist Trip/Day/Activity/Accommodation, trả `ItineraryResponse`.
+- AI quota cho authenticated user và guest fingerprint; Redis down fail-closed.
 
 Chưa implement trong code hiện tại:
 
-- Direct AI itinerary pipeline.
-- Structured output validation từ LLM.
-- Companion chat.
+- C.2 SuggestionService.
+- C.3 Companion chat.
 - Patch-confirm flow.
-- Chat history API.
-- Analytics EP-34.
+- C.4 Chat history API.
+- C.5 Analytics EP-34.
 
 Đã implement (trước đây ghi Phase C pending):
 
 - Password reset endpoint (EP-31 forgot-password, EP-32 reset-password) — PR #20.
 
-Do đó không coi Phase C AI là done trong tracker hoặc báo cáo test.
+Do đó chỉ coi **C.1 generate** là local-ready; Phase C tổng thể chưa done.
 
 ## FE Integration Status Tổng Hợp
 
@@ -225,6 +232,6 @@ Tất cả trang FE chính đã nối BE API (xem chi tiết tại `docs/04_fron
 - Activity CRUD — `useActivityManager` (add/update/delete + optimistic)
 - Accommodation CRUD — `useAccommodation` (add/delete + optimistic)
 - Places search/saved — `usePlacesManager` (debounced search, save/unsave)
-- CreateTrip — `createItinerary` → navigate TripWorkspace
+- CreateTrip — `generateItinerary` → navigate TripWorkspace
 - Share/Claim — `TopActionBar` + `AuthContext`
 - City detail — `getDestinationDetail` + mock fallback

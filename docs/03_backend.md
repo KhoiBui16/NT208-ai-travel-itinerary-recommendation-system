@@ -495,7 +495,10 @@ DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet
 REDIS_URL=redis://localhost:6379/0
 JWT_SECRET_KEY=<long-random-string>
 GEMINI_API_KEY=<optional-Phase-C>
-GOONG_API_KEY=<optional-ETL>
+GOONG_API_KEY=<optional-Goong-ETL>
+AGENT_TIMEOUT_SECONDS=60
+AGENT_MIN_ACTIVITIES_PER_DAY=5
+AGENT_MAX_ACTIVITIES_PER_DAY=5
 ENABLE_ANALYTICS=false
 ANALYTICS_DATABASE_URL=
 SMTP_HOST=
@@ -576,7 +579,7 @@ trip = repo.get_with_full_data(trip_id)  # Fresh query → load từ DB
 | Claim token one-time | `consumed_at` + `expires_at` + hash |
 | Password reset silent | Không tiết lộ email có tồn tại hay không |
 | Force re-login on reset | Revoke tất cả refresh tokens khi đổi password |
-| CORS origin | Chỉ allow `FRONTEND_URL` |
+| CORS origin | Allow local FE origins: `localhost:5173` và `127.0.0.1:5173` |
 
 ---
 
@@ -598,7 +601,6 @@ EmailService
 
 ## 11. Backend còn thiếu
 
-- AI generate pipeline thật (stub hiện tại tạo empty trip).
 - AI companion chat + patch-confirm flow.
 - Chat history API endpoints.
 - Analytics optional EP-34 với SQL guardrails.

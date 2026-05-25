@@ -250,12 +250,12 @@ Component gọi hook (useTripSync, useActivityManager, ...)
 │  → POST /api/v1/itineraries (không Bearer token)       │
 │  → BE tạo trip với user_id = NULL                       │
 │  → BE tạo claimToken: hash lưu DB, raw trả response    │
-│  → FE lưu claimToken vào localStorage (pending claim)   │
+│  → FE lưu claimToken vào sessionStorage (pending claim) │
 │                                                          │
 │  Guest đăng nhập/đăng ký:                                │
 │  → AuthContext.executePendingClaim()                     │
 │  → POST /api/v1/itineraries/{tripId}/claim             │
-│    { claimToken: "raw_token_từ_localStorage" }         │
+│    { claimToken: "raw_token_từ_sessionStorage" }       │
 │  → BE hash claimToken → tìm match trong DB              │
 │  → BE check: chưa consumed + chưa expire                │
 │  → BE set trip.user_id = current_user.id                │
@@ -302,7 +302,7 @@ Khi BE chạy trong Docker: `db` thay `localhost` cho PostgreSQL, `redis` thay `
 
 ---
 
-## 5. AI Architecture Target (Phase C)
+## 5. AI Architecture (Phase C)
 
 ### Generate Itinerary — Direct Pipeline
 
@@ -318,9 +318,9 @@ Khi BE chạy trong Docker: `db` thay `localhost` cho PostgreSQL, `redis` thay `
 │  ┌─ ItineraryService.generate() ──────────────────────┐ │
 │  │  1. Validate request (dates, budget > 0)           │ │
 │  │  2. ItineraryPipeline.generate(request)             │ │
-│  │     ├── Build prompt từ destination + params        │ │
+│  │     ├── Resolve destination -> DB recommendation ctx│ │
 │  │     ├── Gemini LLM structured output (JSON schema)  │ │
-│  │     ├── Pydantic validation (retry tối đa 3 lần)   │ │
+│  │     ├── Pydantic validation (2 retries, 3 attempts) │ │
 │  │     └── Return validated DaySchema[] + Accommodation │ │
 │  │  3. Save trip + days + activities + accommodations  │ │
 │  │  4. Return ItineraryResponse (camelCase)            │ │
@@ -331,6 +331,7 @@ Khi BE chạy trong Docker: `db` thay `localhost` cho PostgreSQL, `redis` thay `
 
 KEY: Generate KHÔNG qua Supervisor — gọi direct ItineraryPipeline.
      Supervisor chỉ điều phối companion chat/analytics.
+     Activity pacing mặc định đúng 5 hoạt động/ngày và có thể đổi bằng env/config.
 ```
 
 ### Companion Chat — Patch-Confirm Flow
@@ -381,17 +382,23 @@ Không cần "sáng tạo" nội dung mới, chỉ lọc và xếp hạng.
 
 ---
 
-## 6. File mới cần tạo cho Phase C
+## 6. Phase C File Map
 
-| File Backend | Mục đích | Layer |
+| File Backend C.1 đã có | Mục đích | Layer |
 |---|---|---|
 | `src/itineraries/pipeline.py` | LLM orchestration cho generate | Service |
+| `src/agent/config.py` | AI config facade | Shared AI infra |
+| `src/agent/llm.py` | Gemini client wrapper + JSON parsing | Shared AI infra |
+| `src/agent/prompts/itinerary_prompts.py` | Generate prompt builder | Shared AI infra |
+| `src/agent/schemas/itinerary_schemas.py` | LLM output schema | Shared AI infra |
+
+| File Backend còn lại cho C.2-C.5 | Mục đích | Layer |
+|---|---|---|
 | `src/itineraries/companion.py` | Intent routing, tool-calling cho chat | Service |
 | `src/places/suggestion_service.py` | Gợi ý DB-only (không LLM) | Service |
 | `src/itineraries/chat_service.py` | Quản lý chat session/message | Service |
 | `src/itineraries/router.py` (mở rộng) | Chat + apply-patch endpoints | Router |
 | `src/itineraries/router.py` (mở rộng) | Chat history endpoints | Router |
-| `src/itineraries/schemas.py` (mở rộng) | AI generate request/response | Schema |
 | `src/itineraries/repository.py` (mở rộng) | Chat DB queries | Repository |
 
 | File Frontend | Mục đích |
@@ -399,7 +406,7 @@ Không cần "sáng tạo" nội dung mới, chỉ lọc và xếp hạng.
 | `services/agent.ts` | Chat/apply-patch API client |
 | `FloatingAIChat.tsx` | Thay mock bằng API thật, hiển thị proposed operations |
 | `companion/*.tsx` | Nối real suggestions, confirm UI |
-| `CreateTrip.tsx` | Không cần sửa (đã wired) |
+| `CreateTrip.tsx` | Đã wired tới C.1 `generateItinerary` |
 
 ---
 

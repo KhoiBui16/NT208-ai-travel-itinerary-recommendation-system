@@ -54,7 +54,7 @@ MVP1
 → FE revamp mạnh về UI/contract
 → BE refactor MVP2 theo FastAPI async + Alembic + repository/service
 → ETL foundation cho city/place/hotel data
-→ AI Phase C pending
+→ AI Phase C C.0/C.1 in progress: Goong-first ETL + direct generate pipeline
 ```
 
 ---
@@ -67,7 +67,7 @@ MVP1
 | `03_backend.md` | `Backend/src/auth/*.py`, `Backend/src/itineraries/*.py`, `Backend/src/places/*.py`, `Backend/src/core/*.py` |
 | `04_frontend.md` | `Frontend/src/app/services/*.ts`, `Frontend/src/app/contexts/*.tsx`, `Frontend/src/app/hooks/**/*.ts`, `Frontend/src/app/types/trip.types.ts` |
 | `05_database_etl.md` | `Backend/src/auth/models.py`, `Backend/src/itineraries/models/*.py`, `Backend/src/places/models.py`, `Backend/alembic/versions/*.py`, `Backend/src/etl/` |
-| `06_ai_roadmap.md` | `Backend/src/itineraries/service.py` (stub generate), `Backend/src/itineraries/models/extras.py` (ChatSession/ChatMessage) |
+| `06_ai_roadmap.md` | `Backend/src/itineraries/pipeline.py`, `Backend/src/agent/*`, `Backend/src/itineraries/models/extras.py` |
 | `07_workflow_ci.md` | `.github/workflows/`, `Backend/pyproject.toml`, `Frontend/package.json` |
 | `08_testing_local_run.md` | `scripts/test_fullstack_smoke.ps1`, `docker-compose.yml` |
 | `09_execution_tracker.md` | Git branch/PR history |
@@ -86,8 +86,9 @@ MVP1
 - Itinerary core: create/list/get/update/delete, nested days/activities/accommodations, owner check, rating.
 - Share/claim: public `shareToken`, guest `claimToken` one-time, token hash trong DB.
 - Places/cache: destinations, destination detail, place search/detail, saved places, Redis read cache fail-open.
-- ETL D1: OSM/Goong extractors, transformers, DB upsert loader, `hotels.yaml`, `scraped_sources`.
-- Tests: 117 BE tests (75 unit + 42 integration), CI lint/unit/integration/migration.
+- ETL D1/C.0: Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, `hotels.yaml`, `scraped_sources`.
+- AI C.1 generate pipeline: DB recommendation context, Gemini JSON output, Pydantic validation, retry, guest/user AI rate limit.
+- Tests current branch: 93 unit tests + 42 integration tests; CI lint/unit/integration/migration.
 
 ### Frontend
 
@@ -99,7 +100,7 @@ MVP1
 - `TripWizardContext` thay 6 sessionStorage keys cho wizard flow.
 - `useTripSync` auto-save qua BE API; sessionStorage chỉ làm quick-restore cache.
 - `useActivityManager`/`useAccommodation`/`usePlacesManager` — optimistic CRUD + revert.
-- `CreateTrip` nối `createItinerary` API, navigate TripWorkspace với tripId.
+- `CreateTrip` nối `generateItinerary` API, navigate TripWorkspace với tripId.
 - `ErrorBoundary` bọc toàn app.
 - Playwright e2e tests: 11 test cases cho auth flow, trip CRUD, public pages.
 - **Tất cả trang chính đã nối BE API**; mock chỉ làm fallback khi BE không có data.
@@ -117,9 +118,9 @@ MVP1
 
 ### AI (Phase C)
 
-- `POST /api/v1/itineraries/generate` vẫn là stub, chưa gọi LLM pipeline thật.
-- Chưa có direct itinerary pipeline, structured output validation, retry, hoặc guardrails hoàn chỉnh.
-- Chưa có AI companion chat, patch-confirm flow, chat history API.
+- C.1 đã có direct generate pipeline local-ready, nhưng cần PR/CI review và thêm monitoring trước production.
+- Chưa có C.2 SuggestionService endpoint.
+- Chưa có C.3 AI companion chat, patch-confirm flow, chat history API.
 - Analytics EP-34 chưa bật và chưa có SQL guardrails.
 
 ### ETL/Data
@@ -146,9 +147,9 @@ MVP1
 | Auth | Cơ bản | JWT access + refresh rotation + revoke + reset password |
 | Trip access | Public by ID | Owner-only ID + opaque shareToken |
 | Guest claim | `user_id IS NULL` | claimToken hash + expiry + consume |
-| Data source | Mock thuần | ETL places/hotels + Redis cache |
+| Data source | Mock thuần | Goong-first ETL places/hotels + Redis cache |
 | FE architecture | localStorage | API client + optimistic CRUD + revert |
-| Testing | Không có | 117 BE tests + 11 FE e2e |
+| Testing | Không có | Backend unit/integration tests + 11 FE e2e |
 | CI/CD | Không có | 7 required checks |
 
 ---
@@ -161,13 +162,13 @@ MVP1
 | Endpoint theo integer ID phải owner-only | `trip.user_id == user.id` | Locked |
 | Public share chỉ qua `shareToken` | Opaque, không đoán được | Locked |
 | Guest claim phải dùng `claimToken` one-time | Hash + expiry + consumed_at | Locked |
-| AI chat không tự ghi DB trước khi confirm | Patch-confirm flow | Khi implement Phase C |
+| AI chat không tự ghi DB trước khi confirm | Patch-confirm flow | Khi implement C.3 |
 | Redis cache places fail-open | Query DB trực tiếp khi Redis down | Locked |
-| AI rate limit KHÔNG fail-open | Trả lỗi thay vì cho request qua | Khi implement Phase C |
+| AI rate limit KHÔNG fail-open | Trả lỗi thay vì cho request qua | Đã áp dụng cho C.1; giữ cho C.3/C.5 |
 | Activity dùng `name` không dùng `title` | FE contract đã chốt | Locked |
 
 ---
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test (33 endpoints, 117 BE tests). FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. Frontend e2e tests đã có Playwright (11 tests). Giai đoạn tiếp theo là implement AI Phase C (direct itinerary pipeline, companion chat, chat history).
+Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. AI C.0/C.1 đã có Goong-first ETL readiness và direct generate pipeline để test local với Goong/Gemini key; giai đoạn tiếp theo là PR/CI, rồi C.2/C.3 sau khi C.1 ổn định.

@@ -59,6 +59,7 @@ vercel.json
 *.zip
 
 # Local-only folders (not pushed to GitHub)
+.codex-run-logs/
 plan/
 References/
 Diagram/

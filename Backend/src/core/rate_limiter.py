@@ -1,9 +1,10 @@
 """Redis-backed rate limiting primitives.
 
 Rate limiting for AI endpoints (generate, chat):
-  - Daily quota per user (default: 3 calls/day for free tier).
+  - Daily quota per user or guest fingerprint (default: 3 calls/day for free tier).
   - Counter resets at midnight UTC.
-  - Key format: rate:ai:{user_id}:{YYYYMMDD}
+  - Key format: rate:ai:user:{user_id}:{YYYYMMDD}
+  - Guest key format: rate:ai:guest:{hash}:{YYYYMMDD}
 
 Fail mode behavior (configurable via ai_rate_limit_fail_mode):
   - "closed" (default): If Redis is down, block the request with 503.
@@ -13,6 +14,7 @@ Fail mode behavior (configurable via ai_rate_limit_fail_mode):
 """
 
 from datetime import UTC, datetime, timedelta
+from hashlib import sha256
 
 from pydantic import BaseModel
 from redis.asyncio import Redis
@@ -64,7 +66,14 @@ class RateLimiter:
         Returns:
             True if the user has calls remaining, False if quota exhausted.
         """
-        key = self._ai_key(user_id)
+        return await self.check_ai_actor_limit(f"user:{user_id}")
+
+    async def check_ai_actor_limit(self, actor: str) -> bool:
+        """Check if an AI actor key still has calls left today.
+
+        Actor values are scoped labels such as "user:12" or "guest:abcd".
+        """
+        key = self._ai_key(actor)
         try:
             # Step 1: Increment counter
             count = await self.redis.incr(key)
@@ -94,6 +103,12 @@ class RateLimiter:
         if not await self.check_ai_limit(user_id):
             raise RateLimitException("Daily AI call limit exceeded")
 
+    async def enforce_ai_guest_limit(self, ip: str | None, user_agent: str | None) -> None:
+        """Raise when an anonymous guest has exceeded the daily AI quota."""
+        actor = self.guest_actor(ip=ip, user_agent=user_agent)
+        if not await self.check_ai_actor_limit(actor):
+            raise RateLimitException("Daily AI call limit exceeded")
+
     async def get_remaining(self, user_id: int) -> RateLimitInfo:
         """Return remaining AI calls for the current UTC day.
 
@@ -106,7 +121,7 @@ class RateLimiter:
         Raises:
             ServiceUnavailableException: If Redis is down (always fail-closed for reads).
         """
-        key = self._ai_key(user_id)
+        key = self._ai_key(f"user:{user_id}")
         try:
             current = int(await self.redis.get(key) or 0)
         except Exception as exc:
@@ -125,10 +140,17 @@ class RateLimiter:
         return (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
 
     @staticmethod
-    def _ai_key(user_id: int) -> str:
+    def guest_actor(ip: str | None, user_agent: str | None) -> str:
+        """Build a stable anonymized guest actor key."""
+        fingerprint = f"{ip or 'unknown'}|{user_agent or 'unknown'}"
+        digest = sha256(fingerprint.encode("utf-8")).hexdigest()[:16]
+        return f"guest:{digest}"
+
+    @staticmethod
+    def _ai_key(actor: str) -> str:
         """Build the Redis key for a user's daily AI call counter.
 
-        Format: rate:ai:{user_id}:{YYYYMMDD}
+        Format: rate:ai:user:{user_id}:{YYYYMMDD} or rate:ai:guest:{hash}:{YYYYMMDD}
         """
         today = datetime.now(UTC).strftime("%Y%m%d")
-        return f"rate:ai:{user_id}:{today}"
+        return f"rate:ai:{actor}:{today}"

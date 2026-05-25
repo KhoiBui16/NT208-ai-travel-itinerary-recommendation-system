@@ -11,6 +11,19 @@ export const useTripCost = (
     return price * duration; // nightly
   };
 
+  const getAccommodationCost = (accommodation: Accommodation): number => {
+    if (typeof accommodation.totalPrice === "number") {
+      return accommodation.totalPrice;
+    }
+    const price =
+      accommodation.hotel?.price ??
+      accommodation.pricePerNight ??
+      0;
+    const bookingType = accommodation.bookingType || "nightly";
+    const duration = accommodation.duration || Math.max(1, accommodation.dayIds.length - 1);
+    return calculateHotelCost(price, bookingType, duration);
+  };
+
   const calculateActivityCost = (activity: Activity): number => {
     const { type, adultPrice = 0, childPrice = 0, customCost, transportation, busTicketPrice = 0, taxiCost = 0, extraExpenses = [] } = activity;
     let total = 0;
@@ -74,9 +87,7 @@ export const useTripCost = (
     };
     Object.values(accommodations).forEach((accommodation) => {
       if (accommodation.dayIds.includes(day.id)) {
-        const bType = accommodation.bookingType || 'nightly';
-        const bDur = accommodation.duration || Math.max(1, accommodation.dayIds.length - 1);
-        const totalHotelCost = calculateHotelCost(accommodation.hotel.price, bType, bDur);
+        const totalHotelCost = getAccommodationCost(accommodation);
         breakdown.accommodation += totalHotelCost / accommodation.dayIds.length;
       }
     });
@@ -102,9 +113,7 @@ export const useTripCost = (
       total += calculateDayCost(day);
     });
     Object.values(accommodations).forEach((accommodation) => {
-      const bType = accommodation.bookingType || 'nightly';
-      const bDur = accommodation.duration || Math.max(1, accommodation.dayIds.length - 1);
-      total += calculateHotelCost(accommodation.hotel.price, bType, bDur);
+      total += getAccommodationCost(accommodation);
     });
     return total;
   };
@@ -120,9 +129,7 @@ export const useTripCost = (
       });
     });
     Object.values(accommodations).forEach(accommodation => {
-      const bType = accommodation.bookingType || 'nightly';
-      const bDur = accommodation.duration || Math.max(1, accommodation.dayIds.length - 1);
-      breakdown.accommodation += calculateHotelCost(accommodation.hotel.price, bType, bDur);
+      breakdown.accommodation += getAccommodationCost(accommodation);
     });
     return breakdown;
   };

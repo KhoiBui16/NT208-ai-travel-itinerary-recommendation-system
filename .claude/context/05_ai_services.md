@@ -6,9 +6,9 @@ Tóm tắt AI target architecture để implement Phase C không sai hướng.
 
 ## Current truth
 
-- Phase C AI services chưa implement thật.
-- Generate endpoint hiện vẫn stub.
-- DB đã có bảng chat target: `chat_sessions`, `chat_messages`.
+- C.0 Goong-first ETL readiness đã có branch riêng để làm giàu DB places/hotels.
+- C.1 direct generate pipeline đã implement local-ready: DB recommendation context → Gemini JSON → Pydantic validation → persist trip/day/activity/accommodation.
+- DB đã có bảng chat target: `chat_sessions`, `chat_messages`, nhưng C.3 companion chat chưa implement.
 
 ## Target state
 
@@ -41,6 +41,8 @@ Tóm tắt AI target architecture để implement Phase C không sai hướng.
 
 - Generate valid output lưu trip/day/activity/accommodation.
 - Invalid output retry rồi fail rõ.
+- Generate không gọi Gemini nếu DB recommendation context rỗng.
+- AI rate limit không fail-open khi Redis lỗi.
 - Chat modify chỉ trả patch.
 - Confirmed patch mới update DB.
 

@@ -88,6 +88,8 @@ def yaml_config_settings() -> dict[str, Any]:
         "agent_temperature": flattened.get("ai_temperature"),
         "agent_max_retries": flattened.get("ai_max_retries"),
         "agent_timeout_seconds": flattened.get("ai_timeout_seconds"),
+        "agent_min_activities_per_day": flattened.get("ai_min_activities_per_day"),
+        "agent_max_activities_per_day": flattened.get("ai_max_activities_per_day"),
         "rate_limit_ai_free": flattened.get("ai_calls_per_day"),
         "ai_rate_limit_fail_mode": flattened.get("ai_rate_limit_fail_mode"),
         "companion_requires_confirmation": flattened.get("ai_companion_requires_confirmation"),
@@ -116,7 +118,7 @@ class AppSettings(BaseSettings):
     gemini_api_key: SecretStr = SecretStr("")
     goong_api_key: SecretStr = Field(
         default=SecretStr(""),
-        validation_alias=AliasChoices("GOONG_API_KEY", "GOONG_MAP_KEY"),
+        validation_alias=AliasChoices("GOONG_API_KEY", "GOONG_MAP_KEY", "GOONG_MAP_API_KEY"),
     )
     redis_url: str = "redis://localhost:6379/0"
     analytics_database_url: SecretStr = SecretStr("")
@@ -126,7 +128,7 @@ class AppSettings(BaseSettings):
     app_version: str = "2.0.0"
     environment: str = "development"
     debug: bool = Field(default=False, validation_alias="APP_DEBUG")
-    cors_origins: list[str] = ["http://localhost:5173"]
+    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     frontend_url: str = "http://localhost:5173"
 
     # --- Auth ---
@@ -148,6 +150,18 @@ class AppSettings(BaseSettings):
     agent_temperature: float = 0.7
     agent_max_retries: int = 2
     agent_timeout_seconds: int = 30
+    agent_min_activities_per_day: int = Field(
+        default=5,
+        ge=1,
+        le=8,
+        validation_alias=AliasChoices("AGENT_MIN_ACTIVITIES_PER_DAY", "AI_MIN_ACTIVITIES_PER_DAY"),
+    )
+    agent_max_activities_per_day: int = Field(
+        default=5,
+        ge=1,
+        le=8,
+        validation_alias=AliasChoices("AGENT_MAX_ACTIVITIES_PER_DAY", "AI_MAX_ACTIVITIES_PER_DAY"),
+    )
     rate_limit_ai_free: int = 3
     rate_limit_api: int = 100
     ai_rate_limit_fail_mode: str = "closed"
@@ -247,6 +261,11 @@ class AppSettings(BaseSettings):
                 raise ValueError("JWT_SECRET_KEY must be set in production")
             if self.enable_analytics and not self.analytics_database_url.get_secret_value():
                 raise ValueError("ANALYTICS_DATABASE_URL is required when analytics is enabled")
+        if self.agent_max_activities_per_day < self.agent_min_activities_per_day:
+            raise ValueError(
+                "AGENT_MAX_ACTIVITIES_PER_DAY must be greater than or equal to "
+                "AGENT_MIN_ACTIVITIES_PER_DAY"
+            )
         return self
 
 

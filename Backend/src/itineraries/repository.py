@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from src.itineraries.models.extras import Accommodation, GuestClaimToken, ShareLink, TripRating
 from src.itineraries.models.trip import Activity, Trip, TripDay
+from src.places.models import Destination, Hotel, Place
 
 
 class TripRepository:
@@ -69,6 +70,53 @@ class TripRepository:
             )
         )
         return (await self.session.execute(stmt)).scalar_one()
+
+    # --- AI Recommendation Context ---
+
+    async def resolve_destination_for_ai(self, destination: str) -> Destination | None:
+        """Resolve a user-provided destination string to a Destination row."""
+        name = destination.strip()
+        exact_stmt = select(Destination).where(func.lower(Destination.name) == name.lower())
+        exact = (await self.session.execute(exact_stmt)).scalar_one_or_none()
+        if exact:
+            return exact
+
+        fuzzy_stmt = (
+            select(Destination)
+            .where(Destination.name.ilike(f"%{name}%"))
+            .order_by(Destination.places_count.desc(), Destination.name)
+            .limit(1)
+        )
+        return (await self.session.execute(fuzzy_stmt)).scalar_one_or_none()
+
+    async def search_places_for_ai(
+        self,
+        destination_id: int,
+        categories: list[str] | None = None,
+        limit: int = 30,
+    ) -> list[Place]:
+        """Return ranked candidate places for AI recommendation context."""
+        stmt = select(Place).where(Place.destination_id == destination_id)
+        if categories:
+            stmt = stmt.where(Place.category.in_(categories))
+        stmt = stmt.order_by(
+            Place.rating.desc(),
+            Place.review_count.desc(),
+            Place.name,
+        ).limit(limit)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_hotels_for_ai(self, destination_id: int, limit: int = 8) -> list[Hotel]:
+        """Return ranked candidate hotels for AI recommendation context."""
+        stmt = (
+            select(Hotel)
+            .where(Hotel.destination_id == destination_id)
+            .order_by(Hotel.rating.desc(), Hotel.review_count.desc(), Hotel.name)
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def create_trip(self, **kwargs: object) -> Trip:
         trip = Trip(**kwargs)  # type: ignore[arg-type]

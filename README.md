@@ -1,8 +1,8 @@
 # NT208 AI Travel Itinerary Recommendation System
 
 DuLichViet is a web-based travel itinerary system with a React/Vite frontend,
-FastAPI backend, PostgreSQL database, Redis cache, and planned AI itinerary
-generation/chat services.
+FastAPI backend, PostgreSQL database, Redis cache, Goong-first ETL, and a
+Gemini-backed AI itinerary generation pipeline.
 
 This README is the single source of truth for running the project locally.
 
@@ -17,8 +17,9 @@ This README is the single source of truth for running the project locally.
 - Itinerary CRUD: create/list/get/update/delete, nested days/activities/accommodations, owner-only check, rating.
 - Share/claim: public `shareToken`, one-time `claimToken` with hash + expiry.
 - Places: destinations, destination detail, place search/detail, saved places, Redis read cache.
-- ETL: OSM/Goong extractors, transformers, DB upsert loader, sample hotel data.
-- **32 API endpoint methods** registered across 27 paths (28 implemented + health + 5 Phase C stubs), 111 tests (75 unit + 36 integration) passing.
+- ETL: Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, sample hotel data.
+- AI C.1 generate: `POST /itineraries/generate` builds DB recommendation context, calls Gemini structured JSON, validates, retries, persists trip/day/activity/accommodation, and enforces user/guest AI quota.
+- Backend lint/format/migration checks pass; 93 unit tests pass and 42 integration tests collect (36 pass, 6 skipped by env guards).
 
 ### Implemented (FE)
 
@@ -29,15 +30,16 @@ This README is the single source of truth for running the project locally.
 - `TripWizardContext` replaces 6 sessionStorage keys for wizard flow (destinations, allocations, travelers, budget).
 - `useTripSync` auto-saves via BE API (`createItinerary`/`updateItinerary`); sessionStorage only as quick-restore cache.
 - `useActivityManager`/`useAccommodation`/`usePlacesManager` — optimistic CRUD with revert-on-failure.
-- `CreateTrip` wired to `createItinerary` API, navigates to TripWorkspace with `tripId`.
+- `CreateTrip` wired to `generateItinerary` API, stores guest pending claim when needed, and navigates to TripWorkspace with `tripId`.
+- `TripWorkspace` loads generated trips from BE by `tripId` and uses `sessionStorage` only as quick-restore fallback.
 - `ErrorBoundary` wraps entire app for graceful crash recovery.
 - Type contract at `Frontend/src/app/types/trip.types.ts`.
 - Builds successfully (production bundle 1.1 MB).
 
 ### Not yet implemented
 
-- **Phase C AI**: `POST /itineraries/generate` is a stub (creates empty trip, no LLM call). No companion chat, no patch-confirm flow, no chat history API.
-- Full ETL with real place data needs `GOONG_API_KEY`.
+- **Phase C remaining**: no companion chat, no patch-confirm flow, no chat history API, no optional analytics, no map view.
+- Full ETL with real place data needs `GOONG_API_KEY`; AI generate needs `GEMINI_API_KEY`.
 - Playwright e2e tests exist (11 tests) but don't yet cover trip workspace drag-and-drop, calendar interaction, or accommodation CRUD.
 
 ---
@@ -87,8 +89,11 @@ After copying, edit `Backend/.env`. Only **one variable is required**; all other
 | `JWT_SECRET_KEY` | **Yes** | *(empty)* | Generate: `python -c "import secrets; print(secrets.token_hex(32))"` then paste the output here. The server will warn on startup if this is missing. |
 | `DATABASE_URL` | No | `postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet` | Keep default if using `docker compose up -d db` |
 | `REDIS_URL` | No | `redis://localhost:6379/0` | Keep default if using `docker compose up -d redis` |
-| `GEMINI_API_KEY` | No | *(empty)* | Leave empty until Phase C |
-| `GOONG_API_KEY` | No | *(empty)* | Leave empty; only needed for real ETL data |
+| `GEMINI_API_KEY` | For AI generate | *(empty)* | Required for real `POST /itineraries/generate`; CI tests mock external calls |
+| `GOONG_API_KEY` | For Goong ETL | *(empty)* | Required for real Goong-first ETL data |
+| `AGENT_TIMEOUT_SECONDS` | No | `30` | Local multi-day Gemini smoke can use `60` or `120` if provider latency is high |
+| `AGENT_MIN_ACTIVITIES_PER_DAY` | No | `5` | Product pacing for AI output |
+| `AGENT_MAX_ACTIVITIES_PER_DAY` | No | `5` | Product pacing for AI output |
 | `SMTP_HOST` | No | *(empty)* | Leave empty — password reset links log to console instead of email |
 | `SMTP_PORT` | No | `587` | Only matters if `SMTP_HOST` is set |
 | `SMTP_USERNAME` | No | *(empty)* | Only if using real SMTP |
@@ -125,6 +130,8 @@ Terminal 1:
 cd Backend
 uv sync
 uv run alembic upgrade head
+$env:AGENT_MIN_ACTIVITIES_PER_DAY="5"
+$env:AGENT_MAX_ACTIVITIES_PER_DAY="5"
 uv run uvicorn src.main:app --reload --port 8000
 ```
 
@@ -207,7 +214,9 @@ REDIS_URL=redis://localhost:6379/0
 ├── Backend/                                # FastAPI MVP2 backend
 │   ├── src/                                # Current backend source of truth
 │   │   ├── main.py                         #   App factory, mount router /api/v1
+│   │   ├── agent/                          #   AI shared infra for C.1 (Gemini config/client, prompts, schemas)
 │   │   ├── auth/                           #   Auth domain (router, service, repo, models, schemas, deps, email)
+│   │   ├── geo/                            #   Goong REST client infrastructure
 │   │   ├── itineraries/                    #   Itinerary domain (router, service, repo, schemas, models/)
 │   │   ├── places/                         #   Places domain (router, service, repo, models, schemas)
 │   │   ├── shared/                         #   Shared utilities (CacheClient, pagination, BaseService)
@@ -219,8 +228,8 @@ REDIS_URL=redis://localhost:6379/0
 │   │       ├── data/                       #     hotels.yaml sample data
 │   │       └── runner.py                   #     ETL CLI entry point
 │   ├── tests/                              # Unit + integration tests
-│   │   ├── unit/                           #   9 test modules (75 tests)
-│   │   └── integration/                    #   5 test modules (36 tests)
+│   │   ├── unit/                           #   93 tests
+│   │   └── integration/                    #   42 collected (36 pass, 6 skipped)
 │   ├── alembic/                            # DB migrations (3 revisions)
 │   ├── config.yaml                         # Shared non-secret app config
 │   ├── pyproject.toml                      # uv dependencies
@@ -360,7 +369,7 @@ uv run pytest tests/ -v
 ```powershell
 cd Frontend
 npm run build
-npm run test:e2e        # Playwright e2e (needs BE running on localhost:8000)
+npm run test:e2e        # Playwright e2e (needs BE running on localhost:8000, or E2E_API_URL override)
 npm run test:e2e:headed # Run e2e with visible browser
 ```
 
@@ -427,8 +436,8 @@ All FE pages connect to the backend via an API client layer (`Frontend/src/app/s
 | Share trip | Done | `POST /itineraries/{id}/share` → `TopActionBar` + `ItineraryView` |
 | View shared trip | Done | `GET /shared/{shareToken}` → `SharedTripView` |
 | Guest claim | Done | `POST /itineraries/{id}/claim` → `AuthContext` after login |
-| Destinations list | Hardcoded | `GET /places/destinations` (pending ETL data) |
-| AI generate | Stub | `POST /itineraries/generate` (Phase C) |
+| Destinations list | Done | `GET /places/destinations` (uses DB/ETL data, with FE fallback data still present) |
+| AI generate | Done (C.1) | `POST /itineraries/generate` → Gemini + DB recommendation context |
 
 **Remaining sessionStorage/localStorage usage (acceptable):**
 
@@ -441,31 +450,32 @@ All FE pages connect to the backend via an API client layer (`Frontend/src/app/s
 
 ## Phase C AI Integration Plan
 
-Phase C will add AI capabilities to the existing system. Here is how each piece will fit into the current architecture:
+Phase C adds AI capabilities incrementally. C.1 direct itinerary generation is implemented; C.2-C.5 remain roadmap items.
 
 ### 1. Direct Itinerary Generation Pipeline
 
-**Current state:** `POST /itineraries/generate` is a stub that creates an empty trip.
+**Current state:** `POST /itineraries/generate` is implemented for C.1 direct generation.
 
 **Target architecture:**
 ```text
 Frontend (CreateTrip.tsx)
   → POST /api/v1/itineraries/generate
   → Backend validation
-  → ItineraryPipeline (new: Backend/src/itineraries/pipeline.py)
-  → Gemini LLM structured output
+  → ItineraryPipeline (Backend/src/itineraries/pipeline.py)
+  → DB recommendation context from Goong-enriched places/hotels
+  → Gemini structured JSON output
   → Pydantic validation + retry
   → save trip/day/activity/accommodation to DB
   → return ItineraryResponse (camelCase)
   → FE navigates to TripWorkspace with tripId
 ```
 
-**New Backend files needed:**
-- `Backend/src/itineraries/pipeline.py` — LLM orchestration, structured output parsing
-- `Backend/src/itineraries/schemas.py` (extend) — Request/response schemas for AI generation
-- Config: `GEMINI_API_KEY` in `.env`
+**Implemented Backend files:**
+- `Backend/src/itineraries/pipeline.py` — LLM orchestration, DB context, validation, persistence
+- `Backend/src/agent/` — Gemini config/client, prompts, output schemas
+- Config: `GEMINI_API_KEY`, activity pacing, timeout, retry settings
 
-**FE changes:** `CreateTrip.tsx` already calls `createItinerary` API. When generate endpoint is real, it will return a full itinerary instead of an empty one — no FE wiring change needed.
+**FE state:** `CreateTrip.tsx` calls `generateItinerary`; authenticated users navigate directly to `/trip-workspace?tripId=...`, guests keep a pending claim token before the protected-route login flow.
 
 ### 2. AI Companion Chat
 
@@ -512,15 +522,21 @@ Frontend (FloatingAIChat.tsx)
 
 ### Phase C File Map Summary
 
-| New Backend File | Purpose |
+| Implemented C.1 Backend File | Purpose |
 |---|---|
 | `src/itineraries/pipeline.py` | LLM orchestration for generate |
+| `src/agent/config.py` | AI config facade |
+| `src/agent/llm.py` | Gemini client wrapper + JSON parsing |
+| `src/agent/prompts/itinerary_prompts.py` | Generate prompt builder |
+| `src/agent/schemas/itinerary_schemas.py` | Structured LLM output schemas |
+
+| Remaining Backend File | Purpose |
+|---|---|
 | `src/itineraries/companion.py` | Intent routing, tool-calling for chat |
 | `src/places/suggestion_service.py` | DB-only place suggestions |
 | `src/itineraries/chat_service.py` | Chat session/message management |
 | `src/itineraries/router.py` (extend) | Chat + apply-patch endpoints |
 | `src/itineraries/router.py` (extend) | Chat history endpoints |
-| `src/itineraries/schemas.py` (extend) | AI generate request/response |
 | `src/itineraries/repository.py` (extend) | Chat DB queries |
 
 | New/Modified Frontend File | Purpose |
@@ -528,17 +544,17 @@ Frontend (FloatingAIChat.tsx)
 | `services/agent.ts` | Chat/apply-patch API client |
 | `FloatingAIChat.tsx` | Replace mock with real API |
 | `companion/*.tsx` | Wire to real suggestions |
-| `CreateTrip.tsx` | No change needed (already wired) |
+| `CreateTrip.tsx` | Already wired to C.1 `generateItinerary` |
 
 ---
 
 ## What Still Needs To Be Done
 
-- Implement Phase C AI direct itinerary pipeline (replace stub with Gemini call).
 - Implement AI companion chat with patch-confirm flow.
+- Implement C.2 DB-only suggestion service when companion/chat work begins.
 - Persist chat history with `chat_sessions` and `chat_messages`.
 - Expand Playwright e2e tests (trip workspace, calendar, accommodation).
-- Add real `GOONG_API_KEY` for full ETL runs.
+- Add/run real `GOONG_API_KEY` ETL for more cities beyond the current local smoke data.
 - Keep `docs/09_execution_tracker.md` updated for every branch/PR.
 
 ---
@@ -578,5 +594,5 @@ Frontend (FloatingAIChat.tsx)
 | Frontend | React, TypeScript, Vite, Tailwind/MUI |
 | Backend | FastAPI, SQLAlchemy async, Alembic, PostgreSQL |
 | Cache | Redis |
-| AI | Gemini planned, direct pipeline pending |
-| ETL | OSM, Goong, YAML sample hotels |
+| AI | Gemini C.1 direct generate implemented; companion chat pending |
+| ETL | Goong-first ETL, OSM fallback, YAML sample hotels |

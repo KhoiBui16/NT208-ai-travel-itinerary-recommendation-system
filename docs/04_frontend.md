@@ -259,7 +259,7 @@ AuthContext
 │     → TripWizardContext.setBudget()                       │
 │                                                           │
 │  Step 5: Create trip                                      │
-│     → CreateTrip.tsx gọi createItinerary() API            │
+│     → CreateTrip.tsx gọi generateItinerary() API          │
 │     → Navigate /trip-workspace?tripId={id}                │
 │     → TripWizardContext.resetWizard()                     │
 │                                                           │
@@ -563,7 +563,8 @@ Job `frontend-e2e` trong `frontend-ci.yml`:
 
 ## 11. Known Gaps
 
-- AI/chat UI vẫn mock vì BE AI chưa implement (Phase C).
+- FloatingAIChat vẫn mock vì C.3 companion chat chưa implement.
+- CreateTrip đã gọi BE generate API thật; chất lượng lịch trình phụ thuộc Goong ETL data + Gemini key.
 - E2E chưa cover: trip workspace drag-and-drop, calendar interaction, accommodation CRUD.
 - CityList chủ yếu dùng mock data (BE cần nhiều destinations hơn).
 - Visual regression testing chưa có.

@@ -18,6 +18,7 @@ from src.core.schema import PaginatedResponse
 from src.core.security import create_opaque_token, hash_token
 from src.itineraries.models.extras import GuestClaimToken
 from src.itineraries.models.trip import Activity, Trip, TripDay
+from src.itineraries.pipeline import ItineraryPipeline
 from src.itineraries.repository import TripRepository
 from src.itineraries.schemas import (
     AccommodationSchema,
@@ -50,19 +51,9 @@ class ItineraryService(BaseService):
     async def generate(
         self, request: GenerateItineraryRequest, user_id: int | None
     ) -> ItineraryResponse:
-        """AI-powered trip generation. Stub returns empty trip — Phase C replaces this."""
-        trip = await self._create_trip_record(
-            destination=request.destination,
-            trip_name=f"Trip to {request.destination}",
-            start_date=request.start_date,
-            end_date=request.end_date,
-            budget=request.budget,
-            adults_count=request.adults,
-            children_count=request.children,
-            interests=request.interests,
-            user_id=user_id,
-            ai_generated=True,
-        )
+        """AI-powered trip generation using the C.1 direct pipeline."""
+        pipeline = ItineraryPipeline(self.session)
+        trip = await pipeline.generate(request, user_id=user_id)
         resp = await self._to_response(trip)
         if user_id is None:
             resp.claim_token = await self._issue_claim_token(trip.id)
