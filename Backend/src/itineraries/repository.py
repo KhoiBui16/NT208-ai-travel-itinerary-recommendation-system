@@ -184,6 +184,26 @@ class TripRepository:
         result = await self.session.execute(select(Activity).where(Activity.id == activity_id))
         return result.scalar_one_or_none()
 
+    async def get_activity_with_trip(self, activity_id: int) -> Activity | None:
+        stmt = (
+            select(Activity)
+            .where(Activity.id == activity_id)
+            .options(
+                selectinload(Activity.trip_day).selectinload(TripDay.trip),
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_place_ids_in_trip(self, trip_id: int) -> list[int]:
+        stmt = (
+            select(Activity.place_id)
+            .join(TripDay, Activity.trip_day_id == TripDay.id)
+            .where(TripDay.trip_id == trip_id, Activity.place_id.isnot(None))
+        )
+        result = await self.session.execute(stmt)
+        return [row[0] for row in result.all() if row[0] is not None]
+
     # --- Accommodation ---
 
     async def add_accommodation(self, **kwargs: object) -> Accommodation:

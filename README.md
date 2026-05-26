@@ -19,7 +19,8 @@ This README is the single source of truth for running the project locally.
 - Places: destinations, destination detail, place search/detail, saved places, Redis read cache.
 - ETL: Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, sample hotel data.
 - AI C.1 generate: `POST /itineraries/generate` builds DB recommendation context, calls Gemini structured JSON, validates, retries, persists trip/day/activity/accommodation, and enforces user/guest AI quota.
-- Backend lint/format/migration checks pass; 93 unit tests pass and 42 integration tests collect (36 pass, 6 skipped by env guards).
+- AI C.2 suggest (EP-30): `GET /agent/suggest/{activity_id}` — DB-only alternatives for an activity (owner-only, no LLM). Implemented on branch `feat/00047-c-suggestion-service`; FE UI not wired yet by design.
+- Backend lint/format/migration checks pass; **97 unit** + **44 integration** tests pass locally (2026-05-26, branch 00047).
 
 ### Implemented (FE)
 
@@ -38,13 +39,19 @@ This README is the single source of truth for running the project locally.
 
 ### Not yet implemented
 
-- **Phase C remaining**: no companion chat, no patch-confirm flow, no chat history API, no optional analytics, no map view.
+- **Phase C remaining (after C.2 BE)**: companion chat + apply-patch (C.3), chat history API (C.4), optional analytics (C.5), no map view.
+- **C.2 FE wiring**: EP-30 API ready; UI components (`FloatingAIChat`, `PlaceSuggestions`) still mock until a separate FE wire PR is approved.
 - Full ETL with real place data needs `GOONG_API_KEY`; AI generate needs `GEMINI_API_KEY`.
-- Playwright e2e tests exist (11 tests) but don't yet cover trip workspace drag-and-drop, calendar interaction, or accommodation CRUD.
+- Playwright e2e tests: **13** cases (auth + guest claim reload, trips, public pages). Workspace drag-and-drop / accommodation flows not fully covered yet.
 
 ### Latest Post-Merge Verification
 
-See `docs/REPORTS/REPORT.md` for the 2026-05-26 PR40/PR41 post-merge audit. The report includes FE/BE/browser smoke evidence, screenshots, guest claim/reload behavior, AI quota checks, README/docs sync notes, and remaining issue files.
+See `docs/REPORTS/REPORT.md` for post-merge audits. Latest phase reports:
+
+- `docs/REPORTS/phase_ai_generate_pipeline.md` — C.1 generate
+- `docs/REPORTS/phase_c2_suggestion_service.md` — C.2 EP-30 suggest (BE-only, API smoke)
+
+Includes FE/BE smoke evidence, guest claim/reload, AI quota notes, and issue files under `docs/REPORTS/ISSUES/`.
 
 ---
 
@@ -93,8 +100,8 @@ After copying, edit `Backend/.env`. Only **one variable is required**; all other
 | `JWT_SECRET_KEY` | **Yes** | *(empty)* | Generate: `python -c "import secrets; print(secrets.token_hex(32))"` then paste the output here. The server will warn on startup if this is missing. |
 | `DATABASE_URL` | No | `postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet` | Keep default if using `docker compose up -d db` |
 | `REDIS_URL` | No | `redis://localhost:6379/0` | Keep default if using `docker compose up -d redis` |
-| `GEMINI_API_KEY` | For AI generate | *(empty)* | Required for real `POST /itineraries/generate`; CI tests mock external calls |
-| `GOONG_API_KEY` | For Goong ETL | *(empty)* | Required for real Goong-first ETL data |
+| `GEMINI_API_KEY` | For AI generate / future C.3 chat | *(empty)* | Required for `POST /itineraries/generate` and companion chat (C.3); **not** used by C.2 suggest |
+| `GOONG_API_KEY` | For Goong ETL | *(empty)* | Required for real Goong-first ETL data (meaningful suggest results need places in DB) |
 | `AGENT_TIMEOUT_SECONDS` | No | `30` | Local multi-day Gemini smoke can use `60` or `120` if provider latency is high |
 | `AGENT_MIN_ACTIVITIES_PER_DAY` | No | `5` | Product pacing for AI output |
 | `AGENT_MAX_ACTIVITIES_PER_DAY` | No | `5` | Product pacing for AI output |
@@ -232,8 +239,8 @@ REDIS_URL=redis://localhost:6379/0
 │   │       ├── data/                       #     hotels.yaml sample data
 │   │       └── runner.py                   #     ETL CLI entry point
 │   ├── tests/                              # Unit + integration tests
-│   │   ├── unit/                           #   93 tests
-│   │   └── integration/                    #   42 collected (36 pass, 6 skipped)
+│   │   ├── unit/                           #   97 tests (incl. C.2 suggestion_service)
+│   │   └── integration/                    #   44 tests (incl. C.2 agent endpoints)
 │   ├── alembic/                            # DB migrations (3 revisions)
 │   ├── config.yaml                         # Shared non-secret app config
 │   ├── pyproject.toml                      # uv dependencies
@@ -536,12 +543,11 @@ Frontend (FloatingAIChat.tsx)
 
 | Remaining Backend File | Purpose |
 |---|---|
-| `src/itineraries/companion.py` | Intent routing, tool-calling for chat |
-| `src/places/suggestion_service.py` | DB-only place suggestions |
-| `src/itineraries/chat_service.py` | Chat session/message management |
-| `src/itineraries/router.py` (extend) | Chat + apply-patch endpoints |
-| `src/itineraries/router.py` (extend) | Chat history endpoints |
-| `src/itineraries/repository.py` (extend) | Chat DB queries |
+| `src/itineraries/companion_service.py` | Intent routing, tool-calling for chat (C.3) |
+| `src/itineraries/chat_service.py` | Chat session/message management (C.4) |
+| `src/itineraries/router.py` (extend) | Chat + apply-patch endpoints (C.3) |
+| `src/itineraries/router.py` (extend) | Chat history endpoints (C.4) |
+| `src/itineraries/repository.py` (extend) | Chat DB queries (C.4) |
 
 | New/Modified Frontend File | Purpose |
 |---|---|
@@ -554,9 +560,9 @@ Frontend (FloatingAIChat.tsx)
 
 ## What Still Needs To Be Done
 
-- Implement AI companion chat with patch-confirm flow.
-- Implement C.2 DB-only suggestion service when companion/chat work begins.
-- Persist chat history with `chat_sessions` and `chat_messages`.
+- Implement AI companion chat with patch-confirm flow (C.3 — `feat/00048`).
+- Implement C.4 chat history API after companion works.
+- Wire C.2 FE: EP-30 API ready; `FloatingAIChat` / `PlaceSuggestions` still mock until a separate FE wire PR is approved.
 - Expand Playwright e2e tests (trip workspace, calendar, accommodation).
 - Add/run real `GOONG_API_KEY` ETL for more cities beyond the current local smoke data.
 - Keep `docs/09_execution_tracker.md` updated for every branch/PR.
@@ -579,6 +585,7 @@ Frontend (FloatingAIChat.tsx)
 | `docs/08_testing_local_run.md` | Local run and test guide |
 | `docs/09_execution_tracker.md` | Execution tracker by branch/task |
 | `docs/10_automation_testing_report.md` | Latest automation testing report |
+| `docs/11_phase_roadmap.md` | Phase C roadmap, DoD checklist, env per sub-phase |
 | `.claude/context/00_project_overview.md` | Condensed current project truth |
 | `CLAUDE.md` | Agent/project memory |
 | `AGENTS.md` | Agent and skill coordination |

@@ -64,6 +64,28 @@ class PlaceRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def find_alternatives(
+        self,
+        destination_id: int,
+        category: str,
+        exclude_ids: list[int],
+        limit: int = 5,
+    ) -> list[Place]:
+        stmt = (
+            select(Place)
+            .where(
+                Place.destination_id == destination_id,
+                Place.category == category,
+            )
+            .options(selectinload(Place.destination))
+            .order_by(Place.rating.desc(), Place.review_count.desc())
+            .limit(limit)
+        )
+        if exclude_ids:
+            stmt = stmt.where(Place.id.notin_(exclude_ids))
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     # --- Hotel ---
 
     async def get_hotels_by_destination(self, destination_id: int) -> list[Hotel]:

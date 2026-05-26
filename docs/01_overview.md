@@ -19,21 +19,22 @@ File này là **entry point** cho toàn bộ docs. Đọc file này đầu tiên
 8.    08_testing_local_run.md        → Cách chạy local, test gates
 9.    09_execution_tracker.md        → Task/branch/PR tracker
 10.   10_automation_testing_report.md → Báo cáo test mới nhất
+11.   11_phase_roadmap.md            → Snapshot Phase C + template DoD/verify/env
 ```
 
 **Quick reference:**
 
-| Câu hỏi | Đọc file nào |
-|---|---|
-| "Hệ thống hoạt động thế nào?" | `02_architecture.md` |
-| "Endpoint X làm gì, flow ra sao?" | `03_backend.md` |
-| "Component X lấy data từ đâu?" | `04_frontend.md` |
-| "Bảng X có những cột gì, relationship gì?" | `05_database_etl.md` |
-| "AI Phase C sẽ implement thế nào?" | `06_ai_roadmap.md` |
-| "Branch/commit/PR format sao?" | `07_workflow_ci.md` |
-| "Chạy local/test thế nào?" | `08_testing_local_run.md` |
-| "Task/PR hiện tại ở đâu?" | `09_execution_tracker.md` |
-| "Test pass/fail gì gần nhất?" | `10_automation_testing_report.md` |
+| Câu hỏi                                    | Đọc file nào                      |
+| ------------------------------------------ | --------------------------------- |
+| "Hệ thống hoạt động thế nào?"              | `02_architecture.md`              |
+| "Endpoint X làm gì, flow ra sao?"          | `03_backend.md`                   |
+| "Component X lấy data từ đâu?"             | `04_frontend.md`                  |
+| "Bảng X có những cột gì, relationship gì?" | `05_database_etl.md`              |
+| "AI Phase C sẽ implement thế nào?"         | `06_ai_roadmap.md`                |
+| "Branch/commit/PR format sao?"             | `07_workflow_ci.md`               |
+| "Chạy local/test thế nào?"                 | `08_testing_local_run.md`         |
+| "Task/PR hiện tại ở đâu?"                  | `09_execution_tracker.md`         |
+| "Test pass/fail gì gần nhất?"              | `10_automation_testing_report.md` |
 
 ---
 
@@ -61,17 +62,17 @@ MVP1
 
 ## Cross-Reference: Docs ↔ Code
 
-| Docs file | Source code tương ứng |
-|---|---|
-| `02_architecture.md` | `Backend/src/main.py`, `Frontend/src/app/App.tsx`, `Frontend/src/app/routes.tsx` |
-| `03_backend.md` | `Backend/src/auth/*.py`, `Backend/src/itineraries/*.py`, `Backend/src/places/*.py`, `Backend/src/core/*.py` |
-| `04_frontend.md` | `Frontend/src/app/services/*.ts`, `Frontend/src/app/contexts/*.tsx`, `Frontend/src/app/hooks/**/*.ts`, `Frontend/src/app/types/trip.types.ts` |
-| `05_database_etl.md` | `Backend/src/auth/models.py`, `Backend/src/itineraries/models/*.py`, `Backend/src/places/models.py`, `Backend/alembic/versions/*.py`, `Backend/src/etl/` |
-| `06_ai_roadmap.md` | `Backend/src/itineraries/pipeline.py`, `Backend/src/agent/*`, `Backend/src/itineraries/models/extras.py` |
-| `07_workflow_ci.md` | `.github/workflows/`, `Backend/pyproject.toml`, `Frontend/package.json` |
-| `08_testing_local_run.md` | `scripts/test_fullstack_smoke.ps1`, `docker-compose.yml` |
-| `09_execution_tracker.md` | Git branch/PR history |
-| `10_automation_testing_report.md` | `Backend/tests/`, `Frontend/tests/e2e/` |
+| Docs file                         | Source code tương ứng                                                                                                                                    |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `02_architecture.md`              | `Backend/src/main.py`, `Frontend/src/app/App.tsx`, `Frontend/src/app/routes.tsx`                                                                         |
+| `03_backend.md`                   | `Backend/src/auth/*.py`, `Backend/src/itineraries/*.py`, `Backend/src/places/*.py`, `Backend/src/core/*.py`                                              |
+| `04_frontend.md`                  | `Frontend/src/app/services/*.ts`, `Frontend/src/app/contexts/*.tsx`, `Frontend/src/app/hooks/**/*.ts`, `Frontend/src/app/types/trip.types.ts`            |
+| `05_database_etl.md`              | `Backend/src/auth/models.py`, `Backend/src/itineraries/models/*.py`, `Backend/src/places/models.py`, `Backend/alembic/versions/*.py`, `Backend/src/etl/` |
+| `06_ai_roadmap.md`                | `Backend/src/itineraries/pipeline.py`, `Backend/src/agent/*`, `Backend/src/itineraries/models/extras.py`                                                 |
+| `07_workflow_ci.md`               | `.github/workflows/`, `Backend/pyproject.toml`, `Frontend/package.json`                                                                                  |
+| `08_testing_local_run.md`         | `scripts/test_fullstack_smoke.ps1`, `docker-compose.yml`                                                                                                 |
+| `09_execution_tracker.md`         | Git branch/PR history                                                                                                                                    |
+| `10_automation_testing_report.md` | `Backend/tests/`, `Frontend/tests/e2e/`                                                                                                                  |
 
 ---
 
@@ -140,32 +141,32 @@ MVP1
 
 ## MVP2 Cải Tiến So Với MVP1
 
-| Aspect | MVP1 | MVP2 |
-|---|---|---|
-| Backend architecture | Đơn giản | Router/Service/Repository/Schema/Model |
-| Database migration | `create_all()` | Alembic migration |
-| Auth | Cơ bản | JWT access + refresh rotation + revoke + reset password |
-| Trip access | Public by ID | Owner-only ID + opaque shareToken |
-| Guest claim | `user_id IS NULL` | claimToken hash + expiry + consume |
-| Data source | Mock thuần | Goong-first ETL places/hotels + Redis cache |
-| FE architecture | localStorage | API client + optimistic CRUD + revert |
-| Testing | Không có | Backend unit/integration tests + 11 FE e2e |
-| CI/CD | Không có | 7 required checks |
+| Aspect               | MVP1              | MVP2                                                    |
+| -------------------- | ----------------- | ------------------------------------------------------- |
+| Backend architecture | Đơn giản          | Router/Service/Repository/Schema/Model                  |
+| Database migration   | `create_all()`    | Alembic migration                                       |
+| Auth                 | Cơ bản            | JWT access + refresh rotation + revoke + reset password |
+| Trip access          | Public by ID      | Owner-only ID + opaque shareToken                       |
+| Guest claim          | `user_id IS NULL` | claimToken hash + expiry + consume                      |
+| Data source          | Mock thuần        | Goong-first ETL places/hotels + Redis cache             |
+| FE architecture      | localStorage      | API client + optimistic CRUD + revert                   |
+| Testing              | Không có          | Backend unit/integration tests + 11 FE e2e              |
+| CI/CD                | Không có          | 7 required checks                                       |
 
 ---
 
 ## Invariant Cần Giữ
 
-| Invariant | Chi tiết | Khi nào review |
-|---|---|---|
-| Public API JSON dùng `camelCase` | `CamelCaseModel` serialize | Locked — không review |
-| Endpoint theo integer ID phải owner-only | `trip.user_id == user.id` | Locked |
-| Public share chỉ qua `shareToken` | Opaque, không đoán được | Locked |
-| Guest claim phải dùng `claimToken` one-time | Hash + expiry + consumed_at | Locked |
-| AI chat không tự ghi DB trước khi confirm | Patch-confirm flow | Khi implement C.3 |
-| Redis cache places fail-open | Query DB trực tiếp khi Redis down | Locked |
-| AI rate limit KHÔNG fail-open | Trả lỗi thay vì cho request qua | Đã áp dụng cho C.1; giữ cho C.3/C.5 |
-| Activity dùng `name` không dùng `title` | FE contract đã chốt | Locked |
+| Invariant                                   | Chi tiết                          | Khi nào review                      |
+| ------------------------------------------- | --------------------------------- | ----------------------------------- |
+| Public API JSON dùng `camelCase`            | `CamelCaseModel` serialize        | Locked — không review               |
+| Endpoint theo integer ID phải owner-only    | `trip.user_id == user.id`         | Locked                              |
+| Public share chỉ qua `shareToken`           | Opaque, không đoán được           | Locked                              |
+| Guest claim phải dùng `claimToken` one-time | Hash + expiry + consumed_at       | Locked                              |
+| AI chat không tự ghi DB trước khi confirm   | Patch-confirm flow                | Khi implement C.3                   |
+| Redis cache places fail-open                | Query DB trực tiếp khi Redis down | Locked                              |
+| AI rate limit KHÔNG fail-open               | Trả lỗi thay vì cho request qua   | Đã áp dụng cho C.1; giữ cho C.3/C.5 |
+| Activity dùng `name` không dùng `title`     | FE contract đã chốt               | Locked                              |
 
 ---
 
