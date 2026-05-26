@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI
 from sqlalchemy import text
 
+from src.agent.router import agent_router
 from src.auth.router import auth_router, user_router
 from src.core.config import DEV_JWT_SECRET, get_settings
 from src.core.database import engine
@@ -69,6 +70,7 @@ def create_app(verify_database: bool = True) -> FastAPI:
     api_v1.include_router(auth_router)
     api_v1.include_router(user_router)
     api_v1.include_router(places_router)
+    api_v1.include_router(agent_router)
     api_v1.include_router(itineraries_router)
     api_v1.include_router(shared_router)
 

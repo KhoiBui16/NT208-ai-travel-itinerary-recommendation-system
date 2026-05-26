@@ -73,3 +73,11 @@ class SavedPlaceResponse(CamelCaseModel):
     id: int
     place: PlaceResponse
     created_at: datetime
+
+
+class SuggestionResponse(CamelCaseModel):
+    """Activity alternative suggestions (EP-30)."""
+
+    activity_id: int
+    current_name: str
+    suggestions: list[PlaceResponse] = Field(default_factory=list)

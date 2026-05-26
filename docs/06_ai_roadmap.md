@@ -5,6 +5,7 @@
 File này mô tả **chi tiết kiến trúc AI cho Phase C** — generate pipeline, companion chat, suggestion service, chat history. C.1 direct generate pipeline đã được implement trong branch `feat/00041-c-generate-pipeline`; các phần C.2-C.5 vẫn theo roadmap.
 
 **Khi nào đọc file này:**
+
 - Bắt đầu implement Phase C → hiểu pipeline architecture
 - Code review AI code → kiểm tra invariant (không tự persist, owner-check, audit-friendly)
 - Thêm AI endpoint mới → follow pattern đã chốt
@@ -15,9 +16,10 @@ File này mô tả **chi tiết kiến trúc AI cho Phase C** — generate pipel
 ## 1. Trạng thái hiện tại
 
 - `POST /api/v1/itineraries/generate` đã chạy **C.1 direct pipeline**: build recommendation context từ DB, gọi Gemini JSON, validate, persist trip/day/activity/accommodation.
+- `GET /api/v1/agent/suggest/{activity_id}` (EP-30) đã implement **C.2 SuggestionService** DB-only trên `feat/00047-c-suggestion-service` (`review_ready`). Xem `docs/REPORTS/phase_c2_suggestion_service.md`.
 - Chat/companion UI ở FE là **mock/demo**, không nối API thật.
 - DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn), nhưng chưa có API.
-- Chưa có `CompanionService`, `SuggestionService`, `ChatService`, analytics.
+- Chưa có `CompanionService`, `ChatService`, analytics.
 - C.1 không phải multi-agent; LangGraph/tool-calling để dành cho C.3 Companion Chat.
 
 ---
@@ -85,33 +87,33 @@ ItineraryPipeline.generate()
 
 ### 2.3 Yêu cầu kỹ thuật
 
-| Yêu cầu | Chi tiết | Tại sao |
-|---|---|---|
-| Structured output | Gemini JSON mode ép output theo schema | Không parse text tự do, giảm hallucination |
-| Schema validation | Pydantic `AgentItinerary` | Catch lỗi type, missing field, value range |
-| Retry hữu hạn | `agent_max_retries=2`, tổng 3 attempts cho invalid output | Không loop vô hạn |
-| Field names | `name` (không `title`), `adultPrice`/`childPrice` | FE contract đã chốt |
-| camelCase contract | `CamelCaseModel` serializes | Khớp `trip.types.ts` |
-| Rate limit | 3 AI calls/ngày cho user/guest | Chống abuse, tiết kiệm API cost |
-| Timeout | Code/config default 30s; local 3-day smoke khuyến nghị `AGENT_TIMEOUT_SECONDS=60` | Không treo request nhưng đủ thời gian cho Gemini |
-| Activity pacing | Default exactly `5` activities/ngày, cấu hình bằng env/config | Không hardcode smoke-test limit vào product behavior |
-| Owner-check | Generate cho user authenticated hoặc guest | Guest nhận claimToken |
-| Empty context guard | Không đủ places → 422 trước khi gọi Gemini | Không sinh itinerary từ context rỗng |
-| Debug logging | Log metadata cho context/prompt/attempt/duration | Không log API key, không dump full prompt |
+| Yêu cầu             | Chi tiết                                                                          | Tại sao                                              |
+| ------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Structured output   | Gemini JSON mode ép output theo schema                                            | Không parse text tự do, giảm hallucination           |
+| Schema validation   | Pydantic `AgentItinerary`                                                         | Catch lỗi type, missing field, value range           |
+| Retry hữu hạn       | `agent_max_retries=2`, tổng 3 attempts cho invalid output                         | Không loop vô hạn                                    |
+| Field names         | `name` (không `title`), `adultPrice`/`childPrice`                                 | FE contract đã chốt                                  |
+| camelCase contract  | `CamelCaseModel` serializes                                                       | Khớp `trip.types.ts`                                 |
+| Rate limit          | 3 AI calls/ngày cho user/guest                                                    | Chống abuse, tiết kiệm API cost                      |
+| Timeout             | Code/config default 30s; local 3-day smoke khuyến nghị `AGENT_TIMEOUT_SECONDS=60` | Không treo request nhưng đủ thời gian cho Gemini     |
+| Activity pacing     | Default exactly `5` activities/ngày, cấu hình bằng env/config                     | Không hardcode smoke-test limit vào product behavior |
+| Owner-check         | Generate cho user authenticated hoặc guest                                        | Guest nhận claimToken                                |
+| Empty context guard | Không đủ places → 422 trước khi gọi Gemini                                        | Không sinh itinerary từ context rỗng                 |
+| Debug logging       | Log metadata cho context/prompt/attempt/duration                                  | Không log API key, không dump full prompt            |
 
 ### 2.4 File cần tạo
 
-| File Backend | Mục đích | Layer |
-|---|---|---|
-| `src/itineraries/pipeline.py` | C.1 orchestration, recommendation context, LLM call, validation, persistence | Domain service |
-| `src/agent/llm.py` | Gemini client wrapper + JSON parsing helpers | Shared AI infra |
-| `src/agent/prompts/itinerary_prompts.py` | Compact JSON-first prompt builder | Shared AI infra |
-| `src/agent/schemas/itinerary_schemas.py` | `AgentItinerary`, `AgentDay`, `AgentActivity` output schemas | Shared AI infra |
+| File Backend                             | Mục đích                                                                     | Layer           |
+| ---------------------------------------- | ---------------------------------------------------------------------------- | --------------- |
+| `src/itineraries/pipeline.py`            | C.1 orchestration, recommendation context, LLM call, validation, persistence | Domain service  |
+| `src/agent/llm.py`                       | Gemini client wrapper + JSON parsing helpers                                 | Shared AI infra |
+| `src/agent/prompts/itinerary_prompts.py` | Compact JSON-first prompt builder                                            | Shared AI infra |
+| `src/agent/schemas/itinerary_schemas.py` | `AgentItinerary`, `AgentDay`, `AgentActivity` output schemas                 | Shared AI infra |
 
-| File Frontend | Mục đích |
-|---|---|
+| File Frontend    | Mục đích                                                                                        |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
 | `CreateTrip.tsx` | Gọi `generateItinerary`; guest lưu `claimToken` vào pending claim trước khi vào route protected |
-| `Login.tsx` | Sau login quay lại đúng `pathname + search` để giữ `tripId` |
+| `Login.tsx`      | Sau login quay lại đúng `pathname + search` để giữ `tripId`                                     |
 
 ### 2.5 Config cần thêm
 
@@ -214,67 +216,67 @@ Ngày 2026-05-25:
 
 ```json
 {
-  "requiresConfirmation": true,
-  "proposedOperations": [
-    {
-      "type": "add_activity",
-      "description": "Thêm hoạt động 'Tham quan Văn Miếu' vào ngày 1 lúc 09:00",
-      "target": {
-        "dayId": 1,
-        "activity": {
-          "name": "Thăm Văn Miếu",
-          "time": "09:00",
-          "type": "attraction",
-          "location": "Quốc Tử Giám, Đống Đa, Hà Nội",
-          "adultPrice": 30000
-        }
-      }
-    },
-    {
-      "type": "remove_activity",
-      "description": "Xóa hoạt động 'Lunch at Pho 10' khỏi ngày 1",
-      "target": {
-        "activityId": 42
-      }
-    }
-  ],
-  "message": "Tôi đề xuất thay đổi lịch trình ngày 1 nhé?"
+	"requiresConfirmation": true,
+	"proposedOperations": [
+		{
+			"type": "add_activity",
+			"description": "Thêm hoạt động 'Tham quan Văn Miếu' vào ngày 1 lúc 09:00",
+			"target": {
+				"dayId": 1,
+				"activity": {
+					"name": "Thăm Văn Miếu",
+					"time": "09:00",
+					"type": "attraction",
+					"location": "Quốc Tử Giám, Đống Đa, Hà Nội",
+					"adultPrice": 30000
+				}
+			}
+		},
+		{
+			"type": "remove_activity",
+			"description": "Xóa hoạt động 'Lunch at Pho 10' khỏi ngày 1",
+			"target": {
+				"activityId": 42
+			}
+		}
+	],
+	"message": "Tôi đề xuất thay đổi lịch trình ngày 1 nhé?"
 }
 ```
 
 ### 3.3 Operation types
 
-| Type | Mô tả | Target fields |
-|---|---|---|
-| `add_activity` | Thêm activity vào day | `dayId`, `activity` |
-| `remove_activity` | Xóa activity | `activityId` |
-| `update_activity` | Sửa activity | `activityId`, `updates` |
-| `add_accommodation` | Thêm accommodation | `accommodation` |
-| `remove_accommodation` | Xóa accommodation | `accommodationId` |
-| `update_budget` | Thay đổi ngân sách | `budget` |
+| Type                   | Mô tả                 | Target fields           |
+| ---------------------- | --------------------- | ----------------------- |
+| `add_activity`         | Thêm activity vào day | `dayId`, `activity`     |
+| `remove_activity`      | Xóa activity          | `activityId`            |
+| `update_activity`      | Sửa activity          | `activityId`, `updates` |
+| `add_accommodation`    | Thêm accommodation    | `accommodation`         |
+| `remove_accommodation` | Xóa accommodation     | `accommodationId`       |
+| `update_budget`        | Thay đổi ngân sách    | `budget`                |
 
 ### 3.4 Key invariants
 
-| Invariant | Mô tả | Tại sao |
-|---|---|---|
-| **Không tự persist** | Chat chỉ trả `proposedOperations` | User kiểm soát mọi thay đổi DB |
-| **Owner-check bắt buộc** | Tool đọc/ghi trip phải verify owner | Chống user sửa trip người khác |
-| **Audit-friendly** | Mỗi operation có type + description + target | Dễ debug, dễ trace |
-| **Rate limit** | Giới hạn message/session | Chống abuse |
-| **Re-validate on apply** | `apply-patch` validate lại tất cả | Không tin FE input |
+| Invariant                | Mô tả                                        | Tại sao                        |
+| ------------------------ | -------------------------------------------- | ------------------------------ |
+| **Không tự persist**     | Chat chỉ trả `proposedOperations`            | User kiểm soát mọi thay đổi DB |
+| **Owner-check bắt buộc** | Tool đọc/ghi trip phải verify owner          | Chống user sửa trip người khác |
+| **Audit-friendly**       | Mỗi operation có type + description + target | Dễ debug, dễ trace             |
+| **Rate limit**           | Giới hạn message/session                     | Chống abuse                    |
+| **Re-validate on apply** | `apply-patch` validate lại tất cả            | Không tin FE input             |
 
 ### 3.5 File cần tạo
 
-| File Backend | Mục đích | Layer |
-|---|---|---|
-| `src/itineraries/router.py` (mở rộng) | Chat + apply-patch endpoints | Router |
-| `src/itineraries/companion.py` | Intent routing, tool-calling, LLM chat | Service |
+| File Backend                          | Mục đích                               | Layer   |
+| ------------------------------------- | -------------------------------------- | ------- |
+| `src/itineraries/router.py` (mở rộng) | Chat + apply-patch endpoints           | Router  |
+| `src/itineraries/companion.py`        | Intent routing, tool-calling, LLM chat | Service |
 
-| File Frontend | Mục đích |
-|---|---|
-| `services/agent.ts` | Chat/apply-patch API client |
+| File Frontend        | Mục đích                                              |
+| -------------------- | ----------------------------------------------------- |
+| `services/agent.ts`  | Chat/apply-patch API client                           |
 | `FloatingAIChat.tsx` | Thay mock bằng API thật, hiển thị proposed operations |
-| `companion/*.tsx` | Nối real suggestions, confirm UI |
+| `companion/*.tsx`    | Nối real suggestions, confirm UI                      |
 
 ---
 
@@ -312,12 +314,12 @@ Ngày 2026-05-25:
 
 ### 4.2 File cần tạo
 
-| File | Mục đích | Layer |
-|---|---|---|
+| File                               | Mục đích                 | Layer   |
+| ---------------------------------- | ------------------------ | ------- |
 | `src/places/suggestion_service.py` | Query DB + filter + sort | Service |
 
-| File Frontend | Mục đích |
-|---|---|
+| File Frontend                    | Mục đích                       |
+| -------------------------------- | ------------------------------ |
 | `companion/PlaceSuggestions.tsx` | Nối real suggestions thay mock |
 
 ---
@@ -330,19 +332,19 @@ DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn qua Alembic),
 
 ### 5.2 Endpoints dự kiến
 
-| Method | Path | Mô tả | Auth |
-|---|---|---|---|
-| GET | `/api/v1/chat/sessions` | Liệt kê chat sessions của user | Bearer |
-| GET | `/api/v1/chat/sessions/{sessionId}/messages` | Đọc messages trong session | Bearer |
-| DELETE | `/api/v1/chat/sessions/{sessionId}` | Xóa session + messages | Bearer |
+| Method | Path                                         | Mô tả                          | Auth   |
+| ------ | -------------------------------------------- | ------------------------------ | ------ |
+| GET    | `/api/v1/chat/sessions`                      | Liệt kê chat sessions của user | Bearer |
+| GET    | `/api/v1/chat/sessions/{sessionId}/messages` | Đọc messages trong session     | Bearer |
+| DELETE | `/api/v1/chat/sessions/{sessionId}`          | Xóa session + messages         | Bearer |
 
 ### 5.3 File cần tạo
 
-| File | Mục đích | Layer |
-|---|---|---|
-| `src/itineraries/router.py` (mở rộng) | Chat history endpoints | Router |
-| `src/itineraries/chat_service.py` | Chat session/message CRUD | Service |
-| `src/itineraries/repository.py` (mở rộng) | Chat DB queries | Repository |
+| File                                      | Mục đích                  | Layer      |
+| ----------------------------------------- | ------------------------- | ---------- |
+| `src/itineraries/router.py` (mở rộng)     | Chat history endpoints    | Router     |
+| `src/itineraries/chat_service.py`         | Chat session/message CRUD | Service    |
+| `src/itineraries/repository.py` (mở rộng) | Chat DB queries           | Repository |
 
 ---
 
@@ -388,45 +390,45 @@ Nếu bật Text-to-SQL analytics (EP-34), **bắt buộc** có các guardrails:
 
 ## 7. Thứ tự ưu tiên implement Phase C
 
-| Thứ tự | Service | Lý do | Độ phức tạp |
-|---|---|---|---|
-| 1 | Generate pipeline | Core value, ảnh hưởng trực tiếp UX | Cao |
-| 2 | SuggestionService | DB-only, không cần LLM, ít rủi ro | Thấp |
-| 3 | Companion chat | Phức tạp nhất: intent routing + tool-calling + confirm | Rất cao |
-| 4 | Chat history | Cần khi companion hoạt động, CRUD đơn giản | Thấp |
-| 5 | Analytics | Optional, rủi ro bảo mật cao | Rất cao |
+| Thứ tự | Service           | Lý do                                                  | Độ phức tạp | Trạng thái |
+| ------ | ----------------- | ------------------------------------------------------ | ----------- | ---------- |
+| 1      | Generate pipeline | Core value, ảnh hưởng trực tiếp UX                     | Cao         | ✅ merged #42 |
+| 2      | SuggestionService | DB-only, không cần LLM, ít rủi ro                      | Thấp        | 🔄 review_ready feat/00047 |
+| 3      | Companion chat    | Phức tạp nhất: intent routing + tool-calling + confirm | Rất cao     | ❌ todo feat/00048 |
+| 4      | Chat history      | Cần khi companion hoạt động, CRUD đơn giản             | Thấp        | ❌ todo feat/00049 |
+| 5      | Analytics         | Optional, rủi ro bảo mật cao                           | Rất cao     | ❌ optional feat/00050 |
 
 ---
 
 ## 8. Risk Assessment
 
-| Risk | Mức độ | Mitigation | Giải thích |
-|---|---|---|---|
-| LLM output không khớp schema | Cao | Structured output + Pydantic + 2 retries (3 attempts) | LLM có thể trả sai format, thiếu field |
-| LLM hallucination (tạo địa điểm không tồn tại) | Cao | Cross-reference DB places; flag unverified | LLM có thể "bịa" tên địa điểm |
-| Rate limit abuse | Trung bình | Redis rate limiter; không fail-open | Chống gọi LLM quá nhiều |
-| Prompt injection qua chat | Trung bình | Input sanitization; không expose SQL/tools | User cố gắng inject prompt |
-| Chat confirm bypass | Thấp | `apply-patch` validate lại ownership + operation | Phía server luôn validate |
-| LLM API down/timeout | Trung bình | Timeout 30s; fallback message | Gemini API có thể down |
-| Cost vượt ngân sách | Trung bình | Rate limit 3 generates/ngày; monitor usage | Gemini API có phí |
+| Risk                                           | Mức độ     | Mitigation                                            | Giải thích                             |
+| ---------------------------------------------- | ---------- | ----------------------------------------------------- | -------------------------------------- |
+| LLM output không khớp schema                   | Cao        | Structured output + Pydantic + 2 retries (3 attempts) | LLM có thể trả sai format, thiếu field |
+| LLM hallucination (tạo địa điểm không tồn tại) | Cao        | Cross-reference DB places; flag unverified            | LLM có thể "bịa" tên địa điểm          |
+| Rate limit abuse                               | Trung bình | Redis rate limiter; không fail-open                   | Chống gọi LLM quá nhiều                |
+| Prompt injection qua chat                      | Trung bình | Input sanitization; không expose SQL/tools            | User cố gắng inject prompt             |
+| Chat confirm bypass                            | Thấp       | `apply-patch` validate lại ownership + operation      | Phía server luôn validate              |
+| LLM API down/timeout                           | Trung bình | Timeout 30s; fallback message                         | Gemini API có thể down                 |
+| Cost vượt ngân sách                            | Trung bình | Rate limit 3 generates/ngày; monitor usage            | Gemini API có phí                      |
 
 ---
 
 ## 9. File tổng hợp cần tạo cho Phase C
 
-| File Backend | Mục đích | Layer |
-|---|---|---|
-| `src/itineraries/pipeline.py` | LLM orchestration cho generate | Service |
-| `src/itineraries/companion.py` | Intent routing, tool-calling cho chat | Service |
-| `src/places/suggestion_service.py` | Gợi ý DB-only (không LLM) | Service |
-| `src/itineraries/chat_service.py` | Quản lý chat session/message | Service |
-| `src/itineraries/router.py` (mở rộng) | Chat + apply-patch endpoints | Router |
-| `src/itineraries/router.py` (mở rộng) | Chat history endpoints | Router |
-| `src/itineraries/schemas.py` (mở rộng) | AI generate response schema | Schema |
-| `src/itineraries/repository.py` (mở rộng) | Chat DB queries | Repository |
+| File Backend                              | Mục đích                              | Layer      |
+| ----------------------------------------- | ------------------------------------- | ---------- |
+| `src/itineraries/pipeline.py`             | LLM orchestration cho generate        | Service    |
+| `src/itineraries/companion.py`            | Intent routing, tool-calling cho chat | Service    |
+| `src/places/suggestion_service.py`        | Gợi ý DB-only (không LLM)             | Service    |
+| `src/itineraries/chat_service.py`         | Quản lý chat session/message          | Service    |
+| `src/itineraries/router.py` (mở rộng)     | Chat + apply-patch endpoints          | Router     |
+| `src/itineraries/router.py` (mở rộng)     | Chat history endpoints                | Router     |
+| `src/itineraries/schemas.py` (mở rộng)    | AI generate response schema           | Schema     |
+| `src/itineraries/repository.py` (mở rộng) | Chat DB queries                       | Repository |
 
-| File Frontend | Mục đích |
-|---|---|
-| `services/agent.ts` | Chat/apply-patch API client |
-| `FloatingAIChat.tsx` | Thay mock bằng API thật |
-| `companion/*.tsx` | Nối real suggestions, confirm UI |
+| File Frontend        | Mục đích                         |
+| -------------------- | -------------------------------- |
+| `services/agent.ts`  | Chat/apply-patch API client      |
+| `FloatingAIChat.tsx` | Thay mock bằng API thật          |
+| `companion/*.tsx`    | Nối real suggestions, confirm UI |

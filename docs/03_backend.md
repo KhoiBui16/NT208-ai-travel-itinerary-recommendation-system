@@ -139,7 +139,15 @@ Backend/
 | EP-28 | POST | `/api/v1/places/saved` | Bearer | `SavedPlaceResponse` |
 | EP-29 | DELETE | `/api/v1/places/saved/{savedId}` | Bearer | `{message}` |
 
-**Tổng: 33 endpoints** (EP-0 đến EP-32; EP-34 optional cho MVP2+)
+**Tổng: 34 endpoints** trên branch `feat/00047` (EP-0 đến EP-32 + **EP-30** suggest; EP-34 analytics optional MVP2+)
+
+### EP-30: `GET /api/v1/agent/suggest/{activity_id}` (C.2)
+
+- Auth: Bearer required.
+- Owner-only: `trip.user_id == current_user.id`.
+- DB-only: `SuggestionService` → `find_alternatives` (không LLM).
+- Query: `limit` 1–20 (default 5).
+- Response: `SuggestionResponse` (`activityId`, `currentName`, `suggestions[]` as `PlaceResponse`).
 
 ---
 
@@ -601,7 +609,8 @@ EmailService
 
 ## 11. Backend còn thiếu
 
-- AI companion chat + patch-confirm flow.
-- Chat history API endpoints.
-- Analytics optional EP-34 với SQL guardrails.
-- `SuggestionService` DB-only (không LLM).
+- AI companion chat + patch-confirm flow (C.3 — `feat/00048`).
+- Chat history API endpoints (C.4 — `feat/00049`).
+- Analytics optional EP-34 với SQL guardrails (C.5 — `feat/00050`, optional).
+
+> **C.2 SuggestionService** (EP-30) đã implement trên `feat/00047-c-suggestion-service` — `review_ready`. Xem `docs/REPORTS/phase_c2_suggestion_service.md`.

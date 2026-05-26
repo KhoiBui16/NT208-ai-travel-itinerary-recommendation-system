@@ -31,7 +31,9 @@ Phạm vi: kiểm tra sau khi `feat: [#00040] add goong-first etl readiness` và
 | [phase_guest_rate_limit_claim_reload.md](phase_guest_rate_limit_claim_reload.md) | Guest generate, pending claim, reload, rate limit |
 | [phase_plan_source_sync.md](phase_plan_source_sync.md) | Map `plan/` với source sau PR40/PR41 |
 | [phase_phase_c_remaining_audit.md](phase_phase_c_remaining_audit.md) | Audit phần còn lại của Phase C, branch strategy, env/key needs |
-| [phase_fix_00044_stabilize_c1_guest_flow.md](phase_fix_00044_stabilize_c1_guest_flow.md) | Fix guest claim reload, FE audit, post-fix gates |
+| [phase_c2_suggestion_service.md](phase_c2_suggestion_service.md) | C.2 EP-30 DB-only suggest, tests, API smoke (BE-only, no FE UI) |
+| [phase_fix_00044_stabilize_c1_guest_flow.md](phase_fix_00044_stabilize_c1_guest_flow.md) | Fix guest claim reload, FE audit, post-fix gates (13 e2e pass) |
+| [pr_00047_description.md](pr_00047_description.md) | PR body template cho feat/00047 C.2 suggestion service |
 ## Issues
 
 | Issue | Status | Ghi chú |
