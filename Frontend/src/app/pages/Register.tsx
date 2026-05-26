@@ -50,10 +50,14 @@ export default function Register() {
     // Skip OTP placeholder — register directly until BE email OTP is ready
     setLoading(true);
     try {
-      await register(formData.email, formData.password, formData.name);
+      const claimResult = await register(
+        formData.email,
+        formData.password,
+        formData.name,
+      );
       toast.success("Đăng ký thành công!", { position: "top-right" });
       setTimeout(() => {
-        navigate("/");
+        navigate(claimResult?.returnTo || "/", { replace: true });
       }, 1000);
     } catch (err) {
       if (err instanceof ApiError) {

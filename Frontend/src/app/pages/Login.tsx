@@ -32,7 +32,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
+      const claimResult = await login(formData.email, formData.password);
 
       // Handle remember me with cookies
       if (formData.rememberMe) {
@@ -44,7 +44,7 @@ export default function Login() {
       }
 
       toast.success("Đăng nhập thành công!", { position: "top-right" });
-      navigate(from, { replace: true });
+      navigate(claimResult?.returnTo || from, { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
