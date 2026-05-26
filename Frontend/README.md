@@ -1,11 +1,150 @@
+# DuLichViet Frontend
 
-  # Travel app (Copy)
+React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendation system.
 
-  This is a code bundle for Travel app (Copy). The original project is available at https://www.figma.com/design/vTH53v4UQaCFrWLmZIpzIK/Travel-app--Copy-.
+## Current State
 
-  ## Running the code
+| Area | Status |
+|---|---|
+| Routing | Home, city list/detail, auth, create trip, trip workspace, trip library/history, saved places/itineraries, settings, profile, shared trip, forgot/reset password |
+| API layer | Centralized services under `src/app/services/` |
+| Auth | JWT local storage, refresh-token retry on 401, protected routes, guest-to-owner claim after login/register |
+| Trips | Manual create/update, generated itinerary load by `tripId`, optimistic activity/accommodation/place operations |
+| AI C.1 | `CreateTrip` calls BE `POST /api/v1/itineraries/generate` and navigates to `TripWorkspace` |
+| Remaining AI UI | `FloatingAIChat`, promo bubble, contextual panels, and companion components are still mock/placeholder for C.3 |
+| Verified 2026-05-26 | Playwright e2e: 11 passed; browser smoke covered auth generate, guest generate, claim, reload, and rate limit |
 
-  Run `npm i` to install the dependencies.
+## Local Start
 
-  Run `npm run dev` to start the development server.
-  
+Terminal 1 should already run the backend on `127.0.0.1:8000`.
+
+Terminal 2:
+
+```powershell
+cd Frontend
+npm ci
+$env:VITE_API_URL="http://127.0.0.1:8000"
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+Open:
+
+```text
+http://127.0.0.1:5173
+```
+
+If the backend uses another port, restart Vite after changing `VITE_API_URL`; Vite only exposes `VITE_*` variables at server startup.
+
+## API Organization
+
+The frontend already has an API layer. Do not hardcode backend URLs inside pages/components.
+
+```text
+src/app/services/
+├── api.ts          # fetch wrapper, VITE_API_URL, Bearer token, refresh on 401
+├── auth.ts         # login/register/logout/refresh/forgot/reset
+├── itinerary.ts    # CRUD, generate, share, claim, rating
+├── places.ts       # destinations, search, saved places
+└── users.ts        # profile and password
+```
+
+Typical flow:
+
+```text
+CreateTrip.tsx
+-> generateItinerary()
+-> api.post("/api/v1/itineraries/generate")
+-> Backend ItineraryPipeline
+-> TripWorkspace loads generated trip by tripId
+```
+
+## Auth And Guest Claim Flow
+
+Guest AI generate:
+
+```text
+CreateTrip
+-> POST /api/v1/itineraries/generate without Bearer token
+-> BE returns trip id + claimToken
+-> FE stores { tripId, claimToken } in sessionStorage key "pendingClaim"
+-> FE navigates to /trip-workspace?tripId=...
+-> ProtectedRoute redirects to /login
+-> login/register calls POST /api/v1/itineraries/{tripId}/claim
+-> BE transfers trip ownership to the authenticated user
+```
+
+Observed 2026-05-26:
+
+- `pendingClaim` survives reload within the same browser tab because it is stored in `sessionStorage`.
+- After reloading `/login`, the claim still succeeds after login.
+- The React Router `location.state.from` target is lost on login-page reload, so the user may land on `/` after claim and then must open the trip from library/history or direct URL. This is tracked in `docs/REPORTS/ISSUES/guest_login_reload_redirect_target_lost.md`.
+
+## Trip Workspace Data Flow
+
+```text
+/trip-workspace?tripId=123
+-> ProtectedRoute requires auth
+-> useTripSync() calls getItinerary(123)
+-> maps ItineraryResponse days/activities/accommodations into FE state
+-> sessionStorage "currentTrip" is only a quick-restore fallback
+```
+
+The backend remains source of truth after a generated trip is claimed or owned by a user.
+
+## Map And Goong Usage
+
+Do not call Goong REST APIs directly from FE with `GOONG_API_KEY`.
+
+Current FE only calls backend places APIs:
+
+```text
+GET /api/v1/places/destinations
+GET /api/v1/places/destinations/{name}
+GET /api/v1/places/search
+```
+
+Future map view, if implemented, should use a separate public map key:
+
+```env
+VITE_GOONG_MAP_KEY=<frontend map tile key>
+```
+
+REST geocode/detail/direction calls should still go through the backend.
+
+## Test Commands
+
+Production build:
+
+```powershell
+cd Frontend
+npm run build
+```
+
+Playwright e2e:
+
+```powershell
+cd Frontend
+$env:E2E_API_URL="http://127.0.0.1:8000"
+npm run test:e2e
+```
+
+Post-merge note from 2026-05-26:
+
+- `npm run test:e2e`: 11 passed.
+- A clean alternate production build passed with `--outDir ..\.codex-run-logs\frontend-dist-20260526`.
+- The exact default `npm run build` failed locally because an ignored `Frontend/dist/assets` directory had Windows `EPERM` permission locks. This is local artifact state, not a TypeScript/Vite compile error, and is tracked in `docs/REPORTS/ISSUES/frontend_dist_permission_lock.md`.
+
+## Browser Debug Checklist
+
+Use `.claude/skills/fullstack-browser-debug/SKILL.md` for full FE-BE verification.
+
+Minimum evidence:
+
+- Backend health URL.
+- Vite served `VITE_API_URL`.
+- Browser screenshot.
+- Network response status.
+- Browser console errors.
+- Backend log events around the same timestamp.
+
+Keep UI/UX unchanged while debugging logic.
