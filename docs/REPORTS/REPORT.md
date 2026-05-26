@@ -30,9 +30,8 @@ Phạm vi: kiểm tra sau khi `feat: [#00040] add goong-first etl readiness` và
 | [phase_ai_generate_pipeline.md](phase_ai_generate_pipeline.md) | C.1 Generate Pipeline, input/output, logs, quota |
 | [phase_guest_rate_limit_claim_reload.md](phase_guest_rate_limit_claim_reload.md) | Guest generate, pending claim, reload, rate limit |
 | [phase_plan_source_sync.md](phase_plan_source_sync.md) | Map `plan/` với source sau PR40/PR41 |
-| [phase_docs_readme_ci_sync.md](phase_docs_readme_ci_sync.md) | README/docs/CI trạng thái đồng bộ |
+| [phase_phase_c_remaining_audit.md](phase_phase_c_remaining_audit.md) | Audit phần còn lại của Phase C, branch strategy, env/key needs |
 | [phase_fix_00044_stabilize_c1_guest_flow.md](phase_fix_00044_stabilize_c1_guest_flow.md) | Fix guest claim reload, FE audit, post-fix gates |
-
 ## Issues
 
 | Issue | Status | Ghi chú |
@@ -42,6 +41,7 @@ Phạm vi: kiểm tra sau khi `feat: [#00040] add goong-first etl readiness` và
 | [npm_audit_vulnerabilities.md](ISSUES/npm_audit_vulnerabilities.md) | DONE | `npm audit` now reports 0 vulnerabilities |
 | [gemini_resource_exhausted_manual_smoke.md](ISSUES/gemini_resource_exhausted_manual_smoke.md) | TO DO | Guest AI smoke blocked by Gemini provider quota |
 | [ruff_cache_permission_warning.md](ISSUES/ruff_cache_permission_warning.md) | TO DO | Ruff pass nhưng không ghi được `.ruff_cache` do quyền local |
+| [phase_c_legacy_plan_status_drift.md](ISSUES/phase_c_legacy_plan_status_drift.md) | TO DO | `plan/19_phase_c_overview.md` còn ghi `Chưa bắt đầu` và branch examples cũ |
 
 ## Screenshot Evidence
 

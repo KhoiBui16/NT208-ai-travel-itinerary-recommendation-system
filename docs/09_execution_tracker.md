@@ -27,8 +27,11 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00028 | B2 | `fix/00028-b2-register-otp-bypass` | Bypass client-side OTP placeholder in Register flow | merged | FE build pass | #28 |
 | 00031 | B3 | `feat/00031-b3-playwright-e2e` | Setup Playwright e2e tests, audit .claude/ operational files, đồng bộ docs/ | pending | 11/11 e2e pass, 117 BE tests pass, FE build pass | #31 |
 | 00040 | C | `feat/00040-c-goong-etl-readiness` | Goong-first ETL readiness, place metadata migration, extractor/client tests | ready_for_pr | BE lint/format/unit/integration/migration pass; real Goong ETL Hà Nội loaded 60 places + 3 hotels | pending |
-| 00041 | C | `feat/00041-c-generate-pipeline` | C.1 AI generate pipeline with DB recommendation context, Gemini structured JSON, user/guest AI quota | ready_for_pr | BE lint/format/unit/integration/migration pass; FE build pass; Playwright 11/11 pass; browser AI smoke 1-day 201 and workspace loads generated trip | pending |
-=======
+| 00041 | C | `feat/00041-c-generate-pipeline` | C.1 AI generate pipeline with DB recommendation context, Gemini structured JSON, user/guest AI quota | merged | BE lint/format/unit/integration/migration pass; FE build pass; Playwright 11/11 pass; browser AI smoke 1-day 201 and workspace loads generated trip | #42 |
+| 00043 | D | `docs/00043-d-post-merge-audit-reporting` | Post-merge smoke, README/docs sync, source-plan review skill, browser evidence | merged | BE checks pass, FE e2e pass, smoke + screenshots captured | #43 |
+| 00044 | C | `fix/00044-c-stabilize-c1-guest-flow` | Guest claim reload redirect fix, FE audit cleanup, C1 stabilization | blocked_ci | Local BE/FE verification pass; GitHub Actions failed before checkout due repo/account 403 | pending |
+| 00045 | C | `fix/00045-c-restage-c1-guest-flow` | Clean restage branch for PR44 changes from `main` | ready_for_pr | Cherry-picked from 00044 cleanly, branch pushed to origin | pending |
+| 00046 | D | `docs/00046-d-phase-c-audit-sync` | Audit remaining Phase C scope, branch strategy, env/key readiness | in_progress | Source-plan-docs audit in progress | pending |
 
 
 ## Scope Task 00006
