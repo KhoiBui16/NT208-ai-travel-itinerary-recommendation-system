@@ -1,7 +1,7 @@
 """Itinerary domain service.
 
 Handles trip CRUD, auto-save with diff/sync, share/claim, rating,
-and stub for AI generation (Phase C will replace the stub).
+and C.1 AI itinerary generation through ItineraryPipeline.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -46,7 +46,7 @@ class ItineraryService(BaseService):
         self.session = session
         self.repo = TripRepository(session)
 
-    # --- Generate (stub for Phase C) ---
+    # --- Generate (Phase C.1 direct pipeline) ---
 
     async def generate(
         self, request: GenerateItineraryRequest, user_id: int | None

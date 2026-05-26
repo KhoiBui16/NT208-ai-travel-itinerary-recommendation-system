@@ -1,226 +1,207 @@
-# DuLichViet API Backend
+# DuLichViet Backend
 
-MVP2 backend for the AI travel itinerary recommendation system.
+FastAPI backend for the NT208 AI travel itinerary recommendation system.
 
-## Current state
+## Current State
 
-Implemented:
+| Area | Status |
+|---|---|
+| Foundation | `src/`, `uv`, Alembic, async SQLAlchemy, centralized config, Docker |
+| Auth/users | Register, login, refresh rotation, logout, profile, change password, forgot/reset password |
+| Itineraries | CRUD, days, activities, accommodations, share token, guest claim token, rating |
+| Places | Destinations, search/detail, saved places, Redis read cache |
+| ETL | Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, sample hotels |
+| AI C.1 | Implemented: `POST /api/v1/itineraries/generate` builds DB recommendation context, calls Gemini, validates, retries, persists generated trip data, and enforces user/guest quota |
+| Remaining AI | C.2 suggestion service, C.3 companion chat, C.4 chat history API, C.5 analytics |
+| Verified 2026-05-26 | Ruff check/format pass, Alembic upgrade/check pass, 93 unit tests pass, 42 integration tests collect with 36 passed and 6 skipped |
 
-- Foundation: `src/`, `uv`, Alembic, async SQLAlchemy, centralized config, Docker.
-- Auth/users: register, login, refresh, logout, profile, password change, forgot/reset password.
-- Itineraries: CRUD, nested days/activities/accommodations, owner checks, share token, claim token, rating.
-- Places: destinations, place search/detail, saved places, Redis read cache.
-- ETL: OSM/Goong extractors, transformers, DB upsert loader, sample hotel data.
-- Tests: 111 BE tests (75 unit + 36 integration), 11 FE e2e tests.
+## Architecture
 
-Not implemented yet: Phase C AI services. `POST /api/v1/itineraries/generate` is still a stub until the direct AI itinerary pipeline is built.
+The backend is organized by domain:
 
-## Architecture overview
-
-Source code is organized by domain (not by type):
-
-```
+```text
 src/
-├── auth/              # Authentication & user profile
-│   ├── router.py      #   EP 1–7, 31, 32 (auth + users + forgot/reset)
-│   ├── service.py     #   AuthService: register, login, refresh, logout, forgot/reset
-│   ├── profile_service.py  #   UserService: profile CRUD, change password
-│   ├── repository.py  #   UserRepository, RefreshTokenRepository
-│   ├── models.py      #   User, RefreshToken
-│   ├── schemas.py     #   Auth + User request/response schemas
-│   ├── dependencies.py #   get_current_user, get_current_user_optional
-│   └── email.py       #   SMTP email sender (console fallback)
-├── itineraries/       # Trip management
-│   ├── router.py      #   EP 8–20, 32 (trips + activities + accommodations + share + claim)
-│   ├── service.py     #   ItineraryService: CRUD, generate (stub), share, claim, rating
-│   ├── repository.py  #   TripRepository
-│   ├── schemas.py     #   Itinerary request/response schemas
-│   └── models/
-│       ├── trip.py    #   Trip, TripDay, Activity, ExtraExpense, Accommodation
-│       ├── extras.py  #   ShareLink, GuestClaimToken, TripRating
-│       └── chat.py    #   ChatSession, ChatMessage (for Phase C)
-├── places/            # Places & destinations
-│   ├── router.py      #   EP 21–27 (destinations, search, saved places)
-│   ├── service.py     #   PlaceService (with CacheClient composition)
-│   ├── repository.py  #   PlaceRepository
-│   ├── models.py      #   Place, Hotel, Destination, SavedPlace, ScrapedSource
-│   └── schemas.py     #   Place request/response schemas
-├── shared/            # Shared utilities
-│   ├── cache.py       #   CacheClient (composition-based Redis wrapper)
-│   ├── pagination.py  #   PaginatedResponse generic
-│   └── service.py     #   BaseService
-├── core/              # Infrastructure
-│   ├── config.py      #   AppSettings (pydantic-settings, .env + config.yaml)
-│   ├── database.py    #   AsyncEngine, session factory, Base
-│   ├── dependencies.py #   DI chain: get_db → get_*_repo → get_*_service
-│   ├── security.py    #   JWT + bcrypt + password reset tokens
-│   ├── exceptions.py  #   Custom HTTP exceptions
-│   ├── logger.py      #   structlog configuration
-│   ├── middlewares.py  #   CORS, logging, global error handler
-│   ├── rate_limiter.py #   Redis rate limiter (AI + general)
-│   └── schema.py      #   CamelCaseModel (snake_case ↔ camelCase)
-├── etl/               # ETL pipeline (unchanged by refactor)
-└── main.py            #   App factory with inline health + domain routers
+├── main.py                  # App factory and /api/v1 routers
+├── auth/                    # Auth, refresh tokens, profile, password reset
+├── itineraries/             # Trip CRUD, share/claim, C.1 AI generate pipeline
+│   ├── pipeline.py          # DB context -> Gemini -> validation -> persistence
+│   ├── router.py            # /api/v1/itineraries endpoints
+│   ├── service.py           # Domain orchestration
+│   ├── repository.py        # DB queries including recommendation context
+│   └── models/              # Trip, activity, accommodation, claim/share/chat models
+├── places/                  # Destinations, places, hotels, saved places
+├── geo/                     # Goong REST client infrastructure
+├── etl/                     # Goong/OSM extract-transform-load pipeline
+├── agent/                   # C.1 AI config, Gemini client, prompts, output schemas
+├── core/                    # Config, DB, security, dependencies, middleware, rate limiter
+└── shared/                  # CacheClient, pagination, base service helpers
 ```
 
-## Prerequisites
+## Environment
 
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/) (Python package manager)
-- Docker & Docker Compose (for PostgreSQL and Redis)
-- Node.js 18+ and npm (for Frontend)
+Copy the template and fill local secrets:
 
-## Quick start
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/<your-org>/NT208-ai-travel-itinerary-recommendation-system.git
-cd NT208-ai-travel-itinerary-recommendation-system
-```
-
-### 2. Start PostgreSQL and Redis with Docker
-
-```bash
-docker compose up -d db redis
-```
-
-This starts:
-- PostgreSQL 16 on `localhost:5432` (database: `dulichviet`, user: `postgres`, password: `postgres`)
-- Redis 7 on `localhost:6379`
-
-### 3. Configure Backend
-
-```bash
+```powershell
 cd Backend
-copy .env.example .env
+Copy-Item .env.example .env
 ```
 
-Edit `.env` — only **one variable is required**; all others have safe defaults:
+| Variable | Required? | Purpose |
+|---|---|---|
+| `JWT_SECRET_KEY` | Required for real auth | Sign access/refresh JWTs |
+| `DATABASE_URL` | Default works with local Docker | PostgreSQL async URL |
+| `REDIS_URL` | Default works with local Docker | Cache and AI quota |
+| `GOONG_API_KEY` | Required for real Goong ETL | Autocomplete, place detail, geocode |
+| `GEMINI_API_KEY` | Required for real AI generate | Gemini C.1 generation |
+| `AGENT_TIMEOUT_SECONDS` | Optional, default 30 | Local smoke can use 60 or 120 if provider latency is high |
+| `AGENT_MIN_ACTIVITIES_PER_DAY` | Optional, default 5 | Minimum C.1 activities per day |
+| `AGENT_MAX_ACTIVITIES_PER_DAY` | Optional, default 5 | Maximum C.1 activities per day |
+| `ENABLE_ANALYTICS` | Optional, default false | Keep disabled until C.5 guardrails exist |
 
-| Variable | Required? | Default | What to do |
-|----------|-----------|---------|------------|
-| `JWT_SECRET_KEY` | **Yes** | *(empty)* | Generate: `python -c "import secrets; print(secrets.token_hex(32))"` then paste. The server warns on startup if missing. |
-| `DATABASE_URL` | No | `postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet` | Keep default if using `docker compose up -d db` |
-| `REDIS_URL` | No | `redis://localhost:6379/0` | Keep default if using `docker compose up -d redis` |
-| `GEMINI_API_KEY` | No | *(empty)* | Leave empty until Phase C |
-| `GOONG_API_KEY` | No | *(empty)* | Leave empty; only needed for real ETL data |
-| `SMTP_HOST` | No | *(empty)* | Leave empty — reset links log to console |
-| `SMTP_PORT` | No | `587` | Only matters if `SMTP_HOST` is set |
-| `SMTP_USERNAME` | No | *(empty)* | Only if using real SMTP |
-| `SMTP_PASSWORD` | No | *(empty)* | Only if using real SMTP |
-| `ENABLE_ANALYTICS` | No | `false` | Keep disabled — no guardrails yet |
+Never commit `Backend/.env`.
 
-### 4. Install dependencies and run migrations
+## Local Start
 
-```bash
+Terminal 1, from repo root:
+
+```powershell
+docker compose up -d db redis
+docker compose ps
+```
+
+Terminal 2:
+
+```powershell
+cd Backend
 uv sync
 uv run alembic upgrade head
+$env:AGENT_TIMEOUT_SECONDS="120"
+$env:AGENT_MIN_ACTIVITIES_PER_DAY="5"
+$env:AGENT_MAX_ACTIVITIES_PER_DAY="5"
+uv run uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-### 5. Start the Backend server
+Health and Swagger:
 
-```bash
-uv run uvicorn src.main:app --reload
+```powershell
+curl.exe http://127.0.0.1:8000/api/v1/health
+start http://127.0.0.1:8000/docs
 ```
 
-Verify at http://localhost:8000/api/v1/health — should return `{"status":"healthy"}`.
+## Data Pipeline
 
-Swagger UI: http://localhost:8000/docs
+Sample hotels only:
 
-### 6. Start the Frontend
-
-Open a new terminal:
-
-```bash
-cd Frontend
-npm install
-npm run dev
-```
-
-The Frontend runs on http://localhost:5173 and connects to the Backend at `http://localhost:8000` by default.
-
-To override the Backend URL, create `Frontend/.env`:
-
-```env
-VITE_API_URL=http://localhost:8000
-```
-
-### 7. Load sample data (optional)
-
-Without a Goong/Google Maps API key, you can load sample hotel data:
-
-```bash
+```powershell
 cd Backend
 uv run python -m src.etl --hotels-only --cities "Hà Nội"
 ```
 
-Full place extraction uses OSM and optionally Goong:
+Goong-first ETL for places:
 
-```bash
-uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng"
+```powershell
+cd Backend
+uv run python -m src.etl --cities "Hà Nội"
 ```
 
-## Docker Compose (full stack)
+ETL flow:
 
-To run all services together:
-
-```bash
-# From project root
-copy Backend\.env.example Backend\.env
-docker compose up --build
+```text
+city -> Goong geocode city center
+     -> Goong autocomplete by category keyword
+     -> Goong place detail
+     -> OSM fallback when needed
+     -> transform/validate/dedupe
+     -> upsert destinations/places/hotels
+     -> invalidate Redis places/destinations cache
 ```
 
-Services:
+## AI Generate Flow
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| API | http://localhost:8000 | FastAPI backend |
-| PostgreSQL | localhost:5432 | Database |
-| Redis | localhost:6379 | Cache + rate limiter |
+Endpoint:
 
-## Development gates
+```http
+POST /api/v1/itineraries/generate
+```
 
-Run these before every commit:
+Request shape:
 
-```bash
+```json
+{
+  "destination": "Hà Nội",
+  "startDate": "2026-06-01",
+  "endDate": "2026-06-03",
+  "budget": 5000000,
+  "adults": 2,
+  "children": 0,
+  "interests": ["food", "attraction"]
+}
+```
+
+Runtime flow:
+
+```text
+router optional auth
+-> user or guest AI rate limit in Redis
+-> ItineraryService.generate()
+-> ItineraryPipeline.generate()
+-> resolve destination
+-> load Goong-enriched places/hotels from PostgreSQL
+-> build compact recommendation prompt
+-> Gemini structured JSON
+-> Pydantic + business validation
+-> persist Trip/TripDay/Activity/Accommodation
+-> return ItineraryResponse
+```
+
+Guest behavior:
+
+- Guest generate is allowed.
+- The returned `claimToken` is raw only in the API response.
+- The database stores only the token hash in `guest_claim_tokens`.
+- After login/register, FE calls `POST /api/v1/itineraries/{tripId}/claim`.
+
+AI quota:
+
+| Actor | Redis key |
+|---|---|
+| Auth user | `rate:ai:user:{user_id}:{YYYYMMDD}` |
+| Guest | `rate:ai:guest:{hash(ip + user-agent)}:{YYYYMMDD}` |
+
+Redis fail mode is closed by default, so AI endpoints return 503 if quota tracking is unavailable.
+
+## Test Gates
+
+Run before opening a PR:
+
+```powershell
 cd Backend
 uv run ruff check src tests
 uv run ruff format --check src tests
+uv run alembic upgrade head
 uv run alembic check
-uv run pytest tests/unit/ -v
-uv run pytest tests/integration/ -v
+uv run pytest tests/unit/ -v --tb=short
+uv run pytest tests/integration/ -v --tb=short
 ```
 
-Run DB-backed integration tests locally:
+Expected post-PR41 local result on 2026-05-26:
 
-```bash
-docker compose up -d db redis
-set CI=true
-uv run pytest tests/integration/ -v
-```
+| Gate | Result |
+|---|---|
+| Ruff check | Pass |
+| Ruff format check | Pass |
+| Alembic upgrade/check | Pass |
+| Unit tests | 93 passed |
+| Integration tests | 36 passed, 6 skipped |
 
-## Frontend e2e tests
+## Debug Notes
 
-Requires both BE and FE servers running:
+| Symptom | Meaning | Check |
+|---|---|---|
+| `422` from `/generate` | Destination missing or insufficient DB context | Run Goong ETL and confirm places exist |
+| `429` from `/generate` | User/guest AI quota exhausted | Check Redis `rate:ai:*` keys |
+| `503 Gemini request timed out` | Provider latency exceeded timeout | Increase `AGENT_TIMEOUT_SECONDS` locally and inspect `ai_generate_*` logs |
+| `503 AI rate limiter unavailable` | Redis unavailable and fail-closed | Start Redis or fix `REDIS_URL` |
+| FE shows generic generate error | FE hides detailed BE error | Inspect network response and backend logs |
 
-```bash
-cd Frontend
-npm run test:e2e          # Playwright e2e (headless)
-npm run test:e2e:headed   # headed mode
-```
-
-## FE ↔ BE Communication
-
-The Frontend connects to the Backend via `VITE_API_URL` (defaults to `http://localhost:8000`). All API calls go through `/api/v1/` prefix. The API client (`services/api.ts`) handles:
-
-- JWT Bearer token injection on every request
-- Silent token refresh on 401 responses
-- Typed request/response with TypeScript interfaces
-
-## Notes
-
-- Public API JSON uses camelCase (via `CamelCaseModel` base).
-- `GET /itineraries/{id}` is owner-only. Public share uses `shareToken`.
-- Guest claim uses one-time `claimToken`.
-- AI generate will use the direct `ItineraryPipeline`, not a Supervisor.
+Do not log provider keys, JWTs, refresh tokens, or raw claim tokens.

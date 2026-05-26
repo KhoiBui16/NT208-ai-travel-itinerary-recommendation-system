@@ -22,6 +22,7 @@ File nay la bang dieu phoi ngan gon cho Claude trong repo nay. Chi giu nhung age
 | Review code, review PR, check readiness truoc commit/PR | `.claude/skills/code-review/SKILL.md` |
 | Sua models, schema, Alembic, migration, PK/FK, token tables | `.claude/skills/db-migration/SKILL.md` |
 | Debug/test FE-BE that qua Docker, dev server, browser, screenshot, log, Playwright | `.claude/skills/fullstack-browser-debug/SKILL.md` |
+| So source code voi plan/docs/README, tao report/issue de tranh lech tai lieu | `.claude/skills/source-plan-sync-review/SKILL.md` |
 
 ## Commands co san
 

@@ -34,13 +34,17 @@ This README is the single source of truth for running the project locally.
 - `TripWorkspace` loads generated trips from BE by `tripId` and uses `sessionStorage` only as quick-restore fallback.
 - `ErrorBoundary` wraps entire app for graceful crash recovery.
 - Type contract at `Frontend/src/app/types/trip.types.ts`.
-- Builds successfully (production bundle 1.1 MB).
+- Production build compiles successfully in a clean output directory; see `docs/REPORTS/ISSUES/frontend_dist_permission_lock.md` for the local Windows `Frontend/dist` permission artifact observed on 2026-05-26.
 
 ### Not yet implemented
 
 - **Phase C remaining**: no companion chat, no patch-confirm flow, no chat history API, no optional analytics, no map view.
 - Full ETL with real place data needs `GOONG_API_KEY`; AI generate needs `GEMINI_API_KEY`.
 - Playwright e2e tests exist (11 tests) but don't yet cover trip workspace drag-and-drop, calendar interaction, or accommodation CRUD.
+
+### Latest Post-Merge Verification
+
+See `docs/REPORTS/REPORT.md` for the 2026-05-26 PR40/PR41 post-merge audit. The report includes FE/BE/browser smoke evidence, screenshots, guest claim/reload behavior, AI quota checks, README/docs sync notes, and remaining issue files.
 
 ---
 
