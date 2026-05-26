@@ -32,3 +32,24 @@ This is not a TypeScript/Vite source compile error. It is a local Windows filesy
 ## Next Action
 
 Clean or unlock `Frontend/dist` outside the docs PR, then rerun exact `npm run build`. CI should run on a clean checkout and should not inherit this local artifact.
+
+## CI Recheck In Fix 00044
+
+Branch `fix/00044-c-stabilize-c1-guest-flow` verified the CI-clean scenario in a temporary clean worktree:
+
+```text
+git worktree add --detach <temp> HEAD
+cd <temp>/Frontend
+npm ci
+npm run build
+```
+
+Result:
+
+```text
+found 0 vulnerabilities
+vite v6.4.2 building for production
+dist/ generated successfully
+```
+
+Conclusion: this remains a local working-copy artifact, not a CI source/build failure.

@@ -200,6 +200,20 @@ Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycl
 - Browser e2e pass 11/11 sau khi bổ sung CORS origin `http://127.0.0.1:5173`.
 - Authenticated browser AI smoke 2026-05-25: FE `127.0.0.1:5173` → BE `127.0.0.1:8020`, `POST /itineraries/generate` trả 201, trip 129 có 5 activities, workspace render đúng generated data.
 
+## Scope Task 00044
+
+- Ổn định C.1 guest claim flow trước khi chuyển sang C.2/C.3.
+- FE `pendingClaim` lưu thêm `returnTo=/trip-workspace?tripId={id}` để reload `/login` hoặc `/register` không mất redirect target.
+- `AuthContext.login()` và `AuthContext.register()` trả về claim redirect target sau khi claim thành công.
+- `Login.tsx` và `Register.tsx` điều hướng về generated workspace khi claim thành công, fallback về flow cũ nếu không có claim.
+- Thêm 2 Playwright e2e tests: guest pending claim survives login reload, guest pending claim survives register reload.
+- Frontend e2e tăng từ 11 lên 13 tests.
+- Cập nhật Vite `6.3.5` → `6.4.2`; `npm audit` còn 0 vulnerabilities.
+- CI policy local simulation pass: branch regex, PR title regex, required body sections.
+- Clean worktree CI simulation pass: `npm ci && npm run build` mặc định trong `Frontend/`.
+- Local browser smoke 2026-05-26: auth UI generate pass (`POST /generate=201`, trip 143, 5 activities), seeded guest claim after login reload pass (`POST /claim=200`, `GET /itineraries/144=200`).
+- Guest AI generate manual smoke bị Gemini `ResourceExhausted`; track ở `docs/REPORTS/ISSUES/gemini_resource_exhausted_manual_smoke.md`.
+
 ## FE-BE Integration Status (2026-05-04)
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.

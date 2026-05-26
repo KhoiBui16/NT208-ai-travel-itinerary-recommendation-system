@@ -12,7 +12,7 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 | Trips | Manual create/update, generated itinerary load by `tripId`, optimistic activity/accommodation/place operations |
 | AI C.1 | `CreateTrip` calls BE `POST /api/v1/itineraries/generate` and navigates to `TripWorkspace` |
 | Remaining AI UI | `FloatingAIChat`, promo bubble, contextual panels, and companion components are still mock/placeholder for C.3 |
-| Verified 2026-05-26 | Playwright e2e: 11 passed; browser smoke covered auth generate, guest generate, claim, reload, and rate limit |
+| Verified 2026-05-26 | Playwright e2e: 13 passed after fix #00044; browser smoke covered auth generate, seeded guest claim reload, and rate limit |
 
 ## Local Start
 
@@ -130,7 +130,7 @@ npm run test:e2e
 
 Post-merge note from 2026-05-26:
 
-- `npm run test:e2e`: 11 passed.
+- `npm run test:e2e`: 13 passed after fix #00044.
 - A clean alternate production build passed with `--outDir ..\.codex-run-logs\frontend-dist-20260526`.
 - The exact default `npm run build` failed locally because an ignored `Frontend/dist/assets` directory had Windows `EPERM` permission locks. This is local artifact state, not a TypeScript/Vite compile error, and is tracked in `docs/REPORTS/ISSUES/frontend_dist_permission_lock.md`.
 
