@@ -14,22 +14,69 @@ import { claimItinerary } from "../services/itinerary";
 
 const PENDING_CLAIM_KEY = "pendingClaim";
 
+interface PendingClaim {
+  tripId: number;
+  claimToken: string;
+  returnTo?: string;
+}
+
+interface PendingClaimResult {
+  tripId: number;
+  returnTo: string;
+}
+
+function tripWorkspacePath(tripId: number) {
+  return `/trip-workspace?tripId=${tripId}`;
+}
+
+function claimReturnTo(pendingClaim: PendingClaim) {
+  const workspacePath = tripWorkspacePath(pendingClaim.tripId);
+  return pendingClaim.returnTo === workspacePath ? pendingClaim.returnTo : workspacePath;
+}
+
+function readPendingClaim(): PendingClaim | null {
+  const raw = sessionStorage.getItem(PENDING_CLAIM_KEY);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PendingClaim>;
+    if (typeof parsed.tripId !== "number" || typeof parsed.claimToken !== "string") {
+      return null;
+    }
+    return parsed as PendingClaim;
+  } catch {
+    return null;
+  }
+}
+
 /** Store a claim token + tripId so AuthContext can claim after login. */
 export function storePendingClaim(tripId: number, claimToken: string) {
-  sessionStorage.setItem(PENDING_CLAIM_KEY, JSON.stringify({ tripId, claimToken }));
+  sessionStorage.setItem(
+    PENDING_CLAIM_KEY,
+    JSON.stringify({ tripId, claimToken, returnTo: tripWorkspacePath(tripId) }),
+  );
 }
 
 /** Execute any pending claim (called right after successful login). */
-async function executePendingClaim() {
-  const raw = sessionStorage.getItem(PENDING_CLAIM_KEY);
-  if (!raw) return;
+async function executePendingClaim(): Promise<PendingClaimResult | null> {
+  const pendingClaim = readPendingClaim();
+  if (!pendingClaim) {
+    sessionStorage.removeItem(PENDING_CLAIM_KEY);
+    return null;
+  }
+
   try {
-    const { tripId, claimToken } = JSON.parse(raw);
+    const { tripId, claimToken } = pendingClaim;
     await claimItinerary(tripId, claimToken);
     sessionStorage.removeItem(PENDING_CLAIM_KEY);
+    return {
+      tripId,
+      returnTo: claimReturnTo(pendingClaim),
+    };
   } catch {
     // Claim failed (expired or already claimed) — silently remove
     sessionStorage.removeItem(PENDING_CLAIM_KEY);
+    return null;
   }
 }
 
@@ -39,13 +86,13 @@ interface AuthContextValue {
   user: UserResponse | null;
   isAuthenticated: boolean;
   loading: boolean; // initial profile fetch
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<PendingClaimResult | null>;
   register: (
     email: string,
     password: string,
     name: string,
     phone?: string,
-  ) => Promise<void>;
+  ) => Promise<PendingClaimResult | null>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -81,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await authService.login({ email, password });
     setUser(res.user);
     // Claim any guest itineraries that were created before login
-    await executePendingClaim();
+    return await executePendingClaim();
   }, []);
 
   const register = useCallback(
@@ -94,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await authService.register({ email, password, name, phone });
       setUser(res.user);
       // Claim any guest itineraries that were created before register
-      await executePendingClaim();
+      return await executePendingClaim();
     },
     [],
   );
