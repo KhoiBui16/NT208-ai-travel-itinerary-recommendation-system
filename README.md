@@ -1,26 +1,54 @@
-# DuLichViet — AI Travel Itinerary Recommendation System
+# 🗺️ DuLichViet — AI Travel Itinerary Recommendation System
 
-> NT208 · Web Programming Project · UIT 2023.2
+<div align="center">
 
-Hệ thống gợi ý và lập kế hoạch chuyến đi thông minh cho Việt Nam. User mô tả điểm đến, ngân sách, sở thích — AI tự động sinh lịch trình chi tiết theo ngày, có thể chỉnh sửa thủ công và chia sẻ.
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini_AI-8E75B2?style=for-the-badge&logo=google&logoColor=white)
+
+**NT208 · Web Programming Project · UIT 2023.2**
+
+</div>
 
 ---
 
-## Mục lục
+## 📖 Mô tả
+
+**DuLichViet** là hệ thống gợi ý và lập kế hoạch chuyến đi thông minh dành riêng cho du lịch Việt Nam. Người dùng chỉ cần mô tả điểm đến, ngân sách và sở thích — hệ thống AI sẽ tự động sinh ra lịch trình chi tiết theo từng ngày, bao gồm các hoạt động, địa điểm ăn uống, tham quan và chỗ ở phù hợp.
+
+Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực tế từ Goong Maps API, sau đó được Gemini AI sắp xếp thành hành trình hợp lý. Người dùng có thể chỉnh sửa thủ công, chia sẻ qua link công khai, hoặc đánh giá sau chuyến đi. Khách vãng lai (guest) có thể tạo lịch trình ngay mà không cần đăng ký, và claim về tài khoản sau khi đăng nhập.
+
+**Điểm nổi bật:**
+- 🤖 AI sinh lịch trình từ DB recommendation context — không hallucinate địa điểm
+- 🔒 Bảo mật token: refresh rotation, share/claim token hash SHA-256, không lưu raw token
+- ⚡ Optimistic update trên FE — UI phản hồi ngay, revert nếu API fail
+- 🗄️ Redis cache cho places/destinations, fail-open khi Redis down
+- 📊 Rate limit AI fail-closed — Redis down thì block, không cho bypass
+
+---
+
+## 📋 Mục lục
 
 1. [Tính năng chính](#1-tính-năng-chính)
-2. [High-Level Architecture](#2-high-level-architecture)
-3. [Low-Level Architecture](#3-low-level-architecture)
-4. [Database Schema & Quan hệ](#4-database-schema--quan-hệ)
-5. [API Reference](#5-api-reference)
-6. [AI Pipeline Flow](#6-ai-pipeline-flow)
-7. [Auth & Security Flow](#7-auth--security-flow)
-8. [Trạng thái Phase C](#8-trạng-thái-phase-c)
-9. [Quick Start](#9-quick-start)
-10. [Tests & Verification](#10-tests--verification)
-11. [ETL](#11-etl)
-12. [Cấu trúc thư mục](#12-cấu-trúc-thư-mục)
-13. [Team](#13-team)
+2. [Tech Stack](#2-tech-stack)
+3. [High-Level Architecture](#3-high-level-architecture)
+4. [Low-Level Architecture](#4-low-level-architecture)
+5. [Database Schema & Quan hệ](#5-database-schema--quan-hệ)
+6. [API Reference](#6-api-reference)
+7. [User Flow & CRUD Flow](#7-user-flow--crud-flow)
+8. [AI Pipeline Flow](#8-ai-pipeline-flow)
+9. [Auth & Security Flow](#9-auth--security-flow)
+10. [Trạng thái Phase C](#10-trạng-thái-phase-c)
+11. [Quick Start](#11-quick-start)
+12. [Tests & Verification](#12-tests--verification)
+13. [ETL](#13-etl)
+14. [Cấu trúc thư mục](#14-cấu-trúc-thư-mục)
+15. [Team](#15-team)
 
 ---
 
@@ -46,276 +74,424 @@ Hệ thống gợi ý và lập kế hoạch chuyến đi thông minh cho Việt
 | **AI C.5** | Analytics Text-to-SQL (optional) | 🔄 Optional |
 | **ETL** | Goong-first ETL nạp dữ liệu địa điểm | ✅ Done |
 
+---
+
+## 2. Tech Stack
+
+### Backend
+
+| Thành phần | Công nghệ | Phiên bản |
+|---|---|---|
+| Framework | FastAPI | 0.115+ |
+| Language | Python | 3.12+ |
+| Package Manager | uv | 0.4+ |
+| ORM | SQLAlchemy (async) | 2.0+ |
+| Database | PostgreSQL | 16 |
+| Migration | Alembic | 1.14+ |
+| Cache | Redis | 7 |
+| Auth | JWT (python-jose) + bcrypt | — |
+| AI | Google Gemini (google-generativeai) | gemini-2.5-flash |
+| HTTP Client | httpx | 0.28+ |
+| Email | aiosmtplib | 3.0+ |
+| Logging | structlog | 24.4+ |
+| Validation | Pydantic v2 | 2.10+ |
+| Lint/Format | Ruff | 0.8+ |
+| Test | pytest + pytest-asyncio | — |
+
+### Frontend
+
+| Thành phần | Công nghệ | Phiên bản |
+|---|---|---|
+| Framework | React | 18.3 |
+| Language | TypeScript | 5 |
+| Build Tool | Vite | 6.4 |
+| Styling | TailwindCSS | 4.1 |
+| UI Components | MUI + Radix UI | 7.x / latest |
+| Icons | Lucide React | 0.487 |
+| Routing | React Router | 7.13 |
+| Charts | Recharts | 2.15 |
+| Drag & Drop | React DnD | 16 |
+| Animation | Motion | 12 |
+| E2E Testing | Playwright | 1.59+ |
+
+### Infrastructure
+
+| Thành phần | Công nghệ |
+|---|---|
+| Container | Docker + Docker Compose |
+| CI/CD | GitHub Actions (7 required checks) |
+| Maps/ETL | Goong Maps API |
+| AI Provider | Google AI Studio (Gemini) |
 
 ---
 
-## 2. High-Level Architecture
+## 3. High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        USER (Browser)                               │
-│                                                                     │
-│   React 18 + Vite 6 + TypeScript + TailwindCSS + MUI               │
-│   27 pages · 8 protected routes · JWT auto-refresh                  │
-│                                                                     │
-│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
-│   │CreateTrip│  │Workspace │  │TripLib   │  │CityList/Detail   │  │
-│   │(AI Gen)  │  │(Edit+AI) │  │(CRUD)    │  │(Browse+Search)   │  │
-│   └────┬─────┘  └────┬─────┘  └────┬─────┘  └────────┬─────────┘  │
-│        │              │              │                  │            │
-│   ┌────┴──────────────┴──────────────┴──────────────────┴────────┐  │
-│   │  API Client Layer  (services/api.ts + auth/itinerary/places) │  │
-│   │  Bearer injection · auto-refresh on 401 · optimistic update  │  │
-│   └────────────────────────────┬──────────────────────────────────┘  │
-└────────────────────────────────┼────────────────────────────────────┘
-                                 │ HTTPS · JSON · camelCase
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    FastAPI Backend  (port 8000)                     │
-│                                                                     │
-│   CORS → RequestLog → RateLimiter → ErrorHandler                   │
-│                                                                     │
-│   /api/v1/auth/*      /api/v1/users/*    /api/v1/itineraries/*     │
-│   /api/v1/places/*    /api/v1/agent/*    /api/v1/shared/*          │
-│                                                                     │
-│   ┌──────────────────────────────────────────────────────────────┐ │
-│   │  Service Layer: AuthService · ItineraryService · PlaceService│ │
-│   │  AI Layer:      ItineraryPipeline (C.1) · SuggestionService  │ │
-│   └──────────────────────────────────────────────────────────────┘ │
-│                                                                     │
-│   ┌──────────────────────────────────────────────────────────────┐ │
-│   │  Repository Layer: TripRepository · PlaceRepository · ...    │ │
-│   └──────────────────────────────────────────────────────────────┘ │
-└──────────────────────┬──────────────────────────┬──────────────────┘
-                       │                          │
-              ┌────────▼────────┐      ┌──────────▼──────────┐
-              │   PostgreSQL    │      │       Redis          │
-              │   (port 5432)   │      │   (port 6379)        │
-              │  13 tables      │      │  destinations cache  │
-              │  3 Alembic rev  │      │  place search cache  │
-              └─────────────────┘      │  AI rate-limit keys  │
-                                       └─────────────────────┘
-                       ▲
-              ┌────────┴────────┐
-              │  Goong ETL      │
-              │  (CLI runner)   │
-              │  Goong API →    │
-              │  transform →    │
-              │  DB upsert      │
-              └─────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         👤 USER (Browser)                                │
+│                                                                          │
+│  ┌──────────────────────────── FRONTEND ──────────────────────────────┐  │
+│  │  React 18 + Vite 6 + TypeScript + TailwindCSS + MUI + Radix UI    │  │
+│  │                                                                     │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐             │  │
+│  │  │CreateTrip│ │Workspace │ │TripLib   │ │CityList  │  27 pages   │  │
+│  │  │(AI Gen)  │ │(Edit+AI) │ │(List)    │ │(Browse)  │             │  │
+│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘             │  │
+│  │       │ POST/gen    │ PUT/GET     │ GET         │ GET               │  │
+│  │  ┌────┴─────────────┴────────────┴─────────────┴───────────────┐  │  │
+│  │  │  API Client Layer (services/api.ts + 4 modules)              │  │  │
+│  │  │  • JWT Bearer injection + auto-refresh on 401               │  │  │
+│  │  │  • Optimistic update + revert-on-failure                    │  │  │
+│  │  │  • Mock fallback khi BE không có data                       │  │  │
+│  │  └────────────────────────────┬────────────────────────────────┘  │  │
+│  └───────────────────────────────┼────────────────────────────────────┘  │
+│                                  │ HTTP REST (JSON, camelCase)            │
+│                                  ▼                                        │
+│  ┌────────────────────── FASTAPI BACKEND ─────────────────────────────┐  │
+│  │  Uvicorn (Port 8000)                                              │  │
+│  │                                                                    │  │
+│  │  ┌──────────────── MIDDLEWARE PIPELINE ──────────────────────┐    │  │
+│  │  │  CORS → RequestLog → RateLimiter → ErrorHandler → JWT    │    │  │
+│  │  └──────────────────────┬───────────────────────────────────┘    │  │
+│  │                          ▼                                        │  │
+│  │  ┌──────────────── ROUTER LAYER (api/v1/) ───────────────────┐   │  │
+│  │  │  auth.py  │ users.py │ itineraries.py │ places.py │ shared │   │  │
+│  │  │  6 EPs    │ 3 EPs    │ 14 EPs          │ 7 EPs     │ 1 EP   │   │  │
+│  │  └─────┬──────┴────┬─────┴───────┬─────────┴─────┬────┴───────┘   │  │
+│  │        ▼           ▼             ▼               ▼                 │  │
+│  │  ┌──────────────── SERVICE LAYER ──────────────────────────────┐   │  │
+│  │  │  AuthService │ UserService │ ItineraryService │ PlaceService │   │  │
+│  │  │  (JWT+hash)  │ (CRUD)      │ (CRUD+generate)  │ (search)    │   │  │
+│  │  │  EmailService│             │                   │             │   │  │
+│  │  └──────┬───────┴──────┬──────┴────────┬──────────┴────────────┘   │  │
+│  │         ▼              ▼               ▼                           │  │
+│  │  ┌──────────────── REPOSITORY LAYER ───────────────────────────┐   │  │
+│  │  │  UserRepo │ TripRepo │ PlaceRepo │ TokenRepo               │   │  │
+│  │  └──────┬─────┴────┬────┴───────────┬────────────────────────┘   │  │
+│  └─────────┼──────────┼────────────────┼─────────────────────────────┘  │
+│             ▼          ▼                ▼                               │
+│  ┌─────────────── POSTGRESQL ──────────┐  ┌──────── REDIS ──────────┐ │
+│  │  users, refresh_tokens              │  │  destinations cache     │ │
+│  │  trips, trip_days, activities       │  │  place search cache     │ │
+│  │  accommodations, extra_expenses     │  │  rate-limit counter     │ │
+│  │  destinations, places, hotels       │  └─────────────────────────┘ │
+│  │  saved_places                       │                               │
+│  │  share_links, guest_claim_tokens    │                               │
+│  │  trip_ratings                       │                               │
+│  │  chat_sessions, chat_messages       │                               │
+│  │  scraped_sources                    │                               │
+│  └─────────────────────────────────────┘                               │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
+**Mô tả các thành phần:**
+
+| Thành phần | Vai trò |
+|---|---|
+| **Frontend** | React SPA — 27 trang, API client layer với JWT auto-refresh, optimistic update |
+| **FastAPI Backend** | REST API server, Uvicorn port 8000, middleware pipeline, 34 endpoints |
+| **Middleware Pipeline** | CORS → RequestLog → RateLimiter → ErrorHandler — xử lý trước khi vào router |
+| **Router Layer** | Parse request, auth dependency injection, gọi service, trả response schema |
+| **Service Layer** | Business logic: owner check, token validation, AI pipeline, cache logic |
+| **Repository Layer** | SQL queries thuần — không chứa business rules |
+| **PostgreSQL** | Primary database — 15+ bảng, integer PK, async SQLAlchemy |
+| **Redis** | Cache destinations/places (TTL 30min–1h), rate-limit counter, fail-open cho places |
 
 ---
 
-## 3. Low-Level Architecture
+## 4. Low-Level Architecture
 
-### Backend — By-Domain Structure
+### 4.1 Backend — Cấu trúc theo domain
 
-```
+```text
 Backend/src/
-├── main.py                    # App factory · mount /api/v1 · lifespan DB check
-│
-├── agent/                     # Shared AI infrastructure
-│   ├── config.py              # AgentConfig (model, temp, retries, timeout, pacing)
-│   ├── llm.py                 # GeminiLLM wrapper + parse_json_response()
-│   ├── router.py              # /agent prefix — EP-30 suggest
-│   ├── prompts/
-│   │   └── itinerary_prompts.py   # build_itinerary_prompt() cho C.1
-│   └── schemas/
-│       └── itinerary_schemas.py   # AgentItinerary, AgentDay, AgentActivity
-│
-├── auth/                      # Auth + User domain
-│   ├── models.py              # User, RefreshToken ORM
-│   ├── router.py              # EP-1..7, EP-31..32
-│   ├── service.py             # AuthService (register/login/refresh/logout/reset)
-│   ├── profile_service.py     # UserService (profile/password)
-│   ├── repository.py          # UserRepository, RefreshTokenRepository
-│   ├── schemas.py             # AuthResponse, RegisterRequest, LoginRequest, ...
-│   ├── dependencies.py        # get_current_user, get_current_user_optional
-│   └── email.py               # EmailService (aiosmtplib + console fallback)
-│
-├── itineraries/               # Trip domain
-│   ├── models/
-│   │   ├── trip.py            # Trip, TripDay, Activity, ExtraExpense
-│   │   ├── extras.py          # Accommodation, ShareLink, TripRating, GuestClaimToken
-│   │   └── chat.py            # ChatSession, ChatMessage (schema ready, API todo)
-│   ├── pipeline.py            # C.1 ItineraryPipeline (Gemini → validate → persist)
-│   ├── repository.py          # TripRepository (CRUD + AI context + chat queries)
-│   ├── router.py              # EP-8..21 + EP-8 generate + shared_router
-│   ├── schemas.py             # GenerateItineraryRequest, ItineraryResponse, ...
-│   └── service.py             # ItineraryService (business logic)
-│
-├── places/                    # Places domain
-│   ├── models.py              # Destination, Place, Hotel, SavedPlace, ScrapedSource
-│   ├── repository.py          # PlaceRepository (search, find_alternatives, saved)
-│   ├── router.py              # EP-23..29
-│   ├── schemas.py             # PlaceResponse, SuggestionResponse, ...
-│   ├── service.py             # PlaceService + Redis cache
-│   └── suggestion_service.py  # C.2 SuggestionService (DB-only, EP-30)
-│
-├── core/                      # Cross-cutting concerns
-│   ├── config.py              # AppSettings (pydantic-settings, YAML + .env)
-│   ├── database.py            # AsyncSession factory, Base, get_db
-│   ├── security.py            # JWT, bcrypt, opaque token, hash_token
-│   ├── exceptions.py          # NotFound, Forbidden, Conflict, Unauthorized
-│   ├── rate_limiter.py        # Redis-backed AI rate limiter (fail-closed)
-│   ├── logger.py              # structlog structured logging
-│   └── middlewares.py         # CORS, RequestLog, ErrorHandler setup
-│
-├── etl/                       # ETL pipeline
-│   ├── extractors/            # Goong extractor + OSM fallback
-│   ├── transformers/          # Place + Hotel transformers
-│   ├── loaders/               # DB upsert loader (external_id priority)
-│   ├── data/hotels.yaml       # Sample hotel seed data
-│   └── runner.py              # CLI entry point
-│
-└── geo/                       # Goong REST client (autocomplete, detail, geocode)
+├── api/v1/
+│   ├── auth.py          # EP-1..4, EP-31..32 (register, login, refresh, logout, forgot/reset)
+│   ├── users.py         # EP-5..7 (profile, update, change password)
+│   ├── itineraries.py   # EP-8..21 (trip CRUD, share, claim, activity/accommodation)
+│   ├── places.py        # EP-23..29 (destinations, search, detail, saved)
+│   └── shared.py        # EP-22 (public share read)
+├── core/
+│   ├── config.py        # AppSettings (pydantic-settings), get_settings()
+│   ├── database.py      # AsyncSession factory, Base, get_db dependency
+│   ├── security.py      # JWT, bcrypt, opaque token, hash_token (SHA-256)
+│   ├── exceptions.py    # NotFound, Forbidden, Conflict, Unauthorized
+│   ├── logger.py        # structlog structured logging
+│   └── dependencies.py  # get_current_user, get_current_user_optional, get_redis
+├── models/
+│   ├── user.py          # User, RefreshToken
+│   ├── trip.py          # Trip, TripDay, Activity
+│   ├── place.py         # Destination, Place, Hotel, SavedPlace
+│   └── extras.py        # ExtraExpense, Accommodation, ShareLink, TripRating,
+│                        # GuestClaimToken, ChatSession, ChatMessage, ScrapedSource
+├── repositories/
+│   ├── base.py          # BaseRepository (common CRUD)
+│   ├── user_repo.py     # User + refresh token queries
+│   ├── token_repo.py    # RefreshToken rotation/revoke
+│   ├── trip_repo.py     # Trip + day + activity + accommodation + share/claim/rating
+│   └── place_repo.py    # Destination + place + hotel + saved_place
+├── schemas/
+│   ├── common.py        # CamelCaseModel, PaginatedResponse
+│   ├── auth.py          # LoginRequest, RegisterRequest, AuthResponse, ...
+│   ├── user.py          # UserResponse, UpdateProfileRequest, ChangePasswordRequest
+│   ├── itinerary.py     # CreateTripRequest, ItineraryResponse, DaySchema, ActivitySchema, ...
+│   └── place.py         # DestinationResponse, PlaceResponse, SavedPlaceResponse
+├── services/
+│   ├── auth_service.py      # Register, login, refresh, logout, forgot/reset password
+│   ├── user_service.py      # Profile read/update, change password
+│   ├── itinerary_service.py # Trip CRUD, share/claim, rating, activity/accommodation, auto-save diff/sync
+│   ├── place_service.py     # Destinations, search, detail, saved places, Redis cache
+│   └── email_service.py     # aiosmtplib + console fallback
+└── etl/                     # ETL pipeline (Goong Maps → PostgreSQL)
 ```
 
-### Frontend — Component Tree
+### 4.2 Frontend — Component tree
 
-```
+```text
 App.tsx
 └── ErrorBoundary
-    └── AuthProvider (AuthContext — JWT state, claim flow)
-        └── TripWizardProvider (TripWizardContext — wizard state)
+    └── AuthProvider (AuthContext)
+        └── TripWizardProvider (TripWizardContext)
             └── Router (routes.tsx)
                 ├── Public routes
-                │   ├── / (Home)
-                │   ├── /cities, /cities/:name (CityList, CityDetail)
-                │   ├── /login, /register, /forgot-password, /reset-password
-                │   ├── /create-trip (CreateTrip — AI generate)
-                │   └── /shared/:token (SharedTripView — read-only)
+                │   ├── /               → Home
+                │   ├── /cities         → CityList
+                │   ├── /cities/:cityId → CityDetail
+                │   ├── /create-trip    → CreateTrip
+                │   ├── /login          → Login
+                │   ├── /register       → Register
+                │   ├── /forgot-password → ForgotPassword
+                │   ├── /reset-password → ResetPassword
+                │   ├── /budget-setup   → BudgetSetup (wizard)
+                │   ├── /travelers-selection → TravelersSelection (wizard)
+                │   ├── /day-allocation → DayAllocation (wizard)
+                │   ├── /daily-itinerary → DailyItinerary
+                │   └── /shared/:token  → SharedTripView
                 │
-                └── Protected routes (→ /login nếu chưa auth)
-                    ├── /trip-workspace (TripWorkspace — edit + AI)
-                    ├── /trip-library (TripLibrary)
-                    ├── /trip-history (TripHistory)
-                    ├── /saved-places, /saved-itineraries
-                    ├── /account, /profile, /settings
-                    └── /manual-trip-setup
-
-services/
-├── api.ts          # Fetch wrapper · Bearer injection · auto-refresh on 401
-├── auth.ts         # login, register, logout, forgotPassword, resetPassword
-├── itinerary.ts    # CRUD, generate, share, claim, rating, activity, accommodation
-├── places.ts       # destinations, search, saved places
-└── users.ts        # profile, password
+                ├── Protected routes (cần login → redirect /login)
+                │   ├── /trip-library     → TripLibrary
+                │   ├── /saved-places     → SavedPlaces
+                │   ├── /account          → Account
+                │   ├── /trip-history     → TripHistory
+                │   ├── /settings         → Settings
+                │   ├── /manual-trip-setup → ManualTripSetup
+                │   ├── /trip-workspace   → TripWorkspace
+                │   ├── /itinerary/:id    → ItineraryView
+                │   ├── /profile          → Profile
+                │   └── /saved-itineraries → SavedItineraries
+                │
+                └── * → NotFound (404)
 ```
 
+### 4.3 Backend Request Flow
+
+```text
+HTTP Request
+  → CORS Middleware          (allow origins: localhost:5173)
+  → RequestLog Middleware    (log method + path + status + duration)
+  → RateLimiter Middleware   (per-IP, Redis-backed, AI fail-closed)
+  → ErrorHandler Middleware  (404/403/409/401/500 mapping)
+  → Router                   (parse request, auth dependency injection)
+  → Service                  (business logic, owner check, token validation)
+  → Repository               (DB query — SQL only, no business rules)
+  → Model / Database         (SQLAlchemy ORM → PostgreSQL async)
+  → Response                 (camelCase JSON via CamelCaseModel alias_generator)
+```
 
 ---
 
-## 4. Database Schema & Quan hệ
+## 5. Database Schema & Quan hệ
 
-### ERD tổng quan
-
-```
-users ──────────────────────────────────────────────────────────────────┐
-  │ 1                                                                    │
-  │ N (user_id nullable → guest trip)                                    │
-  ▼                                                                      │
-trips ──────────────────────────────────────────────────────────────────┤
-  │ 1──N  trip_days                                                      │
-  │         │ 1──N  activities ──N:1── places                           │
-  │         │         │ 1──N  extra_expenses                            │
-  │         │ 1──N  extra_expenses (day-level)                          │
-  │ 1──N  accommodations ──N:1── hotels                                 │
-  │ 1──1  trip_ratings                                                   │
-  │ 1──1  share_links                                                    │
-  │ 1──N  guest_claim_tokens                                             │
-  │ 1──N  chat_sessions ──1──N── chat_messages                          │
-  │                                                                      │
-users ──1──N── refresh_tokens                                           │
-users ──1──N── saved_places ──N:1── places                             │
-                                                                        │
-destinations ──1──N── places                                           │
-destinations ──1──N── hotels                                           │
-                                                                        │
-scraped_sources  (ETL tracking)                                        │
-```
-
-### Bảng chính
-
-| Bảng | Mô tả | Quan hệ chính |
-|---|---|---|
-| `users` | Tài khoản người dùng | → trips, refresh_tokens, saved_places, chat_sessions |
-| `refresh_tokens` | Hash refresh token (rotation) | N:1 users |
-| `trips` | Lịch trình (user_id nullable = guest) | → trip_days, accommodations, share_links, claim_tokens, chat_sessions |
-| `trip_days` | Ngày trong chuyến đi | N:1 trips → activities |
-| `activities` | Hoạt động theo giờ | N:1 trip_days, N:1 places (optional) |
-| `extra_expenses` | Chi phí phát sinh | N:1 activity OR trip_day (check constraint) |
-| `accommodations` | Chỗ ở | N:1 trips, N:1 hotels (optional) |
-| `trip_ratings` | Đánh giá 1-5 sao | 1:1 trips |
-| `share_links` | Token chia sẻ công khai (opaque hash) | 1:1 trips |
-| `guest_claim_tokens` | Token claim one-time (hash + expiry) | N:1 trips |
-| `destinations` | Thành phố / điểm đến | → places, hotels |
-| `places` | Địa điểm tham quan (từ ETL) | N:1 destinations |
-| `hotels` | Khách sạn (từ ETL) | N:1 destinations |
-| `saved_places` | Địa điểm user đã lưu | N:1 users, N:1 places |
-| `chat_sessions` | Phiên chat AI (schema ready) | N:1 trips, N:1 users |
-| `chat_messages` | Tin nhắn chat (schema ready) | N:1 chat_sessions |
-| `scraped_sources` | Tracking ETL runs | — |
-
-### Token security pattern
-
-Tất cả token (refresh, share, claim, reset) đều dùng cùng pattern:
+### ERD (Entity Relationship)
 
 ```
-Raw token (random bytes)  →  SHA-256 hash  →  lưu DB
-Raw token                 →  trả về client (1 lần duy nhất)
-Client gửi raw token      →  BE hash lại   →  so sánh với DB
+users
+  ├── id (PK, integer)
+  ├── email (unique)
+  ├── hashed_password
+  ├── name, phone, interests
+  ├── password_reset_token_hash, password_reset_expires_at
+  └── is_active, created_at, updated_at
+
+refresh_tokens
+  ├── id (PK)
+  ├── user_id (FK → users.id)
+  ├── token_hash (SHA-256, unique)
+  ├── expires_at
+  └── is_revoked
+
+trips
+  ├── id (PK)
+  ├── user_id (FK → users.id, nullable — guest trips)
+  ├── destination, trip_name
+  ├── start_date, end_date
+  ├── budget, total_cost
+  ├── adults_count, children_count
+  └── interests, created_at, updated_at
+
+trip_days
+  ├── id (PK)
+  ├── trip_id (FK → trips.id)
+  ├── label, date, destination_name
+  └── order_index
+
+activities
+  ├── id (PK)
+  ├── day_id (FK → trip_days.id)
+  ├── name, time, end_time, type
+  ├── location, description, image
+  ├── transportation
+  ├── adult_price, child_price, custom_cost
+  ├── bus_ticket_price, taxi_cost
+  └── order_index
+
+extra_expenses
+  ├── id (PK)
+  ├── activity_id (FK → activities.id, nullable)
+  ├── day_id (FK → trip_days.id, nullable)
+  ├── label, amount
+  └── created_at
+
+accommodations
+  ├── id (PK)
+  ├── trip_id (FK → trips.id)
+  ├── name, check_in, check_out
+  ├── price_per_night, total_price
+  ├── booking_type (hourly/nightly/daily)
+  ├── duration
+  └── day_ids (JSON array)
+
+destinations
+  ├── id (PK)
+  ├── name, slug (unique)
+  ├── description, image
+  └── region, province
+
+places
+  ├── id (PK)
+  ├── destination_id (FK → destinations.id)
+  ├── name, category, address
+  ├── description, image
+  ├── adult_price, child_price
+  └── goong_place_id
+
+hotels
+  ├── id (PK)
+  ├── destination_id (FK → destinations.id)
+  ├── name, address, description
+  ├── price_per_night, image
+  └── goong_place_id
+
+saved_places
+  ├── id (PK)
+  ├── user_id (FK → users.id)
+  ├── place_id (FK → places.id)
+  └── created_at
+
+share_links
+  ├── id (PK)
+  ├── trip_id (FK → trips.id)
+  ├── created_by (FK → users.id)
+  ├── share_token_hash (SHA-256, unique)
+  ├── permission (view)
+  ├── expires_at (nullable)
+  └── is_revoked
+
+guest_claim_tokens
+  ├── id (PK)
+  ├── trip_id (FK → trips.id)
+  ├── token_hash (SHA-256)
+  ├── expires_at
+  └── consumed_at (nullable — one-time use)
+
+trip_ratings
+  ├── id (PK)
+  ├── trip_id (FK → trips.id)
+  ├── user_id (FK → users.id)
+  ├── rating (1–5)
+  └── feedback, created_at
 ```
 
-Không bao giờ lưu raw token trong DB. Nếu DB bị compromise, token không thể recover.
+### Quan hệ chính
 
+| Bảng | Quan hệ |
+|---|---|
+| `users` → `trips` | 1:N (user có nhiều trips; guest trips có user_id = NULL) |
+| `trips` → `trip_days` | 1:N (ordered by order_index) |
+| `trip_days` → `activities` | 1:N (ordered by order_index) |
+| `activities` → `extra_expenses` | 1:N |
+| `trips` → `accommodations` | 1:N |
+| `trips` → `share_links` | 1:N |
+| `trips` → `guest_claim_tokens` | 1:N |
+| `destinations` → `places` | 1:N |
+| `destinations` → `hotels` | 1:N |
+| `users` → `saved_places` | 1:N |
+
+### Token Security Pattern
+
+```
+┌─────────────────────────────────────────────────────┐
+│              TOKEN SECURITY PATTERN                  │
+│                                                      │
+│  Raw token (chỉ client giữ)                         │
+│    → SHA-256 hash → lưu DB                          │
+│                                                      │
+│  Áp dụng cho:                                        │
+│  • refresh_tokens.token_hash                         │
+│  • share_links.share_token_hash                      │
+│  • guest_claim_tokens.token_hash                     │
+│  • users.password_reset_token_hash                   │
+│                                                      │
+│  Khi verify: hash(raw_input) → lookup DB            │
+│  → Không bao giờ lưu raw token trong DB             │
+│  → Không thể recover raw token từ DB                │
+└─────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 5. API Reference
+## 6. API Reference
 
-Base URL: `http://localhost:8000/api/v1`  
-Swagger UI: `http://localhost:8000/docs`  
-Tất cả response dùng **camelCase JSON**.
+**Base URL:** `http://localhost:8000/api/v1`
 
 ### Auth (6 endpoints)
 
 | Method | Path | Auth | Mô tả |
 |---|---|---|---|
-| POST | `/auth/register` | Public | Đăng ký tài khoản mới |
-| POST | `/auth/login` | Public | Đăng nhập, nhận JWT pair |
+| POST | `/auth/register` | Public | Đăng ký → trả JWT pair |
+| POST | `/auth/login` | Public | Đăng nhập → trả JWT pair |
 | POST | `/auth/refresh` | Public | Refresh token rotation |
 | POST | `/auth/logout` | Bearer | Revoke refresh token |
-| POST | `/auth/forgot-password` | Public | Gửi email reset (silent nếu email không tồn tại) |
+| POST | `/auth/forgot-password` | Public | Gửi reset link qua email (silent nếu email không tồn tại) |
 | POST | `/auth/reset-password` | Public | Đặt lại mật khẩu bằng token |
 
-### User (3 endpoints)
+### Users (3 endpoints)
 
 | Method | Path | Auth | Mô tả |
 |---|---|---|---|
-| GET | `/users/profile` | Bearer | Xem hồ sơ |
-| PUT | `/users/profile` | Bearer | Cập nhật tên / phone / interests |
-| PUT | `/users/password` | Bearer | Đổi mật khẩu |
+| GET | `/users/profile` | Bearer | Lấy thông tin hồ sơ |
+| PUT | `/users/profile` | Bearer | Cập nhật name, phone, interests |
+| PUT | `/users/password` | Bearer | Đổi mật khẩu (verify current password) |
 
-### Itinerary (14 endpoints)
+### Itineraries (14 endpoints)
 
 | Method | Path | Auth | Mô tả |
 |---|---|---|---|
-| POST | `/itineraries/generate` | Optional | **AI generate** lịch trình (Gemini + DB context) |
+| POST | `/itineraries/generate` | Optional | AI sinh lịch trình tự động (Gemini) |
 | POST | `/itineraries` | Optional | Tạo lịch trình thủ công |
-| GET | `/itineraries` | Bearer | Danh sách lịch trình của user |
-| GET | `/itineraries/{id}` | Bearer | Chi tiết lịch trình (owner-only) |
-| PUT | `/itineraries/{id}` | Bearer | Cập nhật lịch trình (auto-save diff/sync) |
-| DELETE | `/itineraries/{id}` | Bearer | Xóa lịch trình |
-| PUT | `/itineraries/{id}/rating` | Bearer | Đánh giá 1-5 sao |
-| POST | `/itineraries/{id}/share` | Bearer | Tạo share link công khai |
-| POST | `/itineraries/{id}/claim` | Bearer | Claim guest trip sau đăng nhập |
-| POST | `/itineraries/{id}/activities` | Bearer | Thêm hoạt động vào ngày |
-| PUT | `/itineraries/{id}/activities/{aid}` | Bearer | Cập nhật hoạt động |
-| DELETE | `/itineraries/{id}/activities/{aid}` | Bearer | Xóa hoạt động |
-| POST | `/itineraries/{id}/accommodations` | Bearer | Thêm chỗ ở |
-| DELETE | `/itineraries/{id}/accommodations/{aid}` | Bearer | Xóa chỗ ở |
+| GET | `/itineraries` | Bearer | Danh sách lịch trình (paginated) |
+| GET | `/itineraries/{tripId}` | Bearer | Chi tiết lịch trình |
+| PUT | `/itineraries/{tripId}` | Bearer | Cập nhật / auto-save (diff/sync) |
+| DELETE | `/itineraries/{tripId}` | Bearer | Xóa lịch trình |
+| PUT | `/itineraries/{tripId}/rating` | Bearer | Đánh giá sau chuyến đi |
+| POST | `/itineraries/{tripId}/share` | Bearer | Tạo share link |
+| POST | `/itineraries/{tripId}/claim` | Bearer | Guest claim trip về tài khoản |
+| POST | `/itineraries/{tripId}/activities` | Bearer | Thêm activity vào ngày |
+| PUT | `/itineraries/{tripId}/activities/{actId}` | Bearer | Cập nhật activity |
+| DELETE | `/itineraries/{tripId}/activities/{actId}` | Bearer | Xóa activity |
+| POST | `/itineraries/{tripId}/accommodations` | Bearer | Thêm chỗ ở |
+| DELETE | `/itineraries/{tripId}/accommodations/{accId}` | Bearer | Xóa chỗ ở |
 
 ### Shared (1 endpoint)
 
@@ -327,568 +503,623 @@ Tất cả response dùng **camelCase JSON**.
 
 | Method | Path | Auth | Mô tả |
 |---|---|---|---|
-| GET | `/places/destinations` | Public | Danh sách thành phố (Redis cache 24h) |
-| GET | `/places/destinations/{name}` | Public | Chi tiết thành phố + places + hotels |
-| GET | `/places/search` | Public | Tìm kiếm địa điểm (query, city, category, limit) |
-| GET | `/places/{id}` | Public | Chi tiết địa điểm |
+| GET | `/places/destinations` | Public | Danh sách tất cả điểm đến (Redis cache 1h) |
+| GET | `/places/destinations/{name}` | Public | Chi tiết điểm đến + places + hotels |
+| GET | `/places/search` | Public | Tìm kiếm địa điểm (query, city, category, limit) — Redis cache 30min |
+| GET | `/places/{placeId}` | Public | Chi tiết một địa điểm |
 | GET | `/places/saved/list` | Bearer | Danh sách địa điểm đã lưu |
-| POST | `/places/saved` | Bearer | Lưu địa điểm |
-| DELETE | `/places/saved/{id}` | Bearer | Bỏ lưu địa điểm |
+| POST | `/places/saved` | Bearer | Lưu địa điểm yêu thích |
+| DELETE | `/places/saved/{savedId}` | Bearer | Bỏ lưu địa điểm |
 
-### Agent (1 endpoint — C.2 done, C.3/C.5 todo)
+### AI / Agent (1 endpoint — C.2 done)
 
 | Method | Path | Auth | Mô tả |
 |---|---|---|---|
-| GET | `/agent/suggest/{activity_id}?limit=5` | Bearer | **EP-30** Gợi ý địa điểm thay thế (DB-only, owner-only) |
-| POST | `/agent/chat` | Bearer | **C.3 todo** Companion chat |
-| POST | `/agent/apply-patch` | Bearer | **C.3 todo** Áp dụng đề xuất AI |
-
-**Tổng: 34 endpoints đang hoạt động** (EP-0 đến EP-32 + EP-30).
-
+| GET | `/agent/suggest/{activityId}` | Bearer | Gợi ý địa điểm thay thế (DB-only, không LLM) |
 
 ---
 
-## 6. AI Pipeline Flow
+## 7. User Flow & CRUD Flow
 
-### C.1 — Generate Itinerary (Done)
-
-```
-User điền form CreateTrip
-  → POST /api/v1/itineraries/generate
-    { destination, startDate, endDate, budget, adults, children, interests }
-  │
-  ├── Rate limit check (Redis)
-  │     ├── Auth user: 3 lần/ngày per user_id
-  │     └── Guest: 3 lần/ngày per hash(ip+ua)
-  │     └── Redis down → fail-closed (trả lỗi, không cho qua)
-  │
-  ├── ItineraryPipeline.generate()
-  │     ├── Resolve destination string → Destination row (DB)
-  │     ├── Empty context guard: < min places → 422 (không gọi Gemini)
-  │     ├── Query candidate places (top 15 by rating) + hotels (top 4)
-  │     ├── Build compact JSON prompt (destination, budget, days, constraints)
-  │     │
-  │     ├── Call Gemini (gemini-2.5-flash, JSON mode, timeout 30s)
-  │     │     ├── Attempt 1: parse → Pydantic validate AgentItinerary
-  │     │     │     ├── PASS → continue
-  │     │     │     └── FAIL → build error feedback → retry
-  │     │     ├── Attempt 2: call Gemini + error feedback
-  │     │     │     ├── PASS → continue
-  │     │     │     └── FAIL → retry
-  │     │     └── Attempt 3: final attempt
-  │     │           ├── PASS → continue
-  │     │           └── FAIL → raise ServiceUnavailableException
-  │     │
-  │     └── Persist: Trip → TripDays → Activities → Accommodations
-  │
-  ├── Guest → tạo claimToken (hash lưu DB, raw trả response)
-  └── Return ItineraryResponse (camelCase)
-
-FE navigate → /trip-workspace?tripId={id}
-```
-
-### C.2 — Suggest Alternatives (Done — EP-30)
+### 7.1 User Registration & Login Flow
 
 ```
-User click "Gợi ý thay thế" cho activity X
-  → GET /api/v1/agent/suggest/{activity_id}?limit=5
-  │
-  ├── get_current_user (Bearer required)
-  ├── get_activity_with_trip(activity_id) → load activity + trip_day + trip
-  ├── Owner check: trip.user_id == user.id → else 403
-  ├── Resolve trip.destination string → Destination row (by name, fallback slug)
-  │     └── Không tìm thấy → trả suggestions=[] (không lỗi)
-  ├── get_place_ids_in_trip(trip_id) → exclude list
-  └── find_alternatives(destination_id, activity.type, exclude_ids, limit)
-        → ORDER BY rating DESC, review_count DESC
-        → Return SuggestionResponse { activityId, currentName, suggestions[] }
+[Register]
+User điền form → POST /auth/register → BE hash password (bcrypt)
+  → tạo JWT pair (access 30min + refresh 7d)
+  → hash refresh token → lưu DB
+  → FE lưu tokens vào localStorage
+  → executePendingClaim() (nếu có guest trips chờ claim)
+  → redirect "/"
 
-Không gọi LLM. Pure DB query. Latency < 20ms.
+[Login]
+User điền form → POST /auth/login → BE verify bcrypt
+  → tạo JWT pair → FE lưu tokens vào localStorage
+  → GET /users/profile → load user state
+  → executePendingClaim()
+  → redirect "/" (hoặc trang đang cố truy cập)
+
+[Token Refresh]
+API call → 401 Unauthorized
+  → FE đọc refreshToken từ localStorage
+  → POST /auth/refresh {refreshToken}
+  → BE hash(raw) → lookup DB → verify !revoked
+  → revoke token cũ (rotation) → tạo JWT pair mới
+  → FE update localStorage (access + refresh mới)
+  → retry original request với accessToken mới
+  → Nếu refresh fail → xóa tokens → redirect /login
 ```
 
-### C.3 — Companion Chat (Todo)
+### 7.2 Trip CRUD Flow
 
 ```
-User nhắn tin trong FloatingAIChat
-  → POST /api/v1/agent/chat { message, tripId }
-  │
-  ├── Owner check (bắt buộc)
-  ├── Load trip context (days, activities, accommodations)
-  ├── CompanionService + LangGraph ReAct
-  │     ├── 6 tools: search_places_db, search_nearby_goong,
-  │     │            propose_itinerary_patch, suggest_alternatives,
-  │     │            recalculate_budget, calculate_route
-  │     └── LLM quyết định: trả text HOẶC gọi tool → proposedOperations
-  │
-  └── Return { message, requiresConfirmation, proposedOperations[] }
+[Tạo lịch trình thủ công]
+User → POST /itineraries {destination, tripName, dates, budget, ...}
+  → BE check trip limit (max 5 active trips nếu đã login)
+  → create Trip (user_id = user.id hoặc NULL nếu guest)
+  → Nếu guest: tạo claimToken (raw + hash, expires 24h)
+  → Return ItineraryResponse (+ claimToken nếu guest)
+  → FE lưu claimToken vào localStorage (pendingClaims)
 
-User xác nhận → POST /api/v1/agent/apply-patch { operations }
-  → Validate lại owner + operations → Apply to DB
-  → Chat KHÔNG tự persist DB trước khi user confirm
+[Chỉnh sửa — Auto-save]
+User thay đổi → FE optimistic update (UI cập nhật ngay lập tức)
+  → PUT /itineraries/{id} (debounce 500ms, gửi full trip state)
+  → BE diff/sync days + activities + accommodations
+  → Success: giữ nguyên UI | Fail: revert UI về state trước
+  → Hiển thị error toast nếu fail
+
+[Thêm Activity]
+POST /itineraries/{id}/activities?day_id={dayId} {ActivitySchema}
+  → BE owner check (trip.user_id == user.id)
+  → add activity → flush → return ActivitySchema
+
+[Cập nhật Activity]
+PUT /itineraries/{id}/activities/{actId} {ActivitySchema}
+  → BE owner check → update scalar fields → return ActivitySchema
+
+[Xóa Activity]
+DELETE /itineraries/{id}/activities/{actId}
+  → BE owner check → delete → 204 No Content
+
+[Accommodation CRUD]
+POST /itineraries/{id}/accommodations {AccommodationSchema}
+  → BE owner check → persist → return AccommodationSchema
+
+DELETE /itineraries/{id}/accommodations/{accId}
+  → BE owner check → delete → 204 No Content
 ```
 
-
----
-
-## 7. Auth & Security Flow
-
-### Login / Register
+### 7.3 Places Flow
 
 ```
-POST /auth/register hoặc /auth/login
-  → BE verify credentials → bcrypt compare
-  → Tạo JWT access token (HS256, 15 phút)
-  → Tạo refresh token (random bytes) → hash SHA-256 → lưu DB
-  → Trả { accessToken, refreshToken } cho FE
-  → FE lưu vào localStorage
+[Tìm kiếm địa điểm]
+User nhập query → GET /places/search?query=...&city=...&category=...
+  → BE check Redis cache (key: "places:search:{query}:{city}:{category}:{limit}")
+  → HIT: return cached JSON (TTL 30min)
+  → MISS: query PostgreSQL → cache 30min → return list[PlaceResponse]
+  → Redis down: fail-open → query DB trực tiếp (không cache)
 
-API call bình thường:
-  → FE thêm Authorization: Bearer {accessToken}
-  → BE decode JWT → lấy user_id → query user
+[Lưu địa điểm yêu thích]
+POST /places/saved {placeId}
+  → BE check duplicate (user đã lưu chưa)
+  → save → return SavedPlaceResponse
 
-Access token hết hạn (401):
-  → FE tự động POST /auth/refresh { refreshToken }
-  → BE hash raw token → tìm DB → check !revoked + !expired
-  → Revoke token cũ → tạo cặp token mới
-  → FE cập nhật localStorage → retry request gốc
+DELETE /places/saved/{savedId}
+  → BE owner check → delete → 204 No Content
 ```
 
-### Guest Trip → Claim
+### 7.4 Share & Claim Flow
 
 ```
-Guest tạo trip (không Bearer):
-  → POST /itineraries → trip.user_id = NULL
-  → BE tạo claimToken (raw + hash + expires 24h)
-  → FE lưu { tripId, claimToken } vào sessionStorage
-
-Guest đăng nhập / đăng ký:
-  → AuthContext.executePendingClaim()
-  → POST /itineraries/{tripId}/claim { claimToken }
-  → BE hash raw token → tìm match → check !consumed + !expired
-  → trip.user_id = current_user.id
-  → claimToken.consumed_at = now()  (one-time use)
-  → FE navigate /trip-workspace?tripId={id}
-```
-
-### Share Trip
-
-```
-Owner click "Chia sẻ":
-  → POST /itineraries/{id}/share
-  → BE tạo shareToken (opaque, random) → hash lưu share_links
-  → Trả { shareUrl: "/shared/{rawToken}" }
+[Share Trip]
+Owner → POST /itineraries/{id}/share
+  → BE tạo opaque shareToken (random bytes)
+  → hash SHA-256 → lưu share_links.share_token_hash
+  → trả raw shareToken cho FE
+  → FE hiển thị link: /shared/{rawToken}
 
 Người khác mở link:
   → GET /shared/{rawToken}
-  → BE hash rawToken → tìm share_links → check !revoked + !expired
-  → Trả trip data (read-only, không cần auth)
+  → BE hash(rawToken) → lookup share_links
+  → Không tìm thấy / revoked → 404
+  → Tìm thấy → return ItineraryResponse (read-only, không cần auth)
+
+[Guest Claim Flow]
+Guest tạo trip → nhận claimToken trong response
+  → FE lưu {tripId, claimToken} vào localStorage (pendingClaims)
+
+Guest đăng nhập / đăng ký:
+  → AuthContext.executePendingClaim()
+  → POST /itineraries/{tripId}/claim {claimToken: "raw_token"}
+  → BE hash(claimToken) → tìm guest_claim_tokens
+  → Verify: !consumed_at + expires_at > now()
+  → trip.user_id = current_user.id (transfer ownership)
+  → consumed_at = now() (one-time use — chống replay)
+  → FE xóa pending claim khỏi localStorage
 ```
 
 ---
 
-## 8. Trạng thái Phase C
+## 8. AI Pipeline Flow
 
-| Sub-phase | Mô tả | Status | Branch | PR |
-|---|---|---|---|---|
-| C.0 | Goong ETL readiness | ✅ merged | feat/00040 | #40 |
-| C.1 | AI generate pipeline | ✅ merged | feat/00041 | #42 |
-| C.1b | Guest claim reload fix | ✅ merged | fix/00045 | #45 |
-| C.2 | DB-only suggestion EP-30 | ✅ merged | feat/00047 | #47 |
-| C.3 | Companion chat + apply-patch | 🔄 todo | feat/00048 | — |
-| C.4 | Chat history API | 🔄 todo | feat/00049 | — |
-| C.5 | Analytics Text-to-SQL | 🔄 optional | feat/00050 | — |
+### C.1 — Generate Itinerary (Direct Pipeline)
 
-### Còn lại để hoàn thành Phase C
+```
+FE (CreateTrip.tsx)
+  → POST /api/v1/itineraries/generate
+    { destination, startDate, endDate, budget, adults, children, interests }
 
-**C.3 Companion Chat** (phức tạp nhất):
-- `Backend/src/itineraries/companion_service.py` — intent routing + LangGraph
-- `Backend/src/agent/tools/` — 6 tools (search, patch, budget, route)
-- `Backend/src/agent/graph/` — LangGraph state graph
-- `Backend/src/agent/router.py` — thêm POST /agent/chat + /agent/apply-patch
-- `Frontend/src/app/services/agent.ts` — API client
-- `Frontend/src/app/components/FloatingAIChat.tsx` — thay mock bằng API thật
-- Env cần: `GEMINI_API_KEY`
+ItineraryService.generate()
+  1. Validate request (dates hợp lệ, budget > 0)
+  2. ItineraryPipeline.generate(request)
+     ├── Resolve destination → query DB lấy places/hotels làm recommendation context
+     ├── Build prompt với context (không hallucinate — chỉ dùng data từ DB)
+     ├── Gemini LLM structured output (JSON schema)
+     ├── Pydantic validation (tối đa 3 attempts, 2 retries nếu parse fail)
+     └── Return validated DaySchema[] + AccommodationSchema[]
+  3. Save trip + days + activities + accommodations vào DB
+  4. Return ItineraryResponse (camelCase)
 
-**C.4 Chat History** (đơn giản — DB tables đã có):
-- `Backend/src/itineraries/chat_service.py`
-- Thêm 3 endpoints: GET /chat/sessions, GET /chat/sessions/{id}/messages, DELETE /chat/sessions/{id}
+FE navigate → /trip-workspace?tripId={id}
 
-**C.5 Analytics** (optional — cần guardrails bảo mật):
-- Read-only DB role + allowlist tables + AST SQL validator
-- Chỉ bật khi `ENABLE_ANALYTICS=true` + `ANALYTICS_DATABASE_URL`
+KEY: Generate KHÔNG qua Supervisor — gọi direct ItineraryPipeline.
+     Mặc định 5 hoạt động/ngày (cấu hình qua AGENT_MIN/MAX_ACTIVITIES_PER_DAY).
+```
 
+### C.2 — Suggestion Service (DB-Only)
+
+```
+GET /api/v1/agent/suggest/{activityId}
+  → Owner check (trip.user_id == user.id)
+  → SuggestionService.find_alternatives(activity_id, limit)
+     ├── Lấy activity hiện tại → xác định category + destination
+     ├── Query places cùng category + destination từ DB
+     ├── Loại trừ places đã có trong trip
+     └── Return list[PlaceResponse] (không gọi LLM)
+
+WHY DB-only: Gợi ý địa điểm chỉ cần filter + sort data có sẵn.
+             Không cần "sáng tạo" nội dung mới.
+```
+
+### C.3 — Companion Chat + Patch-Confirm (Todo)
+
+```
+FE (FloatingAIChat.tsx)
+  → POST /api/v1/agent/chat { message, tripId }
+
+CompanionService.chat()
+  1. Classify intent (modify / info / suggest / general)
+  2. Load trip context (OWNER-CHECK bắt buộc)
+  3. Call Gemini LLM với tool definitions
+  4. Return:
+     {
+       message: "Tôi đề xuất thêm Văn Miếu vào ngày 2...",
+       requiresConfirmation: true,
+       proposedOperations: [
+         { type: "add_activity", description: "...",
+           target: { dayId: 2, activity: {...} } }
+       ]
+     }
+
+FE hiển thị proposed changes + confirm button
+  → User confirm
+  → POST /api/v1/agent/apply-patch { operations }
+  → BE validate + apply to DB
+
+KEY: Chat KHÔNG TỰ PERSIST DB trước khi user confirm.
+     Mỗi operation có audit-friendly type + description.
+```
 
 ---
 
-## 9. Quick Start
+## 9. Auth & Security Flow
 
-### Yêu cầu
+### JWT Token Architecture
 
-| Công cụ | Phiên bản tối thiểu | Ghi chú |
-|---|---|---|
-| Docker Desktop | 4.x | Chạy PostgreSQL + Redis |
-| Python | 3.12+ | Quản lý bằng `uv` |
-| uv | 0.4+ | `pip install uv` hoặc xem [docs.astral.sh/uv](https://docs.astral.sh/uv) |
-| Node.js | 20+ | Chạy Frontend |
-| npm | 10+ | Đi kèm Node.js |
+```
+┌─────────────────────────────────────────────────────┐
+│              JWT ACCESS TOKEN                        │
+│  • HS256 signed, expires 30 phút                    │
+│  • Payload: { user_id, exp }                        │
+│  • Gửi qua Authorization: Bearer {token}            │
+│  • KHÔNG lưu trong DB                               │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│              REFRESH TOKEN                           │
+│  • Opaque random bytes (raw chỉ client giữ)         │
+│  • SHA-256 hash lưu refresh_tokens.token_hash       │
+│  • Expires 7 ngày                                   │
+│  • Rotation: mỗi refresh = revoke cũ + issue mới   │
+│  • Force re-login khi đổi password (revoke all)     │
+└─────────────────────────────────────────────────────┘
+```
+
+### Register Flow
+
+```
+User điền form Register
+  → POST /api/v1/auth/register {email, password, name}
+  → BE validate (email unique, password ≥ 6 chars)
+  → bcrypt hash password
+  → create User + create JWT pair
+  → hash refresh token → lưu refresh_tokens
+  → Return {accessToken, refreshToken, user}
+  → FE lưu tokens localStorage → executePendingClaim() → redirect "/"
+```
+
+### Login Flow
+
+```
+User điền form Login
+  → POST /api/v1/auth/login {email, password}
+  → BE get_by_email → verify bcrypt (generic error message — chống enumeration)
+  → check user.is_active
+  → tạo JWT pair → hash refresh → lưu DB
+  → Return {accessToken, refreshToken, user}
+  → FE lưu tokens → GET /users/profile → executePendingClaim() → redirect
+```
+
+### Token Refresh Flow
+
+```
+API call → 401 Unauthorized
+  → FE POST /auth/refresh {refreshToken}
+  → BE hash(raw) → lookup refresh_tokens
+  → Không tìm thấy / is_revoked → 401
+  → revoke(stored.id) → tạo JWT pair mới
+  → FE update localStorage → retry original request
+  → Nếu refresh fail → clear tokens → redirect /login
+```
+
+### Forgot / Reset Password Flow
+
+```
+POST /auth/forgot-password {email}
+  → BE lookup email → SILENT nếu không tồn tại (chống enumeration)
+  → create_password_reset_token() → raw + hash + expires 1h
+  → lưu hash vào users.password_reset_token_hash
+  → EmailService: SMTP configured → gửi email | No SMTP → log console
+  → Return 200 (luôn luôn, không tiết lộ email có tồn tại không)
+
+POST /auth/reset-password {token, newPassword}
+  → BE hash(token) → lookup user
+  → check expires_at > now()
+  → bcrypt hash newPassword → update user
+  → clear reset token fields
+  → token_repo.revoke_all_for_user() → FORCE RE-LOGIN mọi thiết bị
+```
+
+### Security Rules Summary
+
+| Rule | Chi tiết |
+|---|---|
+| Raw token không lưu DB | SHA-256 hash cho refresh, share, claim, reset tokens |
+| Token rotation | Mỗi refresh = revoke cũ + issue mới |
+| Owner-only access | `trip.user_id == user.id` check trên mọi write endpoint |
+| Share token opaque | Không đoán được từ trip ID |
+| Claim token one-time | `consumed_at` + `expires_at` + hash — chống replay |
+| Password reset silent | Không tiết lộ email có tồn tại hay không |
+| Force re-login on reset | Revoke tất cả refresh tokens khi đổi password |
+| AI rate limit fail-closed | Redis down → block AI requests (không bypass) |
+| Places cache fail-open | Redis down → query DB trực tiếp (app vẫn chạy) |
 
 ---
 
-### Cách 1 — Docker All-in-One (nhanh nhất)
+## 10. Trạng thái Phase C
 
-```powershell
+| Phase | Tính năng | Branch | Trạng thái |
+|---|---|---|---|
+| **C.1** | AI Generate Itinerary (Gemini direct pipeline) | `feat/00046` | ✅ merged |
+| **C.2** | Suggestion Service (DB-only, EP-30) | `feat/00047` | ✅ merged |
+| **C.3** | Companion Chat + patch-confirm flow | `feat/00048` | 🔄 Todo |
+| **C.4** | Chat history API | `feat/00049` | 🔄 Todo |
+| **C.5** | Analytics Text-to-SQL (optional) | `feat/00050` | 🔄 Optional |
+
+### File map Phase C
+
+| File Backend | Mục đích | Layer | Trạng thái |
+|---|---|---|---|
+| `src/itineraries/pipeline.py` | LLM orchestration cho generate | Service | ✅ C.1 |
+| `src/agent/config.py` | AI config facade | Shared AI infra | ✅ C.1 |
+| `src/agent/llm.py` | Gemini client wrapper + JSON parsing | Shared AI infra | ✅ C.1 |
+| `src/agent/prompts/itinerary_prompts.py` | Generate prompt builder | Shared AI infra | ✅ C.1 |
+| `src/agent/schemas/itinerary_schemas.py` | LLM output schema | Shared AI infra | ✅ C.1 |
+| `src/places/suggestion_service.py` | Gợi ý DB-only (không LLM) | Service | ✅ C.2 |
+| `src/itineraries/companion.py` | Intent routing, tool-calling cho chat | Service | 🔄 C.3 |
+| `src/itineraries/chat_service.py` | Quản lý chat session/message | Service | 🔄 C.4 |
+
+---
+
+## 11. Quick Start
+
+> 💡 **Lưu ý địa chỉ:** Các lệnh dưới dùng `localhost`. Nếu truy cập từ thiết bị khác trong LAN, tìm IPv4 của máy bằng lệnh `ipconfig` (Windows) hoặc `ifconfig` (Linux/macOS) rồi thay `localhost` bằng địa chỉ đó.
+
+### Cách 1 — Docker Compose (khuyến nghị)
+
+**Yêu cầu:** Docker Desktop đang chạy.
+
+```bash
 # 1. Clone repo
 git clone https://github.com/<org>/NT208-ai-travel-itinerary-recommendation-system.git
 cd NT208-ai-travel-itinerary-recommendation-system
 
-# 2. Copy env templates
-Copy-Item Backend\.env.example Backend\.env
-Copy-Item Frontend\.env.example Frontend\.env
+# 2. Tạo file .env cho Backend
+cp Backend/.env.example Backend/.env
+# Chỉnh sửa Backend/.env: thêm JWT_SECRET_KEY, GEMINI_API_KEY (optional), GOONG_API_KEY (optional)
 
-# 3. Sửa Backend\.env — bắt buộc set JWT_SECRET_KEY
-#    Tạo key: python -c "import secrets; print(secrets.token_hex(32))"
-notepad Backend\.env
-
-# 4. Khởi động toàn bộ stack (API + PostgreSQL + Redis)
+# 3. Khởi động toàn bộ stack
 docker compose up --build
 
-# 5. Truy cập
-#    Backend API:  http://localhost:8000
-#    Swagger UI:   http://localhost:8000/docs
-#    Health check: http://localhost:8000/api/v1/health
+# 4. Chạy migration (lần đầu)
+docker compose exec backend alembic upgrade head
+
+# 5. (Optional) Chạy ETL nạp dữ liệu địa điểm
+docker compose exec backend python -m src.etl
 ```
 
-> **Frontend:** Docker Compose hiện chưa có FE service. Chạy FE riêng theo Cách 2 bên dưới.
+Sau khi khởi động:
+- **Frontend:** `http://localhost:5173`
+- **Backend API:** `http://localhost:8000`
+- **API Docs (Swagger):** `http://localhost:8000/docs`
+- **Health check:** `http://localhost:8000/api/v1/health`
 
----
+### Cách 2 — Local Dev (không Docker)
 
-### Cách 2 — Local Development (khuyến nghị khi dev)
+**Yêu cầu:** Python 3.12+, Node.js 20+, PostgreSQL 16, Redis 7, `uv` package manager.
 
-> **Lưu ý về địa chỉ IP:** Các lệnh dưới dùng `127.0.0.1` (loopback). Nếu bạn muốn truy cập từ thiết bị khác trong cùng mạng LAN, thay `127.0.0.1` bằng IPv4 của máy bạn.  
-> Tìm IPv4: chạy `ipconfig` trong PowerShell → tìm dòng **IPv4 Address** (ví dụ: `192.168.1.x`).
+#### Backend
 
-**Bước 1: Khởi động DB + Redis qua Docker**
-
-```powershell
-docker compose up -d db redis
-docker compose ps   # Kiểm tra cả 2 đều healthy
-```
-
-**Bước 2: Cấu hình Backend**
-
-```powershell
-Copy-Item Backend\.env.example Backend\.env
-```
-
-Mở `Backend\.env` và điền các giá trị bắt buộc:
-
-```env
-# BẮT BUỘC — tạo bằng: python -c "import secrets; print(secrets.token_hex(32))"
-JWT_SECRET_KEY=<your-secret-key>
-
-# Cần cho AI generate (đăng ký tại https://aistudio.google.com)
-GEMINI_API_KEY=<your-gemini-key>
-
-# Cần cho ETL nạp dữ liệu địa điểm (đăng ký tại https://account.goong.io)
-GOONG_API_KEY=<your-goong-key>
-
-# Các giá trị sau đã có default phù hợp, chỉ thay đổi nếu cần
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet
-REDIS_URL=redis://localhost:6379/0
-AGENT_TIMEOUT_SECONDS=60
-AGENT_MIN_ACTIVITIES_PER_DAY=5
-AGENT_MAX_ACTIVITIES_PER_DAY=5
-```
-
-**Bước 3: Khởi động Backend**
-
-```powershell
-cd Backend
-uv sync                          # Cài dependencies
-uv run alembic upgrade head      # Chạy migrations
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-Kiểm tra: `curl http://127.0.0.1:8000/api/v1/health` → `{"status":"healthy"}`
-
-**Bước 4: Cấu hình Frontend**
-
-```powershell
-Copy-Item Frontend\.env.example Frontend\.env
-```
-
-Nội dung `Frontend\.env`:
-
-```env
-VITE_API_URL=http://127.0.0.1:8000
-```
-
-**Bước 5: Khởi động Frontend**
-
-```powershell
-cd Frontend
-npm ci                                          # Cài dependencies
-$env:VITE_API_URL="http://127.0.0.1:8000"
-npm run dev -- --host 127.0.0.1 --port 5173
-```
-
-Truy cập: `http://127.0.0.1:5173`
-
----
-
-### Bước 6 (Tùy chọn): Nạp dữ liệu địa điểm qua ETL
-
-> Cần `GOONG_API_KEY` trong `Backend\.env`. Không có ETL data thì AI generate sẽ trả 422.
-
-```powershell
+```bash
 cd Backend
 
-# Dry-run trước để kiểm tra
-uv run python -m src.etl --cities "Hà Nội" --dry-run
+# Cài dependencies
+uv sync
 
-# Nạp thật
-uv run python -m src.etl --cities "Hà Nội"
+# Tạo .env
+cp .env.example .env
+# Chỉnh sửa DATABASE_URL, REDIS_URL, JWT_SECRET_KEY
 
-# Kiểm tra kết quả
-curl "http://127.0.0.1:8000/api/v1/places/search?city=H%C3%A0%20N%E1%BB%99i&limit=5"
-```
-
-Sau ETL, AI generate với `destination: "Hà Nội"` sẽ hoạt động.
-
----
-
-### Biến môi trường đầy đủ
-
-#### Backend (`Backend/.env`)
-
-| Biến | Bắt buộc | Mô tả | Ví dụ |
-|---|---|---|---|
-| `JWT_SECRET_KEY` | ✅ | Secret key cho JWT signing | `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `DATABASE_URL` | ✅ | PostgreSQL connection string | `postgresql+asyncpg://postgres:postgres@localhost:5432/dulichviet` |
-| `REDIS_URL` | ✅ | Redis connection string | `redis://localhost:6379/0` |
-| `GEMINI_API_KEY` | AI generate | Google Gemini API key | Đăng ký tại [aistudio.google.com](https://aistudio.google.com) |
-| `GOONG_API_KEY` | ETL | Goong Maps API key | Đăng ký tại [account.goong.io](https://account.goong.io) |
-| `AGENT_TIMEOUT_SECONDS` | — | Timeout gọi Gemini (giây) | `60` (local), `30` (default) |
-| `AGENT_MIN_ACTIVITIES_PER_DAY` | — | Số hoạt động tối thiểu/ngày | `5` |
-| `AGENT_MAX_ACTIVITIES_PER_DAY` | — | Số hoạt động tối đa/ngày | `5` |
-| `SMTP_HOST` | Email | SMTP server (để trống = log console) | `smtp.gmail.com` |
-| `SMTP_PORT` | Email | SMTP port | `587` |
-| `SMTP_USERNAME` | Email | SMTP username | `your@gmail.com` |
-| `SMTP_PASSWORD` | Email | SMTP password / app password | `xxxx xxxx xxxx xxxx` |
-| `FRONTEND_URL` | — | URL frontend (dùng trong share link) | `http://localhost:5173` |
-
-#### Frontend (`Frontend/.env`)
-
-| Biến | Bắt buộc | Mô tả | Ví dụ |
-|---|---|---|---|
-| `VITE_API_URL` | ✅ | URL Backend API | `http://127.0.0.1:8000` |
-
----
-
-### Lưu ý khi dùng Docker Compose cho BE
-
-Khi BE chạy trong Docker container, `localhost` trong container trỏ vào container, không phải host. Docker Compose tự inject:
-
-```yaml
-DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/dulichviet
-REDIS_URL: redis://redis:6379/0
-```
-
-Chỉ cần set `JWT_SECRET_KEY`, `GEMINI_API_KEY`, `GOONG_API_KEY` trong `Backend/.env`.
-
----
-
-## 10. Tests & Verification
-
-### Chạy test Backend
-
-```powershell
-cd Backend
-
-# Lint + format
-uv run ruff check src tests
-uv run ruff format --check src tests
-
-# Migration check
+# Chạy migration
 uv run alembic upgrade head
-uv run alembic check
 
-# Unit tests (97 tests)
-uv run pytest tests/unit/ -v --tb=short
-
-# Integration tests (44 tests — cần DB + Redis chạy)
-$env:CI="true"
-uv run pytest tests/integration/ -v --tb=short
-
-# Tất cả
-$env:CI="true"
-uv run pytest tests/ -v --tb=short
+# Khởi động server
+uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Chạy test Frontend
+#### Frontend
 
-```powershell
+```bash
 cd Frontend
 
-# Production build
-$env:VITE_API_URL="http://127.0.0.1:8000"
-npm run build
+# Cài dependencies
+npm install
 
-# Playwright e2e (cần BE đang chạy trên port 8000)
-$env:E2E_BASE_URL="http://127.0.0.1:5173"
-$env:E2E_API_URL="http://127.0.0.1:8000"
-npx playwright test --reporter=line
+# Tạo .env.local
+echo "VITE_API_URL=http://localhost:8000" > .env.local
 
-# Headed mode (xem browser)
-npx playwright test --headed
+# Khởi động dev server
+npm run dev
 ```
 
-### Kết quả test hiện tại (2026-05-27)
+#### Kiểm tra nhanh
 
-| Loại | Số lượng | Trạng thái |
-|---|---|---|
-| BE unit tests | 97 | ✅ Pass |
-| BE integration tests | 44 | ✅ 43 pass, 1 fail (test pollution local DB) |
-| FE Playwright e2e | 13 | ✅ Pass |
-| BE lint/format | — | ✅ Pass |
-| Alembic migration | — | ✅ Pass |
-| FE production build | — | ✅ Pass |
+```bash
+# Health check
+curl http://localhost:8000/api/v1/health
+# → {"status":"healthy"}
 
-### AI Generate Smoke Test
-
-```powershell
-# Cần GEMINI_API_KEY và ETL data trong DB
-cd Backend
-$env:AGENT_TIMEOUT_SECONDS="60"
-
-curl.exe -X POST "http://127.0.0.1:8000/api/v1/itineraries/generate" `
-  -H "Content-Type: application/json" `
-  -H "Authorization: Bearer <your-token>" `
-  --data-raw '{"destination":"Hà Nội","startDate":"2026-07-01","endDate":"2026-07-03","budget":5000000,"adults":2,"children":0,"interests":["food","attraction"]}'
+# Đăng ký tài khoản test
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123","name":"Test User"}'
 ```
-
-Kết quả mong đợi: `201 Created` với trip có 3 ngày × 5 hoạt động.
 
 ---
 
-## 11. ETL
+## 12. Tests & Verification
 
-ETL nạp dữ liệu địa điểm từ Goong Maps API vào PostgreSQL.
+### Backend Tests
+
+```bash
+cd Backend
+
+# Chạy tất cả tests
+uv run pytest
+
+# Chạy với coverage
+uv run pytest --cov=src --cov-report=term-missing
+
+# Chỉ unit tests
+uv run pytest tests/unit/ -v
+
+# Chỉ integration tests
+uv run pytest tests/integration/ -v
+```
+
+**Kết quả hiện tại:** 97 unit tests + 44 integration tests = **141 backend tests**
+
+| Suite | Số test | Mô tả |
+|---|---|---|
+| Unit | 97 | Service logic, schema validation, security utils, token hashing |
+| Integration | 44 | Endpoint tests với DB thật (PostgreSQL + Redis) |
+
+### Frontend E2E Tests (Playwright)
+
+```bash
+cd Frontend
+
+# Cài Playwright browsers (lần đầu)
+npx playwright install chromium
+
+# Chạy e2e tests (cần BE đang chạy)
+npx playwright test
+
+# Chạy với UI mode
+npx playwright test --ui
+
+# Xem report
+npx playwright show-report
+```
+
+**Kết quả hiện tại:** 13 e2e tests
+
+| Suite | Số test | Mô tả |
+|---|---|---|
+| Auth flow | 3 | Register, login, protected route redirect |
+| Trip CRUD | 3 | Create trip, view list, delete trip |
+| Public pages | 5 | Home, login, register, forgot-password, 404 |
+| Shared trip | 2 | Share link generation, public view |
+
+### CI/CD — GitHub Actions
+
+7 required checks trước khi merge:
+
+| Check | Mô tả |
+|---|---|
+| `backend-lint` | Ruff lint + format check |
+| `backend-type` | Pyright type check |
+| `backend-unit` | pytest unit tests |
+| `backend-integration` | pytest integration tests (PostgreSQL + Redis containers) |
+| `frontend-lint` | ESLint + TypeScript check |
+| `frontend-build` | Vite production build |
+| `frontend-e2e` | Playwright e2e (BE + FE stack) |
+
+---
+
+## 13. ETL
+
+ETL pipeline nạp dữ liệu địa điểm từ Goong Maps API vào PostgreSQL.
 
 ### Chạy ETL
 
-```powershell
+```bash
 cd Backend
 
-# Một thành phố
-uv run python -m src.etl --cities "Hà Nội"
+# Cần GOONG_API_KEY trong .env
+uv run python -m src.etl
 
-# Nhiều thành phố
-uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng" "Hội An"
-
-# Dry-run (không ghi DB)
-uv run python -m src.etl --cities "Hà Nội" --dry-run
-
-# Xem help
-uv run python -m src.etl --help
+# Hoặc với Docker
+docker compose exec backend python -m src.etl
 ```
 
-### Kiểm tra sau ETL
+### ETL Pipeline Flow
 
-```powershell
-# Kiểm tra destinations
-curl.exe "http://127.0.0.1:8000/api/v1/places/destinations"
-
-# Kiểm tra places
-curl.exe "http://127.0.0.1:8000/api/v1/places/search?city=H%C3%A0%20N%E1%BB%99i&limit=10"
-
-# Xóa Redis cache để load fresh data
-docker compose exec redis redis-cli FLUSHDB
+```
+src/etl/
+├── runner.py          # Orchestrator: extract → transform → load
+├── extractors/        # Gọi Goong Maps API lấy places/hotels theo city
+├── transformers/      # Normalize data, map category, clean text
+└── loaders/           # Upsert vào PostgreSQL (destinations, places, hotels)
 ```
 
-### Lưu ý ETL
+### Destinations được hỗ trợ
 
-- Cần `GOONG_API_KEY` trong `Backend/.env`
-- ETL dùng `external_id` để upsert — chạy lại không tạo duplicate
-- Destination phải có đủ places trước khi AI generate (tối thiểu 6 places)
-- Destination string trong generate request phải khớp tên trong DB (có dấu tiếng Việt, ví dụ `"Hà Nội"` không phải `"Ha Noi"`)
+ETL hỗ trợ các thành phố/tỉnh chính của Việt Nam. Tên thành phố được resolve qua **slug matching** — ví dụ `"Ha Noi"` (không dấu) cũng được resolve tự động thành `"Hà Nội"` nhờ slug normalization.
 
-### Xóa AI rate limit keys (khi test local)
+### Data flow
 
-```powershell
-# Xóa tất cả rate limit keys
-docker compose exec redis redis-cli --scan --pattern "rate:ai:*" | ForEach-Object { docker compose exec redis redis-cli DEL $_ }
 ```
+Goong Maps API
+  → Extractor (httpx async, rate-limited)
+  → Transformer (normalize name, map category, deduplicate)
+  → Loader (upsert destinations → places → hotels)
+  → PostgreSQL (destinations, places, hotels tables)
+  → Redis cache invalidated (destinations:all key)
+```
+
+### Lưu ý
+
+- ETL là **idempotent** — chạy nhiều lần không tạo duplicate (upsert theo `goong_place_id`).
+- `GOONG_API_KEY` là optional — nếu không có, AI generate vẫn chạy nhưng recommendation context sẽ rỗng (Gemini có thể hallucinate địa điểm).
+- Chất lượng lịch trình AI phụ thuộc trực tiếp vào lượng data ETL đã nạp.
 
 ---
 
-## 12. Cấu trúc thư mục
+## 14. Cấu trúc thư mục
 
 ```
 NT208-ai-travel-itinerary-recommendation-system/
-├── Backend/                    # FastAPI backend
+├── Backend/
 │   ├── src/
-│   │   ├── main.py             # App factory
-│   │   ├── agent/              # Shared AI infrastructure
-│   │   ├── auth/               # Auth + User domain
-│   │   ├── itineraries/        # Trip domain
-│   │   ├── places/             # Places domain
-│   │   ├── core/               # Cross-cutting concerns
-│   │   ├── etl/                # ETL pipeline
-│   │   └── geo/                # Goong REST client
+│   │   ├── main.py                    # App factory, middleware, router registration
+│   │   ├── api/v1/                    # Router layer (34 endpoints)
+│   │   │   ├── auth.py
+│   │   │   ├── users.py
+│   │   │   ├── itineraries.py
+│   │   │   ├── places.py
+│   │   │   └── shared.py
+│   │   ├── core/                      # Cross-cutting: config, db, security, exceptions
+│   │   ├── models/                    # SQLAlchemy ORM models
+│   │   ├── repositories/              # DB query layer
+│   │   ├── schemas/                   # Pydantic request/response schemas
+│   │   ├── services/                  # Business logic layer
+│   │   ├── agent/                     # AI infrastructure (Gemini client, prompts, schemas)
+│   │   └── etl/                       # Goong Maps ETL pipeline
 │   ├── tests/
-│   │   ├── unit/               # 97 unit tests
-│   │   └── integration/        # 44 integration tests
-│   ├── alembic/                # DB migrations
-│   ├── config.yaml             # Non-secret config
-│   ├── .env.example            # Env template
-│   └── pyproject.toml          # Dependencies (uv)
+│   │   ├── unit/                      # 97 unit tests
+│   │   └── integration/               # 44 integration tests
+│   ├── alembic/                       # DB migrations
+│   │   └── versions/
+│   ├── config.yaml                    # Non-secret config
+│   ├── .env.example                   # Secret config template
+│   ├── pyproject.toml                 # uv dependencies + Ruff config
+│   └── Dockerfile
 │
-├── Frontend/                   # React + Vite frontend
-│   ├── src/app/
-│   │   ├── components/         # UI components
-│   │   ├── contexts/           # AuthContext, TripWizardContext
-│   │   ├── hooks/              # useTripSync, useActivityManager, ...
-│   │   ├── pages/              # 27 pages
-│   │   ├── services/           # API client layer
-│   │   └── types/              # trip.types.ts (FE-BE contract)
-│   ├── tests/e2e/              # 13 Playwright e2e tests
-│   ├── .env.example            # Env template
-│   └── package.json
+├── Frontend/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── App.tsx                # Root component
+│   │   │   ├── routes.tsx             # Route definitions
+│   │   │   ├── components/            # 40+ shared components
+│   │   │   ├── contexts/              # AuthContext, TripWizardContext
+│   │   │   ├── data/                  # Static/mock fallback data
+│   │   │   ├── hooks/                 # useTripSync, useActivityManager, ...
+│   │   │   ├── pages/                 # 27 page components
+│   │   │   ├── services/              # API client layer (api.ts + 4 modules)
+│   │   │   ├── types/                 # trip.types.ts (FE-BE contract)
+│   │   │   └── utils/
+│   │   └── styles/
+│   ├── tests/e2e/                     # 13 Playwright e2e tests
+│   ├── playwright.config.ts
+│   ├── package.json
+│   └── vite.config.ts
 │
-├── docs/                       # Tài liệu kỹ thuật
-│   ├── 01_overview.md
+├── docs/                              # Architecture & context docs
 │   ├── 02_architecture.md
 │   ├── 03_backend.md
 │   ├── 04_frontend.md
-│   ├── 05_database_etl.md
-│   ├── 06_ai_roadmap.md
-│   ├── 07_workflow_ci.md
-│   ├── 08_testing_local_run.md
-│   ├── 09_execution_tracker.md
-│   ├── 10_automation_testing_report.md
-│   ├── 11_phase_roadmap.md
-│   └── REPORTS/                # Báo cáo kiểm thử
+│   └── REPORTS/
 │
-├── plan/                       # Tài liệu thiết kế Phase C
-├── docker-compose.yml          # PostgreSQL + Redis + API
-├── README.md                   # File này
-└── AGENTS.md                   # Hướng dẫn cho AI agents
-
+├── .claude/                           # Claude AI context & skills
+│   ├── context/                       # Project context files
+│   └── skills/                        # Code review, db-migration, debug skills
+│
+├── docker-compose.yml
+├── CLAUDE.md                          # AI agent instructions
+├── AGENTS.md                          # Agent coordination guide
+└── README.md
 ```
 
 ---
 
-## 13. Team
+## 15. Team
 
-| Thành viên | Vai trò | Phụ trách |
+**NT208 — Web Programming · UIT 2023.2**
+
+| Thành viên | MSSV | Vai trò |
 |---|---|---|
-| Nguyễn Nhật Anh Khôi | Leader · Backend · AI | Architecture, BE core, AI pipeline, ETL |
-| [Thành viên 2] | Frontend | React components, FE integration |
-| [Thành viên 3] | Frontend | UI/UX, pages, hooks |
+| (Thành viên 1) | — | Backend, AI Pipeline, ETL |
+| (Thành viên 2) | — | Frontend, UI/UX |
+| (Thành viên 3) | — | Backend, Database, DevOps |
+| (Thành viên 4) | — | Frontend, Testing |
+
+> Cập nhật thông tin thành viên thực tế vào bảng trên.
 
 ---
 
-> **Môn học:** NT208 — Lập Trình Web  
-> **Trường:** Đại học Công nghệ Thông tin — UIT  
-> **Học kỳ:** 2023.2
+<div align="center">
+
+Made with ❤️ for Vietnam travel · NT208 · UIT 2023.2
+
+</div>
