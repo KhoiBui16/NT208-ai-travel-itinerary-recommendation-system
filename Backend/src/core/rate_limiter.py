@@ -101,13 +101,30 @@ class RateLimiter:
             ServiceUnavailableException: If Redis is down in "closed" mode.
         """
         if not await self.check_ai_limit(user_id):
-            raise RateLimitException("Daily AI call limit exceeded")
+            limit = self.settings.rate_limit_ai_free
+            reset = self._next_midnight_utc().strftime("%H:%M UTC")
+            raise RateLimitException(
+                f"Bạn đã dùng hết {limit} lượt tạo lịch trình AI hôm nay. "
+                f"Hạn mức sẽ được đặt lại lúc {reset}. "
+                "Nâng cấp tài khoản để có thêm lượt."
+            )
 
     async def enforce_ai_guest_limit(self, ip: str | None, user_agent: str | None) -> None:
-        """Raise when an anonymous guest has exceeded the daily AI quota."""
+        """Raise when an anonymous guest has exceeded the daily AI quota.
+
+        Guest fingerprint is based on IP + User-Agent hash — stable within a session
+        but resets if the user changes network or browser. Guests share a tighter
+        quota than authenticated users; the message encourages registration.
+        """
         actor = self.guest_actor(ip=ip, user_agent=user_agent)
         if not await self.check_ai_actor_limit(actor):
-            raise RateLimitException("Daily AI call limit exceeded")
+            limit = self.settings.rate_limit_ai_free
+            reset = self._next_midnight_utc().strftime("%H:%M UTC")
+            raise RateLimitException(
+                f"Bạn đã dùng hết {limit} lượt tạo lịch trình AI miễn phí hôm nay. "
+                f"Hạn mức sẽ được đặt lại lúc {reset}. "
+                "Đăng ký tài khoản miễn phí để lưu lịch trình và nhận thêm lượt AI mỗi ngày."
+            )
 
     async def get_remaining(self, user_id: int) -> RateLimitInfo:
         """Return remaining AI calls for the current UTC day.

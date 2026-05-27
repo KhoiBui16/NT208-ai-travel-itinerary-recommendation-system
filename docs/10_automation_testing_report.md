@@ -12,7 +12,7 @@ File này ghi trạng thái test mới nhất. Các kết quả cần được c
 | Backend format            | `ruff format --check`                    | —                | Pass               |
 | Backend migration         | `alembic upgrade head` + `alembic check` | —                | Pass               |
 | Backend unit tests        | `pytest tests/unit/`                     | **97 tests**     | Pass               |
-| Backend integration tests | `pytest tests/integration/`              | **44 collected** | 44 pass            |
+| Backend integration tests | `pytest tests/integration/`              | **44 collected** | 43 pass, 1 fail (test pollution) |
 | Backend Docker API health | HTTP health check                        | 1 check          | Pass               |
 | Frontend production build | `vite build`                             | —                | Pass               |
 | Frontend e2e tests        | Playwright (Chromium)                    | **13 tests**     | Pass               |
@@ -20,6 +20,8 @@ File này ghi trạng thái test mới nhất. Các kết quả cần được c
 | AI browser smoke          | Playwright + real local Gemini key       | 1 generated trip | Pass               |
 
 **Tổng current branch (feat/00047): 97 BE unit tests + 44 BE integration tests + 13 FE e2e tests.**
+
+> **2026-05-27 full system test:** 97 unit pass, 43/44 integration pass (1 fail — test pollution), 13 FE e2e pass.
 
 ### Không kiểm ở giai đoạn này
 
@@ -211,6 +213,8 @@ Fail nếu:
 | 2026-05-25 | `feat/00041-c-generate-pipeline` (merged #42) | 93 pass | 42 collected (36 pass, 6 skip) | — | pass | pass | 11 pass | pass (AI smoke) | C.1 generate pipeline + Goong ETL |
 | 2026-05-26 | `fix/00044-c-stabilize-c1-guest-flow`         | 93 pass | 42 pass        | —      | pass        | pass     | 13 pass | pass  | Guest claim reload fix + 2 e2e mới |
 | 2026-05-26 | `feat/00047-c-suggestion-service` (review_ready) | **97 pass** | **44 pass** | — | pass | pass (không re-run) | — | C.2 EP-30 DB-only suggest; không đổi FE UI |
+| 2026-05-27 | `main` (local, uncommitted) | 97 pass | 43 pass, 1 fail (test pollution) | 13 pass | pass | pass (dist_ci/) | 13 pass | pass | Full system test: CRUD smoke, rate limit security analysis, destination slug fix |
+| 2026-05-27 | `docs/00048-d-system-test-fixes` | 97 pass | 43 pass, 1 fail (test pollution) | 13 pass | pass | pass (dist_ci/) | 13 pass | pass | Task 00048: full CRUD API smoke, rate limit UA bypass confirmed, guest trip no-limit confirmed, destination slug mismatch (ha-noi vs ha-n-i in DB) |
 
 ## Async Session Lifecycle Patterns
 

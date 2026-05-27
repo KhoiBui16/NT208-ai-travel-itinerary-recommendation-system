@@ -41,6 +41,11 @@ test_full_results.json
 .pytest_cache/
 pytest-cache-files-*/
 
+# Frontend build artifacts (local only)
+Frontend/dist/
+Frontend/dist_ci/
+Frontend/test-results/
+
 # Claude local-only settings
 .claude/settings.local.json
 

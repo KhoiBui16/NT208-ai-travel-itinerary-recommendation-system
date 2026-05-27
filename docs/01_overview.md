@@ -89,7 +89,9 @@ MVP1
 - Places/cache: destinations, destination detail, place search/detail, saved places, Redis read cache fail-open.
 - ETL D1/C.0: Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, `hotels.yaml`, `scraped_sources`.
 - AI C.1 generate pipeline: DB recommendation context, Gemini JSON output, Pydantic validation, retry, guest/user AI rate limit.
-- Tests current branch: 93 unit tests + 42 integration tests; CI lint/unit/integration/migration.
+- Tests current branch: 97 unit tests + 44 integration tests + 13 FE e2e tests; CI lint/unit/integration/migration.
+- AI C.2 SuggestionService (EP-30): DB-only suggest alternatives, owner-check, no LLM.
+- Destination slug matching: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" → "ha-noi" → match DB.
 
 ### Frontend
 
@@ -120,7 +122,7 @@ MVP1
 ### AI (Phase C)
 
 - C.1 đã có direct generate pipeline local-ready, nhưng cần PR/CI review và thêm monitoring trước production.
-- Chưa có C.2 SuggestionService endpoint.
+- C.2 SuggestionService (EP-30) đã implement, đang review_ready trên `feat/00047`.
 - Chưa có C.3 AI companion chat, patch-confirm flow, chat history API.
 - Analytics EP-34 chưa bật và chưa có SQL guardrails.
 
