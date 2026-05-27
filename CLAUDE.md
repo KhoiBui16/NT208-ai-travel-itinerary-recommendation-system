@@ -26,7 +26,7 @@ Neu docs va code xung dot:
 
 - Backend runtime hien tai la MVP2 trong `Backend/src/`
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
-- 117 BE tests (75 unit + 42 integration)
+- 141 BE tests (97 unit + 44 integration)
 - Frontend runtime hien tai nam trong `Frontend/`
 - 11 Playwright e2e tests trong `Frontend/tests/e2e/`
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
@@ -36,7 +36,7 @@ Neu docs va code xung dot:
 
 ## Target MVP2 decisions da chot
 
-- MVP2 core co `33` endpoints; `EP-34 /agent/analytics` la optional/MVP2+
+- MVP2 core co `35` endpoints; `EP-34 /agent/analytics` la optional/MVP2+
 - Public JSON contract theo FE va dung `camelCase`
 - `GET /api/v1/itineraries/{id}` la owner-only
 - Public share chi doc qua `GET /api/v1/shared/{shareToken}`
@@ -162,6 +162,37 @@ Rules:
 - Khong claim guest trip chi dua vao `user_id IS NULL`
 - Khong de docs condensed phat minh policy moi ngoai plan nguon
 - Khong xem `.claude/settings.local.json` la tai lieu shared
+
+## Phase C3/C4 execution lock
+
+Day la project Phase C3/C4 bootstrap. Mot so co dinh phai giu dung truoc khi bat dau bat ky feature nao:
+
+### C3 companion chat invariants
+
+- C3 la **trip-bound companion chat**, khong phai global ChatGPT-like chatroom.
+- C3 MVP dung **REST**, khong WebSocket/SSE. WebSocket/SSE la MVP2+.
+- Chat tra `requiresConfirmation` + `proposedOperations`; **khong tu persist** itinerary khi user chua confirm.
+- `apply-patch` moi update DB sau khi user confirm.
+- `companion_service.py` nam trong `Backend/src/itineraries/`, khong nam trong `Backend/src/agent/`.
+- `Backend/src/agent/` chi chua AI infra chung (LLM client, prompts, schemas).
+- Guest phai claim trip sau login/regiter roi moi duoc chat trong companion.
+- Paid AI rate limit **khong duoc fail-open** khi Redis down.
+
+### Khong implement C5 Analytics khi C3/C4 chua on
+
+C5 la optional. Khong duoc chuyen sang C5 khi C3 hoac C4 con loi.
+
+### Truoc khi implement C3/C4
+
+**Bat buoc chay skill `c3-c4-readiness-review`** de tao reports kiem tra:
+- Generate pipeline (pipeline.py, rate_limiter.py)
+- Rate limit auth user vs guest
+- Auth/AuthZ use cases cho companion chat
+- Goong/ETL data readiness
+- C3/C4 API contract
+
+**Khong implement C3/C4 khi reports chua xong hoac con issue unresolved.**
+Output cua audit: `docs/REPORTS/generate_pipeline_readiness.md`, `docs/REPORTS/rate_limit_policy_review.md`, `docs/REPORTS/phase_c3_design_readiness.md`, va issue notes trong `docs/REPORTS/ISSUES/`.
 
 ## Quick entry points
 

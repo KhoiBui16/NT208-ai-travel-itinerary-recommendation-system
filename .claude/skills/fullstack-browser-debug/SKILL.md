@@ -213,6 +213,30 @@ Report failures using this structure:
 - Remaining risk:
 ```
 
+## Phase C3 Browser Flows (when implemented)
+
+When testing C3 companion chat, verify these specific flows:
+
+1. **Guest generate → login → claim → workspace**: Guest generates trip, receives `claimToken`, registers, claims trip, lands in workspace.
+2. **Auth generate → workspace**: Authenticated user generates trip, navigates to workspace.
+3. **Auth open own trip → FloatingAIChat**: Open own trip, FloatingAIChat is visible and functional.
+4. **Send chat greeting → response**: Send message to companion, receive response with `requiresConfirmation`.
+5. **Ask add activity → proposedOperations render**: Ask to add activity, verify `proposedOperations` display.
+6. **Confirm patch → activity appears**: Click confirm, new activity appears in itinerary, DB updated.
+7. **Cancel patch → DB unchanged**: Click cancel, no DB change.
+8. **Refresh page → trip correct**: Refresh workspace, trip data still correct, chat context preserved.
+9. **Open 2 tabs same trip → no message jump**: Two tabs same trip, messages stay in correct tab.
+10. **Open 2 trips different → chat context isolated**: Chat context for Trip A stays separate from Trip B.
+11. **User A trip → User B cannot access**: User B login, cannot access User A's trip/companion chat.
+12. **SharedTripView → read-only**: Open shared link, companion chat is NOT visible or functional.
+
+### C3 Non-Negotiables for Browser Testing
+
+- FloatingAIChat only works in own trip workspace.
+- SharedTripView has no companion chat UI.
+- Guest must claim trip before chat is available.
+- No global chatroom in C3.
+
 ## Useful Official References
 
 - Playwright Trace Viewer: records actions, DOM snapshots, screenshots, network, console, and timing.
