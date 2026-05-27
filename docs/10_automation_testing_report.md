@@ -188,9 +188,9 @@ Pass khi:
 
 - Lint/format pass.
 - Alembic upgrade/check pass.
-- Unit tests (75) và integration tests (42) pass.
+- Unit tests (97) và integration tests (44) pass.
 - FE build pass.
-- FE e2e tests (11) pass.
+- FE e2e tests (13) pass.
 - BE health pass.
 - Full-stack smoke không throw exception.
 

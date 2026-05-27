@@ -226,7 +226,7 @@ Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycl
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
-Tóm tắt: 33 BE core endpoints (EP-0 đến EP-32), current branch có 93 unit tests + 42 integration tests, 11 FE e2e tests, 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28), Playwright e2e setup (PR #31).
+Tóm tắt: 35 BE endpoints (EP-0 đến EP-32 + EP-30 suggest), current branch có 97 unit tests + 44 integration tests, 13 FE e2e tests, 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28), Playwright e2e setup (PR #31), AI C.1 generate (PR #42), AI C.2 suggest EP-30 (PR #49).
 
 ## Phase C Plan (2026-05-04)
 

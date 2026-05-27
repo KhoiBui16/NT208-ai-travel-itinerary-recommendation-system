@@ -122,7 +122,7 @@ MVP1
 ### AI (Phase C)
 
 - C.1 đã có direct generate pipeline local-ready, nhưng cần PR/CI review và thêm monitoring trước production.
-- C.2 SuggestionService (EP-30) đã implement, đang review_ready trên `feat/00047`.
+- C.2 SuggestionService (EP-30) đã implement và merged trên `feat/00047` → PR #49.
 - Chưa có C.3 AI companion chat, patch-confirm flow, chat history API.
 - Analytics EP-34 chưa bật và chưa có SQL guardrails.
 
