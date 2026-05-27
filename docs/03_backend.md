@@ -14,66 +14,94 @@ File này mô tả **chi tiết toàn bộ Backend** — từng endpoint, từng
 
 ## 1. Runtime Structure
 
+> **Lưu ý:** Source code dùng **by-domain pattern** — mỗi domain có đủ router/service/repository/schemas/models riêng. Không có thư mục `api/v1/`, `models/`, `repositories/`, `schemas/`, `services/` flat như kiến trúc cũ.
+
 ```text
 Backend/
 ├── src/
 │   ├── main.py                    # App factory, middleware stack, router registration
-│   ├── api/v1/                    # Router layer — parse request, return response
-│   │   ├── __init__.py
-│   │   ├── auth.py                # EP-1..4, EP-31..32: register, login, refresh, logout, forgot/reset password
-│   │   ├── users.py               # EP-5..7: profile, update profile, change password
-│   │   ├── itineraries.py         # EP-8..21: trip CRUD, share, claim, activity/accommodation nested CRUD
-│   │   ├── places.py              # EP-23..29: destinations, search, detail, saved places
-│   │   └── shared.py              # EP-22: public share read
+│   │
+│   ├── auth/                      # Auth + User domain
+│   │   ├── models.py              # User, RefreshToken ORM
+│   │   ├── router.py              # EP-1..7, EP-31..32
+│   │   ├── service.py             # AuthService (register/login/refresh/logout/reset)
+│   │   ├── profile_service.py     # UserService (profile/password)
+│   │   ├── repository.py          # UserRepository, RefreshTokenRepository
+│   │   ├── schemas.py             # AuthResponse, RegisterRequest, LoginRequest, ...
+│   │   ├── dependencies.py        # get_current_user, get_current_user_optional
+│   │   └── email.py               # EmailService (aiosmtplib + console fallback)
+│   │
+│   ├── itineraries/               # Trip domain
+│   │   ├── models/
+│   │   │   ├── trip.py            # Trip, TripDay, Activity, ExtraExpense
+│   │   │   ├── extras.py          # Accommodation, ShareLink, TripRating, GuestClaimToken
+│   │   │   └── chat.py            # ChatSession, ChatMessage (schema ready, API todo C.3/C.4)
+│   │   ├── pipeline.py            # C.1 ItineraryPipeline (Gemini → validate → persist)
+│   │   ├── repository.py          # TripRepository (CRUD + AI context queries)
+│   │   ├── router.py              # EP-8..21 + generate + shared_router
+│   │   ├── schemas.py             # GenerateItineraryRequest, ItineraryResponse, ...
+│   │   └── service.py             # ItineraryService (business logic)
+│   │
+│   ├── places/                    # Places domain
+│   │   ├── models.py              # Destination, Place, Hotel, SavedPlace, ScrapedSource
+│   │   ├── repository.py          # PlaceRepository (search, find_alternatives, saved)
+│   │   ├── router.py              # EP-23..29
+│   │   ├── schemas.py             # PlaceResponse, SuggestionResponse, ...
+│   │   ├── service.py             # PlaceService + Redis cache
+│   │   └── suggestion_service.py  # C.2 SuggestionService (DB-only, EP-30)
+│   │
+│   ├── agent/                     # Shared AI infrastructure
+│   │   ├── config.py              # AgentConfig (model, temp, retries, timeout, pacing)
+│   │   ├── llm.py                 # GeminiLLM wrapper + parse_json_response()
+│   │   ├── router.py              # /agent prefix — EP-30 suggest (C.3 chat/apply-patch todo)
+│   │   ├── prompts/
+│   │   │   └── itinerary_prompts.py   # build_itinerary_prompt() cho C.1
+│   │   └── schemas/
+│   │       └── itinerary_schemas.py   # AgentItinerary, AgentDay, AgentActivity
+│   │   # TODO C.3: tools/, graph/ subdirs chưa tồn tại
+│   │
 │   ├── core/                      # Cross-cutting concerns
-│   │   ├── config.py              # AppSettings (pydantic-settings), get_settings()
-│   │   ├── database.py            # AsyncSession factory, Base, get_db dependency
+│   │   ├── config.py              # AppSettings (pydantic-settings, YAML + .env)
+│   │   ├── database.py            # AsyncSession factory, Base, get_db
 │   │   ├── security.py            # JWT, bcrypt, opaque token, hash_token
-│   │   ├── exceptions.py          # Custom exceptions: NotFound, Forbidden, Conflict, Unauthorized
-│   │   ├── logger.py              # Structured logging (structlog)
-│   │   └── dependencies.py        # get_current_user, get_current_user_optional, get_redis
-│   ├── models/                    # ORM models — table definitions
-│   │   ├── user.py                # User, RefreshToken
-│   │   ├── trip.py                # Trip, TripDay, Activity
-│   │   ├── place.py               # Destination, Place, Hotel, SavedPlace
-│   │   └── extras.py              # ExtraExpense, Accommodation, ShareLink, TripRating, GuestClaimToken, ChatSession, ChatMessage, ScrapedSource
-│   ├── repositories/              # Query layer — SQL only, no business logic
-│   │   ├── base.py                # BaseRepository with common CRUD
-│   │   ├── user_repo.py           # User + refresh token queries
-│   │   ├── token_repo.py          # RefreshToken rotation/revoke queries
-│   │   ├── trip_repo.py           # Trip + day + activity + accommodation + share/claim/rating queries
-│   │   └── place_repo.py          # Destination + place + hotel + saved_place queries
-│   ├── schemas/                   # Pydantic validation + serialization
-│   │   ├── common.py              # CamelCaseModel, PaginatedResponse
-│   │   ├── auth.py                # LoginRequest, RegisterRequest, AuthResponse, ForgotPasswordRequest, ResetPasswordRequest
-│   │   ├── user.py                # UserResponse, UpdateProfileRequest, ChangePasswordRequest
-│   │   ├── itinerary.py           # CreateTripRequest, UpdateTripRequest, ItineraryResponse, DaySchema, ActivitySchema, AccommodationSchema, etc.
-│   │   └── place.py               # DestinationResponse, PlaceResponse, HotelResponse, SavedPlaceRequest, SavedPlaceResponse
-│   ├── services/                  # Business logic layer
-│   │   ├── base.py                # BaseService (empty base class)
-│   │   ├── auth_service.py        # Register, login, refresh, logout, forgot/reset password
-│   │   ├── user_service.py        # Profile read/update, change password
-│   │   ├── itinerary_service.py   # Trip CRUD, share/claim, rating, activity/accommodation nested CRUD, auto-save diff/sync
-│   │   ├── place_service.py       # Destinations, search, detail, saved places, Redis cache
-│   │   └── email_service.py       # aiosmtplib + console fallback
-│   └── etl/                       # ETL pipeline
-│       ├── runner.py
-│       ├── __main__.py
-│       ├── extractors/
-│       ├── transformers/
-│       ├── loaders/
-│       └── data/
+│   │   ├── exceptions.py          # NotFound, Forbidden, Conflict, Unauthorized
+│   │   ├── rate_limiter.py        # Redis-backed AI rate limiter (fail-closed)
+│   │   ├── logger.py              # structlog structured logging
+│   │   ├── middlewares.py         # CORS, RequestLog, ErrorHandler setup
+│   │   ├── dependencies.py        # get_rate_limiter, get_redis
+│   │   └── schema.py              # CamelCaseModel, PaginatedResponse, SuccessResponse
+│   │
+│   ├── etl/                       # ETL pipeline (Goong Maps → PostgreSQL)
+│   │   ├── runner.py              # CLI entry point
+│   │   ├── base_extractor.py      # BaseExtractor ABC
+│   │   ├── extractors/
+│   │   │   ├── goong_extractor.py # Goong-first: autocomplete + place detail + geocode
+│   │   │   └── osm_extractor.py   # OSM fallback
+│   │   ├── transformers/
+│   │   │   ├── place_transformer.py
+│   │   │   └── hotel_transformer.py
+│   │   ├── loaders/
+│   │   │   └── db_loader.py       # Upsert places/hotels, invalidate Redis cache
+│   │   └── data/
+│   │       └── hotels.yaml        # Sample hotel seed data
+│   │
+│   ├── geo/                       # Goong REST client (shared utility)
+│   │   └── goong_client.py        # autocomplete, place_detail, geocode
+│   │
+│   └── shared/                    # Shared base classes
+│       └── service.py             # BaseService
 ├── tests/
-│   ├── unit/
-│   └── integration/
+│   ├── unit/                      # 97 unit tests
+│   └── integration/               # 44 integration tests
 ├── alembic/
-│   └── versions/
-├── config.yaml
-├── pyproject.toml
+│   └── versions/                  # DB migration files
+├── config.yaml                    # Non-secret config
+├── .env.example                   # Secret config template
+├── pyproject.toml                 # uv dependencies + Ruff config
 └── Dockerfile
-```
-
 ---
+
+
 
 ## 2. Endpoint Detail — Từng endpoint
 
@@ -139,7 +167,7 @@ Backend/
 | EP-28 | POST | `/api/v1/places/saved` | Bearer | `SavedPlaceResponse` |
 | EP-29 | DELETE | `/api/v1/places/saved/{savedId}` | Bearer | `{message}` |
 
-**Tổng: 34 endpoints** trên branch `feat/00047` (EP-0 đến EP-32 + **EP-30** suggest; EP-34 analytics optional MVP2+)
+**Tổng: 35 endpoints** trên `main` sau merge C.2 (EP-0 đến EP-32 + EP-30 suggest; EP-34 analytics optional MVP2+)
 
 ### EP-30: `GET /api/v1/agent/suggest/{activity_id}` (C.2)
 
@@ -609,8 +637,8 @@ EmailService
 
 ## 11. Backend còn thiếu
 
-- AI companion chat + patch-confirm flow (C.3 — `feat/00048`).
-- Chat history API endpoints (C.4 — `feat/00049`).
-- Analytics optional EP-34 với SQL guardrails (C.5 — `feat/00050`, optional).
+- AI companion chat + patch-confirm flow (C.3 — `feat/00051-c3-companion-chat`).
+- Chat history API endpoints (C.4 — `feat/00052-c4-chat-history`).
+- Analytics optional EP-34 với SQL guardrails (C.5 — `feat/00053-c5-analytics-optional`, optional).
 
-> **C.2 SuggestionService** (EP-30) đã implement trên `feat/00047-c-suggestion-service` — `review_ready`. Xem `docs/REPORTS/phase_c2_suggestion_service.md`.
+> **C.2 SuggestionService** (EP-30) đã merged trên `feat/00047-c-suggestion-service` → PR #49. Xem `docs/REPORTS/phase_c2_suggestion_service.md`.

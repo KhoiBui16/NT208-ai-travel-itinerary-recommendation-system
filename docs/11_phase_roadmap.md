@@ -9,10 +9,10 @@
 | C.0 | Goong ETL | merged | `feat/00040-c-goong-etl-readiness` | #40 | — | `GOONG_API_KEY` |
 | C.1 | Generate | merged | `feat/00041-c-generate-pipeline` | #42 | `POST /itineraries/generate` | `GEMINI_API_KEY`, `AGENT_*` |
 | C.1b | Guest claim reload | merged | `fix/00045-c-restage-c1-guest-flow` | #45 | — | — |
-| C.2 | Suggestion | review_ready | `feat/00047-c-suggestion-service` | pending | `GET /agent/suggest/{id}` | none (DB only) |
-| C.3 | Companion | todo | `feat/00048-c-companion-chat` | — | `POST /agent/chat`, apply-patch | `GEMINI_API_KEY` |
-| C.4 | Chat history | todo | `feat/00049-c-chat-history` | — | `GET /agent/chat-history/{tripId}` | none |
-| C.5 | Analytics | optional | `feat/00050-c-analytics-optional` | — | `POST /agent/analytics` | `ENABLE_ANALYTICS`, `ANALYTICS_DATABASE_URL` |
+| C.2 | Suggestion | merged | `feat/00047-c-suggestion-service` | #49 | `GET /agent/suggest/{id}` | none (DB only) |
+| C.3 | Companion | todo | `feat/00051-c3-companion-chat` | — | `POST /agent/chat`, apply-patch | `GEMINI_API_KEY` |
+| C.4 | Chat history | todo | `feat/00052-c4-chat-history` | — | `GET /agent/chat-history/{tripId}` | none |
+| C.5 | Analytics | optional | `feat/00053-c5-analytics-optional` | — | `POST /agent/analytics` | `ENABLE_ANALYTICS`, `ANALYTICS_DATABASE_URL` |
 
 **Status:** `todo` | `wip` | `review_ready` | `merged`
 

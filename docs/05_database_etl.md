@@ -545,6 +545,9 @@ Schema đã có trong DB qua Alembic migration, nhưng chưa có API endpoints.
 | `20260428_0001_initial_mvp2_schema` | 2026-04-28 | Schema MVP2 ban đầu | `users`, `refresh_tokens`, `trips`, `trip_days`, `activities`, `accommodations`, `extra_expenses`, `destinations`, `places`, `hotels`, `saved_places`, `share_links`, `guest_claim_tokens`, `trip_ratings`, `chat_sessions`, `chat_messages`, `scraped_sources` |
 | `20260502_0002_sync_etl_schema` | 2026-05-02 | Bổ sung ETL tracking | `scraped_sources` thêm `source_name`, `city`, `url`, `items_count`, `status`, `error_message`; unique constraints cho places/hotels upsert |
 | `20260504_0003_add_password_reset_fields` | 2026-05-04 | Password reset | `users` thêm `password_reset_token_hash`, `password_reset_expires_at` |
+| `20260525_0004_add_goong_place_metadata` | 2026-05-25 | Goong ETL metadata | `places` thêm `external_id` (120 char), `raw_metadata` (JSONB); index `ix_places_external_id` |
+| `20260525_0005_expand_goong_external_id` | 2026-05-25 | Long Goong place_id | `places.external_id` mở rộng `varchar(512)` để chứa Goong `place_id` dài |
+| `20260525_0006_add_companion_chat_tables` | tương lai | Chat history schema | `chat_sessions`, `chat_messages` (Phase C.3/C.4 — chưa chạy trên `main`) |
 
 **Nguyên tắc migration:**
 - Alembic là source of truth — không dùng `create_all()` trong production.
