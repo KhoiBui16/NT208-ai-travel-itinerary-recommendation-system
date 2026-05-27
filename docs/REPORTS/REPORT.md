@@ -1,3 +1,50 @@
+# Báo Cáo Tổng Quan — Phase C3/C4 Design Readiness Audit
+
+Ngày báo cáo: 2026-05-28  
+Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
+
+## Phase C3/C4 Readiness Audit Reports
+
+| File | Nội dung |
+|---|---|
+| [phase_c3_design_readiness.md](phase_c3_design_readiness.md) | Tổng hợp: design gaps, branch roadmap, C3/C4 readiness |
+| [generate_pipeline_readiness.md](generate_pipeline_readiness.md) | Audit C.1 generate pipeline: 13 checkpoints |
+| [rate_limit_policy_review.md](rate_limit_policy_review.md) | Rate limit auth vs guest: generate quota, chat quota, Redis fail-closed |
+| [auth_authorization_use_cases_for_c3.md](auth_authorization_use_cases_for_c3.md) | Auth/AuthZ checklist: 17 use cases cho C3/C4 |
+| [phase_c3_data_readiness.md](phase_c3_data_readiness.md) | Goong/ETL readiness summary |
+
+## Phase C3/C4 Design Issues
+
+| Issue | Priority | Status |
+|---|---|---|
+| [c3_stale_patch_handling_missing.md](ISSUES/c3_stale_patch_handling_missing.md) | HIGH | OPEN |
+| [c3_chat_quota_shared_with_generate.md](ISSUES/c3_chat_quota_shared_with_generate.md) | HIGH | OPEN |
+| [guest_rate_limit_ua_bypass.md](ISSUES/guest_rate_limit_ua_bypass.md) | MEDIUM | KNOWN/OPEN |
+
+## Recommended Branch Roadmap
+
+```
+feat/00051-c-c3-chat-session-foundation  # C3 chat sessions table + API
+feat/00052-c-c3-companion-chat-rest       # Companion chat endpoint
+feat/00053-c-c3-apply-patch             # Apply-patch endpoint
+feat/00054-c-c3-floating-chat-integration # FE integration
+```
+
+## Readiness Summary
+
+| Component | Status |
+|---|---|
+| Generate pipeline | READY (3 gaps, không block C3/C4) |
+| Rate limit (generate) | READY |
+| Rate limit (C3 chat) | NOT READY — quota shared với generate |
+| Redis fail-closed | READY |
+| Auth/AuthZ use cases | MOSTLY READY (C3/C4 use cases pending code) |
+| C3 design | PARTIALLY READY (4 design gaps) |
+| C4 design | PARTIALLY READY (chat history schema sẵn, API chưa có) |
+| Goong/ETL data | PARTIALLY READY (Hà Nội đủ dev, Đà Nẵng/TP.HCM chưa ETL) |
+
+---
+
 # Báo Cáo Tổng Quan Post-Merge PR40/PR41
 
 Ngày báo cáo: 2026-05-26  
