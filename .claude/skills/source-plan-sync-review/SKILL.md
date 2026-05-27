@@ -33,6 +33,20 @@ Use this skill before or after feature work when the user asks whether source co
 - Each report includes date, related files, commands/evidence, status, risks, and next actions.
 - Reports should be Vietnamese with accents unless the user asks otherwise.
 
+## Phase C3/C4 Additions
+
+When syncing Phase C3/C4, enforce these non-negotiables:
+
+- C3 is trip-bound companion chat, NOT a global chatroom.
+- C3 MVP uses REST, NOT WebSocket/SSE.
+- Chat returns `requiresConfirmation` + `proposedOperations`; does NOT persist itinerary before user confirms.
+- `apply-patch` updates DB only after user confirms.
+- `companion_service.py` lives in `Backend/src/itineraries/`, NOT in `Backend/src/agent/`.
+- `Backend/src/agent/` only contains shared AI infra (LLM client, prompts, schemas).
+- Companion chat requires authenticated user and trip owner.
+- Paid AI rate limit must be fail-closed when Redis is down.
+- Do not implement C5 Analytics when C3/C4 are not stable.
+
 ## Safety Rules
 
 - Do not change UI/UX while doing sync review.
