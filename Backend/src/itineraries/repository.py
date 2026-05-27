@@ -74,13 +74,31 @@ class TripRepository:
     # --- AI Recommendation Context ---
 
     async def resolve_destination_for_ai(self, destination: str) -> Destination | None:
-        """Resolve a user-provided destination string to a Destination row."""
+        """Resolve a user-provided destination string to a Destination row.
+
+        Resolution order:
+        1. Exact case-insensitive name match (handles "Hà Nội" == "hà nội")
+        2. Slug match — converts input to slug format (handles "Ha Noi" → "ha-noi")
+        3. Fuzzy ILIKE name match (handles partial names like "Nội" or "Hanoi")
+        """
         name = destination.strip()
+
+        # 1. Exact case-insensitive match
         exact_stmt = select(Destination).where(func.lower(Destination.name) == name.lower())
         exact = (await self.session.execute(exact_stmt)).scalar_one_or_none()
         if exact:
             return exact
 
+        # 2. Slug-based match: normalize input to slug format
+        #    "Ha Noi" → "ha-noi", "TP. Hồ Chí Minh" → "tp-h-ch-minh"
+        slug_candidate = self._to_slug(name)
+        if slug_candidate:
+            slug_stmt = select(Destination).where(Destination.slug == slug_candidate)
+            slug_match = (await self.session.execute(slug_stmt)).scalar_one_or_none()
+            if slug_match:
+                return slug_match
+
+        # 3. Fuzzy ILIKE match on name (partial match, e.g. "Nội" matches "Hà Nội")
         fuzzy_stmt = (
             select(Destination)
             .where(Destination.name.ilike(f"%{name}%"))
@@ -88,6 +106,98 @@ class TripRepository:
             .limit(1)
         )
         return (await self.session.execute(fuzzy_stmt)).scalar_one_or_none()
+
+    @staticmethod
+    def _to_slug(text: str) -> str:
+        """Convert a destination name to slug format for matching.
+
+        Uses the same replacement table as ETL db_loader._to_slug() so that
+        slugs generated at query time match slugs stored by the ETL pipeline.
+
+        Examples:
+            "Ha Noi"          → "ha-noi"   (ASCII input, no replacements needed)
+            "Hà Nội"          → "ha-noi"   (Vietnamese diacritics stripped)
+            "TP. Hồ Chí Minh" → "tp-ho-chi-minh"
+            "Da Nang"         → "da-nang"
+        """
+        import re
+
+        slug = text.lower().strip()
+        # Mirror the ETL db_loader replacement table exactly so slugs match DB
+        replacements = {
+            "đ": "d",
+            "ă": "a",
+            "â": "a",
+            "ê": "e",
+            "ô": "o",
+            "ơ": "o",
+            "ư": "u",
+            "à": "a",
+            "á": "a",
+            "ả": "a",
+            "ã": "a",
+            "ạ": "a",
+            "ắ": "a",
+            "ặ": "a",
+            "ằ": "a",
+            "ẳ": "a",
+            "ẵ": "a",
+            "ấ": "a",
+            "ầ": "a",
+            "ẩ": "a",
+            "ẫ": "a",
+            "ậ": "a",
+            "è": "e",
+            "é": "e",
+            "ẻ": "e",
+            "ẽ": "e",
+            "ẹ": "e",
+            "ế": "e",
+            "ề": "e",
+            "ể": "e",
+            "ễ": "e",
+            "ệ": "e",
+            "ì": "i",
+            "í": "i",
+            "ỉ": "i",
+            "ĩ": "i",
+            "ị": "i",
+            "ò": "o",
+            "ó": "o",
+            "ỏ": "o",
+            "õ": "o",
+            "ọ": "o",
+            "ố": "o",
+            "ồ": "o",
+            "ổ": "o",
+            "ỗ": "o",
+            "ộ": "o",
+            "ớ": "o",
+            "ờ": "o",
+            "ở": "o",
+            "ỡ": "o",
+            "ợ": "o",
+            "ù": "u",
+            "ú": "u",
+            "ủ": "u",
+            "ũ": "u",
+            "ụ": "u",
+            "ứ": "u",
+            "ừ": "u",
+            "ử": "u",
+            "ữ": "u",
+            "ự": "u",
+            "ỳ": "y",
+            "ý": "y",
+            "ỷ": "y",
+            "ỹ": "y",
+            "ỵ": "y",
+        }
+        for vn_char, ascii_char in replacements.items():
+            slug = slug.replace(vn_char, ascii_char)
+        slug = re.sub(r"[^a-z0-9]+", "-", slug)
+        slug = slug.strip("-")
+        return slug
 
     async def search_places_for_ai(
         self,

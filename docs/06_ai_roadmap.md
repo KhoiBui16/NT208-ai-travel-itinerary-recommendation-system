@@ -16,7 +16,8 @@ File này mô tả **chi tiết kiến trúc AI cho Phase C** — generate pipel
 ## 1. Trạng thái hiện tại
 
 - `POST /api/v1/itineraries/generate` đã chạy **C.1 direct pipeline**: build recommendation context từ DB, gọi Gemini JSON, validate, persist trip/day/activity/accommodation.
-- `GET /api/v1/agent/suggest/{activity_id}` (EP-30) đã implement **C.2 SuggestionService** DB-only trên `feat/00047-c-suggestion-service` (`review_ready`). Xem `docs/REPORTS/phase_c2_suggestion_service.md`.
+- `GET /api/v1/agent/suggest/{activity_id}` (EP-30) đã implement **C.2 SuggestionService** DB-only — merged PR #47. Xem `docs/REPORTS/phase_c2_suggestion_service.md`.
+- Destination slug matching đã được cải thiện: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" (không dấu) → slug "ha-noi" → match DB.
 - Chat/companion UI ở FE là **mock/demo**, không nối API thật.
 - DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn), nhưng chưa có API.
 - Chưa có `CompanionService`, `ChatService`, analytics.
@@ -393,7 +394,7 @@ Nếu bật Text-to-SQL analytics (EP-34), **bắt buộc** có các guardrails:
 | Thứ tự | Service           | Lý do                                                  | Độ phức tạp | Trạng thái |
 | ------ | ----------------- | ------------------------------------------------------ | ----------- | ---------- |
 | 1      | Generate pipeline | Core value, ảnh hưởng trực tiếp UX                     | Cao         | ✅ merged #42 |
-| 2      | SuggestionService | DB-only, không cần LLM, ít rủi ro                      | Thấp        | 🔄 review_ready feat/00047 |
+| 2      | SuggestionService | DB-only, không cần LLM, ít rủi ro                      | Thấp        | ✅ merged feat/00047 (PR #47) |
 | 3      | Companion chat    | Phức tạp nhất: intent routing + tool-calling + confirm | Rất cao     | ❌ todo feat/00048 |
 | 4      | Chat history      | Cần khi companion hoạt động, CRUD đơn giản             | Thấp        | ❌ todo feat/00049 |
 | 5      | Analytics         | Optional, rủi ro bảo mật cao                           | Rất cao     | ❌ optional feat/00050 |

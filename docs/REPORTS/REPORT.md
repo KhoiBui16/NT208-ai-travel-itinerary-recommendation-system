@@ -44,6 +44,15 @@ Phạm vi: kiểm tra sau khi `feat: [#00040] add goong-first etl readiness` và
 | [gemini_resource_exhausted_manual_smoke.md](ISSUES/gemini_resource_exhausted_manual_smoke.md) | TO DO | Guest AI smoke blocked by Gemini provider quota |
 | [ruff_cache_permission_warning.md](ISSUES/ruff_cache_permission_warning.md) | TO DO | Ruff pass nhưng không ghi được `.ruff_cache` do quyền local |
 | [phase_c_legacy_plan_status_drift.md](ISSUES/phase_c_legacy_plan_status_drift.md) | TO DO | `plan/19_phase_c_overview.md` còn ghi `Chưa bắt đầu` và branch examples cũ |
+| [c2_fe_ui_missing.md](ISSUES/c2_fe_ui_missing.md) | TO DO | ActivityDetailModal thiếu nút gợi ý thay thế, `services/agent.ts` chưa có |
+| [login_short_password_422.md](ISSUES/login_short_password_422.md) | KNOWN/ACCEPTABLE | Login với password ngắn trả 422 thay 401 — Pydantic validation behavior |
+| [integration_test_trip_limit_pollution.md](ISSUES/integration_test_trip_limit_pollution.md) | TO DO | Test pollution: `trip_test@test.com` đạt trip limit → 409 trên local DB |
+
+## Full System Test 2026-05-27
+
+| File | Nội dung |
+|---|---|
+| [phase_full_system_test_2026_05_27.md](phase_full_system_test_2026_05_27.md) | Kiểm thử toàn hệ thống: BE tests, FE build, Playwright e2e, API smoke, Phase C status |
 
 ## Screenshot Evidence
 

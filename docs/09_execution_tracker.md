@@ -33,6 +33,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00045   | C     | `fix/00045-c-restage-c1-guest-flow`           | Clean restage branch for PR44 changes from `main`                                                             | ready_for_pr | Cherry-picked from 00044 cleanly, branch pushed to origin                                                                                           | pending |
 | 00046   | D     | `docs/00046-d-phase-c-audit-sync`             | Audit remaining Phase C scope, branch strategy, env/key readiness                                             | merged       | `docs/REPORTS/phase_phase_c_remaining_audit.md`                                                                                                     | #46     |
 | 00047   | C     | `feat/00047-c-suggestion-service`             | C.2 DB-only SuggestionService EP-30 (BE-only, no FE UI)                                                        | review_ready | 97 unit + 44 integration pass; API smoke — `docs/REPORTS/phase_c2_suggestion_service.md`                                                              | pending |
+| 00048   | D     | `docs/00048-d-system-test-fixes`              | Full system test 2026-05-27, destination slug fix analysis, rate limit security analysis (UA bypass + guest trip no-limit), README IP note, new ISSUES docs | review_ready | 97 BE unit pass, 43/44 integration pass (1 test pollution), 13 FE e2e pass, full CRUD API smoke pass | pending |
 
 ## Scope Task 00047 (C.2)
 
@@ -238,3 +239,14 @@ Thứ tự ưu tiên:
 3. Companion chat (`companion_service.py` + `agent.py`) — phức tạp nhất
 4. Chat history (`chat_service.py` + `chat.py`) — cần khi companion hoạt động
 5. Analytics EP-34 — optional
+
+## Scope Task 00048 (D — docs/system-test)
+
+- Full system test 2026-05-27: 97 unit + 43/44 integration + 13 e2e pass.
+- README.md: Thêm sections Quick Start, Tests & Verification, ETL, Cấu trúc thư mục, Team.
+- Fix `resolve_destination_for_ai()`: thêm slug-based fallback để "Ha Noi" → "ha-noi" → match DB.
+- Rate limit messages: đã có tiếng Việt rõ ràng cho cả auth user và guest.
+- docs/REPORTS: Thêm phase_full_system_test_2026_05_27.md + 3 issues mới.
+- Phát hiện security gap: guest rate limit dùng IP+UA fingerprint — đổi UA bypass được limit.
+- Accommodation POST: cần kiểm tra thêm (response trả rỗng trong một số test).
+- Không thay đổi UI/UX, không thay đổi API contract.
