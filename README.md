@@ -1825,9 +1825,98 @@ npx playwright show-report
 
 ## 13. ETL
 
-ETL pipeline nạp dữ liệu địa điểm từ Goong Maps API vào PostgreSQL.
+> ETL pipeline nạp dữ liệu địa điểm từ Goong Maps API vào PostgreSQL. Đây là bước **bắt buộc** trước khi AI generate có thể hoạt động — pipeline cần ít nhất 6 places/destination để không trả 422.
 
-### Chạy ETL
+### 13.1 ETL Pipeline Flow (Mermaid)
+
+```mermaid
+flowchart TD
+    CLI["CLI: uv run python -m src.etl --cities 'Hà Nội'"]
+    CLI --> RUNNER["runner.py — orchestrate per city"]
+
+    RUNNER --> GOONG_CHECK{GOONG_API_KEY có?}
+    GOONG_CHECK -->|Yes| GOONG_EXT["GoongExtractor.extract_pois(city, max_items)"]
+    GOONG_CHECK -->|No| OSM_EXT["OsmExtractor.extract_pois(city)"]
+
+    GOONG_EXT --> GOONG_COUNT{Goong POIs >= 10?}
+    GOONG_COUNT -->|Yes| GEOCODE["_geocode_missing_coordinates(goong, pois)"]
+    GOONG_COUNT -->|No| OSM_FALLBACK["OsmExtractor.extract_pois(city) — fallback"]
+    OSM_FALLBACK --> GEOCODE
+
+    GEOCODE --> TRANSFORM["place_transformer.transform(raw_pois, city)"]
+    TRANSFORM --> UPSERT["db_loader.upsert_places(session, places)"]
+    UPSERT --> HOTELS["hotel_transformer + upsert_hotels (từ hotels.yaml)"]
+    HOTELS --> CACHE["invalidate_cache(redis) — xóa destinations:* và places:*"]
+    CACHE --> DONE["ETL completed: N places + M hotels"]
+
+    style DONE fill:#6bcb77
+    style GOONG_EXT fill:#4d96ff
+    style OSM_FALLBACK fill:#ffd93d
+```
+
+### 13.2 Goong API Endpoints đang dùng
+
+ETL dùng **3 Goong REST API endpoints** từ `https://rsapi.goong.io`:
+
+| Endpoint | Method | Mục đích trong ETL | Params chính |
+|---|---|---|---|
+| `/Place/AutoComplete` | GET | Tìm POIs theo keyword + category cho từng city | `input`, `location`, `limit`, `radius` |
+| `/Place/Detail` | GET | Lấy chi tiết place (tên, địa chỉ, tọa độ) từ `place_id` | `place_id`, `sessiontoken` |
+| `/Geocode` | GET | Forward geocoding — điền tọa độ cho POIs thiếu lat/lng | `address` |
+
+**Goong API còn có nhưng ETL chưa dùng:**
+
+| Endpoint | Mô tả | Tiềm năng |
+|---|---|---|
+| `/Geocode` (reverse) | Tọa độ → địa chỉ | Có thể dùng để enrich address từ lat/lng |
+| `/Direction` | Tính đường đi giữa 2 điểm | C.3 Companion Chat — `calculate_route` tool |
+| `/DistanceMatrix` | Ma trận khoảng cách nhiều điểm | Tối ưu thứ tự hoạt động trong ngày |
+| `/StaticMap` | Tạo ảnh bản đồ tĩnh | Thumbnail cho trip/activity |
+
+### 13.3 Chạy ETL
+
+```bash
+cd Backend
+
+# Cần GOONG_API_KEY trong .env
+uv run python -m src.etl
+
+# Một thành phố
+uv run python -m src.etl --cities "Hà Nội"
+
+# Nhiều thành phố
+uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng" "Hội An"
+
+# Dry-run (không ghi DB)
+uv run python -m src.etl --cities "Hà Nội" --dry-run
+
+# Chỉ load hotels từ YAML
+uv run python -m src.etl --hotels-only
+
+# Hoặc với Docker
+docker compose exec api uv run python -m src.etl --cities "Hà Nội"
+```
+
+### 13.4 Kiểm tra sau ETL
+
+```bash
+# Kiểm tra destinations
+curl http://localhost:8000/api/v1/places/destinations
+
+# Kiểm tra places (cần encode UTF-8)
+curl "http://localhost:8000/api/v1/places/search?city=H%C3%A0%20N%E1%BB%99i&limit=10"
+
+# Xóa Redis cache để load fresh data
+docker compose exec redis redis-cli FLUSHDB
+```
+
+### 13.5 Lưu ý quan trọng
+
+- ETL là **idempotent** — chạy nhiều lần không tạo duplicate (upsert theo `external_id`, fallback `(name, destination_id)`)
+- `GOONG_API_KEY` là **bắt buộc** để có data chất lượng. Không có key → OSM fallback → data ít và thiếu tọa độ
+- AI generate cần **tối thiểu 6 places/destination** — nếu thiếu sẽ trả 422 trước khi gọi Gemini
+- Destination string trong generate request được resolve qua **slug matching** — `"Ha Noi"` (không dấu) → slug `ha-noi` → match DB
+- Sau ETL, Redis cache bị invalidate tự động — request tiếp theo sẽ load fresh data từ DB
 
 ```bash
 cd Backend
@@ -1838,37 +1927,6 @@ uv run python -m src.etl
 # Hoặc với Docker
 docker compose exec backend python -m src.etl
 ```
-
-### ETL Pipeline Flow
-
-```
-src/etl/
-├── runner.py          # Orchestrator: extract → transform → load
-├── extractors/        # Gọi Goong Maps API lấy places/hotels theo city
-├── transformers/      # Normalize data, map category, clean text
-└── loaders/           # Upsert vào PostgreSQL (destinations, places, hotels)
-```
-
-### Destinations được hỗ trợ
-
-ETL hỗ trợ các thành phố/tỉnh chính của Việt Nam. Tên thành phố được resolve qua **slug matching** — ví dụ `"Ha Noi"` (không dấu) cũng được resolve tự động thành `"Hà Nội"` nhờ slug normalization.
-
-### Data flow
-
-```
-Goong Maps API
-  → Extractor (httpx async, rate-limited)
-  → Transformer (normalize name, map category, deduplicate)
-  → Loader (upsert destinations → places → hotels)
-  → PostgreSQL (destinations, places, hotels tables)
-  → Redis cache invalidated (destinations:all key)
-```
-
-### Lưu ý
-
-- ETL là **idempotent** — chạy nhiều lần không tạo duplicate (upsert theo `goong_place_id`).
-- `GOONG_API_KEY` là optional — nếu không có, AI generate vẫn chạy nhưng recommendation context sẽ rỗng (Gemini có thể hallucinate địa điểm).
-- Chất lượng lịch trình AI phụ thuộc trực tiếp vào lượng data ETL đã nạp.
 
 ---
 
