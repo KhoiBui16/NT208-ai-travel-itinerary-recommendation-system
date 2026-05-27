@@ -127,6 +127,49 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 
 ## 3. High-Level Architecture
 
+> Sơ đồ dưới mô tả toàn bộ hệ thống từ góc nhìn tổng quan: người dùng tương tác với Frontend React, Frontend gọi REST API đến FastAPI Backend, Backend đọc/ghi PostgreSQL và dùng Redis để cache + rate-limit. ETL pipeline chạy độc lập để nạp dữ liệu địa điểm từ Goong Maps API vào DB. Gemini AI chỉ được gọi khi user yêu cầu sinh lịch trình.
+
+```mermaid
+graph TB
+    subgraph Browser["👤 User (Browser)"]
+        FE["React 18 + Vite 6 + TypeScript<br/>TailwindCSS + MUI + Radix UI<br/>27 pages · 8 protected routes"]
+        API_CLIENT["API Client Layer<br/>services/api.ts + auth/itinerary/places/users<br/>JWT Bearer injection · auto-refresh on 401<br/>Optimistic update · revert-on-failure"]
+        FE --> API_CLIENT
+    end
+
+    API_CLIENT -->|"HTTP REST<br/>JSON camelCase"| BACKEND
+
+    subgraph BACKEND["FastAPI Backend (port 8000)"]
+        MW["Middleware Pipeline<br/>CORS → RequestLog → RateLimiter → ErrorHandler"]
+        ROUTER["Router Layer /api/v1/<br/>auth(6) · users(3) · itineraries(14) · places(7) · shared(1) · agent(1)"]
+        SERVICE["Service Layer<br/>AuthService · UserService · ItineraryService<br/>PlaceService · SuggestionService · ItineraryPipeline"]
+        REPO["Repository Layer<br/>UserRepo · TripRepo · PlaceRepo · TokenRepo"]
+        MW --> ROUTER --> SERVICE --> REPO
+    end
+
+    REPO -->|"async SQLAlchemy"| PG[("PostgreSQL 16<br/>15+ tables<br/>Alembic migrations")]
+    SERVICE -->|"Redis cache<br/>rate-limit"| REDIS[("Redis 7<br/>places cache TTL 30min<br/>destinations cache TTL 1h<br/>AI rate-limit keys")]
+
+    SERVICE -->|"Gemini API<br/>structured JSON output"| GEMINI["Google Gemini<br/>gemini-2.5-flash<br/>AI Generate only"]
+
+    subgraph ETL["Goong ETL (CLI runner)"]
+        GOONG_API["Goong Maps API<br/>autocomplete · place detail · geocode"]
+        TRANSFORM["Transformer<br/>normalize · deduplicate · map category"]
+        LOADER["DB Loader<br/>upsert destinations · places · hotels"]
+        GOONG_API --> TRANSFORM --> LOADER
+    end
+
+    LOADER -->|"upsert"| PG
+    LOADER -->|"invalidate cache"| REDIS
+```
+
+**Giải thích luồng chính:**
+- **FE → BE:** Mọi request đều qua API Client Layer — tự động inject Bearer token, tự refresh khi 401, optimistic update UI trước khi API confirm.
+- **BE layers:** Router chỉ parse/route, Service chứa business logic (owner check, rate limit), Repository chỉ query DB.
+- **Redis:** Cache places/destinations (fail-open — Redis down thì query DB), rate-limit AI (fail-closed — Redis down thì block).
+- **Gemini:** Chỉ được gọi từ `ItineraryPipeline` khi user generate lịch trình, không gọi từ suggestion service.
+- **ETL:** Chạy độc lập qua CLI, không phụ thuộc vào app server.
+
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                         👤 USER (Browser)                                │
@@ -202,7 +245,197 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 
 ## 4. Low-Level Architecture
 
-### 4.1 Backend — Cấu trúc theo domain
+> Sơ đồ dưới đi sâu vào cấu trúc nội bộ của Backend (by-domain pattern) và Frontend (component tree + data flow). Mỗi domain BE có đủ router → service → repository → model. FE dùng hook pattern với optimistic update.
+
+### 4.1 Backend — Dependency Injection & Layer Boundary
+
+```mermaid
+graph LR
+    subgraph Request["HTTP Request"]
+        R["Router Function<br/>itineraries.py::add_activity()"]
+    end
+
+    subgraph Deps["Dependencies (FastAPI DI)"]
+        D1["get_current_user()<br/>→ User ORM | 401"]
+        D2["get_db()<br/>→ AsyncSession"]
+        D3["get_redis()<br/>→ Redis | None"]
+    end
+
+    subgraph SVC["Service Layer"]
+        S["ItineraryService(session)<br/>• owner check: trip.user_id == user.id<br/>• business validation<br/>• orchestrate repo calls"]
+    end
+
+    subgraph REPO["Repository Layer"]
+        RP["TripRepository(session)<br/>• SQL queries only<br/>• no business rules<br/>• flush + expire_all pattern"]
+    end
+
+    subgraph DB["Database"]
+        M["SQLAlchemy ORM Models<br/>Trip · TripDay · Activity<br/>Accommodation · ShareLink<br/>GuestClaimToken · ChatSession"]
+        PG[("PostgreSQL 16")]
+        M --> PG
+    end
+
+    R --> D1
+    R --> D2
+    R --> D3
+    D2 --> S
+    S --> RP
+    RP --> M
+```
+
+### 4.2 Backend — Domain Structure
+
+```mermaid
+graph TD
+    subgraph MAIN["main.py — App Factory"]
+        APP["FastAPI app<br/>mount /api/v1<br/>lifespan DB check"]
+    end
+
+    subgraph AUTH["auth/ domain"]
+        AR["router.py<br/>EP-1..7, EP-31..32"]
+        AS["service.py<br/>AuthService"]
+        APS["profile_service.py<br/>UserService"]
+        AREPO["repository.py<br/>UserRepo + TokenRepo"]
+        AM["models.py<br/>User · RefreshToken"]
+        AE["email.py<br/>aiosmtplib + console fallback"]
+        AR --> AS --> AREPO --> AM
+        AS --> AE
+    end
+
+    subgraph ITIN["itineraries/ domain"]
+        IR["router.py<br/>EP-8..21 + generate + shared"]
+        IS["service.py<br/>ItineraryService"]
+        IP["pipeline.py<br/>C.1 ItineraryPipeline<br/>Gemini → validate → persist"]
+        IREPO["repository.py<br/>TripRepository"]
+        IM["models/<br/>trip.py · extras.py · chat.py"]
+        IR --> IS --> IREPO --> IM
+        IS --> IP
+    end
+
+    subgraph PLACES["places/ domain"]
+        PR["router.py<br/>EP-23..29"]
+        PS["service.py<br/>PlaceService + Redis cache"]
+        SS["suggestion_service.py<br/>C.2 SuggestionService<br/>DB-only, no LLM"]
+        PREPO["repository.py<br/>PlaceRepository"]
+        PM["models.py<br/>Destination · Place · Hotel · SavedPlace"]
+        PR --> PS --> PREPO --> PM
+        PR --> SS --> PREPO
+    end
+
+    subgraph AGENT["agent/ shared AI infra"]
+        AGTR["router.py<br/>/agent prefix — EP-30"]
+        AGCFG["config.py<br/>AgentConfig"]
+        AGLLM["llm.py<br/>GeminiLLM wrapper"]
+        AGPROMPT["prompts/<br/>itinerary_prompts.py"]
+        AGSCHEMA["schemas/<br/>itinerary_schemas.py"]
+        AGTR --> SS
+        IP --> AGLLM
+        IP --> AGPROMPT
+        IP --> AGSCHEMA
+        AGLLM --> AGCFG
+    end
+
+    subgraph CORE["core/ cross-cutting"]
+        CFG["config.py<br/>AppSettings"]
+        DB2["database.py<br/>AsyncSession factory"]
+        SEC["security.py<br/>JWT · bcrypt · hash_token"]
+        EXC["exceptions.py<br/>NotFound · Forbidden · Conflict"]
+        RL["rate_limiter.py<br/>Redis-backed, fail-closed"]
+        LOG["logger.py<br/>structlog"]
+    end
+
+    APP --> AUTH
+    APP --> ITIN
+    APP --> PLACES
+    APP --> AGENT
+```
+
+### 4.3 Frontend — Component & Data Flow
+
+```mermaid
+graph TD
+    subgraph APP["App.tsx"]
+        EB["ErrorBoundary"]
+        AUTH_CTX["AuthProvider<br/>AuthContext<br/>JWT state · login/logout<br/>executePendingClaim()"]
+        WIZ_CTX["TripWizardProvider<br/>TripWizardContext<br/>wizard state (destinations/travelers/budget)"]
+        ROUTER["Router (routes.tsx)<br/>public + protected routes"]
+        EB --> AUTH_CTX --> WIZ_CTX --> ROUTER
+    end
+
+    subgraph PAGES["Key Pages"]
+        CT["CreateTrip<br/>AI generate flow"]
+        TW["TripWorkspace<br/>edit + auto-save"]
+        TL["TripLibrary<br/>list trips"]
+        CD["CityDetail<br/>browse places"]
+    end
+
+    subgraph HOOKS["Hooks (data layer)"]
+        TS["useTripSync<br/>create/load/auto-save trip<br/>sessionStorage fallback"]
+        AM["useActivityManager<br/>add/update/delete activity<br/>optimistic update + revert"]
+        ACC["useAccommodation<br/>add/delete accommodation<br/>optimistic update + revert"]
+        PM["usePlacesManager<br/>debounced search (300ms)<br/>save/unsave places"]
+    end
+
+    subgraph SERVICES["API Client (services/)"]
+        API["api.ts<br/>fetch wrapper<br/>Bearer injection<br/>auto-refresh on 401"]
+        ITIN_SVC["itinerary.ts<br/>CRUD · generate · share · claim<br/>activity · accommodation"]
+        PLACES_SVC["places.ts<br/>destinations · search · saved"]
+        AUTH_SVC["auth.ts<br/>login · register · logout<br/>forgotPassword · resetPassword"]
+        USERS_SVC["users.ts<br/>profile · password"]
+    end
+
+    ROUTER --> PAGES
+    CT --> TS
+    TW --> TS
+    TW --> AM
+    TW --> ACC
+    TW --> PM
+    TL --> ITIN_SVC
+    CD --> PLACES_SVC
+
+    TS --> ITIN_SVC
+    AM --> ITIN_SVC
+    ACC --> ITIN_SVC
+    PM --> PLACES_SVC
+
+    ITIN_SVC --> API
+    PLACES_SVC --> API
+    AUTH_SVC --> API
+    USERS_SVC --> API
+
+    API -->|"HTTP REST"| BE["FastAPI Backend<br/>localhost:8000"]
+```
+
+### 4.4 Optimistic Update Pattern (FE)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Hook as useActivityManager
+    participant UI as React State (UI)
+    participant API as services/itinerary.ts
+    participant BE as FastAPI Backend
+
+    User->>Hook: deleteActivity(activityId)
+    Hook->>UI: setDays(daysWithoutActivity) ← optimistic
+    Note over UI: UI cập nhật ngay lập tức
+    Hook->>API: DELETE /itineraries/{id}/activities/{actId}
+    API->>BE: HTTP DELETE request
+
+    alt API success
+        BE-->>API: 204 No Content
+        API-->>Hook: success
+        Note over UI: Giữ nguyên state đã update
+    else API fail
+        BE-->>API: 4xx/5xx error
+        API-->>Hook: throw ApiError
+        Hook->>UI: setDays(previousDays) ← revert
+        Note over UI: UI quay lại state cũ
+        Hook->>User: show error toast
+    end
+```
+
+### 4.6 Backend — Cấu trúc file theo domain
 
 ```text
 Backend/src/
@@ -246,7 +479,7 @@ Backend/src/
 └── etl/                     # ETL pipeline (Goong Maps → PostgreSQL)
 ```
 
-### 4.2 Frontend — Component tree
+### 4.7 Frontend — Component tree
 
 ```text
 App.tsx
@@ -284,7 +517,7 @@ App.tsx
                 └── * → NotFound (404)
 ```
 
-### 4.3 Backend Request Flow
+### 4.8 Backend Request Flow
 
 ```text
 HTTP Request
@@ -303,7 +536,239 @@ HTTP Request
 
 ## 5. Database Schema & Quan hệ
 
-### ERD (Entity Relationship)
+> Hệ thống dùng PostgreSQL với 15+ bảng. Tất cả token nhạy cảm (refresh, share, claim, reset) đều lưu dạng SHA-256 hash — không bao giờ lưu raw token. `trips.user_id` nullable để hỗ trợ guest trips.
+
+### 5.1 ERD — Mermaid
+
+```mermaid
+erDiagram
+    users {
+        int id PK
+        string email UK
+        string hashed_password
+        string name
+        string phone
+        json interests
+        bool is_active
+        string password_reset_token_hash
+        timestamp password_reset_expires_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    refresh_tokens {
+        int id PK
+        int user_id FK
+        string token_hash UK
+        timestamp expires_at
+        bool is_revoked
+        timestamp created_at
+    }
+
+    trips {
+        int id PK
+        int user_id FK "nullable=guest"
+        string destination
+        string trip_name
+        date start_date
+        date end_date
+        int budget
+        int total_cost
+        int adults_count
+        int children_count
+        json interests
+        string status
+        bool ai_generated
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    trip_days {
+        int id PK
+        int trip_id FK
+        int day_number
+        string label
+        string date
+        string destination_name
+    }
+
+    activities {
+        int id PK
+        int trip_day_id FK
+        int place_id FK "nullable"
+        string name
+        string time
+        string end_time
+        string type
+        string location
+        string description
+        string image
+        string transportation
+        int adult_price
+        int child_price
+        int custom_cost
+        int bus_ticket_price
+        int taxi_cost
+        int order_index
+    }
+
+    extra_expenses {
+        int id PK
+        int activity_id FK "nullable"
+        int trip_day_id FK "nullable"
+        string name
+        int amount
+        string category
+    }
+
+    accommodations {
+        int id PK
+        int trip_id FK
+        int hotel_id FK "nullable"
+        string name
+        string check_in
+        string check_out
+        int price_per_night
+        int total_price
+        string booking_type
+        int duration
+        json day_ids
+    }
+
+    trip_ratings {
+        int id PK
+        int trip_id FK UK
+        int rating
+        string feedback
+        timestamp created_at
+    }
+
+    share_links {
+        int id PK
+        int trip_id FK UK
+        string token_hash UK
+        int created_by_user_id FK
+        string permission
+        timestamp expires_at
+        timestamp revoked_at
+        timestamp created_at
+    }
+
+    guest_claim_tokens {
+        int id PK
+        int trip_id FK
+        string token_hash UK
+        timestamp expires_at
+        timestamp consumed_at
+        timestamp created_at
+    }
+
+    destinations {
+        int id PK
+        string name UK
+        string slug UK
+        string description
+        string image
+        float latitude
+        float longitude
+        bool is_active
+        int places_count
+        timestamp last_etl_at
+    }
+
+    places {
+        int id PK
+        int destination_id FK
+        string name
+        string category
+        string description
+        string location
+        float latitude
+        float longitude
+        int avg_cost
+        float rating
+        int review_count
+        string image
+        string external_id
+        json raw_metadata
+        string source
+        timestamp updated_at
+    }
+
+    hotels {
+        int id PK
+        int destination_id FK
+        string name
+        int price_per_night
+        float rating
+        int review_count
+        string location
+        string image
+        string amenities
+        string description
+    }
+
+    saved_places {
+        int id PK
+        int user_id FK
+        int place_id FK
+        timestamp created_at
+    }
+
+    chat_sessions {
+        int id PK
+        int trip_id FK
+        int user_id FK "nullable"
+        string thread_id UK
+        string status
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    chat_messages {
+        int id PK
+        int session_id FK
+        string role
+        string content
+        json proposed_operations
+        bool requires_confirmation
+        timestamp created_at
+    }
+
+    scraped_sources {
+        int id PK
+        string source_name
+        string city
+        string url
+        timestamp last_crawled
+        int items_count
+        string status
+        string error_message
+        timestamp created_at
+    }
+
+    users ||--o{ refresh_tokens : "has"
+    users ||--o{ trips : "owns (nullable)"
+    users ||--o{ saved_places : "saves"
+    users ||--o{ chat_sessions : "chats"
+    trips ||--o{ trip_days : "has"
+    trips ||--o{ accommodations : "has"
+    trips ||--o| trip_ratings : "rated"
+    trips ||--o| share_links : "shared"
+    trips ||--o{ guest_claim_tokens : "claimable"
+    trips ||--o{ chat_sessions : "has"
+    trip_days ||--o{ activities : "contains"
+    trip_days ||--o{ extra_expenses : "has"
+    activities ||--o{ extra_expenses : "has"
+    activities }o--o| places : "references"
+    accommodations }o--o| hotels : "references"
+    destinations ||--o{ places : "has"
+    destinations ||--o{ hotels : "has"
+    places ||--o{ saved_places : "saved by"
+    chat_sessions ||--o{ chat_messages : "contains"
+```
+
+### 5.2 Quan hệ chính
 
 ```
 users
@@ -413,7 +878,7 @@ trip_ratings
   └── feedback, created_at
 ```
 
-### Quan hệ chính
+### 5.3 Quan hệ chính
 
 | Bảng | Quan hệ |
 |---|---|
@@ -428,7 +893,7 @@ trip_ratings
 | `destinations` → `hotels` | 1:N |
 | `users` → `saved_places` | 1:N |
 
-### Token Security Pattern
+### 5.4 Token Security Pattern
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -642,7 +1107,182 @@ Guest đăng nhập / đăng ký:
 
 ## 8. AI Pipeline Flow
 
-### C.1 — Generate Itinerary (Direct Pipeline)
+> Toàn bộ AI trong hệ thống đi qua 2 luồng chính: **C.1 Generate** (sinh lịch trình từ đầu bằng Gemini) và **C.2 Suggest** (gợi ý thay thế từ DB, không LLM). C.3 Companion Chat chưa implement.
+
+### 8.1 C.1 — Generate Itinerary (Mermaid)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant FE as CreateTrip.tsx
+    participant BE as FastAPI Router
+    participant RL as RateLimiter (Redis)
+    participant SVC as ItineraryService
+    participant PIPE as ItineraryPipeline
+    participant REPO as TripRepository
+    participant DB as PostgreSQL
+    participant LLM as Gemini API
+
+    User->>FE: Điền form (destination, dates, budget, interests)
+    FE->>BE: POST /api/v1/itineraries/generate
+    BE->>RL: enforce_ai_limit(user_id) hoặc enforce_ai_guest_limit(ip+ua)
+
+    alt Rate limit exceeded
+        RL-->>BE: RateLimitException (429)
+        BE-->>FE: 429 + message hướng dẫn đăng ký
+    else Redis down
+        RL-->>BE: ServiceUnavailableException (503) — fail-closed
+        BE-->>FE: 503
+    else OK
+        RL-->>BE: pass
+        BE->>SVC: generate(request, user_id)
+        SVC->>PIPE: generate(request, user_id)
+
+        PIPE->>REPO: resolve_destination_for_ai(destination)
+        Note over REPO: 1. exact match<br/>2. slug match (ha-noi)<br/>3. fuzzy ILIKE
+        REPO->>DB: SELECT destinations WHERE ...
+        DB-->>REPO: Destination row
+
+        alt Destination not found
+            PIPE-->>SVC: ValidationException (422)
+            SVC-->>FE: 422 "Destination data not found"
+        else Found
+            PIPE->>REPO: search_places_for_ai(dest_id, categories, limit=15)
+            REPO->>DB: SELECT places ORDER BY rating DESC
+            DB-->>REPO: list[Place]
+
+            alt Not enough places (< min_required)
+                PIPE-->>SVC: ValidationException (422)
+                SVC-->>FE: 422 "Not enough destination places"
+            else Enough context
+                PIPE->>REPO: get_hotels_for_ai(dest_id, limit=4)
+                DB-->>REPO: list[Hotel]
+
+                loop Max 3 attempts (2 retries)
+                    PIPE->>LLM: generate_text(prompt with context)
+                    LLM-->>PIPE: raw JSON text
+
+                    PIPE->>PIPE: parse_json_response(raw)
+                    PIPE->>PIPE: AgentItinerary.model_validate(payload)
+                    PIPE->>PIPE: _validate_itinerary(itinerary, request)
+
+                    alt Validation pass
+                        Note over PIPE: Break retry loop
+                    else Validation fail
+                        Note over PIPE: Build error feedback → retry
+                    end
+                end
+
+                PIPE->>REPO: create_trip + add_days + add_activities + add_accommodations
+                REPO->>DB: INSERT trips, trip_days, activities, accommodations
+                DB-->>REPO: Trip with full data
+
+                alt Guest user
+                    SVC->>REPO: create_claim_token(trip_id)
+                    REPO->>DB: INSERT guest_claim_tokens
+                    SVC-->>FE: ItineraryResponse + claimToken
+                else Auth user
+                    SVC-->>FE: ItineraryResponse
+                end
+
+                FE->>FE: navigate /trip-workspace?tripId={id}
+            end
+        end
+    end
+```
+
+### 8.2 C.2 — Suggestion Service (Mermaid)
+
+```mermaid
+flowchart TD
+    A["GET /api/v1/agent/suggest/{activityId}?limit=5"] --> B["get_current_user() → Bearer required"]
+    B --> C["SuggestionService.suggest_alternatives(activity_id, user_id, limit)"]
+    C --> D["TripRepository.get_activity_with_trip(activity_id)"]
+    D --> E{Activity found?}
+    E -->|No| F["NotFoundException 404"]
+    E -->|Yes| G{trip.user_id == user.id?}
+    G -->|No| H["ForbiddenException 403"]
+    G -->|Yes| I["PlaceRepository.get_destination_by_name(trip.destination)"]
+    I --> J{Destination found?}
+    J -->|No| K["Return SuggestionResponse(suggestions=[])"]
+    J -->|Yes| L["TripRepository.get_place_ids_in_trip(trip_id)"]
+    L --> M["PlaceRepository.find_alternatives(dest_id, category, exclude_ids, limit)"]
+    M --> N["SELECT places WHERE dest=? AND category=? AND id NOT IN exclude<br/>ORDER BY rating DESC, review_count DESC<br/>LIMIT limit"]
+    N --> O["Return SuggestionResponse(activityId, currentName, suggestions[])"]
+
+    style F fill:#ff6b6b
+    style H fill:#ff6b6b
+    style K fill:#ffd93d
+    style O fill:#6bcb77
+```
+
+### 8.3 C.1 — Generate Pipeline Text Flow
+
+```
+FE (CreateTrip.tsx)
+  → POST /api/v1/itineraries/generate
+    { destination, startDate, endDate, budget, adults, children, interests }
+
+ItineraryService.generate()
+  1. Validate request (dates hợp lệ, budget > 0)
+  2. ItineraryPipeline.generate(request)
+     ├── Resolve destination → query DB lấy places/hotels làm recommendation context
+     ├── Build prompt với context (không hallucinate — chỉ dùng data từ DB)
+     ├── Gemini LLM structured output (JSON schema)
+     ├── Pydantic validation (tối đa 3 attempts, 2 retries nếu parse fail)
+     └── Return validated DaySchema[] + AccommodationSchema[]
+  3. Save trip + days + activities + accommodations vào DB
+  4. Return ItineraryResponse (camelCase)
+
+FE navigate → /trip-workspace?tripId={id}
+
+KEY: Generate KHÔNG qua Supervisor — gọi direct ItineraryPipeline.
+     Mặc định 5 hoạt động/ngày (cấu hình qua AGENT_MIN/MAX_ACTIVITIES_PER_DAY).
+```
+
+### 8.4 C.2 — Suggestion Service (DB-Only)
+
+```
+GET /api/v1/agent/suggest/{activityId}
+  → Owner check (trip.user_id == user.id)
+  → SuggestionService.find_alternatives(activity_id, limit)
+     ├── Lấy activity hiện tại → xác định category + destination
+     ├── Query places cùng category + destination từ DB
+     ├── Loại trừ places đã có trong trip
+     └── Return list[PlaceResponse] (không gọi LLM)
+
+WHY DB-only: Gợi ý địa điểm chỉ cần filter + sort data có sẵn.
+             Không cần "sáng tạo" nội dung mới.
+```
+
+### 8.5 C.3 — Companion Chat + Patch-Confirm (Todo)
+
+```
+FE (FloatingAIChat.tsx)
+  → POST /api/v1/agent/chat { message, tripId }
+
+CompanionService.chat()
+  1. Classify intent (modify / info / suggest / general)
+  2. Load trip context (OWNER-CHECK bắt buộc)
+  3. Call Gemini LLM với tool definitions
+  4. Return:
+     {
+       message: "Tôi đề xuất thêm Văn Miếu vào ngày 2...",
+       requiresConfirmation: true,
+       proposedOperations: [
+         { type: "add_activity", description: "...",
+           target: { dayId: 2, activity: {...} } }
+       ]
+     }
+
+FE hiển thị proposed changes + confirm button
+  → User confirm
+  → POST /api/v1/agent/apply-patch { operations }
+  → BE validate + apply to DB
+
+KEY: Chat KHÔNG TỰ PERSIST DB trước khi user confirm.
+     Mỗi operation có audit-friendly type + description.
+```
 
 ```
 FE (CreateTrip.tsx)
@@ -714,7 +1354,203 @@ KEY: Chat KHÔNG TỰ PERSIST DB trước khi user confirm.
 
 ## 9. Auth & Security Flow
 
-### JWT Token Architecture
+> Hệ thống dùng JWT access token (ngắn hạn) + opaque refresh token (dài hạn, lưu hash). Tất cả token nhạy cảm đều hash SHA-256 trước khi lưu DB. Guest trips dùng claimToken one-time để transfer ownership.
+
+### 9.1 Register & Login Flow (Mermaid)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant FE as Frontend (AuthContext)
+    participant BE as FastAPI Auth Router
+    participant SVC as AuthService
+    participant DB as PostgreSQL
+
+    Note over User,DB: REGISTER FLOW
+    User->>FE: Điền form Register (email, password, name)
+    FE->>BE: POST /auth/register {email, password, name}
+    BE->>SVC: register(email, password, name)
+    SVC->>DB: SELECT users WHERE email=? (check unique)
+    DB-->>SVC: None (email chưa tồn tại)
+    SVC->>SVC: bcrypt.hash(password)
+    SVC->>DB: INSERT users
+    SVC->>SVC: create_access_token(user_id) → JWT HS256 30min
+    SVC->>SVC: create_opaque_token() → raw + SHA256 hash
+    SVC->>DB: INSERT refresh_tokens (hash, expires_at=+7d)
+    SVC-->>BE: AuthResponse {accessToken, refreshToken, user}
+    BE-->>FE: 201 + AuthResponse
+    FE->>FE: localStorage.set(accessToken, refreshToken)
+    FE->>FE: executePendingClaim() — claim guest trips nếu có
+    FE->>User: redirect "/"
+
+    Note over User,DB: LOGIN FLOW
+    User->>FE: Điền form Login (email, password)
+    FE->>BE: POST /auth/login {email, password}
+    BE->>SVC: login(email, password)
+    SVC->>DB: SELECT users WHERE email=?
+    SVC->>SVC: bcrypt.verify(password, hashed) — generic error nếu sai
+    SVC->>SVC: check user.is_active
+    SVC->>SVC: create JWT pair + hash refresh
+    SVC->>DB: INSERT refresh_tokens
+    SVC-->>FE: 200 + AuthResponse
+    FE->>FE: save tokens → GET /users/profile → executePendingClaim()
+    FE->>User: redirect "/" hoặc trang đang cố truy cập
+```
+
+### 9.2 Token Refresh Flow (Mermaid)
+
+```mermaid
+sequenceDiagram
+    participant FE as Frontend (api.ts)
+    participant BE as FastAPI
+    participant SVC as AuthService
+    participant DB as PostgreSQL
+
+    FE->>BE: API call với accessToken hết hạn
+    BE-->>FE: 401 Unauthorized
+
+    FE->>FE: Đọc refreshToken từ localStorage
+    FE->>BE: POST /auth/refresh {refreshToken}
+    BE->>SVC: refresh(raw_refresh_token)
+    SVC->>SVC: SHA256.hash(raw_token)
+    SVC->>DB: SELECT refresh_tokens WHERE token_hash=?
+    DB-->>SVC: RefreshToken row
+
+    alt Token not found hoặc is_revoked=true
+        SVC-->>FE: 401 Unauthorized
+        FE->>FE: clear localStorage tokens
+        FE->>FE: redirect /login
+    else Token valid
+        SVC->>DB: UPDATE refresh_tokens SET is_revoked=true (ROTATION)
+        SVC->>SVC: create new JWT pair + new refresh hash
+        SVC->>DB: INSERT new refresh_token
+        SVC-->>FE: 200 + new {accessToken, refreshToken}
+        FE->>FE: update localStorage với tokens mới
+        FE->>BE: retry original request với accessToken mới
+    end
+```
+
+### 9.3 Guest Claim Flow (Mermaid)
+
+```mermaid
+sequenceDiagram
+    participant Guest as Guest User
+    participant FE as Frontend
+    participant BE as FastAPI
+    participant SVC as ItineraryService
+    participant DB as PostgreSQL
+
+    Note over Guest,DB: GUEST TẠO TRIP
+    Guest->>FE: Tạo lịch trình (không login)
+    FE->>BE: POST /itineraries (không Bearer token)
+    BE->>SVC: create_manual(request, user_id=None)
+    SVC->>DB: INSERT trips (user_id=NULL)
+    SVC->>SVC: create_opaque_token("claim") → raw + hash
+    SVC->>DB: INSERT guest_claim_tokens (hash, expires_at=+24h)
+    SVC-->>FE: ItineraryResponse + claimToken (raw)
+    FE->>FE: localStorage.set("pendingClaims", [{tripId, claimToken}])
+    FE->>FE: navigate /trip-workspace?tripId={id}
+    Note over FE: TripWorkspace là protected route → redirect /login
+
+    Note over Guest,DB: GUEST ĐĂNG NHẬP / ĐĂNG KÝ
+    Guest->>FE: Login hoặc Register
+    FE->>BE: POST /auth/login hoặc /auth/register
+    BE-->>FE: 200 + tokens
+    FE->>FE: AuthContext.executePendingClaim()
+    FE->>BE: POST /itineraries/{tripId}/claim {claimToken: "raw_token"}
+    BE->>SVC: claim(trip_id, user_id, {claimToken})
+    SVC->>SVC: SHA256.hash(claimToken)
+    SVC->>DB: SELECT guest_claim_tokens WHERE trip_id=?
+    SVC->>SVC: verify: token_hash match + consumed_at IS NULL + expires_at > now()
+
+    alt Invalid token
+        SVC-->>FE: 403 ForbiddenException
+    else Valid
+        SVC->>DB: UPDATE guest_claim_tokens SET consumed_at=now()
+        SVC->>DB: UPDATE trips SET user_id={current_user.id}
+        SVC-->>FE: {claimed: true, tripId}
+        FE->>FE: xóa pendingClaims khỏi localStorage
+        FE->>FE: navigate /trip-workspace?tripId={id}
+    end
+```
+
+### 9.4 JWT Token Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│              JWT ACCESS TOKEN                        │
+│  • HS256 signed, expires 30 phút                    │
+│  • Payload: { user_id, exp }                        │
+│  • Gửi qua Authorization: Bearer {token}            │
+│  • KHÔNG lưu trong DB                               │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│              REFRESH TOKEN                           │
+│  • Opaque random bytes (raw chỉ client giữ)         │
+│  • SHA-256 hash lưu refresh_tokens.token_hash       │
+│  • Expires 7 ngày                                   │
+│  • Rotation: mỗi refresh = revoke cũ + issue mới   │
+│  • Force re-login khi đổi password (revoke all)     │
+└─────────────────────────────────────────────────────┘
+```
+
+### 9.5 Register Flow
+
+```
+User điền form Register
+  → POST /api/v1/auth/register {email, password, name}
+  → BE validate (email unique, password ≥ 6 chars)
+  → bcrypt hash password
+  → create User + create JWT pair
+  → hash refresh token → lưu refresh_tokens
+  → Return {accessToken, refreshToken, user}
+  → FE lưu tokens localStorage → executePendingClaim() → redirect "/"
+```
+
+### 9.6 Login Flow
+
+```
+User điền form Login
+  → POST /api/v1/auth/login {email, password}
+  → BE get_by_email → verify bcrypt (generic error message — chống enumeration)
+  → check user.is_active
+  → tạo JWT pair → hash refresh → lưu DB
+  → Return {accessToken, refreshToken, user}
+  → FE lưu tokens → GET /users/profile → executePendingClaim() → redirect
+```
+
+### 9.7 Token Refresh Flow
+
+```
+API call → 401 Unauthorized
+  → FE POST /auth/refresh {refreshToken}
+  → BE hash(raw) → lookup refresh_tokens
+  → Không tìm thấy / is_revoked → 401
+  → revoke(stored.id) → tạo JWT pair mới
+  → FE update localStorage → retry original request
+  → Nếu refresh fail → clear tokens → redirect /login
+```
+
+### 9.8 Forgot / Reset Password Flow
+
+```
+POST /auth/forgot-password {email}
+  → BE lookup email → SILENT nếu không tồn tại (chống enumeration)
+  → create_password_reset_token() → raw + hash + expires 1h
+  → lưu hash vào users.password_reset_token_hash
+  → EmailService: SMTP configured → gửi email | No SMTP → log console
+  → Return 200 (luôn luôn, không tiết lộ email có tồn tại không)
+
+POST /auth/reset-password {token, newPassword}
+  → BE hash(token) → lookup user
+  → check expires_at > now()
+  → bcrypt hash newPassword → update user
+  → clear reset token fields
+  → token_repo.revoke_all_for_user() → FORCE RE-LOGIN mọi thiết bị
+```
+
+### 9.9 Security Rules Summary
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -790,7 +1626,7 @@ POST /auth/reset-password {token, newPassword}
   → token_repo.revoke_all_for_user() → FORCE RE-LOGIN mọi thiết bị
 ```
 
-### Security Rules Summary
+### 9.9 Security Rules Summary
 
 | Rule | Chi tiết |
 |---|---|
