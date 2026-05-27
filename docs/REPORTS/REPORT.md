@@ -12,6 +12,7 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 | [rate_limit_policy_review.md](rate_limit_policy_review.md) | Rate limit auth vs guest: generate quota, chat quota, Redis fail-closed |
 | [auth_authorization_use_cases_for_c3.md](auth_authorization_use_cases_for_c3.md) | Auth/AuthZ checklist: 17 use cases cho C3/C4 |
 | [phase_c3_data_readiness.md](phase_c3_data_readiness.md) | Goong/ETL readiness summary |
+| [phase_c3_verification_results.md](phase_c3_verification_results.md) | Real verification: BE tests pass, HTTP smoke, blocks documented |
 
 ## Phase C3/C4 Design Issues
 
