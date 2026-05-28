@@ -188,15 +188,35 @@ Activities lưu `image=""` (empty). Goong có `photos[]` nhưng không extract.
 | Transaction/rollback | ✅ | Flush + re-fetch |
 | No secret in logs | ✅ | Metadata only |
 | Guest claimToken | ✅ | FE nhận đúng |
-| Hotels rich | ❌ | 3/city, test-only YAML |
+| Hotels rich | ❌ | 3 hotels total in DB (Hà Nội only) — verified via `SELECT COUNT(*) FROM hotels` = 3 |
 | Route optimization | ⚠️ | Chưa dùng Directions API |
-| Place images | ❌ | Empty string |
+| Place images | ❌ | Empty string — verified via places search API response |
+| Destination coverage | ❌ | **Only 1 destination in DB (Hà Nội)** — verified 2026-05-28 via DB query |
 
-**Tổng kết: READY với 3 gaps không block C3/C4 nhưng ảnh hưởng UX.**
+**Tổng kết: PARTIALLY_READY — pipeline logic đúng nhưng data coverage chỉ có Hà Nội.**
+
+---
+
+## Verification Evidence (2026-05-28)
+
+```
+Command: docker compose exec -T db psql -U postgres -d dulichviet -c "SELECT id, name, slug FROM destinations ORDER BY name;"
+Result: 1 row — id=2, name=Hà Nội, slug=ha-noi
+
+Command: docker compose exec -T db psql -U postgres -d dulichviet -c "SELECT COUNT(*) FROM hotels;"
+Result: 3
+
+Command: docker compose exec -T db psql -U postgres -d dulichviet -c "SELECT COUNT(*) FROM places;"
+Result: 68
+
+Command: GET /api/v1/places/destinations
+Result: [{"id":2,"name":"Hà Nội","slug":"ha-noi"}]
+```
 
 ---
 
 ## Recommended next action
 
-Expand `hotels.yaml` trước khi C3/C4 full verification (priority cao).
-Add Goong photo extraction khi có time (priority trung bình).
+**Priority 1 (blocks C3/C4 testing)**: Add TP.HCM, Đà Nẵng, Hội An destinations to DB via ETL or seed.
+**Priority 2**: Expand hotels data to 15-20 per city.
+**Priority 3**: Add Goong photo extraction when time permits.

@@ -117,7 +117,18 @@ Sau audit, recommended branches:
 | Chat rate limit riêng | ❌ | Chưa có |
 | Chat session lifecycle | ⚠️ | Cần bổ sung |
 | C3 API contract schema | ⚠️ | Chưa final formal |
-| C4 chat history | ⚠️ | Schema sẵn, API chưa có |
+| C4 chat history | ⚠️ | Schema sẵn (chat_sessions/chat_messages tables exist, 0 rows), API chưa có |
+
+## 5. Verification Evidence (2026-05-28)
+
+```
+Backend lint:  PASS — uv run ruff check src tests
+Backend unit:  PASS — 97 passed, 1 warning
+Backend integ: PASS — 37 passed, 7 skipped
+Auth smoke:    PASS — register/login/refresh all 200
+C2 suggest:    PASS — 401 no-auth, 403 non-owner
+DB tables:     chat_sessions=0 rows, chat_messages=0 rows (schema exists, no data)
+```
 
 ---
 
