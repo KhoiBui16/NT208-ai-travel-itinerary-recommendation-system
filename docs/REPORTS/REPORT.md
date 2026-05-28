@@ -14,10 +14,22 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 | [phase_c3_data_readiness.md](phase_c3_data_readiness.md) | Goong/ETL readiness summary |
 | [phase_c3_verification_results.md](phase_c3_verification_results.md) | Real verification: BE tests pass, HTTP smoke, blocks documented |
 
-## Phase C3/C4 Design Issues
+## Phase C3/C4 Data Coverage Verification
+
+| File | Nội dung |
+|---|---|
+| [phase_c3_data_coverage_verification.md](phase_c3_data_coverage_verification.md) | **Real DB queries**: 1 city (Hà Nội), 68 places, 3 hotels, 0% quality coverage. Pipeline is SAFE — no hallucination. |
+| [phase_c3_data_readiness.md](phase_c3_data_readiness.md) | Goong/ETL readiness summary |
+| [phase_c3_verification_results.md](phase_c3_verification_results.md) | Real verification: BE tests pass, HTTP smoke, blocks documented |
+
+## Phase C3/C4 Data Coverage Issues
 
 | Issue | Priority | Status |
-|---|---|---|
+|---|---|
+| [data_coverage_hanoi_only.md](ISSUES/data_coverage_hanoi_only.md) | HIGH | OPEN |
+| [data_coverage_blocks_multi_city_c3.md](ISSUES/data_coverage_blocks_multi_city_c3.md) | HIGH | OPEN |
+| [etl_hotels_yaml_test_only.md](ISSUES/etl_hotels_yaml_test_only.md) | MEDIUM | OPEN |
+| [goong_directions_api_missing.md](ISSUES/goong_directions_api_missing.md) | MEDIUM | OPEN |
 | [c3_stale_patch_handling_missing.md](ISSUES/c3_stale_patch_handling_missing.md) | HIGH | OPEN |
 | [c3_chat_quota_shared_with_generate.md](ISSUES/c3_chat_quota_shared_with_generate.md) | HIGH | OPEN |
 | [guest_rate_limit_ua_bypass.md](ISSUES/guest_rate_limit_ua_bypass.md) | MEDIUM | KNOWN/OPEN |
@@ -35,14 +47,32 @@ feat/00054-c-c3-floating-chat-integration # FE integration
 
 | Component | Status |
 |---|---|
-| Generate pipeline | READY (3 gaps, không block C3/C4) |
+| Generate pipeline | READY — safe, no hallucination (Hanoi-only) |
 | Rate limit (generate) | READY |
 | Rate limit (C3 chat) | NOT READY — quota shared với generate |
 | Redis fail-closed | READY |
 | Auth/AuthZ use cases | MOSTLY READY (C3/C4 use cases pending code) |
 | C3 design | PARTIALLY READY (4 design gaps) |
-| C4 design | PARTIALLY READY (chat history schema sẵn, API chưa có) |
-| Goong/ETL data | PARTIALLY READY (Hà Nội đủ dev, Đà Nẵng/TP.HCM chưa ETL) |
+| C4 design | READY — chat history schema sẵn, CRUD API pending |
+| C3 data coverage | **NOT READY** — Hà Nội only, 0% quality data |
+| Goong/ETL data | **NOT READY** — Hà Nội có 68 places + 100% lat/lng, others 0 |
+
+## Data Coverage Reality
+
+> **HANOI_ONLY_MVP** — 1 city out of target 20. Pipeline SAFE (fails fast, no hallucination). But companion chat blocked for multi-city without ETL data expansion.
+
+| Tier | Status |
+|---|---|
+| Minimum MVP (1 city, demo) | ✅ Hà Nội với 68 places |
+| Multi-city MVP (5 cities) | ❌ Only Hà Nội has data |
+| Production (15-20 cities) | ❌ 0/20 cities ETL done |
+
+## Recommended Decision: B (Split Path)
+
+1. `feat/00051-c-c3-chat-session-foundation` — C3 CRUD, no data dependency ✅
+2. `feat/00051b-c-c4-chat-history` — C4 CRUD, no city data ✅
+3. `feat/00057-c-etl-goong-data-expansion` — Data expansion to 5 cities ⚠️ **PREREQUISITE**
+4. `feat/00052-c-c3-companion-chat-rest` — C3 companion features (after ETL)
 
 ---
 
