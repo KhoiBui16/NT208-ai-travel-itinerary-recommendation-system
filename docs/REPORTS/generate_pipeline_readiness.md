@@ -1,8 +1,13 @@
 # Generate Itinerary Pipeline Readiness — 2026-05-28
 
-## Audit Result: READY
+## Audit Result: PARTIALLY_READY (Updated with B2 Evidence 2026-05-28)
 
-Pipeline C.1 đã implement đúng direction. Dưới đây là chi tiết từng checkpoint.
+Pipeline C.1 logic đúng. Nhưng **PARTIALLY_READY** vì:
+1. **DATA_MISSING_DESTINATION**: TP.HCM, Đà Nẵng → 422 (B2 confirmed)
+2. **GEMINI_TIMEOUT**: Hà Nội 3 ngày + 3 interests → 503 timeout (B2 confirmed)
+3. **FE_GENERIC_ERROR_MASKING**: UI không phân biệt 422 vs 503 (B3 confirmed)
+
+Chỉ READY cho: Hà Nội, 1-2 ngày, 1-2 interests.
 
 ---
 
@@ -193,7 +198,25 @@ Activities lưu `image=""` (empty). Goong có `photos[]` nhưng không extract.
 | Place images | ❌ | Empty string — verified via places search API response |
 | Destination coverage | ❌ | **Only 1 destination in DB (Hà Nội)** — verified 2026-05-28 via DB query |
 
-**Tổng kết: PARTIALLY_READY — pipeline logic đúng nhưng data coverage chỉ có Hà Nội.**
+**Tổng kết: PARTIALLY_READY — pipeline logic đúng nhưng data coverage chỉ có Hà Nội, và Gemini timeout với prompt lớn.**
+
+---
+
+## B2 Real API Evidence (2026-05-28)
+
+| Test case | Status | Evidence |
+|---|---|---|
+| Guest Hà Nội 2 ngày + 1 interest | **PASS** | 201, trip_id=234, claimToken PRESENT |
+| Auth Hà Nội 1 ngày + 1 interest | **PASS** | 201, trip_id=235, claimToken NULL |
+| Guest Hà Nội 3 ngày + 3 interests | **FAIL** | 503 Gemini timeout — prompt quá lớn |
+| Auth TP.HCM | **FAIL** | 422 `Destination data not found` |
+| Auth Đà Nẵng | **FAIL** | 422 `Destination data not found` |
+| Auth "TP. Ho Chi Minh" (FE label) | **FAIL** | 422 `Destination data not found` |
+
+**Root causes xác nhận:**
+1. `DATA_MISSING_DESTINATION` — TP.HCM, Đà Nẵng không có row trong `destinations` table
+2. `GEMINI_TIMEOUT` — prompt lớn (3 ngày × 3 interests × 15 places context) vượt timeout
+3. `FE_GENERIC_ERROR_MASKING` — B3 xác nhận UI hiển thị generic error cho cả 422 lẫn 503
 
 ---
 
@@ -211,12 +234,21 @@ Result: 68
 
 Command: GET /api/v1/places/destinations
 Result: [{"id":2,"name":"Hà Nội","slug":"ha-noi"}]
+
+B2 API: POST /api/v1/itineraries/generate {"destination":"Ha Noi","startDate":"2026-05-30","endDate":"2026-05-31","budget":2000000,"adults":1,"children":0,"interests":["food"]}
+Result: 201, trip_id=235
+
+B2 API: POST /api/v1/itineraries/generate {"destination":"Thanh pho Ho Chi Minh",...}
+Result: 422 {"detail":"Destination data not found. Please run ETL for this destination first."}
+
+B3 Browser: TP.HCM generate → UI shows "Không thể tạo lịch trình. Vui lòng thử lại." (generic)
+B3 Browser: TripWorkspace trip_id=235 → PASS, 0 errors, FloatingAIChat NOT_VISIBLE
 ```
 
 ---
 
 ## Recommended next action
 
-**Priority 1 (blocks C3/C4 testing)**: Add TP.HCM, Đà Nẵng, Hội An destinations to DB via ETL or seed.
-**Priority 2**: Expand hotels data to 15-20 per city.
-**Priority 3**: Add Goong photo extraction when time permits.
+**Priority 1 (blocks multi-city testing)**: Chạy ETL cho TP.HCM và Đà Nẵng — branch `feat/00057-c-etl-goong-data-expansion`
+**Priority 2 (UX)**: Fix FE error handling để phân biệt 422/429/503 — branch `fix/00050-x-fe-error-visibility`
+**Priority 3 (C3 foundation)**: Bắt đầu C3 chat session CRUD — branch `feat/00051-c-c3-chat-session-foundation`

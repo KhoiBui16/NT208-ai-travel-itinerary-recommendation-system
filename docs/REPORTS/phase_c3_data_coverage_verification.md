@@ -330,3 +330,52 @@ SELECT category, COUNT(*) FROM places GROUP BY category ORDER BY cnt DESC
 # Schema inspection
 SELECT column_name FROM information_schema.columns WHERE table_name = 'places'
 ```
+
+---
+
+## B2/B3 Real Evidence Update (2026-05-28)
+
+### DB Reality Confirmed by B2
+
+```sql
+-- Destinations: chỉ có 1 row
+SELECT id, name, slug FROM destinations ORDER BY name;
+-- Result: id=2, name=Hà Nội, slug=ha-noi
+
+-- Places: 68 rows, tất cả Hà Nội
+SELECT COUNT(*) FROM places; -- 68
+
+-- Hotels: 3 rows, tất cả Hà Nội
+SELECT COUNT(*) FROM hotels; -- 3
+```
+
+### API Evidence
+
+| City | API result | Root cause |
+|---|---|---|
+| Hà Nội (small input) | 201 PASS | Destination exists, 68 places |
+| TP.HCM | 422 `Destination data not found` | Không có row trong `destinations` |
+| Đà Nẵng | 422 `Destination data not found` | Không có row trong `destinations` |
+| "TP. Ho Chi Minh" (FE label) | 422 | Slug resolve: "tp-ho-chi-minh" không có trong DB |
+
+### FE Static City List vs DB
+
+FE (`cities.ts`) hiển thị 12 thành phố:
+- Hà Nội, TP. Hồ Chí Minh, Đà Nẵng, Hội An, Nha Trang, Phú Quốc, Sapa, Hạ Long, Huế, Đà Lạt, Vũng Tàu, Cần Thơ
+
+DB chỉ có: **Hà Nội**
+
+→ 11/12 thành phố FE hiển thị sẽ fail 422 khi user cố generate.
+
+### Hotels YAML Clarification
+
+`hotels.yaml` có data cho nhiều thành phố (multi-city sample), nhưng chỉ Hà Nội đã được import vào DB.
+- `YAML_HAS_MULTI_CITY_SAMPLE_HOTELS` = TRUE (file có data cho nhiều city)
+- `DB_IMPORTED_HOTELS` = 3 (chỉ Hà Nội, từ YAML)
+- Báo cáo trước ghi "3/city" là không chính xác — đúng hơn là "3 hotels tổng cộng, tất cả Hà Nội"
+
+### Destination Selector Gap (B3 Evidence)
+
+FE dùng hardcoded `popularDestinations` list trong `tripConstants.ts`, không query `/api/v1/places/destinations`.
+User có thể gõ bất kỳ tên thành phố nào kể cả tên không có trong DB → generate sẽ fail 422.
+Xem issue: `issue_destination_selector_not_db_backed.md`

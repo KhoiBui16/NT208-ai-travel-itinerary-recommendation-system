@@ -123,3 +123,23 @@ ETL đang chạy 15 calls/city (5 categories × 3 keywords). Nếu C3/C4 cần r
 1. Khi implement C3 companion chat: tách quota riêng cho chat (20-50/day) khỏi generate (3/day).
 2. Implement apply-patch rate limit: `rate:patch:user:{user_id}:{minute}`, 30/min.
 3. Fix guest UA bypass khi có priority cao hơn (hiện ghi trong ISSUES).
+
+---
+
+## B2 Real Evidence (2026-05-28)
+
+| Test | Result | Evidence |
+|---|---|---|
+| Guest 3/day limit | WORKING | B2: Sau 3 generate calls → 429 `Bạn đã dùng hết 3 lượt...` |
+| Auth user 3/day limit | WORKING | B2: Sau 3 generate calls → 429 với message tiếng Việt rõ |
+| FE 429 visibility | FAIL | B3: UI hiển thị generic "Không thể tạo lịch trình" thay vì rate limit message |
+| Redis rate limit keys | WORKING | B2: `rate:ai:user:{id}:{YYYYMMDD}` và `rate:ai:guest:{hash}:{YYYYMMDD}` |
+
+**Key finding**: Rate limit hoạt động đúng về mặt kỹ thuật. Vấn đề là FE không phân biệt 429 với các lỗi khác.
+
+## Testing Impact
+
+- Guest 3/day quá thấp cho manual testing — phải tạo user mới sau mỗi 3 lần test
+- Auth user 3/day cũng quá thấp — B2 phải tạo 3 test users khác nhau
+- Cần test/dev reset utility hoặc higher quota cho test accounts
+- Xem issue: `issue_rate_limit_testing_and_ux.md`

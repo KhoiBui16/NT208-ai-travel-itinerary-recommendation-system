@@ -8,11 +8,44 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 | File | Nội dung |
 |---|---|
 | [phase_c3_design_readiness.md](phase_c3_design_readiness.md) | Tổng hợp: design gaps, branch roadmap, C3/C4 readiness |
-| [generate_pipeline_readiness.md](generate_pipeline_readiness.md) | Audit C.1 generate pipeline: 13 checkpoints |
-| [rate_limit_policy_review.md](rate_limit_policy_review.md) | Rate limit auth vs guest: generate quota, chat quota, Redis fail-closed |
-| [auth_authorization_use_cases_for_c3.md](auth_authorization_use_cases_for_c3.md) | Auth/AuthZ checklist: 17 use cases cho C3/C4 |
+| [generate_pipeline_readiness.md](generate_pipeline_readiness.md) | Audit C.1 generate pipeline — **PARTIALLY_READY** (B2 evidence) |
+| [rate_limit_policy_review.md](rate_limit_policy_review.md) | Rate limit auth vs guest — B2 confirmed working, FE UX gap |
+| [auth_authorization_use_cases_for_c3.md](auth_authorization_use_cases_for_c3.md) | Auth/AuthZ checklist — B2/B3 evidence added |
 | [phase_c3_data_readiness.md](phase_c3_data_readiness.md) | Goong/ETL readiness summary |
-| [phase_c3_verification_results.md](phase_c3_verification_results.md) | Real verification: BE tests pass, HTTP smoke, blocks documented |
+| [phase_c3_verification_results.md](phase_c3_verification_results.md) | Real verification: BE tests, HTTP smoke, B2/B3 evidence |
+| [browser_flow_test_plan_for_c3.md](browser_flow_test_plan_for_c3.md) | **B3 Playwright evidence**: TP.HCM error, workspace render, date picker |
+| [test_strategy_gap_analysis.md](test_strategy_gap_analysis.md) | **NEW**: Gap matrix — mock AI, FE-BE contract, data, browser UX |
+
+## B1.5 Observability & ETL Scheduling Audit
+
+| Finding | Status |
+|---|---|
+| Trace readiness | TRACE_PARTIAL — thiếu request_id, Gemini quota classification |
+| Error classification | ERROR_CLASSIFICATION_PARTIAL — 422 không phân biệt destination/places |
+| FE error visibility | FE_ERROR_VISIBILITY_NOT_READY — tất cả errors generic |
+| ETL scheduling | ETL_MANUAL_ONLY — không có cron/schedule |
+| ETL auditability | ETL_AUDITABILITY_PARTIAL — `destinations.last_etl_at` NULL |
+
+## B2 Real Generate API Matrix
+
+| Test | Result |
+|---|---|
+| Hà Nội small input (guest) | ✅ 201, trip_id=234, claimToken PRESENT |
+| Hà Nội small input (auth) | ✅ 201, trip_id=235, claimToken NULL |
+| Hà Nội large input (3 ngày + 3 interests) | ❌ 503 Gemini timeout |
+| TP.HCM | ❌ 422 Destination not found |
+| Đà Nẵng | ❌ 422 Destination not found |
+| Rate limit (guest/auth 3/day) | ✅ 429 working |
+
+## B3 Browser Flow Verification
+
+| Flow | Result |
+|---|---|
+| TP.HCM generate error visibility | ❌ FE generic error masks 422 reason |
+| TripWorkspace Hà Nội (trip_id=235) | ✅ PASS — 0 errors |
+| FloatingAIChat | NOT_VISIBLE — C3 chưa implement |
+| Destination suggestions | STATIC — không query API |
+| Date picker | PASS — past disabled, 2 dates required |
 
 ## Phase C3/C4 Data Coverage Verification
 
@@ -25,7 +58,7 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 ## Phase C3/C4 Data Coverage Issues
 
 | Issue | Priority | Status |
-|---|---|
+|---|---|---|
 | [data_coverage_hanoi_only.md](ISSUES/data_coverage_hanoi_only.md) | HIGH | OPEN |
 | [data_coverage_blocks_multi_city_c3.md](ISSUES/data_coverage_blocks_multi_city_c3.md) | HIGH | OPEN |
 | [etl_hotels_yaml_test_only.md](ISSUES/etl_hotels_yaml_test_only.md) | MEDIUM | OPEN |
@@ -33,6 +66,14 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 | [c3_stale_patch_handling_missing.md](ISSUES/c3_stale_patch_handling_missing.md) | HIGH | OPEN |
 | [c3_chat_quota_shared_with_generate.md](ISSUES/c3_chat_quota_shared_with_generate.md) | HIGH | OPEN |
 | [guest_rate_limit_ua_bypass.md](ISSUES/guest_rate_limit_ua_bypass.md) | MEDIUM | KNOWN/OPEN |
+| [issue_fe_generic_error_masks_backend_error.md](ISSUES/issue_fe_generic_error_masks_backend_error.md) | **HIGH** | OPEN — B3 confirmed |
+| [issue_destination_selector_not_db_backed.md](ISSUES/issue_destination_selector_not_db_backed.md) | **HIGH** | OPEN — B3 confirmed |
+| [issue_multicity_etl_required_before_multicity_generate.md](ISSUES/issue_multicity_etl_required_before_multicity_generate.md) | **HIGH** | OPEN — B2 confirmed |
+| [issue_gemini_timeout_large_prompt.md](ISSUES/issue_gemini_timeout_large_prompt.md) | **HIGH** | OPEN — B2 confirmed |
+| [issue_rate_limit_testing_and_ux.md](ISSUES/issue_rate_limit_testing_and_ux.md) | MEDIUM | OPEN — B2/B3 confirmed |
+| [issue_observability_trace_missing.md](ISSUES/issue_observability_trace_missing.md) | MEDIUM | OPEN — B1.5 confirmed |
+| [issue_etl_scheduler_missing.md](ISSUES/issue_etl_scheduler_missing.md) | MEDIUM | OPEN — B1.5 confirmed |
+| [issue_overlap_trip_policy_not_verified.md](ISSUES/issue_overlap_trip_policy_not_verified.md) | MEDIUM | OPEN — not tested |
 
 ## Recommended Branch Roadmap
 
@@ -43,19 +84,26 @@ feat/00053-c-c3-apply-patch             # Apply-patch endpoint
 feat/00054-c-c3-floating-chat-integration # FE integration
 ```
 
-## Readiness Summary
+## Readiness Summary (Updated with B1.5/B2/B3 Evidence)
 
-| Component | Status |
-|---|---|
-| Generate pipeline | READY — safe, no hallucination (Hanoi-only) |
-| Rate limit (generate) | READY |
-| Rate limit (C3 chat) | NOT READY — quota shared với generate |
-| Redis fail-closed | READY |
-| Auth/AuthZ use cases | MOSTLY READY (C3/C4 use cases pending code) |
-| C3 design | PARTIALLY READY (4 design gaps) |
-| C4 design | READY — chat history schema sẵn, CRUD API pending |
-| C3 data coverage | **NOT READY** — Hà Nội only, 0% quality data |
-| Goong/ETL data | **NOT READY** — Hà Nội có 68 places + 100% lat/lng, others 0 |
+| Component | Status | Evidence |
+|---|---|---|
+| Generate pipeline (Hà Nội small) | **PARTIALLY_READY** | B2: PASS for 1-2 ngày, FAIL for 3+ ngày (timeout) |
+| Generate pipeline (multi-city) | **NOT_READY** | B2: 422 for TP.HCM, Đà Nẵng |
+| Rate limit (generate) | READY | B2: 429 working correctly |
+| Rate limit (FE UX) | NOT_READY | B3: generic error for 429 |
+| Redis fail-closed | READY | B1.5: confirmed |
+| Auth/AuthZ use cases | MOSTLY READY | B2/B3: confirmed for existing flows |
+| C3 design | PARTIALLY READY | 4 design gaps remain |
+| C4 design | READY (schema) | chat_sessions/chat_messages tables exist |
+| C3 data coverage | **NOT_READY** | B2: Hà Nội only, 11/12 FE cities fail |
+| Goong/ETL data | **NOT_READY** | B2: TP.HCM/Đà Nẵng = 0 places |
+| FE error visibility | **NOT_READY** | B3: all errors generic |
+| Destination selector | **NOT_READY** | B3: static hardcoded, not DB-backed |
+| Observability | PARTIAL | B1.5: no request_id |
+| ETL scheduling | NOT_READY | B1.5: manual only |
+| TripWorkspace render | READY | B3: trip_id=235 PASS |
+| FloatingAIChat | NOT_IMPLEMENTED | B3: not visible |
 
 ## Data Coverage Reality
 

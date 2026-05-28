@@ -187,3 +187,17 @@ Khi implement C3:
 2. Apply-patch re-verify ownership + operation validation.
 3. Thêm `patch_version` field để reject stale patches (409 Conflict).
 4. C4 chat history API phải filter `user_id = current_user` trên mọi query.
+
+---
+
+## B2/B3 Real Evidence (2026-05-28)
+
+| Use case | B2/B3 result | Evidence |
+|---|---|---|
+| Guest generate → claimToken PRESENT | ✅ CONFIRMED | B2: trip_id=234, claimToken PRESENT |
+| Auth generate → claimToken NULL | ✅ CONFIRMED | B2: trip_id=235, claimToken NULL |
+| TripWorkspace protected route | ✅ CONFIRMED | B3: `/trip-workspace?tripId=235` cần login, render đúng sau login |
+| Auth user own trip workspace render | ✅ CONFIRMED | B3: trip_id=235 renders, 0 network errors |
+| Owner-check behavior (non-owner) | ✅ CONFIRMED | B1: `GET /agent/suggest/1` non-owner → 403 `Not trip owner` |
+| FloatingAIChat state | NOT_VISIBLE | B3: `FloatingAIChat visible: false` — C3 chưa implement |
+| C3 companion chat owner-check | PENDING | Chưa implement — cần verify khi C3 code |

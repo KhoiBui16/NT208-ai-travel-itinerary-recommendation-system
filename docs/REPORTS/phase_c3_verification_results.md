@@ -92,19 +92,20 @@
 
 ---
 
-## Browser Smoke Results
+## Browser Smoke Results (Updated: B3 Playwright Evidence 2026-05-28)
 
 | Flow | Status | Evidence |
 |---|---|---|
-| Open FE | BLOCKED | Frontend dev server running on port 5173, but browser automation not executed |
-| Login/Register | BLOCKED | Same reason |
-| TripWorkspace | BLOCKED | Same reason |
-| FloatingAIChat current state | BLOCKED | Cannot verify via browser |
-| Console/network errors | BLOCKED | Cannot verify via browser |
+| Open FE | PASS | `http://127.0.0.1:5173` — Vite dev server ready |
+| Login/Register | PASS | Login với `b2test_matrix@example.com` thành công |
+| TripWorkspace (Hà Nội trip_id=235) | PASS | Render đúng, không có network errors, không có console errors |
+| FloatingAIChat current state | NOT_VISIBLE | `FloatingAIChat visible: false` — C3 chưa implement |
+| Console/network errors | PASS | 0 console errors, 0 network 4xx/5xx trong workspace |
+| TP.HCM generate error visibility | CONFIRMED | 422 backend → UI hiển thị generic error (FE_GENERIC_ERROR_MASKING) |
+| Date picker | PASS | Past dates disabled, today/future selectable, cần 2 ngày để confirm |
 
-**BLOCKED reason**: `npm run build` failed with EPERM (Permission denied on `dist/assets`). This is an OS-level file lock issue (likely a previous build process holding the directory), not a code error. The dev server (`npm run dev`) is running on port 5173 but browser automation via Playwright was not executed because:
-1. No Playwright test scripts exist for the flows required (login, generate, TripWorkspace)
-2. The `test:e2e` script exists but no test files were found for these flows
+**B3 Playwright test files**: `Frontend/tests/e2e/b3/` (untracked)
+**Screenshots**: `Frontend/tests/e2e/b3/screenshots/` — 15 files captured
 
 ---
 
@@ -122,26 +123,45 @@
 
 ---
 
-## Final Decision
+## Real Evidence Summary: B1.5 / B2 / B3 (2026-05-28)
 
-**C3 readiness: PARTIALLY_READY**
-- Design is correct (trip-bound, REST, no-auto-persist, apply-patch owner-check, companion_service.py in src/itineraries/)
-- Foundation (auth, generate pipeline, rate limit infra) is working
-- Blockers: only 1 destination in DB, browser smoke not verified, C3 code not yet written
+| Area | Status | Evidence | Decision |
+|---|---|---|---|
+| Backend health | PASS | B2: `GET /api/v1/health` → 200 | OK |
+| Generate Hà Nội small input | PASS | B2: 201, trip_id=234 (guest), trip_id=235 (auth) | OK for Hanoi-small |
+| Generate Hà Nội large input | FAIL | B2: 503 Gemini timeout (3 ngày + 3 interests) | Cần giảm context hoặc tăng timeout |
+| Generate TP.HCM | FAIL | B2: 422 `Destination data not found` | ETL/data required |
+| Generate Đà Nẵng | FAIL | B2: 422 `Destination data not found` | ETL/data required |
+| FE browser TP.HCM | FAIL | B3: UI hiển thị generic "Không thể tạo lịch trình" thay vì lý do thật | FE error handling issue |
+| TripWorkspace Hà Nội | PASS | B3: trip_id=235 render đúng, 0 errors | OK |
+| FloatingAIChat | NOT_IMPLEMENTED | B3: `FloatingAIChat visible: false` | C3 pending |
+| Rate limit | WORKING_BUT_NEEDS_UX | B2: 429 hoạt động đúng; B3: FE hiển thị generic | FE cần 429-specific message |
+| Observability | PARTIAL | B1.5: thiếu request_id, Gemini quota classification | Technical debt |
+| ETL scheduling | MANUAL_ONLY | B1.5: không có cron/schedule | Technical debt |
+| Destination selector | STATIC_HARDCODED | B3: FE dùng hardcoded list, không query `/api/v1/places/destinations` | UX gap |
 
-**C4 readiness: NOT_READY**
-- DB schema exists (chat_sessions, chat_messages tables)
-- No API endpoints implemented
-- No test coverage
+---
 
-## Recommended Next Branch
+## Final Readiness (Updated with B1.5/B2/B3 Evidence)
 
-```
-feat/00051-c-c3-chat-session-foundation
-```
+**Generate pipeline: PARTIALLY_READY**
+- READY chỉ cho Hà Nội small/controlled input (1-2 ngày, 1-2 interests)
+- NOT_READY cho multi-city (TP.HCM, Đà Nẵng → 422 data missing)
+- PARTIAL cho large prompts (3+ ngày + 3+ interests → Gemini timeout)
 
-Before that, consider:
-```
-fix/00050-x-data-coverage-expand-destinations
-```
-to add TP.HCM, Đà Nẵng, Hội An to DB so generate pipeline can be tested for more cities.
+**Data readiness: NOT_READY_FOR_MULTI_CITY**
+- DB chỉ có 1 destination (Hà Nội), 68 places, 3 hotels
+- TP.HCM, Đà Nẵng, Hội An, Nha Trang... không có data
+
+**Browser readiness: PARTIALLY_READY**
+- TripWorkspace render PASS
+- FE error visibility NOT_READY (generic messages)
+- FloatingAIChat NOT_VISIBLE (C3 chưa implement)
+
+**C3 readiness: NOT_READY** (companion recommendation)
+- C3a chat session foundation CÓ THỂ bắt đầu (isolated CRUD, không phụ thuộc data)
+- C3 companion recommendation cần ETL data expansion trước
+
+**C4 readiness: NOT_IMPLEMENTED/API_PENDING**
+- DB schema sẵn (chat_sessions, chat_messages tables)
+- Không có API endpoints
