@@ -95,11 +95,18 @@ DB có `chat_sessions` với `trip_id` (theo schema migration 20260525_0006), nh
 Sau audit, recommended branches:
 
 ```
-1. feat/00051-c-c3-chat-session-foundation  # C3 chat sessions table + API
-2. feat/00052-c-c3-companion-chat-rest        # Companion chat endpoint
-3. feat/00053-c-c3-apply-patch                 # Apply-patch endpoint
-4. feat/00054-c-c3-floating-chat-integration  # FE integration
+1. feat/00052-c-etl-goong-data-expansion      # Multi-city ETL (TP.HCM, Đà Nẵng, etc.)
+2. fix/00053-c-generate-pipeline-hardening    # Gemini timeout, context optimization
+3. fix/00054-c-rate-limit-auth-trip-policy    # Chat quota separate, auth trip ownership
+4. test/00055-c-fullstack-regression-verification  # End-to-end browser verification
+5. feat/00056-c-c3-chat-session-foundation   # C3 chat sessions table + API
+6. feat/00057-c-c3-companion-chat-rest        # Companion chat endpoint
+7. feat/00058-c-c3-apply-patch                # Apply-patch endpoint
+8. feat/00059-c-c3-floating-chat-integration  # FE integration
+9. feat/00060-c-c4-chat-history               # Chat history API
 ```
+
+**Note (2026-05-29)**: Task numbering updated. The FE error visibility fix was executed as `fix/00051-c-fe-error-visibility`. C3 chat session foundation should use a different task number (e.g., `feat/00056-c-c3-chat-session-foundation`) to avoid conflict.
 
 ---
 

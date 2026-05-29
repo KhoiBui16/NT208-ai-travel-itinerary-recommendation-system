@@ -100,3 +100,48 @@ Frontend/tests/e2e/b3/screenshots/
   flow-c-01-create-trip-full.png        — Create Trip full
   flow-c-04-calendar-open.png           — Calendar with disabled days
 ```
+
+---
+
+## Phase 4 Evidence (00051 FE Error Visibility — 2026-05-29)
+
+Branch: `fix/00051-c-fe-error-visibility`
+
+### TC1 — Destination API + Suggestions (PASS)
+
+| Item | Result |
+|---|---|
+| `GET /api/v1/places/destinations` called | **PASS** |
+| Backend response | `[{"id":2,"name":"Hà Nội","country":"Vietnam","image":"...","rating":0.0}]` |
+| Placeholder text | `VD: Hà Nội...` |
+| Suggestions show "Hà Nội" | **PASS** |
+
+### TC2 — Unsupported City Pre-submit Blocked (PASS)
+
+| Item | Result |
+|---|---|
+| City input | "Không Tồn Tại City" |
+| Date range selected | YES |
+| Pre-submit validation triggered | **PASS** |
+| Validation error shown | `Thành phố "Không Tồn Tại City" chưa có trong danh sách được hỗ trợ. Vui lòng chọn một thành phố từ gợi ý.` |
+| POST `/generate` calls made | **0** (blocked pre-submit) |
+
+### TC3 — Error Not Generic (PASS)
+
+| Item | Result |
+|---|---|
+| Generic "Không thể tạo lịch trình. Vui lòng thử lại." | **NOT SHOWN** |
+| Error is specific | **PASS** |
+
+### TC429/TC503 — Deferred
+
+| Test | Status | Reason |
+|---|---|---|
+| TC429 rate limit message | **NOT_RUN** | Quota risk — verified via code review only |
+| TC503 AI timeout message | **NOT_RUN** | Env risk — verified via code review only |
+
+**Code review verified**: `errorHandler.ts` correctly maps 429 and 503 to specific Vietnamese messages.
+
+**Screenshots**: `.codex-run-logs/phase4-tc1.png`, `.codex-run-logs/phase4-tc2.png`
+
+**Full report**: `docs/REPORTS/00051_fe_error_visibility_results.md`

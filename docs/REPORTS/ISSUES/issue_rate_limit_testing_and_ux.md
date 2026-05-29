@@ -1,7 +1,11 @@
 # Issue: Rate Limit Too Low for Testing + FE UX Missing
 
 ## Status
-OPEN
+PARTIALLY_RESOLVED (2026-05-29)
+
+### Resolution notes
+- **FE UX**: IMPROVED in `fix/00051-c-fe-error-visibility` — `errorHandler.ts` now maps 429 to specific quota message. Browser test deferred to regression.
+- **Dev/test utilities**: Still OPEN — no reset endpoint or higher quota for test accounts.
 
 ## Evidence
 - **B2 API Matrix** (2026-05-28):
@@ -55,5 +59,5 @@ DELETE /api/v1/admin/rate-limit/{user_id}  # dev only, không expose production
 ```
 
 ## Recommended branch
-`fix/00050-x-fe-error-visibility` (FE message)
-`feat/00051-x-dev-test-utilities` (reset endpoint, optional)
+`fix/00051-c-fe-error-visibility` (FE message) — **DONE** (2026-05-29)
+`fix/00054-c-rate-limit-auth-trip-policy` (reset endpoint, separate chat quota) — future work

@@ -1,7 +1,7 @@
 # Issue: Destination Selector Not DB-backed
 
 ## Status
-OPEN
+PARTIALLY_RESOLVED (2026-05-29, branch fix/00051-c-fe-error-visibility)
 
 ## Evidence
 - **B3 Playwright test** (2026-05-28): `Frontend/tests/e2e/b3/flow-c-date-picker.spec.ts`
@@ -40,3 +40,50 @@ Option B: Giữ hardcoded list nhưng validate trước khi submit — nếu des
 
 ## Recommended branch
 `fix/00050-x-destination-selector`
+
+---
+
+## Resolution in 00051 (2026-05-29)
+
+### Files added
+- `Frontend/src/app/hooks/useDestinations.ts` — Hook to fetch destinations from backend
+- `Frontend/src/app/utils/errorHandler.ts` — Error mapper (shared for generate)
+
+### Files modified
+- `Frontend/src/app/pages/CreateTrip.tsx` — Hook integration + pre-submit validation
+
+### What was fixed
+1. **Backend API query**: FE now calls `GET /api/v1/places/destinations` on component mount
+2. **Suggestions from backend**: Destination suggestions filtered from backend response: `backendDests.map((d) => d.name)`
+3. **Fallback behavior**: When API fails or returns empty, gracefully degrades to static `popularDestinations` list with warning banner
+4. **Pre-submit validation**: Unsupported cities blocked before API call when `backendDests.length > 0 && !isUsingFallback`
+5. **Placeholder update**: Dynamic placeholder shows backend city names (e.g., "VD: Hà Nội...")
+
+### Backend API response verified (Phase 4)
+```json
+[{"id":2,"name":"Hà Nội","country":"Vietnam","image":"/img/destinations/ha-n-i.jpg","rating":0.0}]
+```
+
+### Browser evidence (Phase 4)
+- TC1.1 PASS: `GET /api/v1/places/destinations` called on page load
+- TC1.3 PASS: Placeholder shows "VD: Hà Nội..."
+- TC1.6 PASS: Suggestions dropdown shows "Hà Nội" from backend
+- TC2 PASS: Unsupported city "Không Tồn Tại City" blocked pre-submit (zero generate API calls)
+
+### Remaining limitations (NOT resolved in 00051)
+1. **Backend contract limitation**: `DestinationResponse` lacks `placesCount` or `hasData` field. FE cannot pre-validate data sufficiency (e.g., "enough places for generate"). Only validates destination name existence.
+2. **Multi-city data**: Currently only Hà Nội has data in DB. Other cities still require 00052 ETL expansion.
+3. **Data quality**: FE cannot distinguish between "destination exists but 0 places" vs "destination with enough places" without backend `hasData` flag.
+
+### Why PARTIALLY_RESOLVED and not RESOLVED
+- FE now queries backend and validates destination name existence ✅
+- But FE still cannot know if destination has sufficient data (places/hotels) without `placesCount/hasData` field ❌
+- Multi-city data still depends on 00052 ETL expansion ❌
+
+### Recommended next steps
+1. **Backend**: Add `placesCount: int` and `hasData: bool` to `DestinationResponse` schema
+2. **ETL**: Run Goong ETL for TP.HCM, Đà Nẵng, Hội An, Nha Trang (00052)
+3. **FE**: Use `hasData` flag to disable unsupported destinations in suggestions UI
+
+### Related report
+See: `docs/REPORTS/00051_fe_error_visibility_results.md`

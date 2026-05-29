@@ -41,4 +41,4 @@ Chưa test, chưa có product decision.
 3. Không claim overlap behavior ready cho C3/C4
 
 ## Recommended branch
-`test/00050-x-overlap-trip-policy` hoặc `feat/00051-c-c3-chat-session-foundation` (nếu overlap ảnh hưởng session)
+`test/00055-c-fullstack-regression-verification` hoặc `feat/00056-c-c3-chat-session-foundation` (nếu overlap ảnh hưởng session)

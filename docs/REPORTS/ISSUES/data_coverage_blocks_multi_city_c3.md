@@ -61,7 +61,7 @@ Implement C3 but handle empty place data gracefully:
 ### Option C: Defer C3 Companion Features Until ETL Done
 
 1. Implement C3 chat sessions + chat history (no recommendation features)
-2. Wait for `feat/00057-c-etl-goong-data-expansion`
+2. Wait for `feat/00052-c-etl-goong-data-expansion`
 3. Add companion chat recommendation features in separate branch
 - Risk: C3 MVP becomes very limited
 
@@ -71,10 +71,10 @@ Implement C3 but handle empty place data gracefully:
 
 **Option A with Option C elements (Split Path)**
 
-1. **Now**: `feat/00051-c-c3-chat-session-foundation` — Chat sessions CRUD only, no recommendations
-2. **Now**: `feat/00051b-c-c4-chat-history` — Chat history API, no city data needed
-3. **Parallel**: `feat/00057-c-etl-goong-data-expansion` — Expand data to 5 cities
-4. **After ETL**: Add companion chat recommendation features in `feat/00052-c-c3-companion-chat-rest`
+1. **Now**: `feat/00052-c-etl-goong-data-expansion` — Multi-city ETL (TP.HCM, Đà Nẵng, etc.)
+2. **Parallel**: `feat/00056-c-c3-chat-session-foundation` — Chat sessions CRUD only, no recommendations
+3. **After ETL**: `feat/00057-c-c3-companion-chat-rest` — Companion chat recommendation features
+4. **Future**: `feat/00060-c-c4-chat-history` — Chat history API (no city data dependency)
 
 This way:
 - C3/C4 foundation ships early (no data dependency)
@@ -114,9 +114,9 @@ MIN_RECOMMENDATION_PLACES = 20  # Minimum places before recommendations enabled
 ## Recommended Branch
 
 ```
-feat/00051-c-c3-chat-session-foundation  # C3 foundation (no data dependency)
-feat/00057-c-etl-goong-data-expansion    # Data expansion (prerequisite)
-feat/00052-c-c3-companion-chat-rest       # C3 companion features (after ETL)
+feat/00052-c-etl-goong-data-expansion      # Multi-city ETL (TP.HCM, Đà Nẵng, etc.)
+feat/00056-c-c3-chat-session-foundation   # C3 foundation (no data dependency)
+feat/00057-c-c3-companion-chat-rest        # C3 companion features (after ETL)
 ```
 
 ---
