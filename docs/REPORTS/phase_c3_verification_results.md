@@ -84,11 +84,11 @@
 | `children` | `childrenMap[travelType]`: solo=0, couple=0, family=1, group=0 | `int`, ge=0, default=0 | YES | Correct mapping |
 | `interests` | Array of string IDs e.g. `["culture","food"]` | `list[str]`, optional | YES | FE sends string IDs, BE uses as category filter |
 | Auth/guest | Sends Bearer token if present; no token = guest | No security requirement on generate | YES | Guest generate works, claimToken returned |
-| Error handling | Catches all errors, shows generic "Không thể tạo lịch trình" | Returns 422 (validation), 429 (rate limit), 503 (AI fail) | PARTIAL | FE shows generic message for all errors — user cannot distinguish 429 from 503 |
+| Error handling | Catches all errors, shows generic "Không thể tạo lịch trình" | Returns 422 (validation), 429 (rate limit), 503 (AI fail) | **IMPROVED (00051)** | PRE-00051: generic. POST-00051: `errorHandler.ts` maps 422/429/503/500 to specific messages. TC429/TC503 deferred to regression. |
 | `claimToken` response | Calls `storePendingClaim(resp.id, resp.claimToken)` | Returns `claimToken: string | null` | YES | Guest claim flow correct |
 | Navigate after generate | `navigate('/trip-workspace?tripId=...')` | Returns `id` in response | YES | Navigation correct |
 
-**Contract status: CONTRACT_PARTIAL** — FE-BE schema matches, but FE error handling is generic (cannot distinguish 429 vs 503 vs 422).
+**Contract status: CONTRACT_IMPROVED (00051)** — FE-BE schema matches, error handling now status-specific via `errorHandler.ts`. Destination selector backend-integrated with fallback.
 
 ---
 

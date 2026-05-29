@@ -38,4 +38,4 @@ Create `Frontend/tests/smoke/` with:
 - `workspace.spec.ts` — open TripWorkspace, verify itinerary renders
 - `floating-chat.spec.ts` — verify FloatingAIChat state
 
-This should be done in branch `feat/00051-c-c3-chat-session-foundation` or a dedicated `test/00050-x-browser-smoke` branch.
+This should be done in branch `feat/00056-c-c3-chat-session-foundation` or in `test/00055-c-fullstack-regression-verification`.

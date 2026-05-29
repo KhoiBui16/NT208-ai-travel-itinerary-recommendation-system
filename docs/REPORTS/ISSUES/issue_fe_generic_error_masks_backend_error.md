@@ -1,7 +1,7 @@
 # Issue: FE Generic Error Masks Backend Error Reason
 
 ## Status
-OPEN
+RESOLVED_FOR_SCOPE (2026-05-29, branch fix/00051-c-fe-error-visibility)
 
 ## Evidence
 - **B3 Playwright test** (2026-05-28): `Frontend/tests/e2e/b3/flow-a-hcm-error.spec.ts`
@@ -63,3 +63,36 @@ Tất cả: "Không thể tạo lịch trình. Vui lòng thử lại."
 
 ## Recommended branch
 `fix/00050-x-fe-error-visibility`
+
+---
+
+## Resolution in 00051 (2026-05-29)
+
+### Files added
+- `Frontend/src/app/utils/errorHandler.ts` — Centralized error mapper
+- `Frontend/src/app/hooks/useDestinations.ts` — Backend destination fetch
+
+### Files modified
+- `Frontend/src/app/pages/CreateTrip.tsx` — +44 / -7
+
+### What was fixed
+1. **Generic error eliminated**: `errorHandler.ts` maps all HTTP status codes (400/401/403/422/429/503/500+) to specific Vietnamese user messages
+2. **422 destination not found**: Returns `Thành phố "${destName}" chưa có dữ liệu trong hệ thống. Vui lòng chọn một thành phố có trong danh sách gợi ý.`
+3. **422 not enough places**: Returns `Thành phố "${destName}" chưa có đủ địa điểm để tạo lịch trình...`
+4. **429 rate limit**: Returns `Bạn đã dùng hết ${quotaLimit} lượt tạo lịch trình AI hôm nay. Vui lòng thử lại vào ngày mai.`
+5. **503 AI timeout**: Returns `Dịch vụ AI đang bận hoặc phản hồi quá lâu. Vui lòng thử lại sau ít phút.`
+6. **503 Redis/cache**: Returns `Hệ thống đang gặp sự cố tạm thời. Vui lòng thử lại sau.`
+7. **Backend error sanitization**: Blocks SQL/traceback/internal details from reaching UI
+
+### Browser evidence (Phase 4)
+- TC2 PASS: Unsupported city "Không Tồn Tại City" blocked pre-submit → validation error shown, zero generate API calls
+- TC3 PASS: Error is specific, NOT generic "Không thể tạo lịch trình. Vui lòng thử lại."
+- TC1 PASS: Destinations API loaded, suggestions from backend
+
+### Remaining verification gaps
+- TC429 (rate limit) browser test: NOT RUN in Phase 4 (quota risk) — verified via code review only
+- TC503 (AI timeout) browser test: NOT RUN in Phase 4 (env risk) — verified via code review only
+- These paths deferred to regression test in 00055 or future full browser test suite
+
+### Related report
+See: `docs/REPORTS/00051_fe_error_visibility_results.md`

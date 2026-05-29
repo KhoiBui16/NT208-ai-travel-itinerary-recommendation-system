@@ -16,10 +16,10 @@ Unit tests (97 passed) và integration tests (37 passed) không đủ để ch�
 | Real LLM response risk | Mock LLM không test timeout, quota, invalid JSON | Gemini timeout (B2: 3 ngày + 3 interests → 503), quota exhausted, JSON parse fail | User generate 3 ngày trip → 503 timeout, FE hiển thị generic error | Real API smoke với controlled input | B2 đã confirm — cần fix timeout/context |
 | FE-BE API schema contract | Integration tests test BE schema trực tiếp | FE payload construction, FE field names, FE date format | FE gửi sai field name → 422 undetected | Playwright network capture (B3 đã làm) | B3 confirmed CONTRACT_PARTIAL |
 | Destination/data consistency | Unit tests mock destination resolve | Real DB có destination không, places count đủ không | User chọn TP.HCM → 422 (B2 confirmed), FE không báo lý do | DB query + API smoke per city | B2 confirmed — cần ETL |
-| Route/geography sanity | Không có route test | Activities có hợp lý về địa lý không (Quận 1 → Củ Chi → Quận 1) | AI generate trip Sài Gòn với route vô lý — user phải tự sửa | Manual review + Goong Directions integration | `feat/00057-c-etl-goong-data-expansion` |
-| Rate limit/auth behavior | Integration tests test rate limit logic | FE hiển thị 429 message đúng không, quota reset behavior | User hết quota → FE hiển thị "Không thể tạo lịch trình" thay vì "Hết lượt hôm nay" (B3 confirmed) | Playwright + API smoke | `fix/00050-x-fe-error-visibility` |
+| Route/geography sanity | Không có route test | Activities có hợp lý về địa lý không (Quận 1 → Củ Chi → Quận 1) | AI generate trip Sài Gòn với route vô lý — user phải tự sửa | Manual review + Goong Directions integration | `feat/00052-c-etl-goong-data-expansion` |
+| Rate limit/auth behavior | Integration tests test rate limit logic | FE hiển thị 429 message đúng không, quota reset behavior | User hết quota → FE hiển thị "Không thể tạo lịch trình" thay vì "Hết lượt hôm nay" (B3 confirmed) | Playwright + API smoke | **IMPROVED (00051)** — `errorHandler.ts` maps 429 to quota-specific message. Browser test deferred to regression. |
 | Browser UX edge cases | Không có browser UX tests | Calendar interaction, destination input, error display, workspace scroll | User không biết cách chọn ngày, không thấy lỗi rõ ràng | Playwright e2e | B3 đã bắt đầu — cần mở rộng |
-| Error handling user messages | Unit tests test exception types | FE có hiển thị đúng message không | 422 destination missing → FE generic (B3 confirmed), 429 rate limit → FE generic | Playwright network + UI assertion | `fix/00050-x-fe-error-visibility` |
+| Error handling user messages | Unit tests test exception types | FE có hiển thị đúng message không | 422 destination missing → FE generic (B3 confirmed), 429 rate limit → FE generic | Playwright network + UI assertion | **DONE (00051)** — `errorHandler.ts` maps 422/429/503/500 to specific messages. TC429/TC503 browser paths deferred to regression. |
 
 ---
 
@@ -82,10 +82,10 @@ Unit tests (97 passed) và integration tests (37 passed) không đủ để ch�
 
 | Test | Type | When | Branch |
 |---|---|---|---|
-| Real Gemini smoke (Hà Nội 1-2 ngày) | API smoke | Before C3 | `test/00050-x-real-ai-smoke` |
-| FE error message per status code | Playwright | Before public demo | `fix/00050-x-fe-error-visibility` |
-| Multi-city generate after ETL | API smoke | After ETL expansion | `feat/00057-c-etl-goong-data-expansion` |
-| FloatingAIChat open/send/receive | Playwright | After C3 implement | `feat/00054-c-c3-floating-chat-integration` |
-| apply-patch owner-check | API smoke | After C3 implement | `feat/00053-c-c3-apply-patch` |
-| Rate limit reset behavior | API smoke | Before C3 | `test/00050-x-rate-limit-smoke` |
-| Destination selector DB-backed | Playwright | After FE fix | `fix/00050-x-destination-selector` |
+| Real Gemini smoke (Hà Nội 1-2 ngày) | API smoke | Before C3 | `test/00055-c-fullstack-regression-verification` |
+| FE error message per status code | Playwright | Before public demo | **DONE (00051)** — `fix/00051-c-fe-error-visibility` |
+| Multi-city generate after ETL | API smoke | After ETL expansion | `feat/00052-c-etl-goong-data-expansion` |
+| FloatingAIChat open/send/receive | Playwright | After C3 implement | `feat/00059-c-c3-floating-chat-integration` |
+| apply-patch owner-check | API smoke | After C3 implement | `feat/00058-c-c3-apply-patch` |
+| Rate limit reset behavior | API smoke | Before C3 | `test/00055-c-fullstack-regression-verification` |
+| Destination selector DB-backed | Playwright | After FE fix | **DONE (00051)** — `useDestinations.ts` queries `/api/v1/places/destinations`, pre-submit validation blocks unsupported cities. Lacks `placesCount/hasData` field for data sufficiency check. |

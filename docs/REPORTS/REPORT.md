@@ -15,6 +15,7 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 | [phase_c3_verification_results.md](phase_c3_verification_results.md) | Real verification: BE tests, HTTP smoke, B2/B3 evidence |
 | [browser_flow_test_plan_for_c3.md](browser_flow_test_plan_for_c3.md) | **B3 Playwright evidence**: TP.HCM error, workspace render, date picker |
 | [test_strategy_gap_analysis.md](test_strategy_gap_analysis.md) | **NEW**: Gap matrix — mock AI, FE-BE contract, data, browser UX |
+| [00051_fe_error_visibility_results.md](00051_fe_error_visibility_results.md) | **NEW** 2026-05-29: FE error visibility + destination selector backend integration — RESOLVED_FOR_SCOPE |
 
 ## B1.5 Observability & ETL Scheduling Audit
 
@@ -78,10 +79,15 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 ## Recommended Branch Roadmap
 
 ```
-feat/00051-c-c3-chat-session-foundation  # C3 chat sessions table + API
-feat/00052-c-c3-companion-chat-rest       # Companion chat endpoint
-feat/00053-c-c3-apply-patch             # Apply-patch endpoint
-feat/00054-c-c3-floating-chat-integration # FE integration
+feat/00052-c-etl-goong-data-expansion      # Multi-city ETL (TP.HCM, Đà Nẵng, etc.)
+fix/00053-c-generate-pipeline-hardening    # Gemini timeout, context optimization
+fix/00054-c-rate-limit-auth-trip-policy    # Chat quota separate, auth trip ownership
+test/00055-c-fullstack-regression-verification  # End-to-end browser verification
+feat/00056-c-c3-chat-session-foundation   # C3 chat sessions table + API
+feat/00057-c-c3-companion-chat-rest        # Companion chat endpoint
+feat/00058-c-c3-apply-patch                # Apply-patch endpoint
+feat/00059-c-c3-floating-chat-integration  # FE integration
+feat/00060-c-c4-chat-history               # Chat history API
 ```
 
 ## Readiness Summary (Updated with B1.5/B2/B3 Evidence)
@@ -98,8 +104,8 @@ feat/00054-c-c3-floating-chat-integration # FE integration
 | C4 design | READY (schema) | chat_sessions/chat_messages tables exist |
 | C3 data coverage | **NOT_READY** | B2: Hà Nội only, 11/12 FE cities fail |
 | Goong/ETL data | **NOT_READY** | B2: TP.HCM/Đà Nẵng = 0 places |
-| FE error visibility | **NOT_READY** | B3: all errors generic |
-| Destination selector | **NOT_READY** | B3: static hardcoded, not DB-backed |
+| FE error visibility | **IMPROVED** | 00051: status-specific messages added; TC429/TC503 deferred to regression |
+| Destination selector | **PARTIALLY_RESOLVED** | 00051: backend API query + pre-submit validation; lacks placesCount/hasData field |
 | Observability | PARTIAL | B1.5: no request_id |
 | ETL scheduling | NOT_READY | B1.5: manual only |
 | TripWorkspace render | READY | B3: trip_id=235 PASS |
@@ -117,10 +123,15 @@ feat/00054-c-c3-floating-chat-integration # FE integration
 
 ## Recommended Decision: B (Split Path)
 
-1. `feat/00051-c-c3-chat-session-foundation` — C3 CRUD, no data dependency ✅
-2. `feat/00051b-c-c4-chat-history` — C4 CRUD, no city data ✅
-3. `feat/00057-c-etl-goong-data-expansion` — Data expansion to 5 cities ⚠️ **PREREQUISITE**
-4. `feat/00052-c-c3-companion-chat-rest` — C3 companion features (after ETL)
+1. `feat/00052-c-etl-goong-data-expansion` — Multi-city ETL (TP.HCM, Đà Nẵng, etc.) ⚠️ **PREREQUISITE**
+2. `fix/00053-c-generate-pipeline-hardening` — Gemini timeout, context optimization
+3. `fix/00054-c-rate-limit-auth-trip-policy` — Chat quota separate, auth trip ownership
+4. `test/00055-c-fullstack-regression-verification` — End-to-end browser verification
+5. `feat/00056-c-c3-chat-session-foundation` — C3 CRUD, no data dependency ✅
+6. `feat/00057-c-c3-companion-chat-rest` — C3 companion features (after ETL)
+7. `feat/00058-c-c3-apply-patch` — Apply-patch endpoint
+8. `feat/00059-c-c3-floating-chat-integration` — FE integration
+9. `feat/00060-c-c4-chat-history` — C4 CRUD, no city data ✅
 
 ---
 

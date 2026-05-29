@@ -6,6 +6,8 @@ import { CalendarModal } from "../components/CalendarModal";
 import { storePendingClaim } from "../contexts/AuthContext";
 import { travelTypes, budgetLevels, interests, popularDestinations } from "../utils/tripConstants";
 import { generateItinerary } from "../services/itinerary";
+import { useDestinations } from "../hooks/useDestinations";
+import { getGenerateErrorMessage } from "../utils/errorHandler";
 import {
   Sparkles,
   MapPin,
@@ -28,9 +30,12 @@ import {
 export default function CreateTrip() {
   const navigate = useNavigate();
 
+  // Fetch destinations from backend
+  const { destinations: backendDests, isLoading: destsLoading, error: destsError, isUsingFallback } = useDestinations();
+
   const [destination, setDestination] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  
+
   // 1. Thay đổi State cho Ngày tháng
   const [dateRange, setDateRange] = useState<{ from: Date | null; to: Date | null }>({ from: null, to: null });
   const [showCalendar, setShowCalendar] = useState(false);
@@ -41,7 +46,12 @@ export default function CreateTrip() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [validationError, setValidationError] = useState("");
 
-  const filteredSuggestions = popularDestinations.filter((d) =>
+  // Use backend destinations if available, otherwise fallback to popularDestinations
+  const availableDestinations = backendDests.length > 0
+    ? backendDests.map((d) => d.name)
+    : popularDestinations;
+
+  const filteredSuggestions = availableDestinations.filter((d) =>
     d.toLowerCase().includes(destination.toLowerCase()) && destination.length > 0
   );
 
@@ -52,9 +62,23 @@ export default function CreateTrip() {
   };
 
   const handleGenerateAI = async () => {
-    if (!destination.trim() || !dateRange.from || !dateRange.to) {
+    const destInput = destination.trim();
+
+    if (!destInput || !dateRange.from || !dateRange.to) {
       setValidationError("Vui lòng nhập đầy đủ điểm đến và thời gian chuyến đi");
       return;
+    }
+
+    // Pre-submit validation: if backend destinations loaded successfully, check if input is supported
+    if (backendDests.length > 0 && !isUsingFallback) {
+      const isSupported = backendDests.some(
+        (d) => d.name.toLowerCase() === destInput.toLowerCase()
+      );
+
+      if (!isSupported) {
+        setValidationError(`Thành phố "${destInput}" chưa có trong danh sách được hỗ trợ. Vui lòng chọn một thành phố từ gợi ý.`);
+        return;
+      }
     }
 
     setValidationError("");
@@ -68,7 +92,7 @@ export default function CreateTrip() {
       const childrenMap: Record<string, number> = { solo: 0, couple: 0, family: 1, group: 0 };
 
       const resp = await generateItinerary({
-        destination: destination.trim(),
+        destination: destInput,
         startDate: format(dateRange.from!, "yyyy-MM-dd"),
         endDate: format(dateRange.to!, "yyyy-MM-dd"),
         budget: budgetMap[budgetLevel] || 5000000,
@@ -82,8 +106,8 @@ export default function CreateTrip() {
       }
 
       navigate(`/trip-workspace?tripId=${resp.id}`);
-    } catch {
-      setValidationError("Không thể tạo lịch trình. Vui lòng thử lại.");
+    } catch (err) {
+      setValidationError(getGenerateErrorMessage(err, { destination: destInput, quotaLimit: 3 }));
     } finally {
       setIsGenerating(false);
     }
@@ -129,6 +153,13 @@ export default function CreateTrip() {
 
           {/* Destination */}
           <div className="mb-7">
+            {destsError && (
+              <div className="mb-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
+                <p className="text-sm text-amber-800">
+                  ⚠️ {destsError}
+                </p>
+              </div>
+            )}
             <label className="mb-2 block text-sm font-semibold text-gray-700">
               Điểm đến
             </label>
@@ -140,7 +171,13 @@ export default function CreateTrip() {
                 onChange={(e) => { setDestination(e.target.value); setShowSuggestions(true); }}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 onFocus={() => setShowSuggestions(true)}
-                placeholder="VD: Hà Nội, Đà Nẵng, Phú Quốc..."
+                placeholder={
+                  destsLoading
+                    ? "Đang tải danh sách thành phố..."
+                    : backendDests.length > 0
+                      ? `VD: ${availableDestinations.slice(0, 3).join(", ")}...`
+                      : "VD: Hà Nội, Đà Nẵng, Phú Quốc..."
+                }
                 className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 py-3.5 pl-12 pr-4 text-gray-900 placeholder:text-gray-400 focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-100 transition-all"
               />
               {showSuggestions && filteredSuggestions.length > 0 && (

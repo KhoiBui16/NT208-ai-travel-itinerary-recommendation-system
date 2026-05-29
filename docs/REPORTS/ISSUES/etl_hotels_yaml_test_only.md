@@ -118,7 +118,7 @@ Integrate real booking APIs:
 ## Recommended Branch
 
 ```
-feat/00057-c-etl-goong-data-expansion  # Include hotel ETL
+feat/00052-c-etl-goong-data-expansion  # Include hotel ETL
 ```
 
 ---

@@ -249,6 +249,6 @@ B3 Browser: TripWorkspace trip_id=235 → PASS, 0 errors, FloatingAIChat NOT_VIS
 
 ## Recommended next action
 
-**Priority 1 (blocks multi-city testing)**: Chạy ETL cho TP.HCM và Đà Nẵng — branch `feat/00057-c-etl-goong-data-expansion`
-**Priority 2 (UX)**: Fix FE error handling để phân biệt 422/429/503 — branch `fix/00050-x-fe-error-visibility`
-**Priority 3 (C3 foundation)**: Bắt đầu C3 chat session CRUD — branch `feat/00051-c-c3-chat-session-foundation`
+**Priority 1 (blocks multi-city testing)**: Chạy ETL cho TP.HCM và Đà Nẵng — branch `feat/00052-c-etl-goong-data-expansion`
+**Priority 2 (UX)**: Fix FE error handling để phân biệt 422/429/503 — **DONE** in `fix/00051-c-fe-error-visibility` (2026-05-29)
+**Priority 3 (C3 foundation)**: Bắt đầu C3 chat session CRUD — branch `feat/00056-c-c3-chat-session-foundation`

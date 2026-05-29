@@ -117,7 +117,7 @@ Total: 68
 ## Recommended Branch
 
 ```
-feat/00057-c-etl-goong-data-expansion
+feat/00052-c-etl-goong-data-expansion
 ```
 
 This branch should:

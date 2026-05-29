@@ -56,4 +56,4 @@ jobs:
 **Fix `destinations.last_etl_at`**: Update trong `db_loader.py` sau mỗi ETL run thành công.
 
 ## Recommended branch
-`feat/00057-c-etl-goong-data-expansion` (bao gồm fix `last_etl_at` và schedule)
+`feat/00052-c-etl-goong-data-expansion` (bao gồm fix `last_etl_at` và schedule)

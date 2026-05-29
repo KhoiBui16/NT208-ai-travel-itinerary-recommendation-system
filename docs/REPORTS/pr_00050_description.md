@@ -115,10 +115,12 @@ git diff main...HEAD -- "Backend/src/**" "Frontend/src/**"
 - [x] apply-patch có owner-check
 - [x] Guest phải claim trip trước khi chat
 
-## Recommended Next Branches
+## Recommended Next Branches (Historical)
+
+**Note**: This was the recommended roadmap after PR 00050 (2026-05-28). Task numbering was later updated to avoid conflicts - see current roadmap in REPORT.md.
 
 ```
-Priority 1: fix/00050-x-fe-error-visibility        # FE error messages
-Priority 2: feat/00057-c-etl-goong-data-expansion  # Multi-city data
-Priority 3: feat/00051-c-c3-chat-session-foundation # C3 CRUD foundation
+Priority 1: fix/00050-x-fe-error-visibility        # FE error messages → Became fix/00051-c-fe-error-visibility (DONE 2026-05-29)
+Priority 2: feat/00057-c-etl-goong-data-expansion  # Multi-city data → Became feat/00052-c-etl-goong-data-expansion
+Priority 3: feat/00051-c-c3-chat-session-foundation # C3 CRUD foundation → Became feat/00056-c-c3-chat-session-foundation
 ```

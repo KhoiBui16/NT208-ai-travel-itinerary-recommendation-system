@@ -260,8 +260,8 @@ If we proceed with C3:
 
 **Path B: Split — foundation first, data expansion parallel**
 
-1. **Continue**: `feat/00051-c-c3-chat-session-foundation` — C3 chat session API không phụ thuộc data
-2. **Parallel**: `feat/00057-c-etl-goong-data-expansion` — Mở rộng data sang 5 cities (Hà Nội, Đà Nẵng, TP.HCM, Hội An, Nha Trang) trước khi companion chat features
+1. **Continue**: `feat/00052-c-etl-goong-data-expansion` — Multi-city ETL (TP.HCM, Đà Nẵng, etc.)
+2. **Parallel**: `feat/00056-c-c3-chat-session-foundation` — C3 chat session CRUD (no data dependency)
 
 ### Rationale
 
@@ -309,8 +309,8 @@ Với 68 places + 100% lat/lng + 3 hotels, Hà Nội đủ để demo C3 compani
 **B (Split path)** — Continue C3 chat session foundation + parallel data expansion to 5 cities
 
 ### Recommended next branch
-`feat/00051-c-c3-chat-session-foundation` (CRUD only, no data dependency) OR
-`feat/00057-c-etl-goong-data-expansion` (if data is priority)
+`feat/00052-c-etl-goong-data-expansion` (multi-city ETL) OR
+`feat/00056-c-c3-chat-session-foundation` (CRUD only, no data dependency)
 
 ### Commands/queries run
 ```bash
