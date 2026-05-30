@@ -220,7 +220,26 @@ Activities lưu `image=""` (empty). Goong có `photos[]` nhưng không extract.
 
 ---
 
-## Verification Evidence (2026-05-28)
+## Phase 4B Real Gemini Generate Smoke Evidence (2026-05-30)
+
+| Test case | Status | Evidence |
+|---|---|---|
+| Hà Nội 2 days, budget 1000000, 1 adult, interests "văn hóa", "ẩm thực" | **PASS** | HTTP 201, latency ~37.4s, trip_id=236, 10 activities, 2 days persisted |
+| TP.HCM 2 days, budget 1000000, 1 adult, interests "ẩm thực", "mua sắm" | **PASS** | HTTP 201, latency ~38.7s, trip_id=237, 10 activities, 2 days persisted |
+| DB persistence (GET /api/v1/itineraries/{id}) | **PASS** | Both trips 236/237 returned with correct data |
+| Redis AI rate limit (call count) | **PASS** | Key `rate:ai:user:276:20260530` count = 2 (expected) |
+| Backend tests after smoke | **PASS** | 115 unit + 37 integration tests pass |
+
+**Phase 4B scope limitations:**
+- Only 2 cities tested (Hà Nội, TP.HCM) — NOT all 6 imported cities
+- Authenticated user only — guest flow NOT tested
+- BE API only — browser FE NOT tested
+- No forced TC429 — rate limit stress NOT tested
+- Schema validation only — LLM hallucination NOT deeply tested
+
+---
+
+## Verification Evidence (2026-05-28 → Updated 2026-05-30)
 
 ```
 Command: docker compose exec -T db psql -U postgres -d dulichviet -c "SELECT id, name, slug FROM destinations ORDER BY name;"
@@ -247,8 +266,30 @@ B3 Browser: TripWorkspace trip_id=235 → PASS, 0 errors, FloatingAIChat NOT_VIS
 
 ---
 
-## Recommended next action
+## Recommended next action (Updated 2026-05-30)
 
-**Priority 1 (blocks multi-city testing)**: Chạy ETL cho TP.HCM và Đà Nẵng — branch `feat/00052-c-etl-goong-data-expansion`
-**Priority 2 (UX)**: Fix FE error handling để phân biệt 422/429/503 — **DONE** in `fix/00051-c-fe-error-visibility` (2026-05-29)
-**Priority 3 (C3 foundation)**: Bắt đầu C3 chat session CRUD — branch `feat/00056-c-c3-chat-session-foundation`
+**Phase 4B completed**: 2-city real Gemini generate smoke PASS. Generate pipeline confirmed stable for imported cities.
+
+**Recommended paths:**
+
+1. **`00052 Phase 5 — Scheduler/deployment ETL setup`** (Recommended)
+   - Implement Render Cron job for scheduled ETL
+   - Configure Supabase production DB
+   - Deploy backend to Render
+   - Deferred: data expansion to remaining 9 cities
+
+2. **`00053 — Generate pipeline hardening`** (Alternative)
+   - Fix geography/route optimization (Goong Directions API)
+   - Fix budget optimization
+   - Deep LLM hallucination testing
+   - Choose if quality issues appear in production
+
+3. **`00055 — Fullstack browser regression`** (Alternative)
+   - Test FE generate UX for all 6 cities
+   - Verify error visibility (TC422, TC429, TC503)
+   - Test guest generate → claim → workspace flow
+   - Choose if FE validation needed before deploy
+
+**Not recommended yet:**
+- `00056+` C3/C4 implementation — companion chat should wait after generate is fully stable
+- Multi-city ETL for remaining 9 cities — can proceed in parallel with scheduler deployment

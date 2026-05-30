@@ -1,7 +1,7 @@
 # Issue: ETL Scheduler Missing — Manual Only
 
 ## Status
-OPEN
+OPEN — Phase 3A-R: Deployment strategy documented in `00052_deployment_etl_strategy.md`
 
 ## Evidence
 - **B1.5 ETL Scheduling Audit** (2026-05-28): `ETL_MANUAL_ONLY`

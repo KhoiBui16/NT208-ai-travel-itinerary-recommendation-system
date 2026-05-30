@@ -7,7 +7,7 @@ shapes, but it does not decide how travel data is stored or ranked.
 import logging
 from typing import Any
 
-from src.etl.base_extractor import BaseExtractor
+from src.etl.base_extractor import BaseExtractor, MaxRetriesExceededError, ProviderErrorResponse
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,13 @@ class GoongClient(BaseExtractor):
         params = {"address": address, "api_key": self.api_key}
         try:
             data = await self.fetch(f"{self.base_url}/geocode", params=params)
+        except MaxRetriesExceededError:
+            # Re-raise rate limit exhaustion errors so ETL runner can stop.
+            raise
+        except ProviderErrorResponse:
+            # Re-raise provider errors (API_KEY_MISSING, API_KEY_INVALID, etc.)
+            # so ETL runner can classify and stop instead of silently failing.
+            raise
         except RuntimeError:
             logger.error("Goong geocode failed for address: %s", address)
             return None
@@ -58,6 +65,12 @@ class GoongClient(BaseExtractor):
 
         try:
             data = await self.fetch(f"{self.base_url}/place/autocomplete", params=params)
+        except MaxRetriesExceededError:
+            # Re-raise rate limit exhaustion errors so ETL runner can stop.
+            raise
+        except ProviderErrorResponse:
+            # Re-raise provider errors so ETL runner can classify.
+            raise
         except RuntimeError:
             logger.error("Goong autocomplete failed for input: %s", input_text)
             return []
@@ -72,6 +85,12 @@ class GoongClient(BaseExtractor):
         params = {"place_id": place_id, "api_key": self.api_key}
         try:
             data = await self.fetch(f"{self.base_url}/place/detail", params=params)
+        except MaxRetriesExceededError:
+            # Re-raise rate limit exhaustion errors so ETL runner can stop.
+            raise
+        except ProviderErrorResponse:
+            # Re-raise provider errors so ETL runner can classify.
+            raise
         except RuntimeError:
             logger.error("Goong place detail failed for place_id: %s", place_id)
             return None
