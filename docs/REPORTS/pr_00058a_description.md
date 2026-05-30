@@ -1,4 +1,12 @@
-# PR #00058A — Sub-agents + Auth/Guest/Rate-limit/Claim Audit
+# PR #00058 — Phase 00058A: Sub-agents + Auth/Guest/Rate-limit/Claim Audit
+
+**Suggested PR title:**
+
+```txt
+chore: [#00058] add sub-agents and auth rate-limit audit
+```
+
+**Phase label**: `00058A` (audit-only phase, no production changes)
 
 ## Mô tả
 

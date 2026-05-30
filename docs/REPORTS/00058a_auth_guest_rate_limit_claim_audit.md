@@ -314,10 +314,10 @@ docs/09_execution_tracker.md (updated)
 
 **Commit message format**:
 ```
-chore: [#00058A] add sub-agents + auth/guest/rate-limit/claim audit
+chore: [#00058] add sub-agents and auth rate-limit audit
 ```
 
-**PR title**: Same as commit message
+**PR title**: Same as commit message (use numeric `#00058`, not `#00058A`)
 
 ---
 
