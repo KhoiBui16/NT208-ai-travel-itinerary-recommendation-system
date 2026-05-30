@@ -20,6 +20,45 @@ class PlaceRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_destinations_with_counts(self) -> list[dict]:
+        """Get destinations with places and hotels counts in one query."""
+        stmt = (
+            select(
+                Destination.id,
+                Destination.name,
+                Destination.slug,
+                Destination.description,
+                Destination.image,
+                Destination.latitude,
+                Destination.longitude,
+                func.count(func.distinct(Place.id)).label("places_count"),
+                func.count(func.distinct(Hotel.id)).label("hotels_count"),
+            )
+            .outerjoin(Place, Place.destination_id == Destination.id)
+            .outerjoin(Hotel, Hotel.destination_id == Destination.id)
+            .where(Destination.is_active.is_(True))
+            .group_by(Destination.id)
+            .order_by(Destination.name)
+        )
+
+        result = await self.session.execute(stmt)
+        rows = result.all()
+
+        return [
+            {
+                "id": row.id,
+                "name": row.name,
+                "slug": row.slug,
+                "description": row.description,
+                "image": row.image,
+                "latitude": row.latitude,
+                "longitude": row.longitude,
+                "places_count": row.places_count or 0,
+                "hotels_count": row.hotels_count or 0,
+            }
+            for row in rows
+        ]
+
     async def get_destination_by_slug(self, slug: str) -> Destination | None:
         stmt = select(Destination).where(Destination.slug == slug)
         result = await self.session.execute(stmt)

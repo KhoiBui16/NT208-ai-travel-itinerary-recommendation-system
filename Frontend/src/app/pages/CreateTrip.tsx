@@ -45,6 +45,7 @@ export default function CreateTrip() {
   const [selectedInterests, setSelectedInterests] = useState<string[]>(["culture", "food"]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [validationError, setValidationError] = useState("");
+  const [qualityWarning, setQualityWarning] = useState("");
 
   // Use backend destinations if available, otherwise fallback to popularDestinations
   const availableDestinations = backendDests.length > 0
@@ -54,6 +55,11 @@ export default function CreateTrip() {
   const filteredSuggestions = availableDestinations.filter((d) =>
     d.toLowerCase().includes(destination.toLowerCase()) && destination.length > 0
   );
+
+  // Helper to get destination object by name
+  const getDestinationByName = (name: string) => {
+    return backendDests.find((d) => d.name === name);
+  };
 
   const toggleInterest = (id: string) => {
     setSelectedInterests((prev) =>
@@ -71,13 +77,24 @@ export default function CreateTrip() {
 
     // Pre-submit validation: if backend destinations loaded successfully, check if input is supported
     if (backendDests.length > 0 && !isUsingFallback) {
-      const isSupported = backendDests.some(
+      const selectedDest = backendDests.find(
         (d) => d.name.toLowerCase() === destInput.toLowerCase()
       );
 
-      if (!isSupported) {
+      if (!selectedDest) {
         setValidationError(`Thành phố "${destInput}" chưa có trong danh sách được hỗ trợ. Vui lòng chọn một thành phố từ gợi ý.`);
         return;
+      }
+
+      // Data quality warning only - do NOT block submit
+      // All destinations returned by backend API are allowed to attempt generate
+      // Backend may still return 422 if insufficient context, but user should be allowed to try
+      if (selectedDest.readinessReason) {
+        // Show user-visible warning (not blocking)
+        setQualityWarning(selectedDest.readinessReason);
+      } else {
+        // Clear warning if city has good data quality
+        setQualityWarning("");
       }
     }
 
@@ -168,7 +185,23 @@ export default function CreateTrip() {
               <input
                 type="text"
                 value={destination}
-                onChange={(e) => { setDestination(e.target.value); setShowSuggestions(true); }}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  setDestination(newValue);
+                  setShowSuggestions(true);
+
+                  // Update quality warning when destination changes
+                  if (backendDests.length > 0 && !isUsingFallback) {
+                    const newDest = getDestinationByName(newValue);
+                    if (newDest?.readinessReason) {
+                      setQualityWarning(newDest.readinessReason);
+                    } else {
+                      setQualityWarning("");
+                    }
+                  } else {
+                    setQualityWarning("");
+                  }
+                }}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 onFocus={() => setShowSuggestions(true)}
                 placeholder={
@@ -182,16 +215,41 @@ export default function CreateTrip() {
               />
               {showSuggestions && filteredSuggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 z-10 mt-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
-                  {filteredSuggestions.map((sug) => (
-                    <button
-                      key={sug}
-                      onMouseDown={() => { setDestination(sug); setShowSuggestions(false); }}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-cyan-50"
-                    >
-                      <MapPin className="h-4 w-4 text-cyan-500 flex-shrink-0" />
-                      <span className="text-gray-700">{sug}</span>
-                    </button>
-                  ))}
+                  {filteredSuggestions.map((sug) => {
+                    const destObj = getDestinationByName(sug);
+                    const isPartial = destObj?.readinessStatus === "partial";
+                    const isSparse = destObj?.readinessStatus === "sparse";
+                    return (
+                      <button
+                        key={sug}
+                        onMouseDown={() => {
+                          setDestination(sug);
+                          setShowSuggestions(false);
+                          // Update quality warning when selecting from suggestions
+                          if (backendDests.length > 0 && !isUsingFallback) {
+                            const selectedDest = getDestinationByName(sug);
+                            if (selectedDest?.readinessReason) {
+                              setQualityWarning(selectedDest.readinessReason);
+                            } else {
+                              setQualityWarning("");
+                            }
+                          } else {
+                            setQualityWarning("");
+                          }
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-cyan-50"
+                      >
+                        <MapPin className="h-4 w-4 text-cyan-500 flex-shrink-0" />
+                        <span className={`flex-1 ${isSparse ? "text-gray-400" : "text-gray-700"}`}>{sug}</span>
+                        {isPartial && (
+                          <span className="text-xs text-amber-600" title="Dữ liệu giới hạn">⚠️</span>
+                        )}
+                        {isSparse && (
+                          <span className="text-xs text-gray-400" title="Chưa đủ dữ liệu">🔒</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -335,6 +393,13 @@ export default function CreateTrip() {
               </>
             )}
           </button>
+          {qualityWarning && (
+            <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
+              <p className="text-sm text-amber-800">
+                ⚠️ {qualityWarning}
+              </p>
+            </div>
+          )}
           {validationError && (
             <p className="mt-2 text-sm text-red-500 text-center">{validationError}</p>
           )}

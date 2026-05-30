@@ -45,15 +45,16 @@ class PlaceService(BaseService):
     # --- Destinations (public) ---
 
     async def get_destinations(self) -> list[DestinationResponse]:
-        cached = await self.cache.get("destinations:all")
+        # Cache v2: data quality is advisory, not a submit gate (semantics changed)
+        cached = await self.cache.get("destinations:all:v2")
         if cached is not None:
             return [DestinationResponse(**d) for d in json.loads(cached)]
 
-        destinations = await self.repo.get_destinations()
-        items = [self._to_destination_response(d) for d in destinations]
+        destinations = await self.repo.get_destinations_with_counts()
+        items = [self._to_destination_response_with_counts(d) for d in destinations]
 
         await self.cache.set(
-            "destinations:all",
+            "destinations:all:v2",
             json.dumps([i.model_dump() for i in items]),
             self.settings.destination_cache_ttl_seconds,
         )
@@ -149,6 +150,46 @@ class PlaceService(BaseService):
             id=dest.id,
             name=dest.name,
             image=dest.image,
+        )
+
+    def _to_destination_response_with_counts(self, dest_data: dict) -> DestinationResponse:
+        """Convert destination dict with counts to response with data quality metadata.
+
+        Data quality is advisory only - all destinations returned by API are allowed
+        to attempt generate. Backend may still return 422 if insufficient context,
+        but FE should not pre-block based on data quality.
+        """
+        places_count = dest_data.get("places_count", 0)
+        hotels_count = dest_data.get("hotels_count", 0)
+        dest_name = dest_data.get("name", "điểm đến")
+
+        # Data quality status (advisory, NOT a submit gate)
+        # All destinations in API response have isGenerateReady=true
+        if places_count >= 30:
+            status = "ready"
+            reason = None
+        elif places_count >= 6:
+            status = "partial"
+            reason = (
+                f"Dữ liệu cho {dest_name} hiện còn hạn chế nên lịch trình có thể ít lựa chọn hơn. "
+                f"Bạn vẫn có thể tiếp tục tạo lịch trình."
+            )
+        else:
+            status = "sparse"
+            reason = (
+                f"Dữ liệu cho {dest_name} còn rất ít. "
+                f"Bạn vẫn có thể thử tạo lịch trình, nhưng kết quả có thể không đầy đủ."
+            )
+
+        return DestinationResponse(
+            id=dest_data["id"],
+            name=dest_data["name"],
+            image=dest_data["image"],
+            placesCount=places_count,
+            hotelsCount=hotels_count,
+            isGenerateReady=True,  # All API-listed destinations allowed to attempt generate
+            readinessStatus=status,
+            readinessReason=reason,
         )
 
     def _to_place_response(self, place: Place) -> PlaceResponse:

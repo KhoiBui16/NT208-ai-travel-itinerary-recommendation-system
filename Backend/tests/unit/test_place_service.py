@@ -5,6 +5,9 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.core.exceptions import ConflictException, ForbiddenException, NotFoundException
+from src.itineraries.models import (
+    Activity,  # noqa: F401 - Required for SQLAlchemy to resolve Place.activities relationship
+)
 from src.places.models import Destination, Place, SavedPlace
 from src.places.service import PlaceService
 
@@ -31,6 +34,27 @@ def _make_destination(dest_id: int = 1, name: str = "Hà Nội", slug: str = "ha
     dest = Destination(id=dest_id, name=name, slug=slug, image="/img/hanoi.jpg")
     dest.is_active = True
     return dest
+
+
+def _make_destination_dict(
+    dest_id: int = 1,
+    name: str = "Hà Nội",
+    slug: str = "ha-noi",
+    places_count: int = 10,
+    hotels_count: int = 2,
+) -> dict:
+    """Helper to create destination dict matching get_destinations_with_counts() response."""
+    return {
+        "id": dest_id,
+        "name": name,
+        "slug": slug,
+        "description": None,
+        "image": "/img/hanoi.jpg",
+        "latitude": None,
+        "longitude": None,
+        "places_count": places_count,
+        "hotels_count": hotels_count,
+    }
 
 
 def _make_place(
@@ -78,7 +102,7 @@ async def test_get_destinations__cache_miss(
     service: PlaceService, mock_repo: AsyncMock, mock_redis: AsyncMock
 ) -> None:
     mock_redis.get.return_value = None
-    mock_repo.get_destinations.return_value = [_make_destination()]
+    mock_repo.get_destinations_with_counts.return_value = [_make_destination_dict()]
 
     result = await service.get_destinations()
     assert len(result) == 1
@@ -89,7 +113,7 @@ async def test_get_destinations__redis_down(
     service: PlaceService, mock_repo: AsyncMock, mock_redis: AsyncMock
 ) -> None:
     mock_redis.get.side_effect = ConnectionError("Redis down")
-    mock_repo.get_destinations.return_value = [_make_destination()]
+    mock_repo.get_destinations_with_counts.return_value = [_make_destination_dict()]
 
     result = await service.get_destinations()
     assert len(result) == 1

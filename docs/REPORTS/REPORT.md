@@ -42,6 +42,23 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 - Backend API limitation: `/api/v1/places/destinations` lacks `placesCount/isGenerateReady` metadata
 - Build status: Default build EPERM (local file lock), alternate build PASS (7.79s)
 
+## 00057 Destination Data Quality Advisory
+
+| File | Nội dung |
+|---|---|
+| [00057_destination_readiness_contract_result.md](00057_destination_readiness_contract_result.md) | 2026-05-30: Backend readiness contract + Frontend advisory UX — **FIX_COMPLETE** |
+| [pr_00057_description.md](pr_00057_description.md) | PR body template for fix/00057 |
+| [../ISSUES/issue_destination_selector_not_db_backed.md](ISSUES/issue_destination_selector_not_db_backed.md) | Issue — RESOLVED |
+
+**Key findings:**
+- Backend: All destinations have `isGenerateReady=true` (allowed to attempt generate)
+- Backend: `readinessStatus` = "ready" | "partial" | "sparse" (advisory, not submit gate)
+- Backend: `readinessReason` is advisory message, NOT "chọn thành phố khác"
+- Frontend: Removed blocking logic — partial/sparse cities allowed to submit
+- Frontend: Shows ⚠️ icon for partial cities as data quality indicator
+- Cache: Bumped to `destinations:all:v2` to invalidate old blocking semantics
+- Product principle: City đã nằm trong backend API phải cho phép user chọn và submit. Warning chỉ là advisory.
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |

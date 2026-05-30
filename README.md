@@ -67,6 +67,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 | **Trip** | Guest tạo trip → claim sau khi đăng nhập | ✅ Done |
 | **Places** | Tìm kiếm địa điểm theo thành phố / danh mục | ✅ Done |
 | **Places** | Lưu địa điểm yêu thích | ✅ Done |
+| **Places** | Destination data quality advisory — limited-data cities (e.g., Đà Lạt) show non-blocking warning, remain submittable | ✅ Done |
 | **AI C.1** | Sinh lịch trình tự động bằng Gemini AI | ✅ Done |
 | **AI C.2** | Gợi ý địa điểm thay thế (DB-only, không LLM) | ✅ Done |
 | **AI C.3** | Companion chat + patch-confirm flow | 🔄 Todo |

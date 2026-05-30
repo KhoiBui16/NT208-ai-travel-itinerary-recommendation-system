@@ -1,7 +1,7 @@
 # Issue: Destination Selector Not DB-backed
 
 ## Status
-PARTIALLY_RESOLVED (2026-05-29, branch fix/00051-c-fe-error-visibility)
+RESOLVED (2026-05-30, branch fix/00057-c-destination-readiness-contract)
 
 ## Evidence
 - **B3 Playwright test** (2026-05-28): `Frontend/tests/e2e/b3/flow-c-date-picker.spec.ts`
@@ -108,5 +108,117 @@ Backend `/api/v1/places/destinations` now returns 10 cities:
 **Impact**: User may select Đà Lạt and hit backend "not enough destination places" error, with no FE warning.
 
 ### Related reports
+- `docs/REPORTS/00051_fe_error_visibility_results.md`
+- `docs/REPORTS/00056_calendar_generate_flow_fix_result.md`
+- `docs/REPORTS/00057_destination_readiness_contract_result.md`
+
+---
+
+## Final Hardening Correction (2026-05-30)
+
+### Product correction discovered
+Initial 00057 implementation had a critical UX bug:
+- Backend set `isGenerateReady=false` for Đà Lạt (partial city)
+- Frontend blocked submit based on `isGenerateReady`
+- Warning messages said "chọn thành phố khác"
+
+This violated the product principle: **city trong backend selector phải cho phép user chọn và submit bình thường**.
+
+### Final corrections made
+1. **Backend**: Set `isGenerateReady=true` for ALL destinations in API response
+2. **Backend**: Changed `readinessStatus` from "not_ready" to "sparse" (advisory only)
+3. **Backend**: Updated warning messages to advisory:
+   - Partial: "Dữ liệu hạn chế... Bạn vẫn có thể tiếp tục tạo lịch trình."
+   - Sparse: "Dữ liệu rất ít... Bạn vẫn có thể thử tạo lịch trình..."
+4. **Frontend**: Removed blocking logic - all listed cities allowed to submit
+5. **Cache**: Bumped to `destinations:all:v2` to invalidate old blocking semantics
+6. **Tests**: Rewrote 00057 test to verify Đà Lạt IS allowed to submit
+
+### Final API response (Đà Lạt)
+```json
+{
+  "isGenerateReady": true,  // ALLOWED
+  "readinessStatus": "partial",
+  "readinessReason": "Dữ liệu cho Đà Lạt hiện còn hạn chế... Bạn vẫn có thể tiếp tục tạo lịch trình."
+}
+```
+
+### Test evidence
+- 00057 test: ✅ PASS - verified Đà Lạt allowed to submit, generate API called
+- All Playwright: ✅ 15 PASS, 3 SKIP
+- Frontend build: ✅ PASS
+
+### Why RESOLVED (not PARTIALLY_RESOLVED)
+- ✅ Backend returns data quality metadata for all destinations
+- ✅ ALL destinations have `isGenerateReady=true` (allowed to submit)
+- ✅ FE does NOT block based on data quality
+- ✅ Warning messages are advisory, not telling user to choose another city
+- ✅ Cache invalidated to prevent old blocking semantics
+- ✅ CI-safe test verifies allow-submit behavior
+
+---
+
+## Resolution in 00057 (2026-05-30 - FINAL)
+
+### Files added/modified
+- `Backend/src/places/schemas.py` - Added data quality fields to DestinationResponse
+- `Backend/src/places/repository.py` - Added get_destinations_with_counts()
+- `Backend/src/places/service.py` - Added data quality calculation; cache to v2
+- `Frontend/src/app/services/places.ts` - Updated DestinationResponse interface
+- `Frontend/src/app/hooks/useDestinations.ts` - Updated Destination interface
+- `Frontend/src/app/pages/CreateTrip.tsx` - Removed blocking logic; advisory warnings only
+- `Frontend/tests/e2e/00057-destination-readiness.spec.ts` - CI-safe test verifying allow-submit
+
+### Final implementation (after hardening correction)
+1. **Backend API contract**: Returns `placesCount`, `hotelsCount`, `isGenerateReady` (always true for listed cities), `readinessStatus`, `readinessReason`
+2. **Efficient counting query**: Used `COUNT(DISTINCT)` grouped query
+3. **Data quality calculation** (advisory only):
+   - `ready`: placesCount >= 30
+   - `partial`: 6 <= placesCount < 30
+   - `sparse`: placesCount < 6
+4. **FE UI indicators**: Partial/sparse cities show ⚠️ icon (advisory)
+5. **NO submit guard**: ALL listed cities allowed to submit
+6. **Đà Lạt handling**: Shows as partial with warning, BUT allows submit
+
+See "Final Hardening Correction" section below for product correction details.
+
+### API response verified (2026-05-30)
+```json
+{
+  "id": 34,
+  "name": "Đà Lạt",
+  "placesCount": 10,
+  "hotelsCount": 2,
+  "isGenerateReady": false,
+  "readinessStatus": "partial",
+  "readinessReason": "Dữ liệu giới hạn (10 điểm đến). Khuyến nghị chọn thành phố khác để có lịch trình tốt hơn."
+}
+```
+
+### Browser evidence (00057 test)
+- TC PASS: Đà Lạt shows ⚠️ icon in suggestions
+- TC PASS: Submit with Đà Lạt blocked with readinessReason
+- TC PASS: No generate API call made (pre-submit validation)
+- TC PASS: Hà Nội (ready) shows no warning
+
+### 10-city status after 00057
+All 10 cities now have readiness metadata:
+- 9 cities: ready (56-73 places each)
+- Đà Lạt: partial (10 places)
+
+### Why RESOLVED (not PARTIALLY_RESOLVED)
+- ✅ Backend returns readiness metadata for all destinations
+- ✅ FE validates and blocks not-ready cities pre-submit
+- ✅ UI shows clear indicators (⚠️/🔒)
+- ✅ Vietnamese error messages guide users
+- ✅ CI-safe test verifies behavior
+
+### Remaining limitations (NOT in scope for 00057)
+1. **No true not_ready cities**: All cities are either ready or partial. Not_ready path (<10 places) untested in production.
+2. **Guest flow**: Readiness validation tested for auth, guest path needs separate verification.
+3. **ETL for marginal cities**: Đà Lạt needs more data (10 → 30+). No ETL in this task.
+
+### Related reports
+- `docs/REPORTS/00057_destination_readiness_contract_result.md`
 - `docs/REPORTS/00051_fe_error_visibility_results.md`
 - `docs/REPORTS/00056_calendar_generate_flow_fix_result.md`
