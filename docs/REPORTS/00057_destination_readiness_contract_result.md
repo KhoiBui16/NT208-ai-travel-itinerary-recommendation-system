@@ -117,14 +117,29 @@ New cache key ensures fresh semantics.
 
 **All cities** now have `isGenerateReady: true` ✅
 
-## 8. Frontend/Playwright evidence
+## 8. Backend CI evidence (after fix)
 
 | Command | Status | Evidence |
 |---|---|---|
-| 00057 test | ✅ PASS | Đà Lạt allowed to submit, generate API called, no blocking error |
-| 00056 test | ✅ PASS | Calendar works with new schema |
+| Backend unit (all) | ✅ PASS | 115 passed, 1 warning (7.33s) |
+| Backend lint (ruff) | ✅ PASS | All checks passed |
+| Backend format (ruff) | ✅ PASS | All files formatted |
+| Backend integration (places) | ✅ PASS | 10 passed, 1 skipped (2.77s) |
+
+**Fix applied**:
+- Added `from src.itineraries.models import Activity` in test_place_service.py
+- Updated test mocks from `get_destinations` to `get_destinations_with_counts`
+- Created `_make_destination_dict()` helper for new response structure
+- See `issue_backend_place_service_unit_fixture_activity_relationship.md` for details
+
+## 9. Frontend/Playwright evidence
+
+| Command | Status | Evidence |
+|---|---|---|
+| 00057 test | ✅ PASS | Đà Lạt allowed to submit, generate API called, no blocking error (7.8s) |
+| 00056 test | ✅ PASS | Calendar works with new schema (4.3s) |
 | All Playwright | ✅ 15 PASS, 3 SKIP | No failures after removing 00055 artifacts |
-| Frontend build | ✅ PASS | - |
+| Frontend build | ✅ PASS | 10.74s |
 
 **00057 test output**:
 ```
@@ -133,15 +148,16 @@ Has blocking error: false
 === TEST PASSED: Đà Lạt (partial) was allowed to submit ===
 ```
 
-## 9. Docs/report/PR body
+## 10. Docs/report/PR body
 
 | File | Status |
 |---|---|
 | `00057_destination_readiness_contract_result.md` | ✅ Updated (this file) |
 | `issue_destination_selector_not_db_backed.md` | ✅ Updated to RESOLVED |
-| `pr_00057_description.md` | ✅ Created |
+| `issue_backend_place_service_unit_fixture_activity_relationship.md` | ✅ Created then marked RESOLVED |
+| `pr_00057_description.md` | ✅ Created and updated with backend unit fix |
 
-## 10. Remaining limitations
+## 11. Remaining limitations
 
 1. **No true sparse cities (<6 places)**: All cities either ready (56-73 places) or partial (Đà Lạt with 10). Sparse path untested in production.
 

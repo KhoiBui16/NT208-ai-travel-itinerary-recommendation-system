@@ -1,7 +1,7 @@
 # Issue: Backend Place Service Unit Test Fixture Activity Relationship Failure
 
 **Date**: 2026-05-30
-**Status**: OPEN
+**Status**: RESOLVED (2026-05-30)
 **Priority**: MEDIUM
 **Component**: Backend tests
 
@@ -80,3 +80,35 @@ Fix test fixtures in separate issue/branch. Options:
 
 **Detected in**: 00057 commit gate check
 **Does NOT block**: 00057 (integration tests pass)
+
+---
+
+## Resolution (2026-05-30)
+
+### Fix applied
+
+1. **Added Activity import**: `from src.itineraries.models import Activity` in `tests/unit/test_place_service.py`
+   - This allows SQLAlchemy to resolve the `Place.activities` relationship string reference
+
+2. **Updated test mocks**: Changed from `mock_repo.get_destinations` to `mock_repo.get_destinations_with_counts`
+   - Service now calls `get_destinations_with_counts()` which returns `list[dict]`
+   - Created `_make_destination_dict()` helper to match the new response structure
+
+3. **Fixed ruff issues**: Reformatted function signature to comply with line length limit
+
+### Files changed
+
+- `Backend/tests/unit/test_place_service.py`:
+  - Added Activity import
+  - Added `_make_destination_dict()` helper
+  - Updated `test_get_destinations__cache_miss` and `test_get_destinations__redis_down` mocks
+
+### Verification
+
+```bash
+cd Backend
+uv run pytest tests/unit/ -v --tb=short
+# Result: 115 passed, 1 warning (7.33s)
+```
+
+All unit tests now pass. CI backend-unit check should pass.

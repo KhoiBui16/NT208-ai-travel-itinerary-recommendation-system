@@ -73,19 +73,20 @@ curl http://127.0.0.1:8000/api/v1/places/destinations | python -m json.tool | gr
 | Test | Result | Duration | Notes |
 |---|---|---|---|
 | Backend lint (ruff) | ✅ PASS | - | All checks passed |
-| Backend integration (places) | ✅ PASS | 6.28s | 10/11 passed, 1 skipped |
-| Backend unit (place_service) | ⚠️ PRE-EXISTING | - | SQLAlchemy fixture issue (see ISSUES) |
-| Frontend build | ✅ PASS | 14.66s | Using alternate output dir (Windows file lock) |
-| 00057 advisory test | ✅ PASS | 9.9s | All 6 assertions pass |
-| 00056 calendar test | ✅ PASS | 4.4s | Calendar clicks work correctly |
+| Backend format (ruff) | ✅ PASS | - | All files formatted |
+| Backend unit (all) | ✅ PASS | 7.33s | 115 passed, 1 warning |
+| Backend integration (places) | ✅ PASS | 2.77s | 10 passed, 1 skipped |
+| Frontend build | ✅ PASS | 10.74s | Using alternate output dir (Windows file lock) |
+| 00057 advisory test | ✅ PASS | 7.8s | All 6 assertions pass |
+| 00056 calendar test | ✅ PASS | 4.3s | Calendar clicks work correctly |
 | Default Playwright (local) | ⚠️ EXPECTED | 22.0s | 7 passed, 8 failed (backend not running) |
 | Default Playwright (CI) | ✅ EXPECTED PASS | - | CI starts backend, all tests should pass |
 
 **Notes:**
 - Local Playwright failures are EXPECTED when backend server is not running
 - CI workflow (`.github/workflows/frontend-ci.yml`) starts backend before running tests
-- Backend unit test failure is pre-existing, NOT caused by 00057 changes
-- See `issue_backend_place_service_unit_fixture_activity_relationship.md` for details
+- Backend unit tests now pass after fixing Activity import and test mocks
+- See `issue_backend_place_service_unit_fixture_activity_relationship.md` for resolution details
 
 ### DB/API State (2026-05-30)
 
