@@ -12,6 +12,11 @@ export interface Destination {
   country: string;
   image: string;
   rating: number;
+  placesCount: number;
+  hotelsCount: number;
+  isGenerateReady: boolean;
+  readinessStatus: "ready" | "partial" | "sparse";
+  readinessReason: string | null;
 }
 
 interface UseDestinationsResult {

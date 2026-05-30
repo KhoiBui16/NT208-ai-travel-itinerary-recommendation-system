@@ -269,6 +269,30 @@ AuthContext
 └──────────────────────────────────────────────────────────┘
 ```
 
+### 5.1 CreateTrip — Destination Data Quality Advisory UX (00057+)
+
+**Destination selector behavior**:
+- Backend-backed: Calls `GET /api/v1/places/destinations` on mount
+- Suggestions filtered from backend response (fallback to static list if API fails)
+- User can type free text, but submit validates against backend list
+
+**Data quality warning UX**:
+- When user selects destination with `readinessReason`, displays amber/yellow warning box below generate button
+- Warning style: `bg-amber-50 border-amber-200 text-amber-800` (not red like blocking errors)
+- Warning text: Advisory message from backend (e.g., "Dữ liệu cho Đà Lạt hiện còn hạn chế...")
+- Does NOT block submit — user can still click "Tạo Lịch Trình Với AI"
+- Clears automatically when user switches to ready city (no `readinessReason`)
+
+**Unsupported city handling**:
+- Pre-submit validation checks if destination exists in backend list
+- If not found: Shows validation error `text-red-500`: "Thành phố này chưa có trong danh sách được hỗ trợ"
+- Blocks generate API call until user selects supported city
+
+**State management**:
+- `validationError`: Blocking errors (red, stops submit)
+- `qualityWarning`: Advisory warnings (amber, does NOT stop submit)
+- Two separate states for different semantic purposes
+
 ---
 
 ## 6. Hook Data Flow Diagrams

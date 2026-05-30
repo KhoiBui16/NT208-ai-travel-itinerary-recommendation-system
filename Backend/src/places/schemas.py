@@ -18,6 +18,11 @@ class DestinationResponse(CamelCaseModel):
     country: str = "Vietnam"
     image: str
     rating: float = 0
+    placesCount: int = 0
+    hotelsCount: int = 0
+    isGenerateReady: bool = False
+    readinessStatus: str = "not_ready"
+    readinessReason: str | None = None
 
 
 class PlaceResponse(CamelCaseModel):

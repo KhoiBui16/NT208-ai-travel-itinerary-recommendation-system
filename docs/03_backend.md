@@ -169,6 +169,34 @@ Backend/
 
 **Tổng: 35 endpoints** trên `main` sau merge C.2 (EP-0 đến EP-32 + EP-30 suggest; EP-34 analytics optional MVP2+)
 
+### EP-23: `GET /api/v1/places/destinations` — Destination Data Quality Contract
+
+**Response schema** (`DestinationResponse`):
+```typescript
+{
+  id: number;
+  name: string;
+  country: string;
+  image: string;
+  rating: number;
+  // Data quality fields (00057+)
+  placesCount: number;      // Số điểm đến tại thành phố này
+  hotelsCount: number;      // Số khách sạn tại thành phố này
+  isGenerateReady: boolean; // Luôn true cho các city trong API response
+  readinessStatus: "ready" | "partial" | "sparse";
+  readinessReason: string | null;  // Thông báo advisory (không block submit)
+}
+```
+
+**Readiness rules**:
+- `ready`: placesCount ≥ 30 (dữ liệu đủ tốt)
+- `partial`: 6 ≤ placesCount < 30 (dữ liệu hạn chế, vẫn cho phép submit)
+- `sparse`: placesCount < 6 (dữ liệu rất ít, vẫn cho phép submit)
+
+**Product principle**: City đã nằm trong backend destinations API phải cho phép user chọn và submit bình thường. `readinessReason` chỉ là warning advisory, không phải hard gate.
+
+**Cache key**: `destinations:all:v2` (TTL 1h)
+
 ### EP-30: `GET /api/v1/agent/suggest/{activity_id}` (C.2)
 
 - Auth: Bearer required.

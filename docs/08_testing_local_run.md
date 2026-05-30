@@ -151,6 +151,44 @@ npm run test:e2e        # Playwright e2e tests (cần BE chạy trên localhost:
 
 FE build phải pass (production bundle). Playwright e2e tests kiểm tra 11 flow: auth (3), trip CRUD (3), public pages (5). Yêu cầu BE server chạy trước khi chạy e2e.
 
+### 00057 Manual Verification — Destination Data Quality Advisory
+
+**Test destination selector and data quality warning**:
+
+```powershell
+# Start BE/FE
+cd Backend
+uv run uvicorn src.main:app --host 127.0.0.1 --port 8000
+
+cd Frontend
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+**Browser test steps**:
+1. Open http://127.0.0.1:5173/create-trip
+2. Type "Đà Lạt" in destination field
+3. Select "Đà Lạt" from suggestions (should show ⚠️ icon for partial city)
+4. **Expected**: Yellow/amber warning box appears with text "Dữ liệu cho Đà Lạt hiện còn hạn chế..."
+5. Select dates and click "Tạo Lịch Trình Với AI"
+6. **Expected**: Submit allowed, generate API called, warning stays visible
+7. Change destination to "Hà Nội"
+8. **Expected**: Warning disappears (Hà Nội is ready city)
+9. Type unsupported city like "Không Tồn Tại City"
+10. **Expected**: Red validation error "chưa có trong danh sách được hỗ trợ", submit blocked
+
+**API verification**:
+```powershell
+# Check Đà Lạt response has readiness fields
+curl http://127.0.0.1:8000/api/v1/places/destinations | python -m json.tool | grep -A 10 "Đà Lạt"
+
+# Verify:
+# - placesCount: 10
+# - hotelsCount: 2
+# - isGenerateReady: true
+# - readinessStatus: "partial"
+# - readinessReason: "Dữ liệu cho Đà Lạt..."
+```
+
 Nếu dùng `127.0.0.1` thay vì `localhost`, hãy giữ đồng bộ:
 
 ```powershell
