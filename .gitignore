@@ -45,6 +45,8 @@ pytest-cache-files-*/
 Frontend/dist/
 Frontend/dist_ci/
 Frontend/test-results/
+Frontend/.build-tmp/
+Frontend/playwright-report/
 
 # Claude local-only settings
 .claude/settings.local.json
