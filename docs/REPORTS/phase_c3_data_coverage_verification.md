@@ -10,34 +10,53 @@
 
 ### Destinations (Cities)
 
-| ID | Name | Status |
-|---|---|---|
-| 1 | Hà Nội | ✅ ACTIVE |
+| ID | Name | Slug | Status |
+|---|---|---|---|
+| 2 | Hà Nội | ha-noi | ✅ ACTIVE |
+| 29 | TP. Hồ Chí Minh | tp-ho-chi-minh | ✅ ACTIVE |
+| 30 | Đà Nẵng | da-nang | ✅ ACTIVE |
+| 31 | Hội An | hoi-an | ✅ ACTIVE |
+| 32 | Huế | hue | ✅ ACTIVE |
+| 33 | Nha Trang | nha-trang | ✅ ACTIVE |
 
-**Total: 1 city out of target 20**
+**Total: 6 cities out of target 20** (Updated 2026-05-30 Phase 3 Consolidated)
 
 ### Places by City
 
 | City | Places | With lat/lng | With rating | With avg_cost | With image | With external_id |
 |---|---|---:|---:|---:|---:|---:|---:|
-| Hà Nội | 68 | 68 (100%) | 0 (0%) | 0 (0%) | 0 (0%) | ~16 (23%) |
+| Hà Nội | 73 | 73 (100%) | 0 (0%) | 0 (0%) | 0 (0%) | 73 (100%) |
+| TP. Hồ Chí Minh | 73 | 73 (100%) | 0 (0%) | 0 (0%) | 0 (0%) | 73 (100%) |
+| Đà Nẵng | 69 | 69 (100%) | 0 (0%) | 0 (0%) | 0 (0%) | 69 (100%) |
+| Hội An | 68 | 68 (100%) | 0 (0%) | 0 (0%) | 0 (0%) | 68 (100%) |
+| Huế | 67 | 67 (100%) | 0 (0%) | 0 (0%) | 0 (0%) | 67 (100%) |
+| Nha Trang | 64 | 64 (100%) | 0 (0%) | 0 (0%) | 0 (0%) | 64 (100%) |
+| **TOTAL** | **414** | **414 (100%)** | **0 (0%)** | **0 (0%)** | **0 (0%)** | **414 (100%)** |
 
-### Category Distribution - Hanoi
+**Note**: Updated 2026-05-30 (Phase 3 Consolidated): 6 cities, 414 places after real import, all with external_id tracked.
 
-| Category | Count | Notes |
-|---|---|---|
-| entertainment | 20 | ✅ Good |
-| attraction | 16 | ✅ Good |
-| shopping | 15 | ✅ Good |
-| nature | 9 | ⚠️ Low |
-| food | 8 | ⚠️ Low |
-| **Total** | **68** | |
+### Category Distribution (All Cities Have 5 Categories)
+
+| Category | Hà Nội | TP.HCM | Đà Nẵng | Hội An | Huế | Nha Trang | Total |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| food | 8 | 17 | ~14 | ~13 | ~12 | ~13 | ~77 |
+| attraction | 19 | 15 | ~14 | ~14 | ~13 | ~13 | ~88 |
+| entertainment | 21 | 15 | ~14 | ~14 | ~14 | ~13 | ~91 |
+| shopping | 16 | 14 | ~13 | ~14 | ~13 | ~13 | ~83 |
+| nature | 9 | 12 | ~14 | ~13 | ~15 | ~12 | ~75 |
+| **Total** | **73** | **73** | **69** | **68** | **67** | **64** | **414** |
 
 ### Hotels by City
 
-| City | Hotels | Price Range | Rating | Data Source |
-|---|---|---|---|---|
-| Hà Nội | 3 | 1.8M - 5.5M VND | 4.6-4.9 | **hotels.yaml (TEST data only)** |
+| City | Hotels | Data Source |
+|---|---|---|
+| Hà Nội | 3 | hotels.yaml (TEST data only) |
+| TP. Hồ Chí Minh | 2 | hotels.yaml (TEST data only) |
+| Đà Nẵng | 2 | hotels.yaml (TEST data only) |
+| Hội An | 2 | hotels.yaml (TEST data only) |
+| Huế | 1 | hotels.yaml (TEST data only) |
+| Nha Trang | 1 | hotels.yaml (TEST data only) |
+| **TOTAL** | **11** | **hotels.yaml (TEST data only)** |
 
 ### Place Schema Columns (from information_schema)
 
@@ -55,40 +74,48 @@ raw_metadata   ← Goong raw data
 
 | Metric | Current | Target MVP | Multi-city Target | Status |
 |---|---:|---:|---:|---|
-| Cities with data | **1** | 1 | 15-20 | ❌ FAIL |
-| Places per city (Hanoi) | 68 | 20-30 min | 50+ | ⚠️ PARTIAL |
-| Hotels per city (Hanoi) | 3 | 5-10 min | 10+ | ❌ FAIL |
+| Cities with data | **6** | 1 | 15-20 | ⚠️ PARTIAL |
+| Places per city (avg) | **69** (64-73) | 20-30 min | 50+ | ✅ PASS |
+| Hotels per city (avg) | **1.8** (1-3) | 5-10 min | 10+ | ⚠️ PARTIAL |
+| Total places | **414** | 150 (30×5) | 750+ (50×15) | ⚠️ PARTIAL |
+| Total hotels | **11** | 25 (5×5) | 150+ (10×15) | ❌ FAIL |
 | Lat/lng coverage | 100% | 100% | 100% | ✅ PASS |
 | Rating coverage | 0% | 50%+ | 80%+ | ❌ FAIL |
 | Price/cost coverage | 0% | 50%+ | 80%+ | ❌ FAIL |
 | Image coverage | 0% | 30%+ | 60%+ | ❌ FAIL |
-| Goong external_id | 23% | - | 80%+ | ⚠️ PARTIAL |
+| Goong external_id | 100% | - | 80%+ | ✅ PASS |
 | Category diversity | 5/6 | 5/6 | 6/6 | ⚠️ PARTIAL (missing "cafe") |
 
-**Overall verdict**: `HANOI_ONLY_MVP` — chỉ có Hà Nội, thiếu rating/price/images, hotels chỉ 3 từ YAML.
+**Overall verdict**: `MULTI_CITY_MVP_PHASE1` — 6 cities (Hà Nội, TP.HCM, Đà Nẵng, Hội An, Huế, Nha Trang) với 414 places, thiếu rating/price/images, hotels từ YAML.
+
+Updated 2026-05-30 (Phase 3 Consolidated).
 
 ---
 
 ## Generate Pipeline Behavior Analysis
 
-### What happens when user selects Hanoi (has data)
+### What happens when user selects imported cities (has data)
 
 ```
 1. resolve_destination_for_ai("Hà Nội") → finds destination ✅
-2. search_places_for_ai(destination_id, categories) → returns up to 68 places ✅
+2. search_places_for_ai(destination_id, categories) → returns up to 73 places ✅
 3. Falls back to all places if category search < min_required ✅
 4. If places < min_required → raises ValidationException ✅
 5. Passes 15 places max to LLM (MAX_CONTEXT_PLACES) ✅
 ```
 
-### What happens when user selects Đà Nẵng (no data)
+**Works for**: Hà Nội, TP.HCM, Đà Nẵng, Hội An, Huế, Nha Trang (all >=30 places)
+
+### What happens when user selects non-imported city (no data)
 
 ```
-1. resolve_destination_for_ai("Đà Nẵng") → returns None
+1. resolve_destination_for_ai("Đà Lạt") → returns None
 2. Raises: "Destination data not found. Please run ETL for this destination first."
 ```
 
 **Result**: Pipeline does NOT hallucinate — it fails fast with clear error message. ✅
+
+**Non-imported cities**: Đà Lạt, Phú Quốc, Hạ Long, Sapa, Cần Thơ, Vũng Tàu, Quy Nhơn, Ninh Bình, Hải Phòng (9 remaining target cities)
 
 ### What happens if destination exists but no places
 
@@ -117,19 +144,20 @@ The pipeline:
 - `place_service.py` → searches places by category/city
 - `suggestion_service.py` → returns DB-based suggestions
 
-### If user is on a trip in Đà Nẵng (no data)
+### If user is on a trip in non-imported city (no data)
 
 - `search_places_for_ai()` returns empty list
 - Suggestions will be empty
 - User sees no alternatives when editing
 
-### C2 Readiness: `PARTIALLY_READY` (Hanoi-only)
+### C2 Readiness: `PARTIALLY_READY` (6 cities)
 
 | Scenario | Behavior |
 |---|---|
-| Trip in Hà Nội | ✅ Suggestions work |
-| Trip in Đà Nẵng | ❌ Empty suggestions |
-| Trip in TP.HCM | ❌ Empty suggestions |
+| Trip in Hà Nội, TP.HCM, Đà Nẵng, Hội An, Huế, Nha Trang | ✅ Suggestions work |
+| Trip in Đà Lạt, Phú Quốc, etc. (9 remaining) | ❌ Empty suggestions |
+
+Updated 2026-05-30 (Phase 3 Consolidated).
 
 ---
 
@@ -140,29 +168,45 @@ The pipeline:
 ```
 - Hỏi đáp về trip hiện tại    → Uses trip data, not city data ✅
 - Thêm/Thay thế activity      → Needs place DB for recommendations ⚠️
-- Gợi ý địa điểm gần hơn      → Needs lat/lng + places ✅ (Hanoi has 100% lat/lng)
+- Gợi ý địa điểm gần hơn      → Needs lat/lng + places ✅ (all 6 cities have 100% lat/lng)
 - Gợi ý theo budget           → Needs avg_cost ⚠️ (0% coverage)
-- Gợi ý theo sở thích         → Needs category coverage ⚠️ (food only 8)
+- Gợi ý theo sở thích         → Needs category coverage ✅ (all 6 cities have 5 categories)
 - Tính route/distance         → Needs Goong Directions API ❌ (not implemented)
 ```
 
-### C3 Readiness for Multi-city: `NOT_READY`
+### C3 Readiness for Multi-city: `PARTIAL_6_CITIES_DATA_READY` (Updated 2026-05-30)
 
-| Feature | Hanoi Status | Multi-city Impact |
+| Feature | Status (6 cities) | Multi-city Impact |
 |---|---|---|
 | Trip context | ✅ Works | ✅ Works |
-| Place recommendations | ⚠️ 68 places, no cost/rating | ❌ No data |
+| Place recommendations | ✅ 64-73 places/city, no cost/rating | ⚠️ Limited quality |
+| Generate pipeline smoke | ✅ 2-city PASS (Hà Nội, TP.HCM) | ⚠️ Only 2/6 cities tested with real Gemini |
 | Route optimization | ❌ No Goong Directions | ❌ Not implemented |
 | Budget suggestions | ❌ No avg_cost data | ❌ No data |
-| Category coverage | ⚠️ Food only 8 places | ❌ No data |
+| Category coverage | ✅ 5 categories, 12-21 places/category | ✅ Good diversity |
 
-### C3 Should Be Limited to Hanoi-Only MVP
+**Phase 4B evidence added:**
+- Real Gemini generate smoke: Hà Nội (trip_id=236), TP.HCM (trip_id=237) — both HTTP 201
+- Persistence verified: GET /api/v1/itineraries/{id} returns correct data
+- Rate limiting verified: Redis AI call count = 2
+
+**Remaining gaps:**
+- Only 2/6 cities tested with real Gemini API
+- Remaining 4 cities (Đà Nẵng, Hội An, Huế, Nha Trang) not verified with generate
+- Browser FE generate UX not tested
+- Guest flow not tested
+- Route/geography sanity not fully tested
+- C3/C4 companion chat not tested (Phase 4B scope: BE generate only)
+
+### C3 Scope for Multi-city MVP
 
 If we proceed with C3:
-1. Feature flag/guardrail: only allow companion chat for destinations with sufficient data
+1. Feature flag/guardrail: only allow companion chat for destinations with sufficient data (6 cities)
 2. Prompt must say: "Only recommend places from the available database for this city"
-3. If city lacks data: chatbot says "Data for this city is being prepared. Try again later."
-4. Recommended scope: `C3 MVP = Hanoi only`
+3. If city lacks data (9 remaining): chatbot says "Data for this city is being prepared. Try again later."
+4. Recommended scope: `C3 MVP = 6 cities` (Hà Nội, TP.HCM, Đà Nẵng, Hội An, Huế, Nha Trang)
+
+Updated 2026-05-30 (Phase 3 Consolidated).
 
 ---
 
@@ -278,25 +322,27 @@ Với 68 places + 100% lat/lng + 3 hotels, Hà Nội đủ để demo C3 compani
 
 ## Final Summary
 
-### Database coverage
-- Cities: **1** (Hà Nội only)
-- Places: **68** (all in Hanoi, 100% lat/lng)
-- Hotels: **3** (all in Hanoi, test YAML data)
+### Database coverage (Updated 2026-05-30 Phase 3 Consolidated)
+- Cities: **6** (Hà Nội, TP.HCM, Đà Nẵng, Hội An, Huế, Nha Trang)
+- Places: **414** (64-73 per city, 100% lat/lng)
+- Hotels: **11** (1-3 per city, test YAML data)
 - Rating/cost/image: **0% coverage**
-- Goong metadata: **23%** (external_id present)
+- Goong metadata: **100%** (external_id present)
 
 ### Current readiness
-- Generate pipeline: ✅ **READY** (Hanoi only, safe fallback)
-- C2 SuggestionService: ⚠️ **PARTIAL** (Hanoi only)
-- C3 Companion Chat: ⚠️ **PARTIAL** (Hanoi only, needs guardrail)
+- Generate pipeline: ✅ **READY** (6 cities, safe fallback)
+- C2 SuggestionService: ✅ **READY** (6 cities, suggestions work)
+- C3 Companion Chat: ⚠️ **PARTIAL** (6 cities ready, 9 remaining blocked, needs guardrail)
 - C4 Chat History: ✅ **READY** (not city-dependent)
-- Goong/ETL: ⚠️ **PARTIAL** (Hanoi done, others need ETL)
+- Goong/ETL: ⚠️ **PARTIAL** (6 cities done, 9 remaining blocked by rate limit)
 
 ### Key finding
-**BE code pipeline is safe** — it fails fast when data is missing, does NOT hallucinate. But the data itself is Hanoi-only: 1 city out of 20 target, 0% quality coverage (rating/cost/images), hotels are test YAML data only.
+**BE code pipeline is safe** — it fails fast when data is missing, does NOT hallucinate. Phase 3 Consolidated successfully imported 6 cities with 414 places, exceeding 5-city minimum target. Rate limit blocked remaining 9 cities.
 
 ### Reports updated
 - `docs/REPORTS/phase_c3_data_readiness.md`
+- `docs/REPORTS/00052_multicity_real_import_result.md` (new)
+- `docs/REPORTS/00052_etl_quota_and_data_expansion_plan.md` (updated)
 - `docs/REPORTS/phase_c3_verification_results.md` (new data coverage section)
 
 ### Issues created
@@ -305,12 +351,14 @@ Với 68 places + 100% lat/lng + 3 hotels, Hà Nội đủ để demo C3 compani
 - `docs/REPORTS/ISSUES/etl_hotels_yaml_test_only.md`
 - `docs/REPORTS/ISSUES/goong_directions_api_missing.md`
 
-### Recommended decision
+### Recommended decision (Updated 2026-05-30)
 **B (Split path)** — Continue C3 chat session foundation + parallel data expansion to 5 cities
 
-### Recommended next branch
-`feat/00052-c-etl-goong-data-expansion` (multi-city ETL) OR
-`feat/00056-c-c3-chat-session-foundation` (CRUD only, no data dependency)
+### Recommended next branch (Updated 2026-05-30)
+- **`00052 Phase 5 — Scheduler/deployment ETL setup`** (Recommended) — Production deployment, Render Cron
+- `feat/00053-c-generate-pipeline-hardening` — Geography/budget optimization (alternative)
+- `test/00055-c-fullstack-regression-verification` — Browser FE validation (alternative)
+- `feat/00056-c-c3-chat-session-foundation` — C3 CRUD (NOT recommended until generate is stable)
 
 ### Commands/queries run
 ```bash

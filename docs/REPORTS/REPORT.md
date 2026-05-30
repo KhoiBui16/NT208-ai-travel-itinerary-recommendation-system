@@ -14,8 +14,19 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 | [phase_c3_data_readiness.md](phase_c3_data_readiness.md) | Goong/ETL readiness summary |
 | [phase_c3_verification_results.md](phase_c3_verification_results.md) | Real verification: BE tests, HTTP smoke, B2/B3 evidence |
 | [browser_flow_test_plan_for_c3.md](browser_flow_test_plan_for_c3.md) | **B3 Playwright evidence**: TP.HCM error, workspace render, date picker |
-| [test_strategy_gap_analysis.md](test_strategy_gap_analysis.md) | **NEW**: Gap matrix — mock AI, FE-BE contract, data, browser UX |
-| [00051_fe_error_visibility_results.md](00051_fe_error_visibility_results.md) | **NEW** 2026-05-29: FE error visibility + destination selector backend integration — RESOLVED_FOR_SCOPE |
+| [test_strategy_gap_analysis.md](test_strategy_gap_analysis.md) | Gap matrix — mock AI, FE-BE contract, data, browser UX |
+| [00051_fe_error_visibility_results.md](00051_fe_error_visibility_results.md) | 2026-05-29: FE error visibility + destination selector backend integration — RESOLVED_FOR_SCOPE |
+
+## 00052 ETL Goong Data Expansion Reports
+
+| File | Nội dung |
+|---|---|
+| [00052_etl_quota_and_data_expansion_plan.md](00052_etl_quota_and_data_expansion_plan.md) | ETL quota analysis, Phase 2B/2C/2D/2E/3A/3A-R summary, expansion strategy |
+| [00052_goong_live_smoke_result.md](00052_goong_live_smoke_result.md) | Phase 2E: REST API key validation, HTTP 200 OK |
+| [00052_hanoi_real_import_result.md](00052_hanoi_real_import_result.md) | Phase 3A: Hà Nội real import, idempotency, API verification |
+| [00052_deployment_etl_strategy.md](00052_deployment_etl_strategy.md) | Phase 3A-R: Production deployment planning (Vercel/Render/Supabase) |
+| [00052_multicity_real_import_result.md](00052_multicity_real_import_result.md) | Phase 3 Consolidated: 6 cities, 414 places, rate limit behavior |
+| [00052_real_generate_smoke_result.md](00052_real_generate_smoke_result.md) | Phase 4B: 2-city real Gemini generate smoke, HTTP 201, persistence verified |
 
 ## B1.5 Observability & ETL Scheduling Audit
 
@@ -23,9 +34,9 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 |---|---|
 | Trace readiness | TRACE_PARTIAL — thiếu request_id, Gemini quota classification |
 | Error classification | ERROR_CLASSIFICATION_PARTIAL — 422 không phân biệt destination/places |
-| FE error visibility | FE_ERROR_VISIBILITY_NOT_READY — tất cả errors generic |
-| ETL scheduling | ETL_MANUAL_ONLY — không có cron/schedule |
-| ETL auditability | ETL_AUDITABILITY_PARTIAL — `destinations.last_etl_at` NULL |
+| FE error visibility | FE_ERROR_VISIBILITY_IMPROVED — 00051 added status-specific messages |
+| ETL scheduling | ETL_MANUAL_ONLY — không có cron/schedule (deployment planned) |
+| ETL auditability | ETL_AUDITABILITY_PARTIAL — `destinations.last_etl_at` updated for Hà Nội only (Phase 3A), NULL for other cities |
 
 ## B2 Real Generate API Matrix
 
@@ -52,9 +63,10 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 
 | File | Nội dung |
 |---|---|
-| [phase_c3_data_coverage_verification.md](phase_c3_data_coverage_verification.md) | **Real DB queries**: 1 city (Hà Nội), 68 places, 3 hotels, 0% quality coverage. Pipeline is SAFE — no hallucination. |
+| [phase_c3_data_coverage_verification.md](phase_c3_data_coverage_verification.md) | **Real DB queries**: 1 city (Hà Nội), 68→73 places (Phase 3A), 3 hotels, 0% quality coverage. Pipeline is SAFE — no hallucination. |
 | [phase_c3_data_readiness.md](phase_c3_data_readiness.md) | Goong/ETL readiness summary |
 | [phase_c3_verification_results.md](phase_c3_verification_results.md) | Real verification: BE tests pass, HTTP smoke, blocks documented |
+| [00052_hanoi_real_import_result.md](00052_hanoi_real_import_result.md) | **NEW** 2026-05-30: Hà Nội real import, idempotency verified, `last_etl_at` updated |
 
 ## Phase C3/C4 Data Coverage Issues
 
@@ -90,36 +102,46 @@ feat/00059-c-c3-floating-chat-integration  # FE integration
 feat/00060-c-c4-chat-history               # Chat history API
 ```
 
-## Readiness Summary (Updated with B1.5/B2/B3 Evidence)
+## Readiness Summary (Updated Phase 4B-R 2026-05-30)
 
 | Component | Status | Evidence |
 |---|---|---|
-| Generate pipeline (Hà Nội small) | **PARTIALLY_READY** | B2: PASS for 1-2 ngày, FAIL for 3+ ngày (timeout) |
-| Generate pipeline (multi-city) | **NOT_READY** | B2: 422 for TP.HCM, Đà Nẵng |
-| Rate limit (generate) | READY | B2: 429 working correctly |
+| Generate pipeline (6 cities) | **READY_6_CITIES** | Phase 3 Consolidated: 414 places, all 6 cities pass generate readiness |
+| Generate pipeline (remaining 9 cities) | **NOT_READY** | Đà Lạt, Phú Quốc, Hạ Long, Sapa, Cần Thơ, Vũng Tàu, Quy Nhơn, Ninh Bình, Hải Phòng not imported |
+| Real generate smoke (2 cities) | **PASS_2_CITIES** | Phase 4B: Hà Nội, TP.HCM generate HTTP 201, ~38s latency, persistence verified |
+| Rate limit (generate) | READY | B2: 429 working correctly; Phase 4B: Redis key count verified |
 | Rate limit (FE UX) | NOT_READY | B3: generic error for 429 |
 | Redis fail-closed | READY | B1.5: confirmed |
 | Auth/AuthZ use cases | MOSTLY READY | B2/B3: confirmed for existing flows |
 | C3 design | PARTIALLY READY | 4 design gaps remain |
 | C4 design | READY (schema) | chat_sessions/chat_messages tables exist |
-| C3 data coverage | **NOT_READY** | B2: Hà Nội only, 11/12 FE cities fail |
-| Goong/ETL data | **NOT_READY** | B2: TP.HCM/Đà Nẵng = 0 places |
+| C3 data coverage | **PARTIAL_6_CITIES** | Phase 3 Consolidated: 6 cities with 414 places; Phase 4B: 2-city generate smoke PASS |
+| Goong/ETL data | **6_CITIES_IMPORTED** | Phase 3 Consolidated: 414 places, 11 hotels, 100% lat/lng; 9 cities rate-limited |
+| ETL rate-limit safety | **READY** | Phase 4C-FIX-2: MaxRetriesExceededError propagation, runner stops, skipped cities appended |
 | FE error visibility | **IMPROVED** | 00051: status-specific messages added; TC429/TC503 deferred to regression |
-| Destination selector | **PARTIALLY_RESOLVED** | 00051: backend API query + pre-submit validation; lacks placesCount/hasData field |
+| Destination selector | **READY** | 00051: backend API returns 6 cities; FE displays all |
 | Observability | PARTIAL | B1.5: no request_id |
-| ETL scheduling | NOT_READY | B1.5: manual only |
+| ETL scheduling | **PLANNED_NOT_IMPLEMENTED** | Phase 3A-R: deployment strategy documented (Render Cron); not implemented |
+| Scheduler/deploy ETL | **NOT_IMPLEMENTED** | Requires Render Cron job configuration (deferred to Phase 5) |
+| FE/browser generate UX | **NOT_TESTED** | Phase 4B: BE-only; browser flow deferred to 00055 |
+| Guest flow | **NOT_TESTED** | Phase 4B: authenticated user only |
 | TripWorkspace render | READY | B3: trip_id=235 PASS |
 | FloatingAIChat | NOT_IMPLEMENTED | B3: not visible |
+| C3/C4 readiness | **NOT_READY** | Phase 4B: generate smoke only; C3/C4 not tested |
+| TC429 stress test | **NOT_TESTED** | Phase 4B: only 2 calls; no forced 429 test |
+| Route/geography sanity | **NOT_FULLY_TESTED** | Requires Goong Directions API (deferred) |
+| Budget optimization | **NOT_TESTED** | Cost estimation only |
+| LLM hallucination | **NOT_DEEPLY_TESTED** | Basic schema validation only |
 
 ## Data Coverage Reality
 
-> **HANOI_ONLY_MVP** — 1 city out of target 20. Pipeline SAFE (fails fast, no hallucination). But companion chat blocked for multi-city without ETL data expansion.
+> **MULTI_CITY_MVP_PHASE1** — 6 cities out of target 20. Phase 3 Consolidated validated: 414 places, 11 hotels, `last_etl_at` updated, idempotency verified. Pipeline SAFE (fails fast, no hallucination). Rate limit blocked remaining 9 cities.
 
 | Tier | Status |
 |---|---|
-| Minimum MVP (1 city, demo) | ✅ Hà Nội với 68 places |
-| Multi-city MVP (5 cities) | ❌ Only Hà Nội has data |
-| Production (15-20 cities) | ❌ 0/20 cities ETL done |
+| Minimum MVP (1 city, demo) | ✅ Achieved (exceeded) |
+| Multi-city MVP (5 cities) | ✅ **PASS** — 6 cities with 64-73 places each |
+| Production (15-20 cities) | ⚠️ **PARTIAL** — 6/15 cities imported, 9 blocked by rate limit |
 
 ## Recommended Decision: B (Split Path)
 

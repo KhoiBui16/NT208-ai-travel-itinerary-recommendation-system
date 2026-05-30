@@ -47,6 +47,7 @@ async def get_or_create_destination(session: AsyncSession, city: str) -> Destina
         description=f"Khám phá {city}",
         image=f"/img/destinations/{slug}.jpg",
         is_active=True,
+        last_etl_at=datetime.now(UTC),  # Set on creation
     )
     session.add(dest)
     await session.flush()
@@ -119,13 +120,14 @@ async def upsert_places(session: AsyncSession, places: list[dict]) -> int:
 
     await session.flush()
 
-    # Update places_count on destinations
+    # Update places_count and last_etl_at on destinations
     for place_data in places:
         city = place_data["destination"]
         dest = await get_or_create_destination(session, city)
         count_stmt = select(Place).where(Place.destination_id == dest.id)
         result = await session.execute(count_stmt)
         dest.places_count = len(result.scalars().all())
+        dest.last_etl_at = datetime.now(UTC)
 
     await session.flush()
     return count
@@ -200,6 +202,17 @@ async def upsert_hotels(session: AsyncSession, hotels: list[dict]) -> int:
         )
         await session.execute(stmt)
         count += 1
+
+    await session.flush()
+
+    # Update last_etl_at for destinations with hotels
+    cities_updated = set()
+    for hotel_data in hotels:
+        city = hotel_data["destination"]
+        if city not in cities_updated:
+            dest = await get_or_create_destination(session, city)
+            dest.last_etl_at = datetime.now(UTC)
+            cities_updated.add(city)
 
     await session.flush()
     return count
