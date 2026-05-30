@@ -133,8 +133,8 @@ export function CalendarModal({ open, onClose, onConfirm, value, selectedName, i
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="relative pointer-events-auto w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">

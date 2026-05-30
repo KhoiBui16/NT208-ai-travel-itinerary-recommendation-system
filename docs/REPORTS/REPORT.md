@@ -28,6 +28,20 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 | [00052_multicity_real_import_result.md](00052_multicity_real_import_result.md) | Phase 3 Consolidated: 6 cities, 414 places, rate limit behavior |
 | [00052_real_generate_smoke_result.md](00052_real_generate_smoke_result.md) | Phase 4B: 2-city real Gemini generate smoke, HTTP 201, persistence verified |
 
+## 00056 Calendar + Generate Flow Unblock
+
+| File | Nội dung |
+|---|---|
+| [00056_calendar_generate_flow_fix_result.md](00056_calendar_generate_flow_fix_result.md) | 2026-05-30: CalendarModal click timeout bug fix + browser regression — **FIX_COMPLETE** |
+| [pr_00056_description.md](pr_00056_description.md) | PR body template for fix/00056 |
+
+**Key findings:**
+- CalendarModal bug fixed: Added `pointer-events-auto` + `stopPropagation` to modal content
+- All 4 Playwright tests pass (Flow A, B, C, Debug) with 0 console errors
+- 10-city readiness verified: 9 cities READY, Đà Lạt MARGINAL (10 places < 30 threshold)
+- Backend API limitation: `/api/v1/places/destinations` lacks `placesCount/isGenerateReady` metadata
+- Build status: Default build EPERM (local file lock), alternate build PASS (7.79s)
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |

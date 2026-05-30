@@ -81,9 +81,32 @@ Option B: Giữ hardcoded list nhưng validate trước khi submit — nếu des
 - Multi-city data still depends on 00052 ETL expansion ❌
 
 ### Recommended next steps
-1. **Backend**: Add `placesCount: int` and `hasData: bool` to `DestinationResponse` schema
-2. **ETL**: Run Goong ETL for TP.HCM, Đà Nẵng, Hội An, Nha Trang (00052)
-3. **FE**: Use `hasData` flag to disable unsupported destinations in suggestions UI
+1. **Backend**: Add `placesCount: int`, `hotelsCount: int`, and `isGenerateReady: bool` to `DestinationResponse` schema
+2. **ETL**: Run Goong ETL for remaining cities, verify Đà Lạt data sufficiency (currently 10 places < 30 threshold)
+3. **FE**: Use `isGenerateReady` flag to disable/marginal cities in suggestions UI
 
-### Related report
-See: `docs/REPORTS/00051_fe_error_visibility_results.md`
+### 10-city status (2026-05-30, verified in 00056)
+Backend `/api/v1/places/destinations` now returns 10 cities:
+
+| City | Places | Hotels | Ready? | UI behavior |
+|---|---|---|---|---|
+| Hà Nội | 71 | 3 | ✅ READY | Shows in FE |
+| TP. Hồ Chí Minh | 72 | 2 | ✅ READY | Shows in FE |
+| Đà Nẵng | 68 | 2 | ✅ READY | Shows in FE |
+| Hội An | 67 | 2 | ✅ READY | Shows in FE |
+| Huế | 66 | 1 | ✅ READY | Shows in FE |
+| Nha Trang | 64 | 1 | ✅ READY | Shows in FE |
+| Hạ Long | 71 | 1 | ✅ READY | Shows in FE |
+| Phú Quốc | 73 | 1 | ✅ READY | Shows in FE |
+| Sapa | 56 | 1 | ✅ READY | Shows in FE |
+| Đà Lạt | 10 | 2 | ⚠️ MARGINAL (10 < 30 threshold) | Shows in FE (may fail generate) |
+
+**Threshold**: Generate pipeline needs ≥30 places. Đà Lạt has only 10 → may trigger "Not enough destination places" error.
+
+**FE limitation**: Backend `/api/v1/places/destinations` doesn't return `placesCount` or `isGenerateReady`. FE cannot pre-filter marginal cities.
+
+**Impact**: User may select Đà Lạt and hit backend "not enough destination places" error, with no FE warning.
+
+### Related reports
+- `docs/REPORTS/00051_fe_error_visibility_results.md`
+- `docs/REPORTS/00056_calendar_generate_flow_fix_result.md`
