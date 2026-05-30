@@ -1,8 +1,17 @@
 /**
  * B3 Flow B — TripWorkspace render for existing Hà Nội trip
  * Uses auth user b2test_matrix@example.com + trip_id=235
+ *
+ * NOTE: This is a local-only fullstack test that requires:
+ * - Backend running on http://localhost:8000
+ * - Frontend dev server
+ * - Seeded test user (b2test_matrix@example.com)
+ * - Existing trip_id=235 in database
+ * - Not CI-safe by default; use FULLSTACK_E2E=1 to run
  */
 import { test, expect } from "@playwright/test";
+
+test.skip(process.env.FULLSTACK_E2E !== "1", "Local-only fullstack test - requires backend/frontend/seeded data. Set FULLSTACK_E2E=1 to run.");
 
 const TEST_EMAIL = "b2test_matrix@example.com";
 const TEST_PASSWORD = "B2Test1234!";
@@ -23,7 +32,7 @@ test("Flow B: Login and open TripWorkspace for Hà Nội trip_id=235", async ({ 
   });
 
   // 1. Login
-  await page.goto("http://127.0.0.1:5173/login");
+  await page.goto("/login");
   await page.screenshot({ path: ".codex-run-logs/flow-b-01-login-page.png", fullPage: true });
 
   await page.locator('input[type="email"]').fill(TEST_EMAIL);
@@ -35,7 +44,7 @@ test("Flow B: Login and open TripWorkspace for Hà Nội trip_id=235", async ({ 
   console.log("After login URL:", page.url());
 
   // 2. Navigate to TripWorkspace
-  await page.goto(`http://127.0.0.1:5173/trip-workspace?tripId=${TRIP_ID}`);
+  await page.goto(`/trip-workspace?tripId=${TRIP_ID}`);
   await page.waitForTimeout(3000);
   await page.screenshot({ path: ".codex-run-logs/flow-b-03-workspace-loaded.png", fullPage: true });
   console.log("Workspace URL:", page.url());

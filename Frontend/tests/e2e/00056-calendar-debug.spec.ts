@@ -1,23 +1,53 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * Debug test for CalendarModal after fix
- * Tests day button clicks with proper state handling
+ * CI-safe regression test for CalendarModal after fix.
+ * Tests day button clicks with proper state handling.
+ *
+ * This test is CI-safe:
+ * - Uses relative URLs (baseURL from playwright.config.ts)
+ * - Mocks backend destinations API
+ * - Does not require backend, DB, Gemini, or Goong
+ * - Verifies CalendarModal pointer-events fix
  */
 
-test("Debug: CalendarModal day clicks after pointer-events fix", async ({ page }) => {
+test("CalendarModal day clicks after pointer-events fix", async ({ page }) => {
   const consoleLogs: string[] = [];
   page.on("console", msg => consoleLogs.push(`${msg.type()}: ${msg.text()}`));
 
-  // Track button state changes
-  let disabledCount = 0;
+  // Mock backend destinations API to avoid real backend dependency
+  await page.route("**/api/v1/places/destinations", async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        { id: 2, name: "Hà Nội", country: "Vietnam", image: "/img/destinations/ha-n-i.jpg", rating: 0.0 },
+        { id: 29, name: "TP. Hồ Chí Minh", country: "Vietnam", image: "/img/destinations/tp-ho-chi-minh.jpg", rating: 0.0 },
+        { id: 30, name: "Đà Nẵng", country: "Vietnam", image: "/img/destinations/da-nang.jpg", rating: 0.0 },
+      ]),
+    });
+  });
 
+  // Also route the places/destinations variant (in case frontend uses that)
+  await page.route("**/places/destinations", async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        { id: 2, name: "Hà Nội", country: "Vietnam", image: "/img/destinations/ha-n-i.jpg", rating: 0.0 },
+        { id: 29, name: "TP. Hồ Chí Minh", country: "Vietnam", image: "/img/destinations/tp-ho-chi-minh.jpg", rating: 0.0 },
+        { id: 30, name: "Đà Nẵng", country: "Vietnam", image: "/img/destinations/da-nang.jpg", rating: 0.0 },
+      ]),
+    });
+  });
+
+  // Navigate using relative URL (uses baseURL from playwright.config.ts)
   console.log("=== Navigating to create-trip ===");
-  await page.goto("http://127.0.0.1:5173/create-trip");
+  await page.goto("/create-trip");
   await page.waitForLoadState("networkidle");
 
   // Open calendar
-  const calendarBtn = page.getByText(/Chọn ngày bắt đầu và kết thúc/i);
+  const calendarBtn = page.getByText(/Chọn ngày bắt đầu và kết thúc/i).or(page.getByText(/Chọn ngày/i)).first();
   await expect(calendarBtn).toBeVisible();
   await calendarBtn.click();
   await page.waitForTimeout(500);
@@ -28,7 +58,6 @@ test("Debug: CalendarModal day clicks after pointer-events fix", async ({ page }
 
   if (!modalVisible) {
     console.log("ERROR: Calendar modal did not open");
-    await page.screenshot({ path: ".codex-run-logs/00056-calendar-not-open.png", fullPage: true });
     test.skip();
     return;
   }
@@ -45,7 +74,6 @@ test("Debug: CalendarModal day clicks after pointer-events fix", async ({ page }
 
   if (enabledCount < 2) {
     console.log("ERROR: Not enough enabled buttons");
-    await page.screenshot({ path: ".codex-run-logs/00056-not-enough-buttons.png", fullPage: true });
     test.skip();
     return;
   }
@@ -83,12 +111,14 @@ test("Debug: CalendarModal day clicks after pointer-events fix", async ({ page }
   }
 
   await page.waitForTimeout(500);
-  await page.screenshot({ path: ".codex-run-logs/00056-calendar-after-clicks.png", fullPage: true });
 
   // Check confirm button
   const confirmBtn = page.locator("button:has-text('Xác nhận')");
   const confirmEnabled = await confirmBtn.isEnabled().catch(() => false);
   console.log(`Confirm button enabled: ${confirmEnabled}`);
+
+  // Verify confirm button is enabled after selecting date range
+  expect(confirmEnabled).toBeTruthy();
 
   console.log("=== Console errors ===");
   const errors = consoleLogs.filter(l => l.includes("error"));
@@ -97,5 +127,6 @@ test("Debug: CalendarModal day clicks after pointer-events fix", async ({ page }
     console.log(`  ${err}`);
   }
 
-  expect(true).toBeTruthy();
+  // Verify no console errors
+  expect(errors.length).toBe(0);
 });

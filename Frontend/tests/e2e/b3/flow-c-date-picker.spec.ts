@@ -1,8 +1,15 @@
 /**
  * B3 Flow C — Date picker observation + Create Trip page inspection
  * No generate call. Just observe UI state.
+ *
+ * NOTE: This is a local-only fullstack test that requires:
+ * - Backend running on http://localhost:8000
+ * - Frontend dev server
+ * - Not CI-safe by default; use FULLSTACK_E2E=1 to run
  */
 import { test } from "@playwright/test";
+
+test.skip(process.env.FULLSTACK_E2E !== "1", "Local-only fullstack test - requires backend/frontend. Set FULLSTACK_E2E=1 to run.");
 
 test("Flow C: Create Trip page observation - date picker and UI state", async ({ page }) => {
   const consoleErrors: string[] = [];
@@ -10,7 +17,7 @@ test("Flow C: Create Trip page observation - date picker and UI state", async ({
     if (msg.type() === "error") consoleErrors.push(msg.text());
   });
 
-  await page.goto("http://127.0.0.1:5173/create-trip");
+  await page.goto("/create-trip");
   await page.waitForTimeout(1000);
   await page.screenshot({ path: ".codex-run-logs/flow-c-01-create-trip-full.png", fullPage: true });
 

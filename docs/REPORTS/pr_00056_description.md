@@ -25,13 +25,21 @@ Fix CalendarModal/day selection bug discovered in 00055 fullstack regression, th
 
 ### Commands
 
+**CI-safe tests (default):**
 ```bash
 cd Frontend
 npm run build  # NOTE: EPERM on dist/assets - local environment issue, NOT code bug
-npx playwright test tests/e2e/b3/flow-a-hcm-error.spec.ts --reporter=list
-npx playwright test tests/e2e/b3/flow-b-workspace.spec.ts --reporter=list
-npx playwright test tests/e2e/b3/flow-c-date-picker.spec.ts --reporter=list
-npx playwright test 00056-calendar-debug.spec.ts --reporter=list
+npx playwright test  # Runs all CI-safe tests (14 tests)
+npx playwright test tests/e2e/00056-calendar-debug.spec.ts --reporter=list
+```
+
+**Local-only fullstack tests (requires backend):**
+```bash
+# Windows PowerShell
+$env:FULLSTACK_E2E="1"; npm run test:e2e:fullstack
+
+# Linux/Mac
+FULLSTACK_E2E=1 npm run test:e2e:fullstack
 ```
 
 ### Browser scenarios
@@ -46,14 +54,21 @@ npx playwright test 00056-calendar-debug.spec.ts --reporter=list
 - ✅ Flow C: Date picker UI renders correctly
 - ✅ Console errors: 0 across all tests
 
-### Test Results
+### Test Results (CI-safe)
+
+| Test | Result | Duration |
+|---|---|---|---|
+| 00056-calendar-debug (CI-safe) | ✅ PASS | 7.9s |
+| All CI-safe tests | ✅ PASS | 14/14 tests (25.8s) |
+| b3 tests (default) | ✅ SKIPPED | 3 skipped (FULLSTACK_E2E not set) |
+
+### Test Results (Local-only with FULLSTACK_E2E=1)
 
 | Test | Result | Duration |
 |---|---|---|---|
 | Flow A (TP.HCM calendar) | ✅ PASS | 12.1s |
 | Flow B (workspace) | ✅ PASS | 7.7s |
 | Flow C (date picker UI) | ✅ PASS | 4.4s |
-| Calendar debug | ✅ PASS | 3.4s |
 
 **All 4 tests passed** with 0 console errors.
 

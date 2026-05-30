@@ -2,8 +2,15 @@
  * B3 Flow A — TP.HCM generate error visibility test
  * Verifies: FE payload, 422 response, UI error message
  * Strategy: Use API directly to confirm 422, then observe UI validation message
+ *
+ * NOTE: This is a local-only fullstack test that requires:
+ * - Backend running on http://localhost:8000
+ * - Frontend dev server
+ * - Not CI-safe by default; use FULLSTACK_E2E=1 to run
  */
 import { test, expect } from "@playwright/test";
+
+test.skip(process.env.FULLSTACK_E2E !== "1", "Local-only fullstack test - requires backend/frontend. Set FULLSTACK_E2E=1 to run.");
 
 test("Flow A: TP.HCM generate shows error (422 data missing)", async ({ page }) => {
   const networkRequests: { url: string; method: string; payload: string; status: number; body: string }[] = [];
@@ -37,7 +44,7 @@ test("Flow A: TP.HCM generate shows error (422 data missing)", async ({ page }) 
   });
 
   // 1. Open Create Trip page
-  await page.goto("http://127.0.0.1:5173/create-trip");
+  await page.goto("/create-trip");
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: ".codex-run-logs/flow-a-01-create-trip-loaded.png", fullPage: true });
 
