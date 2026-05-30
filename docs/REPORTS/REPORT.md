@@ -59,6 +59,30 @@ Branch báo cáo: `docs/00050-c-c3-design-readiness-audit`
 - Cache: Bumped to `destinations:all:v2` to invalidate old blocking semantics
 - Product principle: City đã nằm trong backend API phải cho phép user chọn và submit. Warning chỉ là advisory.
 
+## 00058A Auth/Guest/Rate-limit/Claim Audit
+
+| File | Nội dung |
+|---|---|
+| [00058a_auth_guest_rate_limit_claim_audit.md](00058a_auth_guest_rate_limit_claim_audit.md) | 2026-05-31: Sub-agents + comprehensive auth/guest/rate-limit/claim audit — **AUDIT_COMPLETE** |
+| [pr_00058a_description.md](pr_00058a_description.md) | PR body template for chore/00058A |
+
+**Key findings:**
+- ✅ Auth/JWT/refresh flow hoạt động đúng
+- ✅ Guest generate với claim token hoạt động đúng
+- ⚠️ Guest rate limit có thể bypass qua UA spoofing (known issue)
+- ⚠️ Guest không bị limit số trips (orphan trips accumulate)
+- ⚠️ FE không phân biệt 429 với các lỗi khác
+- ❌ Không có E2E test verify 429 behavior
+- ❌ Không có E2E test verify double-click protection
+
+**Sub-agents created:**
+- `product-flow-reviewer.md` - User journey mapping
+- `backend-auth-rate-limit-auditor.md` - Auth/quota/abuse audit
+- `frontend-e2e-ux-tester.md` - E2E/UX review
+- `docs-sync-reviewer.md` - Docs sync + local IP scan
+
+**Recommended next**: `fix/00058-b-auth-guest-rate-limit-claim-regression`
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |
