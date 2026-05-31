@@ -33,10 +33,18 @@ export function clearTokens(): void {
 
 // ---------- Error class ----------
 
+export interface RateLimitInfo {
+  limit: number;
+  remaining: number;
+  resetAt: string;
+  retryAfter?: number;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
     public body: Record<string, unknown>,
+    public headers: RateLimitInfo | null = null,
   ) {
     const detail =
       typeof body.detail === "string"
@@ -88,8 +96,25 @@ async function parseResponse<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
 
   const body = await res.json();
+
+  // Extract rate limit headers if present
+  const rateLimitHeader = res.headers.get("X-RateLimit-Limit");
+  let rateLimitInfo: RateLimitInfo | null = null;
+  if (rateLimitHeader) {
+    const limit = parseInt(rateLimitHeader, 10);
+    const remaining = parseInt(res.headers.get("X-RateLimit-Remaining") || "0", 10);
+    const resetAt = res.headers.get("X-RateLimit-Reset") || "";
+    const retryAfter = res.headers.get("Retry-After");
+    rateLimitInfo = {
+      limit,
+      remaining,
+      resetAt,
+      ...(retryAfter && { retryAfter: parseInt(retryAfter, 10) }),
+    };
+  }
+
   if (!res.ok) {
-    throw new ApiError(res.status, body);
+    throw new ApiError(res.status, body, rateLimitInfo);
   }
   return body as T;
 }

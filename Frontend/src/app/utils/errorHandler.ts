@@ -3,7 +3,7 @@
  * Maps backend error responses to user-friendly Vietnamese messages.
  */
 
-import { ApiError } from "../services/api";
+import { ApiError, RateLimitInfo } from "../services/api";
 
 export interface GenerateErrorContext {
   destination?: string;
@@ -96,6 +96,27 @@ export function getGenerateErrorMessage(error: unknown, context?: GenerateErrorC
 
   // 429 Too Many Requests (rate limit)
   if (status === 429) {
+    // Use rate limit metadata from headers if available
+    if (error.headers && error.headers.remaining !== undefined) {
+      const { limit, remaining, resetAt, retryAfter } = error.headers;
+      const resetTime = resetAt ? new Date(resetAt) : null;
+
+      // Format reset time for user (e.g., "23:59" or "HH:mm tomorrow")
+      let resetTimeString = "";
+      if (resetTime) {
+        const hours = resetTime.getHours().toString().padStart(2, "0");
+        const minutes = resetTime.getMinutes().toString().padStart(2, "0");
+        resetTimeString = ` lúc ${hours}:${minutes}`;
+      }
+
+      if (remaining === 0) {
+        return `Bạn đã dùng hết ${limit} lượt tạo lịch trình AI hôm nay. Hạn mức sẽ được đặt lại ${resetTimeString}.`;
+      } else {
+        return `Còn ${remaining} lượt tạo lịch trình AI hôm nay (${limit} lượt tổng).`;
+      }
+    }
+
+    // Fallback to default message
     const quotaLimit = context?.quotaLimit ?? 3;
     return `Bạn đã dùng hết ${quotaLimit} lượt tạo lịch trình AI hôm nay. Vui lòng thử lại vào ngày mai.`;
   }

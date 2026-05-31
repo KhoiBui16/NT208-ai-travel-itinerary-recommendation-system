@@ -102,11 +102,14 @@ class RateLimiter:
         """
         if not await self.check_ai_limit(user_id):
             limit = self.settings.rate_limit_ai_free
-            reset = self._next_midnight_utc().strftime("%H:%M UTC")
+            reset = self._next_midnight_utc()
             raise RateLimitException(
-                f"Bạn đã dùng hết {limit} lượt tạo lịch trình AI hôm nay. "
-                f"Hạn mức sẽ được đặt lại lúc {reset}. "
-                "Nâng cấp tài khoản để có thêm lượt."
+                detail=f"Bạn đã dùng hết {limit} lượt tạo lịch trình AI hôm nay. "
+                f"Hạn mức sẽ được đặt lại lúc {reset.strftime('%H:%M UTC')}. "
+                "Nâng cấp tài khoản để có thêm lượt.",
+                limit=limit,
+                remaining=0,
+                reset_at=reset,
             )
 
     async def enforce_ai_guest_limit(self, ip: str | None, user_agent: str | None) -> None:
@@ -119,11 +122,14 @@ class RateLimiter:
         actor = self.guest_actor(ip=ip, user_agent=user_agent)
         if not await self.check_ai_actor_limit(actor):
             limit = self.settings.rate_limit_ai_free
-            reset = self._next_midnight_utc().strftime("%H:%M UTC")
+            reset = self._next_midnight_utc()
             raise RateLimitException(
-                f"Bạn đã dùng hết {limit} lượt tạo lịch trình AI miễn phí hôm nay. "
-                f"Hạn mức sẽ được đặt lại lúc {reset}. "
-                "Đăng ký tài khoản miễn phí để lưu lịch trình và nhận thêm lượt AI mỗi ngày."
+                detail=f"Bạn đã dùng hết {limit} lượt tạo lịch trình AI miễn phí hôm nay. "
+                f"Hạn mức sẽ được đặt lại lúc {reset.strftime('%H:%M UTC')}. "
+                "Đăng ký tài khoản miễn phí để lưu lịch trình và nhận thêm lượt AI mỗi ngày.",
+                limit=limit,
+                remaining=0,
+                reset_at=reset,
             )
 
     async def get_remaining(self, user_id: int) -> RateLimitInfo:
@@ -138,7 +144,21 @@ class RateLimiter:
         Raises:
             ServiceUnavailableException: If Redis is down (always fail-closed for reads).
         """
-        key = self._ai_key(f"user:{user_id}")
+        return await self.get_remaining_for_actor(f"user:{user_id}")
+
+    async def get_remaining_for_actor(self, actor: str) -> RateLimitInfo:
+        """Return remaining AI calls for an actor (user or guest) for the current UTC day.
+
+        Args:
+            actor: Actor string like "user:123" or "guest:abcd1234".
+
+        Returns:
+            RateLimitInfo with remaining count, limit, and reset time.
+
+        Raises:
+            ServiceUnavailableException: If Redis is down (always fail-closed for reads).
+        """
+        key = self._ai_key(actor)
         try:
             current = int(await self.redis.get(key) or 0)
         except Exception as exc:

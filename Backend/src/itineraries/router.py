@@ -7,7 +7,7 @@ Shared endpoint (EP-15):
   read-only access via shareToken
 """
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.dependencies import get_current_user, get_current_user_optional
@@ -44,17 +44,32 @@ def get_itinerary_service(session: AsyncSession = Depends(get_db)) -> ItineraryS
 async def generate_itinerary(
     body: GenerateItineraryRequest,
     request: Request,
+    response: Response,
     user: User | None = Depends(get_current_user_optional),
     service: ItineraryService = Depends(get_itinerary_service),
     rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> ItineraryResponse:
+    # Check rate limit and add headers
     if user:
         await rate_limiter.enforce_ai_limit(user.id)
+        rate_info = await rate_limiter.get_remaining(user.id)
     else:
         await rate_limiter.enforce_ai_guest_limit(
             ip=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
+        # Get actual remaining for guest using the same actor key
+        guest_actor = rate_limiter.guest_actor(
+            ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+        rate_info = await rate_limiter.get_remaining_for_actor(guest_actor)
+
+    # Add rate limit headers
+    response.headers["X-RateLimit-Limit"] = str(rate_info.limit)
+    response.headers["X-RateLimit-Remaining"] = str(rate_info.remaining)
+    response.headers["X-RateLimit-Reset"] = rate_info.reset_at.isoformat()
+
     return await service.generate(body, user_id=user.id if user else None)
 
 

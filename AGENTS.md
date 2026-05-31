@@ -36,6 +36,37 @@ File nay la bang dieu phoi ngan gon cho Claude trong repo nay. Chi giu nhung age
 | Migration/schema change | `.claude/skills/db-migration/SKILL.md` |
 | Commit/PR theo CI/CD | `.claude/skills/git-pr-workflow/SKILL.md` |
 
+## Local execution environment (Windows PowerShell)
+
+User's local environment is Windows với PowerShell. Khi chạy local verification:
+
+**PowerShell command pattern:**
+
+```powershell
+# Anchor từ repo root
+$ROOT = git rev-parse --show-toplevel
+Set-Location $ROOT
+
+# Backend verification
+Set-Location "$ROOT\Backend"
+uv run ruff check src tests
+uv run ruff format --check src tests
+uv run pytest tests/unit/ -v --tb=short
+
+# Frontend verification
+Set-Location "$ROOT\Frontend"
+npm run build -- --outDir .build-tmp\verify
+npx playwright test tests\e2e\ --reporter=list
+```
+
+**Rules:**
+- Luôn anchor từ repo root: `$ROOT = git rev-parse --show-toplevel`
+- Dùng PowerShell path syntax (`\` thay vì `/`) trong local commands
+- Dùng `<repo-root>` placeholder trong docs/reports thay vì local absolute paths
+- KHÔNG ghi local machine path/hostname/private IP vào docs
+- CI/GitHub Actions dùng Linux Bash, nhưng local instructions phải PowerShell-safe
+- Khi Bash `cd` fail vì Windows path issues, dùng `Set-Location` với full path
+
 ## Phase C3/C4 non-negotiables
 
 - C3 la trip-bound companion chat, khong phai global chatroom.

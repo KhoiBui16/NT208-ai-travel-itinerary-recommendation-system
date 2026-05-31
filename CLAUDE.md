@@ -103,6 +103,38 @@ npm run test:e2e          # Playwright e2e (requires BE running)
 npm run test:e2e:headed   # headed mode
 ```
 
+### Local execution environment (Windows PowerShell)
+
+User's local environment is Windows with PowerShell. When running local verification:
+
+**PowerShell-safe commands:**
+
+```powershell
+# Anchor from repo root
+$ROOT = git rev-parse --show-toplevel
+Set-Location $ROOT
+
+# Backend verification
+Set-Location "$ROOT\Backend"
+uv run ruff check src tests
+uv run ruff format --check src tests
+uv run pytest tests/unit/ -v --tb=short
+uv run pytest tests/integration/ -v --tb=short
+
+# Frontend verification
+Set-Location "$ROOT\Frontend"
+npm run build -- --outDir .build-tmp\verify
+npx playwright test tests\e2e\ --reporter=list
+```
+
+**Rules:**
+- Always anchor commands from repo root using `$ROOT = git rev-parse --show-toplevel`
+- Use PowerShell path syntax (`\` not `/`) in local commands
+- Use `<repo-root>` placeholder in docs/reports instead of local absolute paths
+- Do NOT write local machine path/hostname/private IP into docs
+- CI/GitHub Actions uses Linux Bash only, but local instructions must be PowerShell-safe
+- When Bash `cd` fails due to Windows path issues, use `Set-Location` with full path
+
 ## CI va PR rules
 
 Required checks tren GitHub:

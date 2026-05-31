@@ -3,6 +3,25 @@ import { loginAs } from "./helpers/auth";
 
 const API_URL = process.env.E2E_API_URL || "http://localhost:8000";
 
+// Check if backend is available before running trip tests
+async function isBackendAvailable(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_URL}/api/v1/health`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+test.beforeAll(async () => {
+  const backendAvailable = await isBackendAvailable();
+  if (!backendAvailable) {
+    test.skip(true, "Backend API not available. These are integration tests that require the backend server.");
+  }
+});
+
 /** Create a trip via BE API and return its ID. */
 async function createTripViaAPI(accessToken: string) {
   const res = await fetch(`${API_URL}/api/v1/itineraries`, {
