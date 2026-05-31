@@ -163,6 +163,6 @@ Retry-After: 3600
 ---
 
 **Generated**: 2026-05-31
-**Branch**: `fix/00058-b-auth-guest-rate-limit-claim-regression`
+**Branch**: `fix/00058-b1-rate-limit-claim-regression`
 **Commit title**: `fix: [#00058] fix guest rate-limit remaining headers and document 429 UX limitations`
 **Status**: READY - Critical fix verified, documented limitations honestly, awaiting user approval
