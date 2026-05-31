@@ -156,6 +156,54 @@ Retry-After: 3600
 - Frontend build: ⚠️ PENDING
 - E2E 00058 tests: ⚠️ PENDING
 
+## 00059A Calendar Modal E2E Blocker Fix
+
+| File | Nội dung |
+|---|---|
+| [00059a_calendar_modal_e2e_blocker_fix.md](00059a_calendar_modal_e2e_blocker_fix.md) | 2026-05-31: Calendar helper with month navigation — **COMPLETE** |
+| [pr_00059a_description.md](pr_00059a_description.md) | PR body template for fix/00059 |
+| [../ISSUES/issue_calendar_modal_enabled_date_buttons_e2e_blocker.md](ISSUES/issue_calendar_modal_enabled_date_buttons_e2e_blocker.md) | Issue — **RESOLVED** |
+
+**Root cause identified:**
+- ✅ **Test helper bug**, not UI bug
+- ✅ CalendarModal already has prevMonth/nextMonth buttons (UI correct)
+- ✅ Tests only looked at current month (automation limitation)
+- ✅ When test runs on May 31, only 1 day enabled in current month
+
+**Solution implemented:**
+- ✅ Created reusable calendar helper (`tests/e2e/helpers/calendar.ts`)
+- ✅ Helper automatically detects < 2 enabled days in current month
+- ✅ Clicks next month button to navigate to future months
+- ✅ Retries up to 3 months (current + next 2)
+- ✅ Selects date range and verifies modal closes
+
+**Test results:**
+| Test | Before | After |
+|---|---|---|
+| 00056 | ⚠️ SKIP | ✅ PASS (01/06/2026 → 02/06/2026) |
+| 00057 | ⚠️ SKIP | ✅ PASS (Đà Lạt partial city allowed to submit) |
+| Full suite | 9 PASS / 13 SKIP / 0 FAIL | 11 PASS / 11 SKIP / 0 FAIL |
+
+**Files changed:** 6 files (3 FE test, 3 docs)
+
+**Test status:**
+- Frontend build: ✅ PASS (10.10s)
+- 00056 test: ✅ PASS
+- 00057 test: ✅ PASS
+- 00058 test: ✅ PASS (4/4)
+- Full e2e: ✅ PASS (11/11, 11 skip auth/trips)
+- Backend lint: ✅ PASS
+- Backend format: ✅ PASS
+- Backend unit: ✅ PASS (119)
+
+**Console output success:**
+```
+Month 1: Not enough enabled days (1), trying next month
+[Calendar Helper] Modal closed after 0ms
+[Calendar Helper] Date input text after selection: "01/06/2026 — 02/06/2026"
+✓ Successfully selected date range: 01/06/2026 → 02/06/2026
+```
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |

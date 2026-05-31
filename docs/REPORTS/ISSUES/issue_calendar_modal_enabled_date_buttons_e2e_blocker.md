@@ -2,8 +2,9 @@
 
 **Created**: 2026-05-31
 **Priority**: P1
-**Status**: OPEN
-**Related**: 00056 (SKIP), 00057 (FAIL), 00058B (partial verify)
+**Status**: ✅ **RESOLVED** (2026-05-31)
+**Related**: 00056 (PASS), 00057 (PASS), 00058B (partial verify)
+**Resolution**: PR #00059A created reusable calendar helper with automatic month navigation
 
 ---
 
@@ -153,6 +154,27 @@ const TEST_DATE = new Date('2026-06-01'); // Future date with plenty of enabled 
 4. Enable 00059 full user journey UAT
 
 **Priority**: P1 - Blocks multiple E2E tests
+
+---
+
+## Resolution (2026-05-31)
+
+**Implemented**: PR #00059A - `fix/00059-a-calendar-modal-e2e-blocker`
+
+**Solution**: Created reusable calendar helper (`tests/e2e/helpers/calendar.ts`) that:
+1. Automatically detects when current month has < 2 enabled days
+2. Clicks next month button to navigate to future months
+3. Retries up to 3 months (current + next 2)
+4. Selects date range and verifies modal closes
+
+**Root Cause**: Test helper bug, not UI bug. CalendarModal already had month navigation (prevMonth/nextMonth buttons), but tests only looked at current month.
+
+**Test Results After Fix**:
+- 00056: SKIP → PASS (selected 01/06/2026 → 02/06/2026)
+- 00057: SKIP → PASS (Đà Lạt partial city allowed to submit)
+- Full suite: 9 PASS / 13 SKIP / 0 FAIL → 11 PASS / 11 SKIP / 0 FAIL
+
+**Verification**: Helper successfully navigated to June month when May 31 had only 1 enabled day.
 
 ---
 
