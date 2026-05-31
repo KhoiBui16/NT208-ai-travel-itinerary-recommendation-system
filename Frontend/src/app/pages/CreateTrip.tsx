@@ -70,6 +70,11 @@ export default function CreateTrip() {
   const handleGenerateAI = async () => {
     const destInput = destination.trim();
 
+    // Prevent double-click - early return if already generating
+    if (isGenerating) {
+      return;
+    }
+
     if (!destInput || !dateRange.from || !dateRange.to) {
       setValidationError("Vui lòng nhập đầy đủ điểm đến và thời gian chuyến đi");
       return;

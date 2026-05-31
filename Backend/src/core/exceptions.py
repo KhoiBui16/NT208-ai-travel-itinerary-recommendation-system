@@ -18,6 +18,7 @@ AppException subclasses and FastAPI's HTTPException produce
 the same response format.
 """
 
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException, Request, status
@@ -79,10 +80,34 @@ class ValidationException(AppException):
 
 
 class RateLimitException(AppException):
-    """Raised when a rate limit is exceeded (e.g. daily AI call quota)."""
+    """Raised when a rate limit is exceeded (e.g. daily AI call quota).
 
-    def __init__(self, detail: str = "Rate limit exceeded") -> None:
+    Attributes:
+        limit: Maximum calls allowed per day.
+        remaining: Number of calls left today (0 when exceeded).
+        reset_at: When the counter resets (next midnight UTC).
+        retry_after_seconds: Seconds until reset (for Retry-After header).
+    """
+
+    def __init__(
+        self,
+        detail: str = "Rate limit exceeded",
+        limit: int = 3,
+        remaining: int = 0,
+        reset_at: datetime | None = None,
+    ) -> None:
         super().__init__(detail, "RATE_LIMIT_EXCEEDED", status.HTTP_429_TOO_MANY_REQUESTS)
+        self.limit = limit
+        self.remaining = remaining
+        self.reset_at = reset_at
+
+    @property
+    def retry_after_seconds(self) -> int:
+        """Calculate seconds until reset for Retry-After header."""
+        if self.reset_at is None:
+            return 3600  # Default 1 hour
+        delta = self.reset_at - datetime.now(UTC)
+        return max(0, int(delta.total_seconds()))
 
 
 class ServiceUnavailableException(AppException):
@@ -100,20 +125,40 @@ def error_payload(exc: AppException) -> dict[str, Any]:
 
     Returns:
         Dict with "detail", "error_code", and "status_code" keys.
+        For RateLimitException, also includes limit/remaining/reset_at.
     """
-    return {
+    payload = {
         "detail": exc.detail,
         "error_code": exc.error_code,
         "status_code": exc.status_code,
     }
+    if isinstance(exc, RateLimitException):
+        payload["limit"] = exc.limit
+        payload["remaining"] = exc.remaining
+        if exc.reset_at is not None:
+            payload["reset_at"] = exc.reset_at.isoformat()
+        payload["retry_after_seconds"] = exc.retry_after_seconds
+    return payload
 
 
-async def app_exception_handler(_: Request, exc: AppException) -> JSONResponse:
+async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     """Format AppException subclasses into consistent JSON responses.
 
     Registered as a FastAPI exception handler in middlewares.py.
+    Adds rate limit headers for RateLimitException.
     """
-    return JSONResponse(status_code=exc.status_code, content=error_payload(exc))
+    payload = error_payload(exc)
+    response = JSONResponse(status_code=exc.status_code, content=payload)
+
+    # Add rate limit headers for 429 responses
+    if isinstance(exc, RateLimitException):
+        response.headers["X-RateLimit-Limit"] = str(exc.limit)
+        response.headers["X-RateLimit-Remaining"] = str(exc.remaining)
+        if exc.reset_at is not None:
+            response.headers["X-RateLimit-Reset"] = exc.reset_at.isoformat()
+        response.headers["Retry-After"] = str(exc.retry_after_seconds)
+
+    return response
 
 
 async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
