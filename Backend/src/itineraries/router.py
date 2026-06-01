@@ -1,16 +1,10 @@
 """Itinerary + Shared-trip API endpoints.
 
-Router structure:
-  - `router`        → /api/v1/itineraries   (authenticated trip operations)
-  - `shared_router` → /api/v1/shared        (public read-only via share token)
+Itinerary endpoints (EP 8-20):
+  CRUD, rating, share, claim, activity/accommodation sub-resources
 
-Endpoint groups:
-  1. Main CRUD           (EP 8-12): create, list, get, update, delete trips
-  2. AI Generation       (EP 8):    generate itinerary via AI pipeline
-  3. Rating & Share      (EP 13-15): rate trip, create share link, claim trip
-  4. Activity CRUD       (EP 16-18): add, update, delete activities within a day
-  5. Accommodation CRUD  (EP 19-20): add, delete accommodations for a trip
-  6. Shared Access       (EP 15):    public read-only trip view via shareToken
+Shared endpoint (EP-15):
+  read-only access via shareToken
 """
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -34,26 +28,16 @@ from src.itineraries.schemas import (
 )
 from src.itineraries.service import ItineraryService
 
-# ---------------------------------------------------------------------------
-# Router initialization
-# ---------------------------------------------------------------------------
+# --- Itinerary router ---
 
-# Primary router — all trip endpoints require authentication unless noted
 router = APIRouter(prefix="/itineraries", tags=["Itineraries"])
 
 
 def get_itinerary_service(session: AsyncSession = Depends(get_db)) -> ItineraryService:
-    """Dependency injection factory for ItineraryService.
-
-    Creates a new service instance per request, bound to the current
-    database session provided by the `get_db` dependency.
-    """
     return ItineraryService(session=session)
 
 
-# ===================================================================
-# Main CRUD — Trip lifecycle operations
-# ===================================================================
+# --- Main CRUD ---
 
 
 @router.post("/generate", response_model=ItineraryResponse, status_code=201)
@@ -65,19 +49,11 @@ async def generate_itinerary(
     service: ItineraryService = Depends(get_itinerary_service),
     rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> ItineraryResponse:
-    """Generate a complete AI-powered itinerary (Phase C.1).
-
-    - Authenticated users: enforces per-user AI rate limit
-    - Guest users: enforces per-IP + user-agent rate limit
-    - Returns rate limit headers (X-RateLimit-*) on every response
-    """
     # Check rate limit and add headers
     if user:
-        # Authenticated user — enforce per-user daily AI generation limit
         await rate_limiter.enforce_ai_limit(user.id)
         rate_info = await rate_limiter.get_remaining(user.id)
     else:
-        # Guest user — enforce per-IP rate limit using client fingerprint
         await rate_limiter.enforce_ai_guest_limit(
             ip=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
@@ -89,7 +65,7 @@ async def generate_itinerary(
         )
         rate_info = await rate_limiter.get_remaining_for_actor(guest_actor)
 
-    # Attach rate limit info as response headers for FE consumption
+    # Add rate limit headers
     response.headers["X-RateLimit-Limit"] = str(rate_info.limit)
     response.headers["X-RateLimit-Remaining"] = str(rate_info.remaining)
     response.headers["X-RateLimit-Reset"] = rate_info.reset_at.isoformat()
@@ -103,11 +79,6 @@ async def create_trip(
     user: User | None = Depends(get_current_user_optional),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> ItineraryResponse:
-    """Create a new manual trip (empty shell, no AI generation).
-
-    Both authenticated and guest users can create trips. Guest trips
-    receive a claim_token in the response for later ownership transfer.
-    """
     return await service.create_manual(request, user_id=user.id if user else None)
 
 
@@ -118,11 +89,6 @@ async def list_trips(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> PaginatedResponse:
-    """List all trips owned by the authenticated user (paginated).
-
-    Returns lightweight trip summaries without nested days/activities
-    to keep the response fast for the TripLibrary and TripHistory pages.
-    """
     return await service.list_by_user(user.id, page=page, size=size)
 
 
@@ -132,11 +98,6 @@ async def get_trip(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> ItineraryResponse:
-    """Get full trip details including all nested days, activities, and accommodations.
-
-    Only the trip owner can access this endpoint.
-    For public access, use the shared endpoint with a share token.
-    """
     return await service.get_by_id(trip_id, user_id=user.id)
 
 
@@ -147,12 +108,6 @@ async def update_trip(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> ItineraryResponse:
-    """Auto-save endpoint for trip editing — supports partial nested updates.
-
-    The FE TripWorkspace calls this on every meaningful change. The service
-    performs diff/sync logic: creates new items, updates existing ones, and
-    deletes items that were removed from the incoming payload.
-    """
     return await service.update(trip_id, request, user_id=user.id)
 
 
@@ -162,16 +117,10 @@ async def delete_trip(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> None:
-    """Permanently delete a trip and all nested data (cascade).
-
-    Only the trip owner can delete. Returns 204 No Content on success.
-    """
     await service.delete(trip_id, user_id=user.id)
 
 
-# ===================================================================
-# Rating & Share — Social and feedback features
-# ===================================================================
+# --- Rating & Share ---
 
 
 @router.put("/{trip_id}/rating")
@@ -182,11 +131,6 @@ async def rate_trip(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> SuccessResponse:
-    """Rate a trip with 1-5 stars and optional text feedback.
-
-    Uses upsert logic — calling again with same trip_id updates the rating.
-    Only the trip owner can rate their own trip.
-    """
     await service.rate(trip_id, user_id=user.id, rating=rating, feedback=feedback)
     return SuccessResponse(message="Rating saved")
 
@@ -197,11 +141,6 @@ async def share_trip(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> ShareResponse:
-    """Create a public share link for read-only trip access.
-
-    If a share link already exists, returns the existing one (with redacted token).
-    Share links are stored as opaque hashed tokens in the database.
-    """
     return await service.share(trip_id, user_id=user.id)
 
 
@@ -212,17 +151,10 @@ async def claim_trip(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> dict:
-    """Claim a guest-created trip after login/registration.
-
-    Validates the one-time claim token and transfers trip ownership
-    to the authenticated user. Token is consumed after successful claim.
-    """
     return await service.claim(trip_id, user_id=user.id, request=request)
 
 
-# ===================================================================
-# Activity CRUD — Sub-resource operations within a trip day
-# ===================================================================
+# --- Activity CRUD ---
 
 
 @router.post("/{trip_id}/activities", response_model=ActivitySchema, status_code=201)
@@ -233,11 +165,6 @@ async def add_activity(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> ActivitySchema:
-    """Add a new activity to a specific day within the trip.
-
-    The `day_id` query parameter specifies which TripDay receives the activity.
-    Validates that the day belongs to the trip and the user owns the trip.
-    """
     return await service.add_activity(trip_id, day_id, data, user_id=user.id)
 
 
@@ -249,10 +176,6 @@ async def update_activity(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> ActivitySchema:
-    """Update an existing activity's details (time, name, costs, etc.).
-
-    Only non-null fields from the request body are applied as updates.
-    """
     return await service.update_activity(trip_id, activity_id, data, user_id=user.id)
 
 
@@ -263,13 +186,10 @@ async def delete_activity(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> None:
-    """Remove an activity from the trip. Returns 204 on success."""
     await service.delete_activity(trip_id, activity_id, user_id=user.id)
 
 
-# ===================================================================
-# Accommodation CRUD — Lodging sub-resource operations
-# ===================================================================
+# --- Accommodation CRUD ---
 
 
 @router.post("/{trip_id}/accommodations", response_model=AccommodationSchema, status_code=201)
@@ -279,10 +199,6 @@ async def add_accommodation(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> AccommodationSchema:
-    """Add a new accommodation record to the trip.
-
-    Accommodations link to specific day IDs via the `dayIds` field.
-    """
     return await service.add_accommodation(trip_id, data, user_id=user.id)
 
 
@@ -293,15 +209,11 @@ async def delete_accommodation(
     user: User = Depends(get_current_user),
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> None:
-    """Remove an accommodation record from the trip. Returns 204 on success."""
     await service.delete_accommodation(trip_id, accommodation_id, user_id=user.id)
 
 
-# ===================================================================
-# Shared Trip Access — Public read-only endpoint (EP-15)
-# ===================================================================
+# --- Shared (EP-15: public read-only via shareToken) ---
 
-# Separate router with /shared prefix — no authentication required
 shared_router = APIRouter(prefix="/shared", tags=["Shared"])
 
 
@@ -310,9 +222,4 @@ async def get_shared_trip(
     share_token: str,
     service: ItineraryService = Depends(get_itinerary_service),
 ) -> ItineraryResponse:
-    """Access a shared trip via its public share token (read-only).
-
-    No authentication required. The share token is hashed and looked up
-    in the database. Returns 404 if the link is invalid, revoked, or expired.
-    """
     return await service.get_by_share_token(share_token)

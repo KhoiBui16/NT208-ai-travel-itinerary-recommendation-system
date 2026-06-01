@@ -2,16 +2,6 @@
 
 Handles trip CRUD, auto-save with diff/sync, share/claim, rating,
 and C.1 AI itinerary generation through ItineraryPipeline.
-
-Service method groups:
-  1. Generate  — AI-powered trip creation via ItineraryPipeline
-  2. CRUD      — Manual create, read, update, delete trips
-  3. Rating    — Upsert user ratings on trips
-  4. Share     — Create share links and resolve shared trips
-  5. Claim     — Guest trip ownership transfer after login
-  6. Activity CRUD       — Add/update/delete activities within a day
-  7. Accommodation CRUD  — Add/delete accommodations for a trip
-  8. Private helpers      — Internal methods for data sync, mapping, etc.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -45,71 +35,37 @@ from src.itineraries.schemas import (
 )
 from src.shared.service import BaseService
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-# Maximum number of active (non-archived) trips a single user can have.
-# Prevents unbounded resource consumption per user account.
 MAX_ACTIVE_TRIPS = 5
 
 
 class ItineraryService(BaseService):
-    """Business logic for itineraries.
-
-    Orchestrates between the TripRepository (data access), ItineraryPipeline
-    (AI generation), and schema conversion to produce API responses.
-    """
+    """Business logic for itineraries."""
 
     def __init__(self, session: AsyncSession) -> None:
         super().__init__()
         self.session = session
         self.repo = TripRepository(session)
 
-    # ===================================================================
-    # Generate — Phase C.1 AI-powered trip generation
-    # ===================================================================
+    # --- Generate (Phase C.1 direct pipeline) ---
 
     async def generate(
         self, request: GenerateItineraryRequest, user_id: int | None
     ) -> ItineraryResponse:
-        """AI-powered trip generation using the C.1 direct pipeline.
-
-        Delegates to ItineraryPipeline which:
-        1. Resolves destination from DB
-        2. Gathers place/hotel context for the LLM
-        3. Calls Gemini with retry logic
-        4. Persists the generated Trip, Days, Activities, Accommodations
-
-        For guest users (user_id=None), issues a claim token so they
-        can claim the trip after registering.
-        """
+        """AI-powered trip generation using the C.1 direct pipeline."""
         pipeline = ItineraryPipeline(self.session)
         trip = await pipeline.generate(request, user_id=user_id)
         resp = await self._to_response(trip)
-
-        # Guest users receive a claim token for later ownership transfer
         if user_id is None:
             resp.claim_token = await self._issue_claim_token(trip.id)
         return resp
 
-    # ===================================================================
-    # CRUD — Manual trip lifecycle operations
-    # ===================================================================
+    # --- CRUD ---
 
     async def create_manual(
         self, request: CreateTripRequest, user_id: int | None
     ) -> ItineraryResponse:
-        """Create an empty manual trip (no AI generation).
-
-        Enforces the per-user trip limit for authenticated users.
-        Guest-created trips receive a claim token in the response.
-        """
-        # Check trip count limit for authenticated users
         if user_id is not None:
             await self._check_trip_limit(user_id)
-
-        # Create the trip record with empty days/activities
         trip = await self._create_trip_record(
             destination=request.destination,
             trip_name=request.trip_name,
@@ -122,18 +78,11 @@ class ItineraryService(BaseService):
             user_id=user_id,
         )
         resp = await self._to_response(trip)
-
-        # Issue claim token for guest-created trips
         if user_id is None:
             resp.claim_token = await self._issue_claim_token(trip.id)
         return resp
 
     async def get_by_id(self, trip_id: int, user_id: int) -> ItineraryResponse:
-        """Retrieve a trip with full nested data (days, activities, accommodations).
-
-        Raises NotFoundException if trip doesn't exist.
-        Raises ForbiddenException if the requester is not the trip owner.
-        """
         trip = await self.repo.get_with_full_data(trip_id)
         if not trip:
             raise NotFoundException("Trip not found")
@@ -142,11 +91,6 @@ class ItineraryService(BaseService):
         return await self._to_response(trip)
 
     async def list_by_user(self, user_id: int, page: int = 1, size: int = 20) -> PaginatedResponse:
-        """List trips for a user with pagination.
-
-        Returns lightweight responses (no nested days/activities) for
-        efficient listing in TripLibrary and TripHistory pages.
-        """
         skip = (page - 1) * size
         trips, total = await self.repo.list_by_user(user_id, skip=skip, limit=size)
         items = [await self._to_list_item(t) for t in trips]
@@ -155,51 +99,36 @@ class ItineraryService(BaseService):
     async def update(
         self, trip_id: int, data: UpdateTripRequest, user_id: int
     ) -> ItineraryResponse:
-        """Auto-save endpoint: apply partial updates with diff/sync logic.
-
-        Update flow:
-        1. Validate ownership
-        2. Update trip-level scalar fields (name, budget)
-        3. Sync days + activities (diff: create new, update existing, delete removed)
-        4. Sync accommodations (same diff logic)
-        5. Recalculate total_cost from all nested cost fields
-        6. Re-fetch fresh data to return consistent response
-        """
         trip = await self.repo.get_with_full_data(trip_id)
         if not trip:
             raise NotFoundException("Trip not found")
         if trip.user_id != user_id:
             raise ForbiddenException("Not trip owner")
 
-        # Step 1: Update trip-level fields (only if provided)
+        # Update trip-level fields
         if data.trip_name is not None:
             trip.trip_name = data.trip_name
         if data.budget is not None:
             trip.budget = data.budget
 
-        # Step 2: Sync days + activities (diff logic — handles create/update/delete)
+        # Sync days + activities (diff logic)
         if data.days is not None:
             await self._sync_days(trip, data.days)
 
-        # Step 3: Sync accommodations (same diff pattern)
+        # Sync accommodations
         if data.accommodations is not None:
             await self._sync_accommodations(trip, data.accommodations)
 
-        # Step 4: Recalculate total cost from all nested entities
         await self.session.flush()
         trip.total_cost = self._calculate_total_cost(trip)
         await self.session.flush()
 
-        # Step 5: Re-fetch to get consistent data (expire cached ORM relations)
+        # Expire cached relations so re-fetch loads fresh data from DB
         self.session.expire_all()
         trip = await self.repo.get_with_full_data(trip_id)
         return await self._to_response(trip)
 
     async def delete(self, trip_id: int, user_id: int) -> None:
-        """Permanently delete a trip and all nested data (cascade).
-
-        Validates ownership before deletion.
-        """
         trip = await self.repo.get_by_id(trip_id)
         if not trip:
             raise NotFoundException("Trip not found")
@@ -207,15 +136,9 @@ class ItineraryService(BaseService):
             raise ForbiddenException("Not trip owner")
         await self.repo.delete_trip(trip)
 
-    # ===================================================================
-    # Rating — User feedback on trips
-    # ===================================================================
+    # --- Rating ---
 
     async def rate(self, trip_id: int, user_id: int, rating: int, feedback: str | None) -> None:
-        """Upsert a rating (1-5 stars) with optional text feedback.
-
-        Uses upsert semantics — calling again updates the existing rating.
-        """
         trip = await self.repo.get_by_id(trip_id)
         if not trip:
             raise NotFoundException("Trip not found")
@@ -223,25 +146,15 @@ class ItineraryService(BaseService):
             raise ForbiddenException("Not trip owner")
         await self.repo.upsert_rating(trip_id, rating, feedback)
 
-    # ===================================================================
-    # Share — Public read-only trip access via opaque tokens
-    # ===================================================================
+    # --- Share ---
 
     async def share(self, trip_id: int, user_id: int) -> ShareResponse:
-        """Create a public share link for the trip.
-
-        If a non-revoked share link already exists, returns it with a
-        redacted token (the raw token cannot be recovered from the hash).
-        Otherwise, generates a new opaque token, stores its hash, and
-        returns the full share URL with the raw token.
-        """
         trip = await self.repo.get_by_id(trip_id)
         if not trip:
             raise NotFoundException("Trip not found")
         if trip.user_id != user_id:
             raise ForbiddenException("Not trip owner")
 
-        # Check for existing non-revoked share link
         existing = await self.repo.get_share_link(trip_id)
         if existing and existing.revoked_at is None:
             # Already shared — return existing token info (cannot recover raw token)
@@ -252,7 +165,6 @@ class ItineraryService(BaseService):
                 expires_at=existing.expires_at,
             )
 
-        # Generate new opaque share token and store its hash
         raw_token, token_hash = create_opaque_token("share")
         await self.repo.create_share_link(
             trip_id=trip_id,
@@ -260,8 +172,6 @@ class ItineraryService(BaseService):
             created_by_user_id=user_id,
             permission="view",
         )
-
-        # Build the shareable URL using the frontend base URL from settings
         settings = get_settings()
         return ShareResponse(
             share_url=f"{settings.frontend_url}/shared/{raw_token}",
@@ -270,50 +180,29 @@ class ItineraryService(BaseService):
         )
 
     async def get_by_share_token(self, raw_token: str) -> ItineraryResponse:
-        """Resolve a share token to a full trip response (public, no auth).
-
-        Validates that the token exists, hasn't been revoked, and hasn't
-        expired. Returns 404 for any invalid state.
-        """
-        # Hash the raw token to look up the stored link
         token_hash = hash_token(raw_token)
         link = await self.repo.get_share_link_by_hash(token_hash)
-
-        # Validate link state
         if not link or link.revoked_at is not None:
             raise NotFoundException("Share link not found or revoked")
         if link.expires_at and link.expires_at < datetime.now(UTC):
             raise NotFoundException("Share link expired")
-
-        # Fetch and return the full trip data
         trip = await self.repo.get_with_full_data(link.trip_id)
         if not trip:
             raise NotFoundException("Trip not found")
         return await self._to_response(trip)
 
-    # ===================================================================
-    # Claim — Guest trip ownership transfer
-    # ===================================================================
+    # --- Claim ---
 
     async def claim(self, trip_id: int, user_id: int, request: ClaimTripRequest) -> dict:
-        """Transfer ownership of a guest-created trip to an authenticated user.
-
-        Validation steps:
-        1. Trip must exist and have no current owner (user_id is None)
-        2. Claim token must be valid (matching hash, not consumed, not expired)
-        3. On success: consume the token and set trip.user_id atomically
-        """
         trip = await self.repo.get_by_id(trip_id)
         if not trip:
             raise NotFoundException("Trip not found")
         if trip.user_id is not None:
             raise ConflictException("Trip already has an owner")
 
-        # Hash the provided claim token for comparison
         token_hash = hash_token(request.claim_token)
         claim_tokens = await self.repo.get_claim_tokens_for_trip(trip_id)
 
-        # Find a valid, unconsumed, non-expired token matching the hash
         valid_token: GuestClaimToken | None = None
         for ct in claim_tokens:
             if ct.token_hash == token_hash and ct.consumed_at is None:
@@ -324,31 +213,23 @@ class ItineraryService(BaseService):
         if not valid_token:
             raise ForbiddenException("Invalid or expired claim token")
 
-        # Consume token + transfer ownership in one flush (atomic operation)
+        # Consume token + transfer ownership in one flush
         valid_token.consumed_at = datetime.now(UTC)
         trip.user_id = user_id
         await self.session.flush()
 
         return {"claimed": True, "trip_id": trip_id}
 
-    # ===================================================================
-    # Activity CRUD — Sub-resource operations within trip days
-    # ===================================================================
+    # --- Activity CRUD ---
 
     async def add_activity(
         self, trip_id: int, day_id: int, data: ActivitySchema, user_id: int
     ) -> ActivitySchema:
-        """Add a new activity to a specific day within the trip.
-
-        Validates ownership and ensures the day belongs to the trip.
-        """
         trip = await self._verify_owner(trip_id, user_id)
-
-        # Verify the target day belongs to this trip
+        # Verify day belongs to trip
         day_ids = {d.id for d in trip.days}
         if day_id not in day_ids:
             raise NotFoundException("Day not found in this trip")
-
         activity = await self.repo.add_activity(
             trip_day_id=day_id,
             name=data.name,
@@ -371,17 +252,10 @@ class ItineraryService(BaseService):
     async def update_activity(
         self, trip_id: int, activity_id: int, data: ActivitySchema, user_id: int
     ) -> ActivitySchema:
-        """Update an existing activity's details.
-
-        Only non-null, non-identity fields from the request are applied.
-        The `id` and `extra_expenses` fields are excluded from the update.
-        """
         await self._verify_owner(trip_id, user_id)
         activity = await self.repo.get_activity_by_id(activity_id)
         if not activity:
             raise NotFoundException("Activity not found")
-
-        # Build update dict excluding identity and nested fields
         updates = {
             k: v
             for k, v in data.model_dump(exclude_unset=True).items()
@@ -391,24 +265,17 @@ class ItineraryService(BaseService):
         return self._activity_to_schema(activity)
 
     async def delete_activity(self, trip_id: int, activity_id: int, user_id: int) -> None:
-        """Remove an activity from the trip (cascade deletes extra expenses)."""
         await self._verify_owner(trip_id, user_id)
         activity = await self.repo.get_activity_by_id(activity_id)
         if not activity:
             raise NotFoundException("Activity not found")
         await self.repo.delete_activity(activity)
 
-    # ===================================================================
-    # Accommodation CRUD — Lodging sub-resource operations
-    # ===================================================================
+    # --- Accommodation CRUD ---
 
     async def add_accommodation(
         self, trip_id: int, data: AccommodationSchema, user_id: int
     ) -> AccommodationSchema:
-        """Add a new accommodation record to the trip.
-
-        Provides defaults for required fields when not specified.
-        """
         await self._verify_owner(trip_id, user_id)
         acc = await self.repo.add_accommodation(
             trip_id=trip_id,
@@ -425,26 +292,17 @@ class ItineraryService(BaseService):
         return AccommodationSchema.model_validate(acc, from_attributes=True)
 
     async def delete_accommodation(self, trip_id: int, acc_id: int, user_id: int) -> None:
-        """Remove an accommodation record from the trip."""
         await self._verify_owner(trip_id, user_id)
         acc = await self.repo.get_accommodation_by_id(acc_id)
         if not acc:
             raise NotFoundException("Accommodation not found")
         await self.repo.delete_accommodation(acc)
 
-    # ===================================================================
-    # Private helpers — Internal utility methods
-    # ===================================================================
-
-    # --- Trip record creation ---
+    # --- Private helpers ---
 
     async def _create_trip_record(
         self, *, user_id: int | None, ai_generated: bool = False, **kwargs: object
     ) -> Trip:
-        """Create a new Trip row and return it with eager-loaded relations.
-
-        Checks trip limit for authenticated users before creation.
-        """
         if user_id is not None:
             await self._check_trip_limit(user_id)
         trip = await self.repo.create_trip(
@@ -452,24 +310,12 @@ class ItineraryService(BaseService):
         )
         return await self.repo.get_with_full_data(trip.id)
 
-    # --- Authorization helpers ---
-
     async def _check_trip_limit(self, user_id: int) -> None:
-        """Enforce maximum active trips per user.
-
-        Active trips are those with status in ('draft', 'planned', 'confirmed').
-        Raises ConflictException when the limit is exceeded.
-        """
         count = await self.repo.count_active_by_user(user_id)
         if count >= MAX_ACTIVE_TRIPS:
             raise ConflictException(f"Maximum {MAX_ACTIVE_TRIPS} active trips allowed")
 
     async def _verify_owner(self, trip_id: int, user_id: int) -> Trip:
-        """Load a trip with full data and verify the requester is the owner.
-
-        Returns the loaded trip on success.
-        Raises NotFoundException or ForbiddenException on failure.
-        """
         trip = await self.repo.get_with_full_data(trip_id)
         if not trip:
             raise NotFoundException("Trip not found")
@@ -477,14 +323,7 @@ class ItineraryService(BaseService):
             raise ForbiddenException("Not trip owner")
         return trip
 
-    # --- Token helpers ---
-
     async def _issue_claim_token(self, trip_id: int) -> str:
-        """Generate a one-time claim token for guest-created trips.
-
-        The raw token is returned to the client; only the hash is stored.
-        Token expires after 24 hours.
-        """
         raw_token, token_hash = create_opaque_token("claim")
         expires_at = datetime.now(UTC) + timedelta(hours=24)
         await self.repo.create_claim_token(
@@ -494,32 +333,22 @@ class ItineraryService(BaseService):
         )
         return raw_token
 
-    # --- Diff/sync helpers for auto-save ---
-
     async def _sync_days(self, trip: Trip, incoming_days: list[DaySchema]) -> None:
-        """Synchronize trip days with incoming data using diff logic.
-
-        Three-way operation:
-        1. UPDATE: Days with matching IDs get their fields updated
-        2. CREATE: Days without IDs (or unknown IDs) are created as new
-        3. DELETE: Existing days not present in incoming list are removed
-        """
         existing_map = {d.id: d for d in trip.days if d.id is not None}
         incoming_day_ids: set[int] = set()
 
         for idx, day_data in enumerate(incoming_days):
             if day_data.id and day_data.id in existing_map:
-                # UPDATE existing day — match by ID
+                # UPDATE existing day
                 incoming_day_ids.add(day_data.id)
                 day = existing_map[day_data.id]
                 day.label = day_data.label
                 day.date = day_data.date
                 day.destination_name = day_data.destination_name
                 day.day_number = idx + 1
-                # Recursively sync activities within this day
                 await self._sync_activities(day, day_data.activities)
             else:
-                # CREATE new day + all its activities
+                # CREATE new day
                 day = await self.repo.add_day(
                     trip_id=trip.id,
                     day_number=idx + 1,
@@ -546,25 +375,17 @@ class ItineraryService(BaseService):
                         order_index=0,
                     )
 
-        # DELETE days not present in incoming list (cascade deletes activities)
+        # DELETE days not in incoming
         for existing_id in existing_map:
             if existing_id not in incoming_day_ids:
                 await self.session.delete(existing_map[existing_id])
 
     async def _sync_activities(self, day: TripDay, incoming: list[ActivitySchema]) -> None:
-        """Synchronize activities within a single day using diff logic.
-
-        Same three-way pattern as _sync_days:
-        1. UPDATE: Match by ID, apply field changes
-        2. CREATE: New activities without matching IDs
-        3. DELETE: Remove activities not in incoming list
-        """
         existing_map = {a.id: a for a in day.activities if a.id is not None}
         incoming_ids: set[int] = set()
 
         for idx, act_data in enumerate(incoming):
             if act_data.id and act_data.id in existing_map:
-                # UPDATE existing activity — apply non-null field values
                 incoming_ids.add(act_data.id)
                 activity = existing_map[act_data.id]
                 for field in (
@@ -585,10 +406,8 @@ class ItineraryService(BaseService):
                     val = getattr(act_data, field, None)
                     if val is not None:
                         setattr(activity, field, val)
-                # Update sort order to match incoming position
                 activity.order_index = idx
             else:
-                # CREATE new activity in this day
                 await self.repo.add_activity(
                     trip_day_id=day.id,
                     name=act_data.name,
@@ -607,25 +426,16 @@ class ItineraryService(BaseService):
                     order_index=idx,
                 )
 
-        # DELETE activities not present in incoming list
         for existing_id in existing_map:
             if existing_id not in incoming_ids:
                 await self.session.delete(existing_map[existing_id])
 
     async def _sync_accommodations(self, trip: Trip, incoming: list[AccommodationSchema]) -> None:
-        """Synchronize accommodations using diff logic.
-
-        Same three-way pattern:
-        1. UPDATE: Match by ID, apply non-null field changes
-        2. CREATE: New accommodations without matching IDs
-        3. DELETE: Remove accommodations not in incoming list
-        """
         existing_map = {a.id: a for a in trip.accommodations if a.id is not None}
         incoming_ids: set[int] = set()
 
         for acc_data in incoming:
             if acc_data.id and acc_data.id in existing_map:
-                # UPDATE existing accommodation — apply non-null fields
                 incoming_ids.add(acc_data.id)
                 acc = existing_map[acc_data.id]
                 if acc_data.name is not None:
@@ -645,7 +455,6 @@ class ItineraryService(BaseService):
                 if acc_data.duration is not None:
                     acc.duration = acc_data.duration
             else:
-                # CREATE new accommodation
                 await self.repo.add_accommodation(
                     trip_id=trip.id,
                     name=acc_data.name or "",
@@ -658,56 +467,30 @@ class ItineraryService(BaseService):
                     day_ids=acc_data.day_ids,
                 )
 
-        # DELETE accommodations not present in incoming list
         for existing_id in existing_map:
             if existing_id not in incoming_ids:
                 await self.session.delete(existing_map[existing_id])
 
-    # --- Cost calculation ---
-
     def _calculate_total_cost(self, trip: Trip) -> int:
-        """Calculate the total cost of a trip from all nested cost fields.
-
-        Sums:
-        - Activity costs: adult_price, child_price, custom_cost, bus/taxi
-        - Activity extra expenses
-        - Day-level extra expenses
-        - Accommodation total prices
-        """
         total = 0
-
-        # Sum costs from all days and their activities
         for day in trip.days:
             for activity in day.activities:
-                # Standard activity cost fields
                 total += activity.adult_price or 0
                 total += activity.child_price or 0
                 total += activity.custom_cost or 0
                 total += activity.bus_ticket_price or 0
                 total += activity.taxi_cost or 0
-                # Activity-level extra expenses
                 for expense in activity.extra_expenses:
                     total += expense.amount
-            # Day-level extra expenses
             for expense in day.extra_expenses:
                 total += expense.amount
-
-        # Sum accommodation costs
         for acc in trip.accommodations:
             total += acc.total_price or 0
-
         return total
-
-    # --- ORM-to-schema conversion helpers ---
 
     @staticmethod
     def _activity_to_schema(activity: Activity) -> ActivitySchema:
-        """Convert Activity ORM to ActivitySchema without triggering lazy loads.
-
-        Used for single-activity CRUD responses where we don't need to
-        load the full trip tree. Extra expenses are returned as empty list
-        to avoid N+1 queries.
-        """
+        """Convert Activity ORM to ActivitySchema without triggering lazy loads."""
         return ActivitySchema(
             id=activity.id,
             name=activity.name,
@@ -727,16 +510,8 @@ class ItineraryService(BaseService):
         )
 
     async def _to_response(self, trip: Trip) -> ItineraryResponse:
-        """Convert a fully-loaded Trip ORM to ItineraryResponse schema.
-
-        Manually maps all nested relationships (days → activities → expenses)
-        to avoid Pydantic's `from_attributes` which can trigger lazy loads
-        in async SQLAlchemy sessions.
-        """
-        # Build day schemas with nested activities and expenses
         days = []
         for day in trip.days:
-            # Map each activity with its extra expenses
             activities = []
             for act in day.activities:
                 expenses = [
@@ -762,13 +537,10 @@ class ItineraryService(BaseService):
                         extra_expenses=expenses,
                     )
                 )
-
-            # Map day-level extra expenses
             day_expenses = [
                 ExtraExpenseSchema(id=e.id, name=e.name, amount=e.amount, category=e.category)
                 for e in day.extra_expenses
             ]
-
             days.append(
                 DaySchema(
                     id=day.id,
@@ -780,7 +552,6 @@ class ItineraryService(BaseService):
                 )
             )
 
-        # Map accommodations (flat list, no deep nesting)
         accommodations = [
             AccommodationSchema(
                 id=a.id,
@@ -796,7 +567,6 @@ class ItineraryService(BaseService):
             for a in trip.accommodations
         ]
 
-        # Assemble the full response
         return ItineraryResponse(
             id=trip.id,
             destination=trip.destination,
@@ -818,11 +588,6 @@ class ItineraryService(BaseService):
         )
 
     async def _to_list_item(self, trip: Trip) -> ItineraryResponse:
-        """Convert a Trip to a lightweight response for list views.
-
-        Returns empty arrays for days and accommodations to keep
-        the response payload small for paginated listing pages.
-        """
         return ItineraryResponse(
             id=trip.id,
             destination=trip.destination,
@@ -837,8 +602,8 @@ class ItineraryService(BaseService):
                 total=trip.adults_count + trip.children_count,
             ),
             interests=trip.interests or [],
-            days=[],  # Omitted for list views — loaded on detail view
-            accommodations=[],  # Omitted for list views
+            days=[],
+            accommodations=[],
             created_at=trip.created_at,
             updated_at=trip.updated_at,
         )

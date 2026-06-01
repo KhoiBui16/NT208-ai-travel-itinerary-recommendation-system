@@ -1,14 +1,4 @@
-"""Place and destination data access repository.
-
-Provides query operations for:
-  - Destination — City browsing with aggregate counts
-  - Place       — Search, filter, and detail queries
-  - Hotel       — Hotel listings by destination
-  - SavedPlace  — User bookmark CRUD operations
-
-All queries use async SQLAlchemy and return ORM objects or raw results.
-Methods call flush() after mutations to synchronize with the database.
-"""
+"""Place and destination data access repository."""
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,36 +8,20 @@ from src.places.models import Destination, Hotel, Place, SavedPlace
 
 
 class PlaceRepository:
-    """Data access layer for Place, Destination, Hotel, and SavedPlace.
-
-    Encapsulates raw SQLAlchemy queries behind a clean async interface.
-    All methods operate on the injected session.
-    """
+    """Data access for Place, Destination, Hotel, and SavedPlace."""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    # ===================================================================
-    # Destination — City-level queries
-    # ===================================================================
+    # --- Destination ---
 
     async def get_destinations(self) -> list[Destination]:
-        """Get all active destinations, ordered alphabetically.
-
-        Only returns destinations with is_active=True.
-        """
         stmt = select(Destination).where(Destination.is_active.is_(True)).order_by(Destination.name)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
     async def get_destinations_with_counts(self) -> list[dict]:
-        """Get destinations with places and hotels counts in a single query.
-
-        Uses LEFT OUTER JOINs with DISTINCT counts to avoid
-        inflated numbers from the cross-join of places × hotels.
-
-        Returns dicts (not ORM objects) for flexible serialization.
-        """
+        """Get destinations with places and hotels counts in one query."""
         stmt = (
             select(
                 Destination.id,
@@ -86,27 +60,18 @@ class PlaceRepository:
         ]
 
     async def get_destination_by_slug(self, slug: str) -> Destination | None:
-        """Look up a destination by its URL-safe slug."""
         stmt = select(Destination).where(Destination.slug == slug)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_destination_by_name(self, name: str) -> Destination | None:
-        """Look up a destination by its exact display name."""
         stmt = select(Destination).where(Destination.name == name)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    # ===================================================================
-    # Place — Search, filter, and detail queries
-    # ===================================================================
+    # --- Place ---
 
     async def get_by_id(self, place_id: int) -> Place | None:
-        """Fetch a place by ID with its destination eager-loaded.
-
-        Eager loads destination to avoid a lazy load when accessing
-        place.destination.name in the response serializer.
-        """
         stmt = select(Place).where(Place.id == place_id).options(selectinload(Place.destination))
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
@@ -118,36 +83,18 @@ class PlaceRepository:
         category: str | None = None,
         limit: int = 20,
     ) -> list[Place]:
-        """Search places with optional filters.
-
-        Filters:
-        - query: ILIKE match on place name (partial match)
-        - city: ILIKE match on destination name (partial match)
-        - category: Exact match on place category
-
-        Results are ordered by rating descending for quality-first display.
-        Destination is eager-loaded for response serialization.
-        """
         stmt = select(Place).options(selectinload(Place.destination))
-
-        # Apply optional filters
         if query:
             stmt = stmt.where(Place.name.ilike(f"%{query}%"))
         if city:
             stmt = stmt.join(Destination).where(Destination.name.ilike(f"%{city}%"))
         if category:
             stmt = stmt.where(Place.category == category)
-
-        # Order by quality and limit results
         stmt = stmt.order_by(Place.rating.desc()).limit(limit)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
     async def get_by_destination(self, destination_id: int) -> list[Place]:
-        """Get all places in a destination, ordered by rating.
-
-        Used for destination detail pages to show all available places.
-        """
         stmt = (
             select(Place)
             .where(Place.destination_id == destination_id)
@@ -163,12 +110,6 @@ class PlaceRepository:
         exclude_ids: list[int],
         limit: int = 5,
     ) -> list[Place]:
-        """Find alternative places for activity suggestions (EP-30).
-
-        Returns top-rated places in the same destination and category,
-        excluding places already used in the trip (via exclude_ids).
-        Destination is eager-loaded for response serialization.
-        """
         stmt = (
             select(Place)
             .where(
@@ -179,23 +120,14 @@ class PlaceRepository:
             .order_by(Place.rating.desc(), Place.review_count.desc())
             .limit(limit)
         )
-
-        # Exclude already-used places
         if exclude_ids:
             stmt = stmt.where(Place.id.notin_(exclude_ids))
-
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    # ===================================================================
-    # Hotel — Accommodation reference queries
-    # ===================================================================
+    # --- Hotel ---
 
     async def get_hotels_by_destination(self, destination_id: int) -> list[Hotel]:
-        """Get all hotels in a destination, ordered by rating.
-
-        Used for destination detail pages and AI context building.
-        """
         stmt = (
             select(Hotel)
             .where(Hotel.destination_id == destination_id)
@@ -204,16 +136,9 @@ class PlaceRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    # ===================================================================
-    # SavedPlace — User bookmark operations
-    # ===================================================================
+    # --- Saved Place ---
 
     async def get_saved_by_user(self, user_id: int) -> list[SavedPlace]:
-        """Get all saved places for a user with full place + destination data.
-
-        Eager loads place → destination chain for rich response serialization.
-        Ordered by save date descending (newest first).
-        """
         stmt = (
             select(SavedPlace)
             .where(SavedPlace.user_id == user_id)
@@ -224,14 +149,12 @@ class PlaceRepository:
         return list(result.scalars().all())
 
     async def save_place(self, user_id: int, place_id: int) -> SavedPlace:
-        """Create a new bookmark record. Caller should check for duplicates first."""
         saved = SavedPlace(user_id=user_id, place_id=place_id)
         self.session.add(saved)
         await self.session.flush()
         return saved
 
     async def unsave_place(self, saved_id: int) -> None:
-        """Delete a bookmark by its ID. No-op if not found."""
         stmt = select(SavedPlace).where(SavedPlace.id == saved_id)
         result = await self.session.execute(stmt)
         saved = result.scalar_one_or_none()
@@ -240,10 +163,6 @@ class PlaceRepository:
             await self.session.flush()
 
     async def saved_exists(self, user_id: int, place_id: int) -> bool:
-        """Check if a place is already bookmarked by a user.
-
-        Uses COUNT query for efficiency (no full row fetch needed).
-        """
         stmt = (
             select(func.count())
             .select_from(SavedPlace)
@@ -253,7 +172,6 @@ class PlaceRepository:
         return count > 0
 
     async def get_saved_by_id(self, saved_id: int) -> SavedPlace | None:
-        """Fetch a saved place record by ID (shallow — no eager loading)."""
         stmt = select(SavedPlace).where(SavedPlace.id == saved_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()

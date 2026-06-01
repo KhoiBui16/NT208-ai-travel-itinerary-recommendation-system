@@ -1,17 +1,7 @@
 """Trip data access repository.
 
-Provides CRUD and query operations for trips and all nested entities:
-  - Trip       — Root itinerary entity
-  - TripDay    — Calendar day within a trip
-  - Activity   — Scheduled event within a day
-  - Accommodation — Lodging bookings for a trip
-  - TripRating — User feedback (1-5 stars)
-  - ShareLink  — Opaque share tokens for public trip access
-  - GuestClaimToken — One-time tokens for guest trip ownership transfer
-
-Also provides AI recommendation context queries:
-  - Destination resolution (name → DB row)
-  - Place/hotel search for LLM context building
+Provides CRUD and query operations for trips and nested entities
+(days, activities, accommodations, ratings, share links, claim tokens).
 """
 
 from sqlalchemy import delete, func, select
@@ -24,48 +14,27 @@ from src.places.models import Destination, Hotel, Place
 
 
 class TripRepository:
-    """Data access layer for Trip and all nested entities.
-
-    Encapsulates raw SQLAlchemy queries behind a clean async interface.
-    All methods operate on the injected session and call flush() to
-    synchronize with the database without committing the transaction.
-    """
+    """Data access for Trip and nested entities."""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    # ===================================================================
-    # Trip CRUD — Core trip lifecycle operations
-    # ===================================================================
+    # --- Trip CRUD ---
 
     async def get_by_id(self, trip_id: int) -> Trip | None:
-        """Fetch a trip by ID (shallow — no eager loading of relations)."""
         result = await self.session.execute(select(Trip).where(Trip.id == trip_id))
         return result.scalar_one_or_none()
 
     async def get_with_full_data(self, trip_id: int) -> Trip | None:
-        """Fetch a trip with all nested relations eager-loaded.
-
-        Eager-load chain:
-          Trip → days → activities → extra_expenses
-          Trip → days → extra_expenses (day-level)
-          Trip → accommodations
-          Trip → rating
-          Trip → share_link
-
-        This avoids N+1 query issues when serializing the full response.
-        """
+        """Eager-load days→activities→extra_expenses, accommodations, rating, share_link."""
         stmt = (
             select(Trip)
             .where(Trip.id == trip_id)
             .options(
-                # Load days → activities → activity extra expenses
                 selectinload(Trip.days)
                 .selectinload(TripDay.activities)
                 .selectinload(Activity.extra_expenses),
-                # Load days → day-level extra expenses
                 selectinload(Trip.days).selectinload(TripDay.extra_expenses),
-                # Load flat relations
                 selectinload(Trip.accommodations),
                 selectinload(Trip.rating),
                 selectinload(Trip.share_link),
@@ -77,16 +46,10 @@ class TripRepository:
     async def list_by_user(
         self, user_id: int, skip: int = 0, limit: int = 20
     ) -> tuple[list[Trip], int]:
-        """Return (trips, total_count) for a user.
-
-        Results are ordered by creation date descending (newest first).
-        Uses two queries: one for count, one for paginated results.
-        """
-        # Count total trips for this user
+        """Return (trips, total_count) for a user."""
         count_stmt = select(func.count()).select_from(Trip).where(Trip.user_id == user_id)
         total = (await self.session.execute(count_stmt)).scalar_one()
 
-        # Fetch paginated trip list
         stmt = (
             select(Trip)
             .where(Trip.user_id == user_id)
@@ -98,10 +61,6 @@ class TripRepository:
         return list(result.scalars().all()), total
 
     async def count_active_by_user(self, user_id: int) -> int:
-        """Count active trips for a user (used for trip limit enforcement).
-
-        Active statuses: 'draft', 'planned', 'confirmed'
-        """
         stmt = (
             select(func.count())
             .select_from(Trip)
@@ -112,51 +71,26 @@ class TripRepository:
         )
         return (await self.session.execute(stmt)).scalar_one()
 
-    async def create_trip(self, **kwargs: object) -> Trip:
-        """Insert a new Trip row and return it with its generated ID."""
-        trip = Trip(**kwargs)  # type: ignore[arg-type]
-        self.session.add(trip)
-        await self.session.flush()
-        return trip
-
-    async def update_trip(self, trip: Trip, **kwargs: object) -> Trip:
-        """Update trip fields from keyword arguments (skip None values)."""
-        for key, value in kwargs.items():
-            if value is not None:
-                setattr(trip, key, value)
-        await self.session.flush()
-        return trip
-
-    async def delete_trip(self, trip: Trip) -> None:
-        """Delete a trip (cascade removes all nested entities)."""
-        await self.session.delete(trip)
-        await self.session.flush()
-
-    # ===================================================================
-    # AI Recommendation Context — Destination/place/hotel queries for LLM
-    # ===================================================================
+    # --- AI Recommendation Context ---
 
     async def resolve_destination_for_ai(self, destination: str) -> Destination | None:
         """Resolve a user-provided destination string to a Destination row.
 
-        Resolution order (tries each in sequence until a match is found):
-        1. Exact case-insensitive name match
-           (handles "Hà Nội" == "hà nội")
-        2. Slug match — converts input to slug format
-           (handles "Ha Noi" → "ha-noi")
-        3. Fuzzy ILIKE name match
-           (handles partial names like "Nội" or "Hanoi")
+        Resolution order:
+        1. Exact case-insensitive name match (handles "Hà Nội" == "hà nội")
+        2. Slug match — converts input to slug format (handles "Ha Noi" → "ha-noi")
+        3. Fuzzy ILIKE name match (handles partial names like "Nội" or "Hanoi")
         """
         name = destination.strip()
 
-        # Strategy 1: Exact case-insensitive match on destination name
+        # 1. Exact case-insensitive match
         exact_stmt = select(Destination).where(func.lower(Destination.name) == name.lower())
         exact = (await self.session.execute(exact_stmt)).scalar_one_or_none()
         if exact:
             return exact
 
-        # Strategy 2: Slug-based match — normalize input to slug format
-        # e.g. "Ha Noi" → "ha-noi", "TP. Hồ Chí Minh" → "tp-ho-chi-minh"
+        # 2. Slug-based match: normalize input to slug format
+        #    "Ha Noi" → "ha-noi", "TP. Hồ Chí Minh" → "tp-h-ch-minh"
         slug_candidate = self._to_slug(name)
         if slug_candidate:
             slug_stmt = select(Destination).where(Destination.slug == slug_candidate)
@@ -164,8 +98,7 @@ class TripRepository:
             if slug_match:
                 return slug_match
 
-        # Strategy 3: Fuzzy ILIKE match on name (partial match)
-        # e.g. "Nội" matches "Hà Nội", picks the most relevant by places_count
+        # 3. Fuzzy ILIKE match on name (partial match, e.g. "Nội" matches "Hà Nội")
         fuzzy_stmt = (
             select(Destination)
             .where(Destination.name.ilike(f"%{name}%"))
@@ -178,9 +111,8 @@ class TripRepository:
     def _to_slug(text: str) -> str:
         """Convert a destination name to slug format for matching.
 
-        Uses the same Vietnamese diacritics replacement table as the ETL
-        db_loader._to_slug() so that slugs generated at query time match
-        slugs stored by the ETL pipeline.
+        Uses the same replacement table as ETL db_loader._to_slug() so that
+        slugs generated at query time match slugs stored by the ETL pipeline.
 
         Examples:
             "Ha Noi"          → "ha-noi"   (ASCII input, no replacements needed)
@@ -191,9 +123,7 @@ class TripRepository:
         import re
 
         slug = text.lower().strip()
-
-        # Mirror the ETL db_loader replacement table exactly so slugs match DB.
-        # Maps Vietnamese diacritical characters to their ASCII equivalents.
+        # Mirror the ETL db_loader replacement table exactly so slugs match DB
         replacements = {
             "đ": "d",
             "ă": "a",
@@ -263,12 +193,8 @@ class TripRepository:
             "ỹ": "y",
             "ỵ": "y",
         }
-
-        # Apply character replacements
         for vn_char, ascii_char in replacements.items():
             slug = slug.replace(vn_char, ascii_char)
-
-        # Replace non-alphanumeric sequences with hyphens
         slug = re.sub(r"[^a-z0-9]+", "-", slug)
         slug = slug.strip("-")
         return slug
@@ -279,11 +205,7 @@ class TripRepository:
         categories: list[str] | None = None,
         limit: int = 30,
     ) -> list[Place]:
-        """Return ranked candidate places for AI recommendation context.
-
-        Places are ordered by rating → review count → name for quality.
-        Optionally filtered by category to match user interests.
-        """
+        """Return ranked candidate places for AI recommendation context."""
         stmt = select(Place).where(Place.destination_id == destination_id)
         if categories:
             stmt = stmt.where(Place.category.in_(categories))
@@ -296,10 +218,7 @@ class TripRepository:
         return list(result.scalars().all())
 
     async def get_hotels_for_ai(self, destination_id: int, limit: int = 8) -> list[Hotel]:
-        """Return ranked candidate hotels for AI recommendation context.
-
-        Hotels are ordered by rating → review count → name for quality.
-        """
+        """Return ranked candidate hotels for AI recommendation context."""
         stmt = (
             select(Hotel)
             .where(Hotel.destination_id == destination_id)
@@ -309,19 +228,32 @@ class TripRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    # ===================================================================
-    # TripDay — Day-level CRUD operations
-    # ===================================================================
+    async def create_trip(self, **kwargs: object) -> Trip:
+        trip = Trip(**kwargs)  # type: ignore[arg-type]
+        self.session.add(trip)
+        await self.session.flush()
+        return trip
+
+    async def update_trip(self, trip: Trip, **kwargs: object) -> Trip:
+        for key, value in kwargs.items():
+            if value is not None:
+                setattr(trip, key, value)
+        await self.session.flush()
+        return trip
+
+    async def delete_trip(self, trip: Trip) -> None:
+        await self.session.delete(trip)
+        await self.session.flush()
+
+    # --- TripDay ---
 
     async def add_day(self, **kwargs: object) -> TripDay:
-        """Insert a new TripDay row and return it with its generated ID."""
         day = TripDay(**kwargs)  # type: ignore[arg-type]
         self.session.add(day)
         await self.session.flush()
         return day
 
     async def update_day(self, day: TripDay, **kwargs: object) -> TripDay:
-        """Update day fields from keyword arguments (skip None values)."""
         for key, value in kwargs.items():
             if value is not None:
                 setattr(day, key, value)
@@ -329,10 +261,7 @@ class TripRepository:
         return day
 
     async def delete_days_by_trip(self, trip_id: int, exclude_ids: set[int] | None = None) -> int:
-        """Bulk delete days of a trip, optionally keeping those in exclude_ids.
-
-        Returns the number of rows deleted.
-        """
+        """Delete days of a trip, optionally keeping those with IDs in exclude_ids."""
         stmt = delete(TripDay).where(TripDay.trip_id == trip_id)
         if exclude_ids:
             stmt = stmt.where(TripDay.id.notin_(exclude_ids))
@@ -340,15 +269,9 @@ class TripRepository:
         await self.session.flush()
         return result.rowcount
 
-    # ===================================================================
-    # Activity — Activity-level CRUD operations
-    # ===================================================================
+    # --- Activity ---
 
     async def add_activity(self, **kwargs: object) -> Activity:
-        """Insert a new Activity row.
-
-        Flushes and refreshes to get the generated ID and server defaults.
-        """
         activity = Activity(**kwargs)  # type: ignore[arg-type]
         self.session.add(activity)
         await self.session.flush()
@@ -356,7 +279,6 @@ class TripRepository:
         return activity
 
     async def update_activity(self, activity: Activity, **kwargs: object) -> Activity:
-        """Update activity fields from keyword arguments (skip None values)."""
         for key, value in kwargs.items():
             if value is not None:
                 setattr(activity, key, value)
@@ -365,20 +287,14 @@ class TripRepository:
         return activity
 
     async def delete_activity(self, activity: Activity) -> None:
-        """Delete an activity (cascade removes extra expenses)."""
         await self.session.delete(activity)
         await self.session.flush()
 
     async def get_activity_by_id(self, activity_id: int) -> Activity | None:
-        """Fetch a single activity by ID (no eager loading)."""
         result = await self.session.execute(select(Activity).where(Activity.id == activity_id))
         return result.scalar_one_or_none()
 
     async def get_activity_with_trip(self, activity_id: int) -> Activity | None:
-        """Fetch an activity with its parent day and trip eager-loaded.
-
-        Used by SuggestionService to access the trip context from an activity.
-        """
         stmt = (
             select(Activity)
             .where(Activity.id == activity_id)
@@ -390,11 +306,6 @@ class TripRepository:
         return result.scalar_one_or_none()
 
     async def get_place_ids_in_trip(self, trip_id: int) -> list[int]:
-        """Get all place IDs referenced by activities in a trip.
-
-        Used by SuggestionService to exclude already-used places from
-        alternative suggestions.
-        """
         stmt = (
             select(Activity.place_id)
             .join(TripDay, Activity.trip_day_id == TripDay.id)
@@ -403,15 +314,9 @@ class TripRepository:
         result = await self.session.execute(stmt)
         return [row[0] for row in result.all() if row[0] is not None]
 
-    # ===================================================================
-    # Accommodation — Lodging CRUD operations
-    # ===================================================================
+    # --- Accommodation ---
 
     async def add_accommodation(self, **kwargs: object) -> Accommodation:
-        """Insert a new Accommodation row.
-
-        Flushes and refreshes to get the generated ID.
-        """
         acc = Accommodation(**kwargs)  # type: ignore[arg-type]
         self.session.add(acc)
         await self.session.flush()
@@ -419,85 +324,62 @@ class TripRepository:
         return acc
 
     async def delete_accommodation(self, acc: Accommodation) -> None:
-        """Delete an accommodation record."""
         await self.session.delete(acc)
         await self.session.flush()
 
     async def get_accommodation_by_id(self, acc_id: int) -> Accommodation | None:
-        """Fetch a single accommodation by ID."""
         result = await self.session.execute(select(Accommodation).where(Accommodation.id == acc_id))
         return result.scalar_one_or_none()
 
-    # ===================================================================
-    # Rating — Trip feedback operations
-    # ===================================================================
+    # --- Rating ---
 
     async def upsert_rating(self, trip_id: int, rating: int, feedback: str | None) -> TripRating:
-        """Insert or update a trip rating.
-
-        If a rating already exists for this trip, updates the score
-        (and feedback if provided). Otherwise creates a new rating row.
-        """
         stmt = select(TripRating).where(TripRating.trip_id == trip_id)
         existing = (await self.session.execute(stmt)).scalar_one_or_none()
-
         if existing:
-            # Update existing rating
             existing.rating = rating
             if feedback is not None:
                 existing.feedback = feedback
             await self.session.flush()
             return existing
-
-        # Create new rating
         rating_obj = TripRating(trip_id=trip_id, rating=rating, feedback=feedback)
         self.session.add(rating_obj)
         await self.session.flush()
         return rating_obj
 
-    # ===================================================================
-    # Share — Share link operations
-    # ===================================================================
+    # --- Share ---
 
     async def get_share_link(self, trip_id: int) -> ShareLink | None:
-        """Get the share link for a trip (if one exists)."""
         result = await self.session.execute(select(ShareLink).where(ShareLink.trip_id == trip_id))
         return result.scalar_one_or_none()
 
     async def create_share_link(self, **kwargs: object) -> ShareLink:
-        """Create a new share link record (stores hashed token)."""
         link = ShareLink(**kwargs)  # type: ignore[arg-type]
         self.session.add(link)
         await self.session.flush()
         return link
 
     async def get_share_link_by_hash(self, token_hash: str) -> ShareLink | None:
-        """Look up a share link by its hashed token value."""
         result = await self.session.execute(
             select(ShareLink).where(ShareLink.token_hash == token_hash)
         )
         return result.scalar_one_or_none()
 
-    # ===================================================================
-    # Claim Token — Guest trip ownership transfer tokens
-    # ===================================================================
+    # --- Claim Token ---
 
     async def create_claim_token(self, **kwargs: object) -> GuestClaimToken:
-        """Create a new guest claim token record (stores hashed token)."""
         token = GuestClaimToken(**kwargs)  # type: ignore[arg-type]
         self.session.add(token)
         await self.session.flush()
         return token
 
     async def get_claim_token_by_hash(self, token_hash: str) -> GuestClaimToken | None:
-        """Look up a claim token by its hashed value."""
         result = await self.session.execute(
             select(GuestClaimToken).where(GuestClaimToken.token_hash == token_hash)
         )
         return result.scalar_one_or_none()
 
     async def get_claim_tokens_for_trip(self, trip_id: int) -> list[GuestClaimToken]:
-        """Get all claim tokens issued for a trip (consumed and unconsumed)."""
         result = await self.session.execute(
             select(GuestClaimToken).where(GuestClaimToken.trip_id == trip_id)
         )
