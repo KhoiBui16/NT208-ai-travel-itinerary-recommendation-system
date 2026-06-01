@@ -1,8 +1,9 @@
 # Issue — Nested Trip Subresource Membership AuthZ Gap
 
-Status: `OPEN`
+Status: `RESOLVED`
 Severity: `HIGH`
 Found in: `00059B — Full User Journey UAT`
+Resolved in: `00060A — Fix nested trip subresource authz gap`
 
 ## Summary
 
@@ -55,6 +56,33 @@ This confirms the bug is not only theoretical source drift. Trip-level ownership
    - Owner can delete accommodation inside their trip.
    - Owner cannot delete accommodation from another trip by mixing IDs.
 
+## 00060A Fix Outcome
+
+Implemented in `fix/00060-a-nested-subresource-authz`:
+
+- `TripRepository.get_activity_for_trip(activity_id, trip_id)`
+- `TripRepository.get_accommodation_for_trip(acc_id, trip_id)`
+- `ItineraryService.update_activity()` now loads activities by both `activity_id` and `trip_id`
+- `ItineraryService.delete_activity()` now loads activities by both `activity_id` and `trip_id`
+- `ItineraryService.delete_accommodation()` now loads accommodations by both `acc_id` and `trip_id`
+
+Regression evidence:
+
+| Case | Before fix | After fix |
+|---|---|---|
+| Mixed activity update | `200` | `404` |
+| Mixed activity delete | same vulnerable pattern | `404` |
+| Mixed accommodation delete | `204` | `404` |
+| Owner updates own activity | `200` | `200` |
+| Owner deletes own activity | `204` | `204` |
+| Owner deletes own accommodation | `204` | `204` |
+
+Verified by:
+
+- targeted integration tests in `Backend/tests/integration/test_itinerary_endpoints.py`
+- service unit tests in `Backend/tests/unit/test_itinerary_service.py`
+- full backend lint/unit/integration pass
+
 ## Blocking Decision
 
-This does not block creating the `00059B` documentation branch because no production code is changed in this phase. It should block moving into implementation-heavy C3/C4 work until triaged or fixed, because C3/C4 will add more itinerary mutation surfaces.
+This issue blocked implementation-heavy C3/C4 work while it was open. With `00060A` and passing regression coverage, this specific blocker is resolved and no longer blocks moving to `00060B` architecture/system review.

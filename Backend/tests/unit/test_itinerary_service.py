@@ -6,8 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.core.exceptions import ConflictException, ForbiddenException, NotFoundException
-from src.itineraries.models.extras import GuestClaimToken, ShareLink
-from src.itineraries.models.trip import Trip
+from src.itineraries.models.extras import Accommodation, GuestClaimToken, ShareLink
+from src.itineraries.models.trip import Activity, Trip
+from src.itineraries.schemas import ActivitySchema
 from src.itineraries.service import MAX_ACTIVE_TRIPS, ItineraryService
 
 
@@ -239,3 +240,154 @@ async def test_rate__not_owner__forbidden(service: ItineraryService, mock_repo: 
     mock_repo.get_by_id.return_value = _make_trip(user_id=1)
     with pytest.raises(ForbiddenException):
         await service.rate(1, user_id=2, rating=5, feedback=None)
+
+
+# --- nested subresource authorization ---
+
+
+def _make_activity(activity_id: int = 11, name: str = "Museum") -> Activity:
+    return Activity(
+        id=activity_id,
+        trip_day_id=21,
+        place_id=None,
+        name=name,
+        time="09:00",
+        end_time="10:00",
+        type="attraction",
+        location="Hà Nội",
+        description="Seed activity",
+        image="",
+        transportation=None,
+        adult_price=None,
+        child_price=None,
+        custom_cost=None,
+        bus_ticket_price=None,
+        taxi_cost=None,
+        order_index=0,
+    )
+
+
+def _make_accommodation(acc_id: int = 7, trip_id: int = 1) -> Accommodation:
+    return Accommodation(
+        id=acc_id,
+        trip_id=trip_id,
+        hotel_id=None,
+        name="Test Hotel",
+        check_in="2026-05-01",
+        check_out="2026-05-02",
+        price_per_night=500000,
+        total_price=500000,
+        booking_url=None,
+        booking_type="nightly",
+        duration=1,
+        day_ids=[],
+    )
+
+
+async def test_update_activity__owner_same_trip__success(
+    service: ItineraryService, mock_repo: AsyncMock
+) -> None:
+    trip = _make_trip(user_id=1)
+    activity = _make_activity()
+    mock_repo.get_with_full_data.return_value = trip
+    mock_repo.get_activity_for_trip.return_value = activity
+
+    async def _update_activity_side_effect(existing: Activity, **kwargs: object) -> Activity:
+        for key, value in kwargs.items():
+            setattr(existing, key, value)
+        return existing
+
+    mock_repo.update_activity.side_effect = _update_activity_side_effect
+
+    result = await service.update_activity(
+        1,
+        activity.id,
+        ActivitySchema(
+            id=activity.id,
+            name="Updated Museum",
+            time="10:15",
+            end_time="11:00",
+            type="attraction",
+            location="Hà Nội",
+            description="Updated",
+            image="",
+        ),
+        user_id=1,
+    )
+
+    assert result.name == "Updated Museum"
+    mock_repo.get_activity_for_trip.assert_called_once_with(activity.id, 1)
+    mock_repo.update_activity.assert_called_once()
+
+
+async def test_update_activity__other_trip_subresource__raises_not_found(
+    service: ItineraryService, mock_repo: AsyncMock
+) -> None:
+    mock_repo.get_with_full_data.return_value = _make_trip(user_id=1)
+    mock_repo.get_activity_for_trip.return_value = None
+
+    with pytest.raises(NotFoundException):
+        await service.update_activity(
+            1,
+            999,
+            ActivitySchema(
+                id=999,
+                name="PWNED",
+                time="09:30",
+                type="attraction",
+                location="Hà Nội",
+                description="Bad update",
+                image="",
+            ),
+            user_id=1,
+        )
+
+    mock_repo.update_activity.assert_not_called()
+
+
+async def test_delete_activity__owner_same_trip__success(
+    service: ItineraryService, mock_repo: AsyncMock
+) -> None:
+    mock_repo.get_with_full_data.return_value = _make_trip(user_id=1)
+    mock_repo.get_activity_for_trip.return_value = _make_activity()
+
+    await service.delete_activity(1, 11, user_id=1)
+
+    mock_repo.get_activity_for_trip.assert_called_once_with(11, 1)
+    mock_repo.delete_activity.assert_called_once()
+
+
+async def test_delete_activity__other_trip_subresource__raises_not_found(
+    service: ItineraryService, mock_repo: AsyncMock
+) -> None:
+    mock_repo.get_with_full_data.return_value = _make_trip(user_id=1)
+    mock_repo.get_activity_for_trip.return_value = None
+
+    with pytest.raises(NotFoundException):
+        await service.delete_activity(1, 999, user_id=1)
+
+    mock_repo.delete_activity.assert_not_called()
+
+
+async def test_delete_accommodation__owner_same_trip__success(
+    service: ItineraryService, mock_repo: AsyncMock
+) -> None:
+    mock_repo.get_with_full_data.return_value = _make_trip(user_id=1)
+    mock_repo.get_accommodation_for_trip.return_value = _make_accommodation()
+
+    await service.delete_accommodation(1, 7, user_id=1)
+
+    mock_repo.get_accommodation_for_trip.assert_called_once_with(7, 1)
+    mock_repo.delete_accommodation.assert_called_once()
+
+
+async def test_delete_accommodation__other_trip_subresource__raises_not_found(
+    service: ItineraryService, mock_repo: AsyncMock
+) -> None:
+    mock_repo.get_with_full_data.return_value = _make_trip(user_id=1)
+    mock_repo.get_accommodation_for_trip.return_value = None
+
+    with pytest.raises(NotFoundException):
+        await service.delete_accommodation(1, 999, user_id=1)
+
+    mock_repo.delete_accommodation.assert_not_called()

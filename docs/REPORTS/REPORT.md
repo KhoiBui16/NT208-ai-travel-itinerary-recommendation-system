@@ -253,6 +253,27 @@ Historical sections above and below are phase snapshots. Current 00059B readines
 - Direct C3/C4 implementation-heavy work: NO
 - Recommended next: `00060A — Fix nested subresource authz gap`, then `00060B — Architecture/System Review + Go/No-Go before C3/C4`
 
+## 00060A Nested Trip Subresource Authz Fix
+
+| File | Nội dung |
+|---|---|
+| [00060a_nested_subresource_authz_fix.md](00060a_nested_subresource_authz_fix.md) | 2026-06-01: Backend security fix for mixed-ID nested trip mutation exploit — **FIXED** |
+| [pr_00060a_description.md](pr_00060a_description.md) | PR body template for fix/00060 |
+| [ISSUES/issue_nested_trip_subresource_membership_authz_gap.md](ISSUES/issue_nested_trip_subresource_membership_authz_gap.md) | Issue updated from **OPEN / HIGH** to **RESOLVED** |
+
+**Security fix summary:**
+- ✅ Added trip-bound repository lookups for nested activities and accommodations
+- ✅ Blocked mixed-ID cross-trip activity update (`404`)
+- ✅ Blocked mixed-ID cross-trip activity delete (`404`)
+- ✅ Blocked mixed-ID cross-trip accommodation delete (`404`)
+- ✅ Kept valid owner mutations working (`200` / `204`)
+- ✅ Kept direct trip owner mismatch behavior unchanged (`403`)
+- ✅ Full backend lint/unit/integration pass after the fix
+
+**Readiness decision:**
+- `00060B — Architecture/System Review + Go/No-Go before C3/C4`: YES
+- This specific ownership-bypass blocker no longer blocks the architecture review phase
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |
