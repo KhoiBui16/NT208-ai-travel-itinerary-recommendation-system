@@ -1,4 +1,14 @@
-"""Trip, day, activity, and extra-expense ORM models."""
+"""Trip core ORM models.
+
+Chứa các entity chính của nhóm Trip:
+  • Trip        — Lịch trình du lịch (root entity), bảng `trips`
+  • TripDay     — Một ngày trong lịch trình, bảng `trip_days`
+  • Activity    — Hoạt động trong ngày, bảng `activities`
+  • ExtraExpense — Chi phí phát sinh (cấp activity hoặc cấp day), bảng `extra_expenses`
+
+Quan hệ: Trip → TripDay → Activity → ExtraExpense
+                TripDay → ExtraExpense (day-level)
+"""
 
 from datetime import date, datetime
 from typing import TYPE_CHECKING
@@ -33,28 +43,63 @@ if TYPE_CHECKING:
     from src.places.models import Place
 
 
+# ---------------------------------------------------------------------------
+# Trip — Lịch trình du lịch (root entity)
+# ---------------------------------------------------------------------------
+
+
 class Trip(Base):
-    """Travel itinerary root entity."""
+    """Lịch trình du lịch — root entity.
+
+    Table: ``trips``
+
+    Mỗi Trip thuộc về một User (hoặc NULL nếu guest tạo chưa claim).
+    Chứa thông tin tổng quan: điểm đến, ngân sách, số người, sở thích.
+    Có thể được tạo thủ công (manual) hoặc bởi AI (ai_generated=True).
+
+    Relationships:
+      • days          → TripDay[]        (cascade delete)
+      • accommodations → Accommodation[] (cascade delete)
+      • rating        → TripRating       (1-1, cascade delete)
+      • share_link    → ShareLink        (1-1, cascade delete)
+      • claim_tokens  → GuestClaimToken[] (cascade delete)
+      • chat_sessions → ChatSession[]    (cascade delete)
+    """
 
     __tablename__ = "trips"
 
+    # --- Primary key ---
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # --- Owner (nullable cho guest-created trips) ---
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )
+
+    # --- Trip metadata ---
     destination: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     trip_name: Mapped[str] = mapped_column(String(200), nullable=False)
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
+
+    # --- Budget & cost ---
     budget: Mapped[int] = mapped_column(Integer, nullable=False)
     total_cost: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # --- Traveler info ---
     adults_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     children_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # --- Preferences ---
     interests: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+
+    # --- Status & flags ---
     status: Mapped[str] = mapped_column(String(20), default="draft", nullable=False)
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # --- Timestamps ---
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -68,6 +113,7 @@ class Trip(Base):
         nullable=False,
     )
 
+    # --- Relationships ---
     user: Mapped["User | None"] = relationship(back_populates="trips")
     days: Mapped[list["TripDay"]] = relationship(
         back_populates="trip",
@@ -98,23 +144,43 @@ class Trip(Base):
     )
 
 
+# ---------------------------------------------------------------------------
+# TripDay — Một ngày trong lịch trình
+# ---------------------------------------------------------------------------
+
+
 class TripDay(Base):
-    """A single day in a trip."""
+    """Một ngày cụ thể trong lịch trình.
+
+    Table: ``trip_days``
+    Constraint: UNIQUE(trip_id, day_number) — mỗi trip không thể có 2 ngày trùng số.
+
+    Relationships:
+      • trip           → Trip           (many-to-one)
+      • activities     → Activity[]     (cascade delete, sắp xếp theo order_index)
+      • extra_expenses → ExtraExpense[] (cascade delete, chi phí cấp ngày)
+    """
 
     __tablename__ = "trip_days"
     __table_args__ = (UniqueConstraint("trip_id", "day_number", name="uq_trip_days_trip_number"),)
 
+    # --- Primary key ---
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # --- Foreign key → Trip ---
     trip_id: Mapped[int] = mapped_column(
         ForeignKey("trips.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
+
+    # --- Day info ---
     day_number: Mapped[int] = mapped_column(Integer, nullable=False)
     label: Mapped[str] = mapped_column(String(50), nullable=False)
     date: Mapped[str] = mapped_column(String(20), nullable=False)
     destination_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
+    # --- Relationships ---
     trip: Mapped[Trip] = relationship(back_populates="days")
     activities: Mapped[list["Activity"]] = relationship(
         back_populates="trip_day",
@@ -127,18 +193,40 @@ class TripDay(Base):
     )
 
 
+# ---------------------------------------------------------------------------
+# Activity — Hoạt động trong ngày
+# ---------------------------------------------------------------------------
+
+
 class Activity(Base):
-    """A scheduled activity. Field names must match FE semantics."""
+    """Một hoạt động được lên lịch trong ngày.
+
+    Table: ``activities``
+    Field names match FE semantics (camelCase mapping via CamelCaseModel).
+
+    Loại hoạt động (type): food, attraction, nature, entertainment, shopping
+    Phương tiện (transportation): walk, bike, bus, taxi
+
+    Relationships:
+      • trip_day       → TripDay        (many-to-one)
+      • place          → Place          (many-to-one, optional — link tới DB place)
+      • extra_expenses → ExtraExpense[] (cascade delete, chi phí phát sinh)
+    """
 
     __tablename__ = "activities"
 
+    # --- Primary key ---
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # --- Foreign keys ---
     trip_day_id: Mapped[int] = mapped_column(
         ForeignKey("trip_days.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     place_id: Mapped[int | None] = mapped_column(ForeignKey("places.id"), nullable=True)
+
+    # --- Activity info ---
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     time: Mapped[str] = mapped_column(String(10), nullable=False)
     end_time: Mapped[str | None] = mapped_column(String(10), nullable=True)
@@ -147,18 +235,25 @@ class Activity(Base):
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     image: Mapped[str] = mapped_column(String(500), default="", nullable=False)
     transportation: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    adult_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    child_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    custom_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    bus_ticket_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    taxi_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # --- Cost fields (đơn vị: VNĐ) ---
+    adult_price: Mapped[int | None] = mapped_column(Integer, nullable=True)      # Giá vé/ăn người lớn
+    child_price: Mapped[int | None] = mapped_column(Integer, nullable=True)      # Giá vé/ăn trẻ em
+    custom_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)      # Chi phí tùy chỉnh (shopping, entertainment)
+    bus_ticket_price: Mapped[int | None] = mapped_column(Integer, nullable=True) # Giá vé xe buýt/người
+    taxi_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)        # Tổng chi phí taxi
+
+    # --- Ordering ---
     order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # --- Timestamps ---
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
     )
 
+    # --- Relationships ---
     trip_day: Mapped[TripDay] = relationship(back_populates="activities")
     place: Mapped["Place | None"] = relationship(back_populates="activities")
     extra_expenses: Mapped[list["ExtraExpense"]] = relationship(
@@ -167,11 +262,23 @@ class Activity(Base):
     )
 
 
+# ---------------------------------------------------------------------------
+# ExtraExpense — Chi phí phát sinh (cấp activity hoặc cấp day)
+# ---------------------------------------------------------------------------
+
+
 class ExtraExpense(Base):
-    """Extra cost at either day level or activity level."""
+    """Chi phí phát sinh — có thể thuộc về Activity HOẶC TripDay (không cả hai).
+
+    Table: ``extra_expenses``
+    Constraint: CHECK — chỉ một trong activity_id hoặc trip_day_id được NOT NULL.
+
+    Category: food, attraction, entertainment, transportation, shopping
+    """
 
     __tablename__ = "extra_expenses"
     __table_args__ = (
+        # Đảm bảo mỗi expense chỉ thuộc về 1 parent (activity XOR day)
         CheckConstraint(
             "(activity_id IS NOT NULL AND trip_day_id IS NULL) OR "
             "(activity_id IS NULL AND trip_day_id IS NOT NULL)",
@@ -179,7 +286,10 @@ class ExtraExpense(Base):
         ),
     )
 
+    # --- Primary key ---
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # --- Parent foreign keys (mutually exclusive) ---
     activity_id: Mapped[int | None] = mapped_column(
         ForeignKey("activities.id", ondelete="CASCADE"),
         nullable=True,
@@ -190,9 +300,12 @@ class ExtraExpense(Base):
         nullable=True,
         index=True,
     )
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
-    amount: Mapped[int] = mapped_column(Integer, nullable=False)
-    category: Mapped[str] = mapped_column(String(30), nullable=False)
 
+    # --- Expense info ---
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)       # Đơn vị: VNĐ
+    category: Mapped[str] = mapped_column(String(30), nullable=False)  # food|attraction|entertainment|transportation|shopping
+
+    # --- Relationships ---
     activity: Mapped["Activity | None"] = relationship(back_populates="extra_expenses")
     trip_day: Mapped["TripDay | None"] = relationship(back_populates="extra_expenses")

@@ -1,3 +1,17 @@
+/**
+ * useTripSync — Hook đồng bộ lịch trình với server
+ *
+ * Quản lý toàn bộ sync flow giữa FE state ↔ BE API:
+ *   1. Initial load   — Load trip từ API (nếu có tripId) hoặc sessionStorage/wizard
+ *   2. Auto-save      — Tự động lưu vào sessionStorage khi state thay đổi
+ *   3. API save       — Lưu lên server khi user bấm Save (tạo mới hoặc update)
+ *
+ * Guest flow:
+ *   • Guest tạo trip → nhận claimToken
+ *   • storePendingClaim() lưu token vào localStorage
+ *   • Khi đăng nhập → auto claim trip ownership
+ */
+
 import { useEffect, useRef, useCallback, useState } from "react";
 import { format, addDays, parseISO } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -7,13 +21,25 @@ import { getItinerary, createItinerary, updateItinerary } from "../../services/i
 import { useTripWizard } from "../../contexts/TripWizardContext";
 import { storePendingClaim } from "../../contexts/AuthContext";
 
-/** Convert dd/MM/yyyy → yyyy-MM-dd for API. Pass-through if already ISO or empty. */
+
+// ---------------------------------------------------------------------------
+// Helper — Chuyển đổi format ngày
+// ---------------------------------------------------------------------------
+
+
+/** Convert dd/MM/yyyy → yyyy-MM-dd cho API. Pass-through nếu đã là ISO hoặc empty. */
 function toISODate(d: string): string {
   if (!d) return d;
   const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (m) return `${m[3]}-${m[2]}-${m[1]}`;
-  return d; // already ISO or other format
+  return d; // Đã là ISO hoặc format khác → giữ nguyên
 }
+
+
+// ===========================================================================
+// Hook chính
+// ===========================================================================
+
 
 export const useTripSync = (
   days: Day[],
@@ -42,26 +68,31 @@ export const useTripSync = (
   }, []);
   const { destinations: wizardDestinations, dayAllocations: wizardAllocations, budget: wizardBudget, resetWizard } = useTripWizard();
 
-  // Sync auth state
+  // --- Sync auth state ---
   useEffect(() => {
     setIsAuthenticated(isAuthenticated);
   }, [isAuthenticated, setIsAuthenticated]);
 
-  // 1. Sync ban đầu khi vào trang
+  // ===================================================================
+  // 1. Initial load — Load dữ liệu khi vào trang
+  // ===================================================================
+
   useEffect(() => {
     let isMounted = true;
 
     const loadInitialData = async () => {
-      // If we have a tripId from URL, load from API
+      // --- Nguồn 1: Load từ API nếu có tripId trong URL ---
       if (tripIdParam && isAuthenticated) {
         try {
           const resp = await getItinerary(tripIdParam);
           if (!isMounted) return;
           setCurrentTripId(resp.id);
 
+          // Set trip metadata
           if (resp.tripName) setTripName(resp.tripName);
           if (resp.budget) setTotalBudget(resp.budget);
 
+          // Map API days → local Day format
           if (resp.days && resp.days.length > 0) {
             const mappedDays: Day[] = resp.days.map((d, idx) => ({
               id: d.id || idx + 1,
@@ -88,6 +119,7 @@ export const useTripSync = (
             setDays(mappedDays);
             setSelectedDayId(mappedDays[0].id);
 
+            // Tìm max ID để cấp ID mới cho entities tiếp theo
             let maxId = 0;
             mappedDays.forEach((day) => {
               if (day.id > maxId) maxId = day.id;
@@ -98,10 +130,11 @@ export const useTripSync = (
             updateNextId(maxId + 1);
           }
 
-          // Load accommodations from API response
+          // Map API accommodations → local Accommodation format
           if (resp.accommodations && resp.accommodations.length > 0) {
             const accMap: Record<number, Accommodation> = {};
             resp.accommodations.forEach((acc) => {
+              // Mỗi accommodation được map vào từng dayId để lookup nhanh
               (acc.dayIds || []).forEach((dayId: number) => {
                 accMap[dayId] = {
                   id: acc.id,
@@ -124,11 +157,11 @@ export const useTripSync = (
           return;
         } catch (error) {
           console.error("Error loading trip from API:", error);
-          // Fall through to sessionStorage fallback
+          // Fall through → thử sessionStorage fallback
         }
       }
 
-      // Fallback: check sessionStorage for workspace-passed data (wizard flow)
+      // --- Nguồn 2: Fallback sessionStorage (wizard flow hoặc cache) ---
       const savedTrip = sessionStorage.getItem("currentTrip");
       if (savedTrip) {
         try {
@@ -154,13 +187,14 @@ export const useTripSync = (
         } catch (error) {}
       }
 
-      // NẾU LÀ LỊCH TRÌNH MỚI TINH (Từ bước manual setup sang) — read from wizard context
+      // --- Nguồn 3: Wizard context (lịch trình mới từ manual setup) ---
       if (wizardDestinations.length > 0 && Object.keys(wizardAllocations).length > 0) {
         try {
           let dayCounter = 1;
           let dayId = 1;
           const generatedDays: Day[] = [];
 
+          // Tạo days từ wizard allocations (mỗi destination × số ngày)
           wizardDestinations.forEach((dest) => {
             const allocation = wizardAllocations[dest.id];
             if (!allocation) return;
@@ -193,18 +227,25 @@ export const useTripSync = (
     return () => { isMounted = false; };
   }, [tripIdParam, isAuthenticated, setCurrentTripId]);
 
-  // 2. Auto-save debounce (save to sessionStorage for quick restore, API when tripId exists)
+  // ===================================================================
+  // 2. Auto-save — Lưu vào sessionStorage khi state thay đổi
+  // ===================================================================
+
   useEffect(() => {
     if (isInitialMount.current) return;
     if (days.length > 0) {
       const tripData = { name: tripName, days, accommodations, totalBudget, savedAt: new Date().toISOString() };
-      // Always save to sessionStorage as quick-restore cache
+      // Luôn lưu sessionStorage để quick-restore khi refresh
       sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
     }
   }, [days, accommodations, totalBudget, tripName]);
 
-  // 3. Save to API
+  // ===================================================================
+  // 3. API save — Lưu lên server khi user bấm Save
+  // ===================================================================
+
   const handleSaveItinerary = useCallback(async () => {
+    // Yêu cầu đăng nhập trước khi lưu
     if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
@@ -214,7 +255,7 @@ export const useTripSync = (
 
     try {
       if (currentTripIdRef.current) {
-        // Update existing itinerary
+        // --- UPDATE existing itinerary ---
         await updateItinerary(currentTripIdRef.current, {
           tripName: tripName || "Lịch trình mới",
           budget: totalBudget,
@@ -254,7 +295,7 @@ export const useTripSync = (
           })),
         });
       } else {
-        // Create new itinerary
+        // --- CREATE new itinerary ---
         const destinationNames = Array.from(new Set(days.map((d) => d.destinationName).filter(Boolean)));
         const resp = await createItinerary({
           destination: destinationNames[0] || "Việt Nam",
@@ -265,12 +306,12 @@ export const useTripSync = (
         });
         setCurrentTripId(resp.id);
 
-        // Store claimToken for guest → owner claim after login
+        // Guest flow: lưu claimToken để claim ownership sau khi đăng nhập
         if (resp.claimToken) {
           storePendingClaim(resp.id, resp.claimToken);
         }
 
-        // Now update with the full days data
+        // Sau khi tạo → update full days data
         await updateItinerary(resp.id, {
           days: days.map((d, idx) => ({
             id: d.id,
@@ -309,12 +350,12 @@ export const useTripSync = (
         });
       }
 
-      // Also save to sessionStorage as cache
+      // Lưu cache vào sessionStorage
       sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
       toast.success("Đã lưu lịch trình thành công", { position: "top-right" });
     } catch (error) {
       console.error("Error saving itinerary:", error);
-      // Fallback: save to sessionStorage only
+      // Fallback: lưu sessionStorage khi API fail
       sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
       toast.error("Lưu lên server thất bại, đã lưu tạm thời", { position: "top-right" });
     }

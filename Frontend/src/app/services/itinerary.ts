@@ -1,52 +1,73 @@
+/**
+ * Itinerary API service — Nhóm Trip
+ *
+ * Tất cả API calls cho nhóm Trip, giao tiếp với BE endpoints:
+ *   • Trip CRUD           — list, get, create, generate, update, delete
+ *   • Rating & Share      — rate, share, getShared, claim
+ *   • Activity CRUD       — add, update, delete
+ *   • Accommodation CRUD  — add, delete
+ *
+ * Response types match BE CamelCaseModel (auto camelCase ↔ snake_case).
+ */
+
 import { api } from "./api";
 
-// ---------- Types (match BE CamelCaseModel) ----------
 
+// ===========================================================================
+// 1. Types — Match BE CamelCaseModel response schemas
+// ===========================================================================
+
+
+/** Thông tin số lượng du khách */
 export interface TravelerInfo {
   adults: number;
   children: number;
   total: number;
 }
 
+/** Hoạt động trong ngày (match BE ActivitySchema) */
 export interface ActivityItem {
   id?: number;
-  time: string;
-  endTime?: string;
+  time: string;                    // Giờ bắt đầu (HH:MM)
+  endTime?: string;                // Giờ kết thúc
   name: string;
   location: string;
   description: string;
-  type: string;
+  type: string;                    // food|attraction|nature|entertainment|shopping
   image?: string;
-  transportation?: string;
-  adultPrice?: number;
-  childPrice?: number;
-  customCost?: number;
-  busTicketPrice?: number;
-  taxiCost?: number;
-  extraExpenses?: unknown[];
+  transportation?: string;        // walk|bike|bus|taxi
+  adultPrice?: number;             // Giá vé/ăn người lớn (VNĐ)
+  childPrice?: number;             // Giá vé/ăn trẻ em (VNĐ)
+  customCost?: number;             // Chi phí tùy chỉnh (VNĐ)
+  busTicketPrice?: number;         // Giá vé bus/người (VNĐ)
+  taxiCost?: number;               // Tổng chi phí taxi (VNĐ)
+  extraExpenses?: unknown[];       // Chi phí phát sinh
 }
 
+/** Một ngày trong lịch trình (match BE DaySchema) */
 export interface DayItem {
   id: number;
-  label?: string;
-  date?: string;
-  destinationName?: string;
+  label?: string;                  // "Ngày 1 - Hà Nội"
+  date?: string;                   // ISO date
+  destinationName?: string;        // Tên điểm đến
   activities: ActivityItem[];
 }
 
+/** Chỗ ở (match BE AccommodationSchema) */
 export interface AccommodationItem {
   id?: number;
-  hotel?: unknown;
-  dayIds: number[];
-  bookingType?: string;
-  duration?: number;
-  name?: string;
-  checkIn?: string;
-  checkOut?: string;
-  pricePerNight?: number;
-  totalPrice?: number;
+  hotel?: unknown;                 // Hotel entity (nếu có)
+  dayIds: number[];                // IDs các ngày sử dụng
+  bookingType?: string;            // hourly|nightly|daily
+  duration?: number;               // Số đêm/giờ/ngày
+  name?: string;                   // Tên chỗ ở
+  checkIn?: string;                // Check-in
+  checkOut?: string;               // Check-out
+  pricePerNight?: number;          // Giá/đêm (VNĐ)
+  totalPrice?: number;             // Tổng giá (VNĐ)
 }
 
+/** Response đầy đủ của lịch trình (match BE ItineraryResponse) */
 export interface ItineraryResponse {
   id: number;
   destination: string;
@@ -59,11 +80,12 @@ export interface ItineraryResponse {
   interests: string[];
   days: DayItem[];
   accommodations: AccommodationItem[];
-  claimToken: string | null;
+  claimToken: string | null;       // Chỉ có khi guest tạo trip
   createdAt: string;
   updatedAt: string;
 }
 
+/** Danh sách lịch trình phân trang */
 interface PaginatedResponse {
   items: ItineraryResponse[];
   total: number;
@@ -71,14 +93,20 @@ interface PaginatedResponse {
   pageSize: number;
 }
 
+/** Response chia sẻ lịch trình */
 interface ShareResponse {
   shareUrl: string;
   shareToken: string;
   expiresAt: string | null;
 }
 
-// ---------- Itinerary API ----------
 
+// ===========================================================================
+// 2. Trip API — CRUD lịch trình
+// ===========================================================================
+
+
+/** Lấy danh sách lịch trình của user (phân trang) */
 export async function listItineraries(
   page = 1,
   size = 20,
@@ -88,10 +116,12 @@ export async function listItineraries(
   );
 }
 
+/** Lấy chi tiết lịch trình theo ID */
 export async function getItinerary(tripId: number): Promise<ItineraryResponse> {
   return api.get<ItineraryResponse>(`/api/v1/itineraries/${tripId}`);
 }
 
+/** Tạo lịch trình thủ công (manual) */
 export async function createItinerary(data: {
   destination: string;
   tripName: string;
@@ -105,6 +135,7 @@ export async function createItinerary(data: {
   return api.post<ItineraryResponse>("/api/v1/itineraries", data);
 }
 
+/** Tạo lịch trình bằng AI (Phase C.1) */
 export async function generateItinerary(data: {
   destination: string;
   startDate: string;
@@ -117,6 +148,7 @@ export async function generateItinerary(data: {
   return api.post<ItineraryResponse>("/api/v1/itineraries/generate", data);
 }
 
+/** Cập nhật lịch trình (auto-save pattern) */
 export async function updateItinerary(
   tripId: number,
   data: {
@@ -129,10 +161,18 @@ export async function updateItinerary(
   return api.put<ItineraryResponse>(`/api/v1/itineraries/${tripId}`, data);
 }
 
+/** Xóa lịch trình */
 export async function deleteItinerary(tripId: number): Promise<void> {
   return api.delete(`/api/v1/itineraries/${tripId}`);
 }
 
+
+// ===========================================================================
+// 3. Rating & Share — Đánh giá và chia sẻ lịch trình
+// ===========================================================================
+
+
+/** Đánh giá lịch trình (1-5 sao) */
 export async function rateItinerary(
   tripId: number,
   rating: number,
@@ -143,18 +183,21 @@ export async function rateItinerary(
   );
 }
 
+/** Chia sẻ lịch trình qua link công khai */
 export async function shareItinerary(
   tripId: number,
 ): Promise<ShareResponse> {
   return api.post<ShareResponse>(`/api/v1/itineraries/${tripId}/share`);
 }
 
+/** Lấy lịch trình qua share token (public, không cần auth) */
 export async function getSharedItinerary(
   shareToken: string,
 ): Promise<ItineraryResponse> {
   return api.get<ItineraryResponse>(`/api/v1/shared/${shareToken}`);
 }
 
+/** Guest claim trip sau khi đăng nhập */
 export async function claimItinerary(
   tripId: number,
   claimToken: string,
@@ -162,8 +205,13 @@ export async function claimItinerary(
   return api.post(`/api/v1/itineraries/${tripId}/claim`, { claimToken });
 }
 
-// ---------- Nested: Activities ----------
 
+// ===========================================================================
+// 4. Nested: Activities — Thêm/sửa/xóa hoạt động
+// ===========================================================================
+
+
+/** Thêm activity vào ngày cụ thể */
 export async function addActivity(
   tripId: number,
   dayId: number,
@@ -175,6 +223,7 @@ export async function addActivity(
   );
 }
 
+/** Cập nhật thông tin activity */
 export async function updateActivity(
   tripId: number,
   activityId: number,
@@ -186,6 +235,7 @@ export async function updateActivity(
   );
 }
 
+/** Xóa activity */
 export async function deleteActivity(
   tripId: number,
   activityId: number,
@@ -193,8 +243,13 @@ export async function deleteActivity(
   return api.delete(`/api/v1/itineraries/${tripId}/activities/${activityId}`);
 }
 
-// ---------- Nested: Accommodations ----------
 
+// ===========================================================================
+// 5. Nested: Accommodations — Thêm/xóa chỗ ở
+// ===========================================================================
+
+
+/** Thêm accommodation vào trip */
 export async function addAccommodation(
   tripId: number,
   accommodation: AccommodationItem,
@@ -205,6 +260,7 @@ export async function addAccommodation(
   );
 }
 
+/** Xóa accommodation */
 export async function deleteAccommodation(
   tripId: number,
   accommodationId: number,
