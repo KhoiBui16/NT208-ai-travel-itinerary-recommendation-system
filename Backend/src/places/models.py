@@ -75,7 +75,8 @@ class Destination(Base):
 
     # --- ETL tracking ---
     last_etl_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True  # Last ETL pipeline run for this destination
+        DateTime(timezone=True),
+        nullable=True,  # Last ETL pipeline run for this destination
     )
 
     # --- Relationships ---
@@ -141,13 +142,18 @@ class Place(Base):
 
     # --- ETL metadata ---
     external_id: Mapped[str | None] = mapped_column(
-        String(512), nullable=True, index=True  # Goong/Google Place ID for deduplication
+        String(512),
+        nullable=True,
+        index=True,  # Goong/Google Place ID for deduplication
     )
     raw_metadata: Mapped[dict | None] = mapped_column(
-        JSONB, nullable=True  # Original API response preserved for enrichment
+        JSONB,
+        nullable=True,  # Original API response preserved for enrichment
     )
     source: Mapped[str] = mapped_column(
-        String(30), default="seed", nullable=False  # Data origin: "seed", "goong", etc.
+        String(30),
+        default="seed",
+        nullable=False,  # Data origin: "seed", "goong", etc.
     )
 
     # --- Timestamp ---

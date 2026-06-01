@@ -127,10 +127,12 @@ class ShareLink(Base):
 
     # --- Lifecycle timestamps ---
     expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True  # None = never expires
+        DateTime(timezone=True),
+        nullable=True,  # None = never expires
     )
     revoked_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True  # Set when owner revokes the link
+        DateTime(timezone=True),
+        nullable=True,  # Set when owner revokes the link
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -223,10 +225,12 @@ class GuestClaimToken(Base):
 
     # --- Lifecycle timestamps ---
     expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False  # When the token becomes invalid
+        DateTime(timezone=True),
+        nullable=False,  # When the token becomes invalid
     )
     consumed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True  # Set when token is used to claim trip
+        DateTime(timezone=True),
+        nullable=True,  # Set when token is used to claim trip
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
