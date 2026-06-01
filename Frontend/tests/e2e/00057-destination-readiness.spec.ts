@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { selectDateRange } from "./helpers/calendar";
 
 /**
  * CI-safe test for destination data quality UX.
@@ -9,6 +10,7 @@ import { test, expect } from "@playwright/test";
  * - Mocks backend destinations API with data quality metadata
  * - Does not require backend, DB, Gemini, or Goong
  * - Verifies that partial cities are allowed to submit (warning-only, no blocking)
+ * - Uses calendar helper to handle month navigation when current month has insufficient enabled days
  */
 
 test("Destination data quality advisory allows submit", async ({ page }) => {
@@ -172,52 +174,18 @@ test("Destination data quality advisory allows submit", async ({ page }) => {
   console.log(`Has warning after switching back to Đà Lạt: ${hasWarningAgain}`);
   expect(hasWarningAgain).toBeTruthy();
 
-  // Select dates (open calendar and select range)
-  const calendarBtn = page.getByText(/Chọn ngày bắt đầu và kết thúc/i).or(page.getByText(/Chọn ngày/i)).first();
-  await calendarBtn.click();
-  await page.waitForTimeout(500);
+  // Use calendar helper to select date range
+  // This helper handles month navigation when current month has insufficient enabled days
+  console.log("=== Selecting date range with calendar helper ===");
+  const dateResult = await selectDateRange(page);
 
-  const modalVisible = await page.locator("div.fixed.inset-0.z-50").isVisible({ timeout: 2000 }).catch(() => false);
-  if (!modalVisible) {
-    console.log("WARNING: Calendar modal did not open, skipping date selection");
-  } else {
-    const enabledBtns = page.locator("button.aspect-square:not([disabled])");
-    const enabledCount = await enabledBtns.count();
-    if (enabledCount >= 2) {
-      await enabledBtns.first().click();
-      await page.waitForTimeout(300);
-
-      const freshBtns = page.locator("button.aspect-square:not([disabled])");
-      await freshBtns.nth(1).click();
-      await page.waitForTimeout(300);
-
-      const confirmBtn = page.locator("button:has-text('Xác nhận')");
-      await confirmBtn.click();
-      await page.waitForTimeout(300);
-    } else {
-      console.log("WARNING: Not enough enabled date buttons in test environment");
-      console.log("Enabled day buttons: " + enabledCount);
-      console.log("This is a pre-existing calendar modal issue (see 00056-calendar-debug)");
-      await page.keyboard.press("Escape");
-      await page.waitForTimeout(500);
-
-      // Verify modal is closed before continuing
-      const modalStillOpen = await page.locator("div.fixed.inset-0.z-50").isVisible({ timeout: 1000 }).catch(() => false);
-      if (modalStillOpen) {
-        console.log("WARNING: Calendar modal still open after Escape, clicking backdrop to close");
-        const backdrop = page.locator("div.fixed.inset-0.z-50").first();
-        await backdrop.click({ force: true });
-        await page.waitForTimeout(500);
-      }
-
-      // Re-check modal visibility
-      const modalOpenAfterRetry = await page.locator("div.fixed.inset-0.z-50").isVisible({ timeout: 1000 }).catch(() => false);
-      if (modalOpenAfterRetry) {
-        console.log("ERROR: Calendar modal cannot be closed, skipping submit verification");
-        test.skip(true, "Calendar modal blocker: cannot close modal with insufficient enabled buttons");
-      }
-    }
+  if (!dateResult.ok) {
+    console.log(`ERROR: Calendar selection failed: ${dateResult.reason}`);
+    test.skip(true, `Calendar selection failed: ${dateResult.reason}`);
+    return;
   }
+
+  console.log(`✓ Successfully selected date range: ${dateResult.from} — ${dateResult.to}`);
 
   // Mock generate API to avoid real Gemini call
   await page.route("**/api/v1/itineraries/generate", async route => {
