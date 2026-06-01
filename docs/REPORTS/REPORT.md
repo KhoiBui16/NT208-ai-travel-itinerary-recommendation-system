@@ -204,6 +204,31 @@ Month 1: Not enough enabled days (1), trying next month
 ✓ Successfully selected date range: 01/06/2026 → 02/06/2026
 ```
 
+## 00059B Full User Journey UAT + Manual Run Guide
+
+| File | Nội dung |
+|---|---|
+| [00059b_full_user_journey_uat.md](00059b_full_user_journey_uat.md) | 2026-06-01: Full user journey UAT, source coverage, local run guide evidence — **PARTIAL_READY_FOR_00060** |
+| [../USER_JOURNEY_UAT.md](../USER_JOURNEY_UAT.md) | Product-level guest/auth/error journey matrix |
+| [../LOCAL_MANUAL_UAT_GUIDE.md](../LOCAL_MANUAL_UAT_GUIDE.md) | PowerShell-safe local manual UAT guide |
+| [pr_00059b_description.md](pr_00059b_description.md) | PR body template for docs/00059B |
+| [ISSUES/issue_nested_trip_subresource_membership_authz_gap.md](ISSUES/issue_nested_trip_subresource_membership_authz_gap.md) | Issue — **OPEN / HIGH** |
+
+**UAT results:**
+- ✅ Backend ruff check + format check pass
+- ✅ Backend unit tests pass: 119 passed
+- ✅ Alembic upgrade/check pass
+- ✅ Backend integration tests pass: 44 passed
+- ✅ Frontend build pass with alternate `.build-tmp` outDir
+- ✅ Full Playwright suite pass: 19 passed, 3 skipped
+- ✅ 00059A calendar helper confirmed merged into `main`
+
+**Readiness decision:**
+- `00060 — Architecture/System Review before C3/C4`: YES, proceed as review phase.
+- C3/C4 implementation-heavy work: NO direct start until nested activity/accommodation authz gap is fixed or explicitly triaged.
+
+Historical sections above and below are phase snapshots. Current 00059B readiness supersedes older calendar-blocker wording and older test-count summaries.
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |

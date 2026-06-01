@@ -89,7 +89,7 @@ MVP1
 - Places/cache: destinations, destination detail, place search/detail, saved places, Redis read cache fail-open.
 - ETL D1/C.0: Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, `hotels.yaml`, `scraped_sources`.
 - AI C.1 generate pipeline: DB recommendation context, Gemini JSON output, Pydantic validation, retry, guest/user AI rate limit.
-- Tests current branch: 97 unit tests + 44 integration tests + 13 FE e2e tests; CI lint/unit/integration/migration.
+- Tests current branch: 119 unit tests + 44 integration tests + 22 FE e2e tests; latest 00059B local UAT result is 19 passed, 3 skipped.
 - AI C.2 SuggestionService (EP-30): DB-only suggest alternatives, owner-check, no LLM.
 - Destination slug matching: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" → "ha-noi" → match DB.
 
