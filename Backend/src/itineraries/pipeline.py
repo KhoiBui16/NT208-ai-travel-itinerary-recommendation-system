@@ -1,7 +1,20 @@
 """C.1 AI itinerary generation pipeline.
 
-This module owns itinerary business orchestration. Shared AI infrastructure
-stays under src/agent, while DB reads/writes remain in the itineraries domain.
+This module owns itinerary business orchestration — the full flow from
+user request to persisted Trip with Days, Activities, and Accommodations.
+
+Architecture:
+  - Shared AI infrastructure (LLM client, config) lives in src/agent/
+  - Domain-specific prompts live in src/agent/prompts/
+  - DB reads/writes stay in the itineraries domain (TripRepository)
+  - This pipeline coordinates between them
+
+Pipeline flow:
+  1. Resolve destination from DB (name/slug/fuzzy matching)
+  2. Load place + hotel context from DB for the LLM prompt
+  3. Call Gemini LLM with retry + validation loop
+  4. Validate the generated itinerary (day count, budget, activity counts)
+  5. Persist Trip, TripDay, Activity, Accommodation records to DB
 """
 
 import asyncio
@@ -24,21 +37,44 @@ from src.itineraries.repository import TripRepository
 from src.itineraries.schemas import GenerateItineraryRequest
 from src.places.models import Hotel, Place
 
+# ---------------------------------------------------------------------------
+# Constants — Pipeline configuration limits
+# ---------------------------------------------------------------------------
+
+# Valid activity categories that map to Goong ETL place categories
 VALID_ACTIVITY_CATEGORIES = {"food", "attraction", "nature", "entertainment", "shopping"}
+
+# Maps user interest strings that don't directly match DB categories
+# to their closest DB category equivalent
 INTEREST_CATEGORY_ALIASES = {
     "culture": "attraction",
     "cultural": "attraction",
     "history": "attraction",
 }
+
+# Maximum number of places to include in the LLM prompt context
 MAX_CONTEXT_PLACES = 15
+
+# Maximum number of hotels to include in the LLM prompt context
 MAX_CONTEXT_HOTELS = 4
+
+# Maximum allowed trip duration (prevents abuse and LLM context overflow)
 MAX_TRIP_DAYS = 14
 
 logger = get_logger(__name__)
 
 
 class ItineraryPipeline:
-    """Generate and persist an AI itinerary from DB recommendation context."""
+    """Generate and persist an AI itinerary from DB recommendation context.
+
+    This is the main orchestrator for Phase C.1 AI itinerary generation.
+    It coordinates between the database (for context), the LLM (for generation),
+    and the repository (for persistence).
+    """
+
+    # ===================================================================
+    # Initialization
+    # ===================================================================
 
     def __init__(
         self,
@@ -49,20 +85,45 @@ class ItineraryPipeline:
         settings: AppSettings | None = None,
         retry_delay_seconds: float = 1.0,
     ) -> None:
+        """Initialize the pipeline with all required dependencies.
+
+        Args:
+            session: Async database session for the current request
+            repo: Optional pre-built repository (defaults to new TripRepository)
+            llm: Optional pre-built LLM client (defaults to new GeminiLLM)
+            settings: Optional app settings (defaults to global settings)
+            retry_delay_seconds: Base delay between LLM retries (exponential backoff)
+        """
         self.session = session
         self.repo = repo or TripRepository(session)
         self.settings = settings or get_settings()
         self.llm = llm or GeminiLLM(AgentConfig.from_settings(self.settings))
         self.retry_delay_seconds = retry_delay_seconds
 
+    # ===================================================================
+    # Public API — Main generation entry point
+    # ===================================================================
+
     async def generate(
         self,
         request: GenerateItineraryRequest,
         user_id: int | None,
     ) -> Trip:
-        """Generate an itinerary and persist Trip/Days/Activities/Accommodations."""
+        """Generate an itinerary and persist Trip/Days/Activities/Accommodations.
+
+        Full pipeline:
+        1. Validate trip duration
+        2. Resolve destination from DB
+        3. Load place/hotel context
+        4. Fall back to all categories if filtered results are insufficient
+        5. Call LLM with retries and validation
+        6. Persist generated itinerary to DB
+        7. Return fully-loaded Trip ORM object
+        """
         started_at = perf_counter()
         day_count = self._day_count(request)
+
+        # Log pipeline start with all relevant parameters
         logger.info(
             "ai_generate_started",
             destination=request.destination,
@@ -77,6 +138,8 @@ class ItineraryPipeline:
             min_activities_per_day=self.settings.agent_min_activities_per_day,
             max_activities_per_day=self.settings.agent_max_activities_per_day,
         )
+
+        # --- Step 1: Resolve destination from DB ---
         destination = await self.repo.resolve_destination_for_ai(request.destination)
         if not destination:
             logger.warning(
@@ -90,12 +153,15 @@ class ItineraryPipeline:
         destination_id = destination.id
         destination_name = destination.name
 
+        # --- Step 2: Load place context (filtered by user interests) ---
         categories = self._normalize_interests(request.interests)
         places = await self.repo.search_places_for_ai(
             destination_id,
             categories=categories,
             limit=MAX_CONTEXT_PLACES,
         )
+
+        # Calculate minimum required places based on trip duration
         min_required = self._minimum_required_places(day_count)
         logger.info(
             "ai_generate_context_loaded",
@@ -106,10 +172,12 @@ class ItineraryPipeline:
             minimum_required_places=min_required,
             context_place_limit=MAX_CONTEXT_PLACES,
         )
+
+        # --- Step 3: Fallback to all categories if insufficient matches ---
         if len(places) < min_required and categories:
             places = await self.repo.search_places_for_ai(
                 destination_id,
-                categories=None,
+                categories=None,  # Remove category filter
                 limit=MAX_CONTEXT_PLACES,
             )
             logger.info(
@@ -118,6 +186,8 @@ class ItineraryPipeline:
                 places_count=len(places),
                 context_place_limit=MAX_CONTEXT_PLACES,
             )
+
+        # Validate minimum place count after fallback
         if len(places) < min_required:
             logger.warning(
                 "ai_generate_context_insufficient",
@@ -130,6 +200,7 @@ class ItineraryPipeline:
                 "Not enough destination places for AI recommendation. Please run Goong ETL first."
             )
 
+        # --- Step 4: Load hotel context and call LLM ---
         hotels = await self.repo.get_hotels_for_ai(destination_id, limit=MAX_CONTEXT_HOTELS)
         itinerary = await self._call_llm_with_retries(
             request=request,
@@ -138,6 +209,8 @@ class ItineraryPipeline:
             hotels=hotels,
             day_count=day_count,
         )
+
+        # --- Step 5: Persist to database ---
         trip = await self._persist_itinerary(
             request=request,
             user_id=user_id,
@@ -146,6 +219,8 @@ class ItineraryPipeline:
             hotels=hotels,
             itinerary=itinerary,
         )
+
+        # Log successful completion with metrics
         logger.info(
             "ai_generate_completed",
             trip_id=trip.id,
@@ -157,6 +232,10 @@ class ItineraryPipeline:
         )
         return trip
 
+    # ===================================================================
+    # LLM interaction — Retry loop with validation
+    # ===================================================================
+
     async def _call_llm_with_retries(
         self,
         *,
@@ -166,10 +245,21 @@ class ItineraryPipeline:
         hotels: list[Hotel],
         day_count: int,
     ) -> AgentItinerary:
+        """Call the LLM with retry logic and structured validation.
+
+        Retry strategy:
+        - Maximum attempts = agent_max_retries + 1 (initial + retries)
+        - Exponential backoff between retries (delay * 2^attempt)
+        - Previous validation errors are fed back to the LLM as feedback
+        - ServiceUnavailableException (upstream LLM errors) are not retried
+        """
         errors: list[str] = []
         attempts = self.settings.agent_max_retries + 1
+
         for attempt in range(attempts):
             attempt_started_at = perf_counter()
+
+            # Build prompt with context, including any previous validation errors
             prompt = build_itinerary_prompt(
                 request=request,
                 destination_name=destination_name,
@@ -179,7 +269,9 @@ class ItineraryPipeline:
                 max_activities_per_day=self.settings.agent_max_activities_per_day,
                 validation_feedback=errors or None,
             )
+
             try:
+                # Log attempt details for observability
                 logger.info(
                     "ai_generate_llm_attempt_started",
                     attempt=attempt + 1,
@@ -193,6 +285,8 @@ class ItineraryPipeline:
                     day_count=day_count,
                     previous_validation_errors=len(errors),
                 )
+
+                # Call the LLM and parse the JSON response
                 raw_text = await self.llm.generate_text(prompt)
                 logger.info(
                     "ai_generate_llm_attempt_received",
@@ -201,9 +295,13 @@ class ItineraryPipeline:
                     response_estimated_tokens=self._estimate_tokens(raw_text),
                     duration_ms=self._elapsed_ms(attempt_started_at),
                 )
+
+                # Parse and validate the structured response
                 payload = parse_json_response(raw_text)
                 itinerary = AgentItinerary.model_validate(payload)
                 self._validate_itinerary(itinerary, request, day_count)
+
+                # Validation passed — log success and return
                 logger.info(
                     "ai_generate_llm_attempt_validated",
                     attempt=attempt + 1,
@@ -213,7 +311,9 @@ class ItineraryPipeline:
                     duration_ms=self._elapsed_ms(attempt_started_at),
                 )
                 return itinerary
+
             except ServiceUnavailableException as exc:
+                # Upstream LLM service error — don't retry, propagate immediately
                 logger.warning(
                     "ai_generate_llm_attempt_unavailable",
                     attempt=attempt + 1,
@@ -221,7 +321,9 @@ class ItineraryPipeline:
                     duration_ms=self._elapsed_ms(attempt_started_at),
                 )
                 raise
+
             except (LLMGenerationError, ValidationError) as exc:
+                # Invalid LLM output — collect error for feedback and retry
                 errors.append(str(exc))
                 logger.warning(
                     "ai_generate_llm_attempt_invalid",
@@ -231,15 +333,21 @@ class ItineraryPipeline:
                     retrying=attempt < attempts - 1,
                     duration_ms=self._elapsed_ms(attempt_started_at),
                 )
+                # Exponential backoff before next retry
                 if attempt < attempts - 1 and self.retry_delay_seconds > 0:
                     await asyncio.sleep(self.retry_delay_seconds * (2**attempt))
 
+        # All attempts exhausted — fail with descriptive error
         logger.error(
             "ai_generate_llm_validation_exhausted",
             attempts=attempts,
             validation_errors=len(errors),
         )
         raise ServiceUnavailableException("AI itinerary generation failed validation")
+
+    # ===================================================================
+    # Persistence — Save generated itinerary to database
+    # ===================================================================
 
     async def _persist_itinerary(
         self,
@@ -251,8 +359,22 @@ class ItineraryPipeline:
         hotels: list[Hotel],
         itinerary: AgentItinerary,
     ) -> Trip:
+        """Persist the AI-generated itinerary as Trip + nested entities.
+
+        Creates:
+        - 1 Trip row
+        - N TripDay rows (sorted by day_number)
+        - M Activity rows per day (with place_id validation)
+        - K Accommodation rows (with hotel_id validation)
+
+        place_id and hotel_id are only set if they reference valid IDs
+        from the context that was provided to the LLM.
+        """
+        # Build lookup sets for validating AI-referenced IDs
         place_ids = {place.id for place in places}
         hotel_ids = {hotel.id for hotel in hotels}
+
+        # Create the root Trip record
         trip = await self.repo.create_trip(
             user_id=user_id,
             destination=destination_name,
@@ -268,8 +390,11 @@ class ItineraryPipeline:
             ai_generated=True,
         )
 
+        # Create days and activities (sorted by day_number for consistency)
         for idx, day in enumerate(sorted(itinerary.days, key=lambda item: item.day_number)):
+            # Calculate the actual calendar date for this day
             trip_date = request.start_date + timedelta(days=idx)
+
             trip_day = await self.repo.add_day(
                 trip_id=trip.id,
                 day_number=idx + 1,
@@ -277,7 +402,10 @@ class ItineraryPipeline:
                 date=trip_date.isoformat(),
                 destination_name=destination_name,
             )
+
+            # Create activities for this day
             for order_index, activity in enumerate(day.activities):
+                # Validate place_id against context — only set if it's a known place
                 place_id = activity.place_id if activity.place_id in place_ids else None
                 await self.repo.add_activity(
                     trip_day_id=trip_day.id,
@@ -288,7 +416,7 @@ class ItineraryPipeline:
                     type=activity.type,
                     location=activity.location,
                     description=activity.description,
-                    image="",
+                    image="",  # AI doesn't generate images
                     transportation=activity.transportation,
                     adult_price=activity.adult_price,
                     child_price=activity.child_price,
@@ -298,7 +426,9 @@ class ItineraryPipeline:
                     order_index=order_index,
                 )
 
+        # Create accommodation records
         for accommodation in itinerary.accommodations:
+            # Validate hotel_id against context — only set if it's a known hotel
             hotel_id = accommodation.hotel_id if accommodation.hotel_id in hotel_ids else None
             await self.repo.add_accommodation(
                 trip_id=trip.id,
@@ -313,6 +443,7 @@ class ItineraryPipeline:
                 day_ids=accommodation.day_ids,
             )
 
+        # Flush all inserts, then re-fetch with eager loading
         await self.session.flush()
         trip_id = trip.id
         self.session.expire_all()
@@ -321,16 +452,32 @@ class ItineraryPipeline:
             raise ServiceUnavailableException("Generated trip could not be loaded")
         return refreshed
 
+    # ===================================================================
+    # Validation — Business rules for generated itineraries
+    # ===================================================================
+
     def _validate_itinerary(
         self,
         itinerary: AgentItinerary,
         request: GenerateItineraryRequest,
         day_count: int,
     ) -> None:
+        """Validate the AI-generated itinerary against business rules.
+
+        Checks:
+        1. Day count matches the requested trip duration
+        2. Total cost doesn't exceed budget by more than 20% tolerance
+        3. Each day has between min and max activities (from settings)
+        """
+        # Check day count matches request
         if len(itinerary.days) != day_count:
             raise LLMGenerationError("AI itinerary day count does not match request")
+
+        # Check budget tolerance (allow up to 20% overshoot)
         if itinerary.total_cost > int(request.budget * 1.2):
             raise LLMGenerationError("AI itinerary exceeds budget tolerance")
+
+        # Check per-day activity count bounds
         for day in itinerary.days:
             activity_count = len(day.activities)
             if activity_count < self.settings.agent_min_activities_per_day:
@@ -342,8 +489,16 @@ class ItineraryPipeline:
                     f"AI itinerary day {day.day_number} has too many activities"
                 )
 
+    # ===================================================================
+    # Static utility methods
+    # ===================================================================
+
     @staticmethod
     def _day_count(request: GenerateItineraryRequest) -> int:
+        """Calculate trip duration in days from the request dates.
+
+        Validates that duration is between 1 and MAX_TRIP_DAYS.
+        """
         day_count = (request.end_date - request.start_date).days + 1
         if day_count < 1 or day_count > MAX_TRIP_DAYS:
             raise ValidationException("Trip duration must be between 1 and 14 days")
@@ -351,10 +506,21 @@ class ItineraryPipeline:
 
     @staticmethod
     def _minimum_required_places(day_count: int) -> int:
+        """Calculate minimum places needed for meaningful AI generation.
+
+        Formula: max(day_count * 2, 2), capped at 6.
+        Ensures the LLM has enough place variety for each day.
+        """
         return min(max(day_count * 2, 2), 6)
 
     @staticmethod
     def _normalize_interests(interests: list[str]) -> list[str]:
+        """Convert user interest strings to valid DB place categories.
+
+        Applies alias mapping (e.g. "culture" → "attraction") and
+        filters out any interests that don't map to valid categories.
+        Preserves insertion order and removes duplicates.
+        """
         categories: list[str] = []
         for interest in interests:
             normalized = INTEREST_CATEGORY_ALIASES.get(interest, interest)
@@ -364,6 +530,10 @@ class ItineraryPipeline:
 
     @staticmethod
     def _place_context(place: Place) -> dict[str, Any]:
+        """Build a place context dict for inclusion in the LLM prompt.
+
+        Returns camelCase keys to match the prompt template format.
+        """
         return {
             "placeId": place.id,
             "name": place.name,
@@ -379,6 +549,10 @@ class ItineraryPipeline:
 
     @staticmethod
     def _hotel_context(hotel: Hotel) -> dict[str, Any]:
+        """Build a hotel context dict for inclusion in the LLM prompt.
+
+        Returns camelCase keys to match the prompt template format.
+        """
         return {
             "hotelId": hotel.id,
             "name": hotel.name,
@@ -391,8 +565,16 @@ class ItineraryPipeline:
 
     @staticmethod
     def _elapsed_ms(started_at: float) -> int:
+        """Calculate elapsed time in milliseconds since `started_at`.
+
+        Uses perf_counter for high-resolution timing.
+        """
         return round((perf_counter() - started_at) * 1000)
 
     @staticmethod
     def _estimate_tokens(text: str) -> int:
+        """Rough token count estimate for logging purposes.
+
+        Uses the simple heuristic of ~4 characters per token.
+        """
         return max(1, round(len(text) / 4))
