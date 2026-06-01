@@ -47,6 +47,30 @@ The product is useful only if a traveler can discover destinations, create or sa
 | Share/public shared view | PARTIAL | Backend share behavior covered; valid share browser path not tested. |
 | C3/C4 | DEFERRED | Not implemented in this phase by design. |
 
+## 00059C Real Manual Evidence Update
+
+Date: 2026-06-01
+Branch: `docs/00059-c-real-end-user-uat`
+
+This section upgrades the `00059B` matrix with real browser/API evidence from a controlled local manual UAT run. Real Gemini, real Goong, and ETL were still intentionally skipped by phase policy, so journeys that depend on external providers remain `PARTIAL` even when UI flow was exercised with safe mocked responses.
+
+| Journey ID | 00059C status | Evidence type | Key note |
+|---|---|---|---|
+| UJ-GUEST-01 | PASS | Real browser | Homepage CTA/value prop and create-trip navigation are understandable to a first-time visitor. |
+| UJ-GUEST-02 | PARTIAL | Mocked-success browser flow | Guest generate stored pending claim and redirected to login, but no real Gemini call was executed. |
+| UJ-GUEST-03 | PASS | Real browser + safe mocked error | `Da Lat` warning is visible and submit remains allowed; request still leaves the form. |
+| UJ-GUEST-04 | PARTIAL | Mocked browser error | 429 message is clear and user-facing, but quota was not exhausted through real repeated calls. |
+| UJ-GUEST-05 | PASS | Real browser | Guest trip was claimed after auth and landed in workspace successfully. |
+| UJ-AUTH-01 | PASS | Real browser | Register, logout, login, and protected-route session behavior worked as expected. |
+| UJ-AUTH-02 | PARTIAL | Mocked-success browser flow | Auth user reached workspace after mocked generate success; no real Gemini call. |
+| UJ-AUTH-03 | PASS | Real browser | Trip library and workspace loaded owned data correctly. |
+| UJ-AUTH-04 | PASS | Real browser | Activity time edit persisted after reload. |
+| UJ-AUTH-05 | PASS | Real browser | Share link was generated and public shared route rendered a read-only itinerary. |
+| UJ-AUTH-06 | FAIL | Real API reproduction | Trip-level 403 is enforced, but nested activity/accommodation mixed-ID writes were exploitable. |
+| UJ-ERROR-01 | PARTIAL | Real browser + mocked 422 | Unsupported city and backend-style validation messaging are actionable, but not every 422 came from a live backend round-trip. |
+| UJ-ERROR-02 | PARTIAL | Mocked browser error | 503 UX is friendly, but no real provider outage was triggered. |
+| UJ-ERROR-03 | PARTIAL | Source + browser evidence | Paid-AI fail-closed behavior is still inferred from source/tests plus mocked UX, not a real Redis/provider outage. |
+
 ## Follow-Up Before C3/C4
 
 | Follow-up | Severity | Reason |

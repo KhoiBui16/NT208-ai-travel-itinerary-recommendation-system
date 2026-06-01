@@ -27,6 +27,20 @@ Expected invariant: every integer-ID itinerary endpoint must be owner-only, incl
 
 Current risk: ownership of the supplied trip does not necessarily prove ownership of the supplied activity/accommodation ID. A malicious user could try a valid trip ID they own with another guessed subresource ID.
 
+## 00059C Manual Reproduction Evidence
+
+The issue was reproduced with two real authenticated users during the `00059C` manual UAT phase.
+
+| Check | Result |
+|---|---|
+| User A direct read of user B trip | `403` |
+| User A `PUT /itineraries/{tripA}/activities/{activityB}` | `200` |
+| User A `DELETE /itineraries/{tripA}/accommodations/{accommodationB}` | `204` |
+| Activity in user B trip after exploit | Renamed to `PWNED BY USER A` |
+| Accommodation count in user B trip after exploit | `0` |
+
+This confirms the bug is not only theoretical source drift. Trip-level ownership is enforced, but nested subresource ownership is still bypassable when a valid owned `trip_id` is mixed with another trip's nested IDs.
+
 ## Recommended Fix
 
 1. Add repository methods that fetch nested resources by both parent trip and nested ID:
