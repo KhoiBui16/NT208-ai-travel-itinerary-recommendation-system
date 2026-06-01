@@ -374,6 +374,24 @@ class TripRepository:
         result = await self.session.execute(select(Activity).where(Activity.id == activity_id))
         return result.scalar_one_or_none()
 
+    async def get_activity_for_trip(self, activity_id: int, trip_id: int) -> Activity | None:
+        """Fetch an activity only if it belongs to the supplied trip.
+
+        This is the safe lookup for nested activity mutation endpoints where
+        the parent `trip_id` comes from the path and must match the activity's
+        actual parent trip through `TripDay.trip_id`.
+        """
+        stmt = (
+            select(Activity)
+            .join(TripDay, Activity.trip_day_id == TripDay.id)
+            .where(
+                Activity.id == activity_id,
+                TripDay.trip_id == trip_id,
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_activity_with_trip(self, activity_id: int) -> Activity | None:
         """Fetch an activity with its parent day and trip eager-loaded.
 
@@ -426,6 +444,15 @@ class TripRepository:
     async def get_accommodation_by_id(self, acc_id: int) -> Accommodation | None:
         """Fetch a single accommodation by ID."""
         result = await self.session.execute(select(Accommodation).where(Accommodation.id == acc_id))
+        return result.scalar_one_or_none()
+
+    async def get_accommodation_for_trip(self, acc_id: int, trip_id: int) -> Accommodation | None:
+        """Fetch an accommodation only if it belongs to the supplied trip."""
+        stmt = select(Accommodation).where(
+            Accommodation.id == acc_id,
+            Accommodation.trip_id == trip_id,
+        )
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     # ===================================================================

@@ -377,7 +377,7 @@ class ItineraryService(BaseService):
         The `id` and `extra_expenses` fields are excluded from the update.
         """
         await self._verify_owner(trip_id, user_id)
-        activity = await self.repo.get_activity_by_id(activity_id)
+        activity = await self.repo.get_activity_for_trip(activity_id, trip_id)
         if not activity:
             raise NotFoundException("Activity not found")
 
@@ -393,7 +393,7 @@ class ItineraryService(BaseService):
     async def delete_activity(self, trip_id: int, activity_id: int, user_id: int) -> None:
         """Remove an activity from the trip (cascade deletes extra expenses)."""
         await self._verify_owner(trip_id, user_id)
-        activity = await self.repo.get_activity_by_id(activity_id)
+        activity = await self.repo.get_activity_for_trip(activity_id, trip_id)
         if not activity:
             raise NotFoundException("Activity not found")
         await self.repo.delete_activity(activity)
@@ -427,7 +427,7 @@ class ItineraryService(BaseService):
     async def delete_accommodation(self, trip_id: int, acc_id: int, user_id: int) -> None:
         """Remove an accommodation record from the trip."""
         await self._verify_owner(trip_id, user_id)
-        acc = await self.repo.get_accommodation_by_id(acc_id)
+        acc = await self.repo.get_accommodation_for_trip(acc_id, trip_id)
         if not acc:
             raise NotFoundException("Accommodation not found")
         await self.repo.delete_accommodation(acc)

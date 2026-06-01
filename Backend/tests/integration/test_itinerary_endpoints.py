@@ -9,6 +9,7 @@ postgres + alembic migrations are available.
 
 import os
 from collections.abc import Generator
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -175,9 +176,91 @@ def _get_auth_token(client: TestClient, email: str, password: str, name: str) ->
     return reg.json()["accessToken"]
 
 
+def _fresh_user(prefix: str) -> tuple[str, str, str]:
+    suffix = uuid4().hex[:8]
+    return (
+        f"{prefix}_{suffix}@test.com",
+        "password123",
+        f"{prefix.title()} Tester {suffix}",
+    )
+
+
+def _register_user_and_get_token(client: TestClient, prefix: str) -> str:
+    email, password, name = _fresh_user(prefix)
+    return _get_auth_token(client, email, password, name)
+
+
+def _create_trip(client: TestClient, token: str, trip_name: str) -> dict:
+    response = client.post(
+        "/api/v1/itineraries",
+        json={**TRIP_PAYLOAD, "tripName": trip_name},
+        headers=_auth_header(token),
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def _seed_activity_for_trip(
+    client: TestClient,
+    token: str,
+    trip_id: int,
+    *,
+    activity_name: str,
+) -> tuple[int, dict]:
+    response = client.put(
+        f"/api/v1/itineraries/{trip_id}",
+        json={
+            "days": [
+                {
+                    "label": "Ngày 1",
+                    "date": "2026-05-01",
+                    "activities": [
+                        {
+                            "name": activity_name,
+                            "time": "09:00",
+                            "endTime": "10:00",
+                            "type": "attraction",
+                            "location": "Hà Nội",
+                            "description": "Seed activity",
+                            "image": "",
+                            "extraExpenses": [],
+                        }
+                    ],
+                    "extraExpenses": [],
+                }
+            ]
+        },
+        headers=_auth_header(token),
+    )
+    assert response.status_code == 200, response.text
+    trip = response.json()
+    day = trip["days"][0]
+    activity = day["activities"][0]
+    return day["id"], activity
+
+
+def _seed_accommodation_for_trip(
+    client: TestClient, token: str, trip_id: int, *, name: str
+) -> dict:
+    response = client.post(
+        f"/api/v1/itineraries/{trip_id}/accommodations",
+        json={
+            "name": name,
+            "checkIn": "2026-05-01",
+            "checkOut": "2026-05-02",
+            "dayIds": [],
+            "pricePerNight": 500000,
+            "totalPrice": 500000,
+        },
+        headers=_auth_header(token),
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
 @pytest.mark.skipif(not IN_CI, reason="Requires running DB — runs in CI with postgres service")
 def test_create_trip__auth_user__returns_201(client: TestClient) -> None:
-    token = _get_auth_token(client, "trip_test@test.com", "password123", "Trip Tester")
+    token = _register_user_and_get_token(client, "trip_test")
     response = client.post(
         "/api/v1/itineraries",
         json=TRIP_PAYLOAD,
@@ -191,9 +274,181 @@ def test_create_trip__auth_user__returns_201(client: TestClient) -> None:
 
 @pytest.mark.skipif(not IN_CI, reason="Requires running DB — runs in CI with postgres service")
 def test_list_trips__auth_user__returns_200(client: TestClient) -> None:
-    token = _get_auth_token(client, "trip_list@test.com", "password123", "List Tester")
+    token = _register_user_and_get_token(client, "trip_list")
     response = client.get("/api/v1/itineraries", headers=_auth_header(token))
     assert response.status_code == 200
     data = response.json()
     assert "items" in data
     assert "total" in data
+
+
+@pytest.mark.skipif(not IN_CI, reason="Requires running DB — runs in CI with postgres service")
+def test_get_trip__other_user__returns_403(client: TestClient) -> None:
+    token_a = _register_user_and_get_token(client, "trip_owner_a")
+    token_b = _register_user_and_get_token(client, "trip_owner_b")
+
+    trip_b = _create_trip(client, token_b, "Owner B Trip")
+
+    response = client.get(
+        f"/api/v1/itineraries/{trip_b['id']}",
+        headers=_auth_header(token_a),
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.skipif(not IN_CI, reason="Requires running DB — runs in CI with postgres service")
+def test_update_activity__owner_activity_in_own_trip__returns_200(client: TestClient) -> None:
+    token = _register_user_and_get_token(client, "activity_owner")
+    trip = _create_trip(client, token, "Owner Activity Trip")
+    _, activity = _seed_activity_for_trip(
+        client,
+        token,
+        trip["id"],
+        activity_name="Original Activity",
+    )
+
+    update_payload = {
+        **activity,
+        "name": "Updated Activity",
+        "time": "10:15",
+        "endTime": "11:00",
+    }
+    response = client.put(
+        f"/api/v1/itineraries/{trip['id']}/activities/{activity['id']}",
+        json=update_payload,
+        headers=_auth_header(token),
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["name"] == "Updated Activity"
+    assert response.json()["time"] == "10:15"
+
+
+@pytest.mark.skipif(not IN_CI, reason="Requires running DB — runs in CI with postgres service")
+def test_update_activity__mixed_trip_and_activity_ids__returns_404(client: TestClient) -> None:
+    token_a = _register_user_and_get_token(client, "mixed_activity_a")
+    token_b = _register_user_and_get_token(client, "mixed_activity_b")
+
+    trip_a = _create_trip(client, token_a, "Owner A Trip")
+    trip_b = _create_trip(client, token_b, "Owner B Trip")
+    _, activity_b = _seed_activity_for_trip(
+        client,
+        token_b,
+        trip_b["id"],
+        activity_name="Victim Activity",
+    )
+
+    exploit_payload = {
+        **activity_b,
+        "name": "PWNED BY USER A",
+        "time": "09:30",
+    }
+    response = client.put(
+        f"/api/v1/itineraries/{trip_a['id']}/activities/{activity_b['id']}",
+        json=exploit_payload,
+        headers=_auth_header(token_a),
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.skipif(not IN_CI, reason="Requires running DB — runs in CI with postgres service")
+def test_delete_activity__owner_activity_in_own_trip__returns_204(client: TestClient) -> None:
+    token = _register_user_and_get_token(client, "delete_activity_owner")
+    trip = _create_trip(client, token, "Delete Activity Owner Trip")
+    _, activity = _seed_activity_for_trip(
+        client,
+        token,
+        trip["id"],
+        activity_name="Delete Me",
+    )
+
+    response = client.delete(
+        f"/api/v1/itineraries/{trip['id']}/activities/{activity['id']}",
+        headers=_auth_header(token),
+    )
+
+    assert response.status_code == 204, response.text
+
+    trip_after = client.get(
+        f"/api/v1/itineraries/{trip['id']}",
+        headers=_auth_header(token),
+    )
+    assert trip_after.status_code == 200, trip_after.text
+    assert trip_after.json()["days"][0]["activities"] == []
+
+
+@pytest.mark.skipif(not IN_CI, reason="Requires running DB — runs in CI with postgres service")
+def test_delete_activity__mixed_trip_and_activity_ids__returns_404(client: TestClient) -> None:
+    token_a = _register_user_and_get_token(client, "mixed_delete_activity_a")
+    token_b = _register_user_and_get_token(client, "mixed_delete_activity_b")
+
+    trip_a = _create_trip(client, token_a, "Owner A Delete Trip")
+    trip_b = _create_trip(client, token_b, "Owner B Delete Trip")
+    _, activity_b = _seed_activity_for_trip(
+        client,
+        token_b,
+        trip_b["id"],
+        activity_name="Protected Activity",
+    )
+
+    response = client.delete(
+        f"/api/v1/itineraries/{trip_a['id']}/activities/{activity_b['id']}",
+        headers=_auth_header(token_a),
+    )
+
+    assert response.status_code == 404
+
+    victim_trip_after = client.get(
+        f"/api/v1/itineraries/{trip_b['id']}",
+        headers=_auth_header(token_b),
+    )
+    assert victim_trip_after.status_code == 200, victim_trip_after.text
+    remaining_activities = victim_trip_after.json()["days"][0]["activities"]
+    assert len(remaining_activities) == 1
+    assert remaining_activities[0]["id"] == activity_b["id"]
+
+
+@pytest.mark.skipif(not IN_CI, reason="Requires running DB — runs in CI with postgres service")
+def test_delete_accommodation__owner_accommodation_in_own_trip__returns_204(
+    client: TestClient,
+) -> None:
+    token = _register_user_and_get_token(client, "accommodation_owner")
+    trip = _create_trip(client, token, "Owner Accommodation Trip")
+    accommodation = _seed_accommodation_for_trip(
+        client,
+        token,
+        trip["id"],
+        name="Owner Hotel",
+    )
+
+    response = client.delete(
+        f"/api/v1/itineraries/{trip['id']}/accommodations/{accommodation['id']}",
+        headers=_auth_header(token),
+    )
+
+    assert response.status_code == 204, response.text
+
+
+@pytest.mark.skipif(not IN_CI, reason="Requires running DB — runs in CI with postgres service")
+def test_delete_accommodation__mixed_trip_and_accommodation_ids__returns_404(
+    client: TestClient,
+) -> None:
+    token_a = _register_user_and_get_token(client, "mixed_acc_a")
+    token_b = _register_user_and_get_token(client, "mixed_acc_b")
+
+    trip_a = _create_trip(client, token_a, "Owner A Accommodation Trip")
+    trip_b = _create_trip(client, token_b, "Owner B Accommodation Trip")
+    accommodation_b = _seed_accommodation_for_trip(
+        client,
+        token_b,
+        trip_b["id"],
+        name="Victim Hotel",
+    )
+
+    response = client.delete(
+        f"/api/v1/itineraries/{trip_a['id']}/accommodations/{accommodation_b['id']}",
+        headers=_auth_header(token_a),
+    )
+
+    assert response.status_code == 404
