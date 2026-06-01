@@ -1670,7 +1670,7 @@ POST /auth/reset-password {token, newPassword}
 
 ## 11. Quick Start
 
-> 💡 **Lưu ý địa chỉ:** Các lệnh dưới dùng `localhost`. Nếu truy cập từ thiết bị khác trong LAN, tìm IPv4 của máy bằng lệnh `ipconfig` (Windows) hoặc `ifconfig` (Linux/macOS) rồi thay `localhost` bằng địa chỉ đó.
+> 💡 **Local UAT guide:** Quy trình PowerShell-safe mới nhất nằm ở [`docs/LOCAL_MANUAL_UAT_GUIDE.md`](docs/LOCAL_MANUAL_UAT_GUIDE.md). User journey matrix nằm ở [`docs/USER_JOURNEY_UAT.md`](docs/USER_JOURNEY_UAT.md). Các lệnh human-facing dùng `localhost:<port>`; không ghi địa chỉ máy cá nhân vào docs/reports.
 
 ### Cách 1 — Docker Compose (khuyến nghị)
 
@@ -1689,10 +1689,10 @@ cp Backend/.env.example Backend/.env
 docker compose up --build
 
 # 4. Chạy migration (lần đầu)
-docker compose exec backend alembic upgrade head
+docker compose exec api alembic upgrade head
 
 # 5. (Optional) Chạy ETL nạp dữ liệu địa điểm
-docker compose exec backend python -m src.etl
+docker compose exec api python -m src.etl
 ```
 
 Sau khi khởi động:
@@ -1774,11 +1774,11 @@ uv run pytest tests/unit/ -v
 uv run pytest tests/integration/ -v
 ```
 
-**Kết quả hiện tại:** 97 unit tests + 44 integration tests = **141 backend tests**
+**Kết quả hiện tại:** 119 unit tests + 44 integration tests = **163 backend tests**
 
 | Suite | Số test | Mô tả |
 |---|---|---|
-| Unit | 97 | Service logic, schema validation, security utils, token hashing |
+| Unit | 119 | Service logic, schema validation, security utils, token hashing, AI pipeline, ETL/Goong mocks |
 | Integration | 44 | Endpoint tests với DB thật (PostgreSQL + Redis) |
 
 ### Frontend E2E Tests (Playwright)
@@ -1799,14 +1799,16 @@ npx playwright test --ui
 npx playwright show-report
 ```
 
-**Kết quả hiện tại:** 13 e2e tests
+**Kết quả hiện tại:** 22 Playwright tests total; latest local UAT result: **19 passed, 3 skipped**.
 
 | Suite | Số test | Mô tả |
 |---|---|---|
-| Auth flow | 3 | Register, login, protected route redirect |
+| Calendar + destination readiness | 2 | Calendar helper/date range, partial destination advisory |
+| Rate-limit UX shell | 4 | 429 response structure, CreateTrip load/button/calendar shell |
+| Auth flow | 5 | Register, login, protected route redirect, guest claim after login/register |
 | Trip CRUD | 3 | Create trip, view list, delete trip |
 | Public pages | 5 | Home, login, register, forgot-password, 404 |
-| Shared trip | 2 | Share link generation, public view |
+| Legacy B3 flows | 3 skipped | Historical fullstack observation flows kept skipped in current suite |
 
 ### CI/CD — GitHub Actions
 
@@ -1814,11 +1816,11 @@ npx playwright show-report
 
 | Check | Mô tả |
 |---|---|
+| `pr-policy` | Branch, PR title, PR body template |
 | `backend-lint` | Ruff lint + format check |
-| `backend-type` | Pyright type check |
 | `backend-unit` | pytest unit tests |
 | `backend-integration` | pytest integration tests (PostgreSQL + Redis containers) |
-| `frontend-lint` | ESLint + TypeScript check |
+| `backend-migrations` | Alembic upgrade/check |
 | `frontend-build` | Vite production build |
 | `frontend-e2e` | Playwright e2e (BE + FE stack) |
 
@@ -1926,7 +1928,7 @@ cd Backend
 uv run python -m src.etl
 
 # Hoặc với Docker
-docker compose exec backend python -m src.etl
+docker compose exec api python -m src.etl
 ```
 
 ---
@@ -1952,7 +1954,7 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   ├── agent/                     # AI infrastructure (Gemini client, prompts, schemas)
 │   │   └── etl/                       # Goong Maps ETL pipeline
 │   ├── tests/
-│   │   ├── unit/                      # 97 unit tests
+│   │   ├── unit/                      # 119 unit tests
 │   │   └── integration/               # 44 integration tests
 │   ├── alembic/                       # DB migrations
 │   │   └── versions/
