@@ -69,9 +69,11 @@ class Accommodation(Base):
 
     # --- Booking config ---
     booking_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    booking_type: Mapped[str | None] = mapped_column(String(20), nullable=True)  # hourly|nightly|daily
-    duration: Mapped[int | None] = mapped_column(Integer, nullable=True)          # Số đêm/giờ/ngày
-    day_ids: Mapped[list[int]] = mapped_column(JSON, default=list, nullable=False) # IDs các ngày sử dụng
+    # hourly|nightly|daily
+    booking_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    duration: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Số đêm/giờ/ngày
+    # IDs các ngày sử dụng
+    day_ids: Mapped[list[int]] = mapped_column(JSON, default=list, nullable=False)
 
     # --- Relationships ---
     trip: Mapped["Trip"] = relationship(back_populates="accommodations")
@@ -115,7 +117,8 @@ class ShareLink(Base):
         nullable=False,
         index=True,
     )
-    permission: Mapped[str] = mapped_column(String(20), default="view", nullable=False)  # Hiện tại chỉ "view"
+    # Hiện tại chỉ "view"
+    permission: Mapped[str] = mapped_column(String(20), default="view", nullable=False)
 
     # --- Lifecycle timestamps ---
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -161,7 +164,7 @@ class TripRating(Base):
     )
 
     # --- Rating data ---
-    rating: Mapped[int] = mapped_column(Integer, nullable=False)       # 1-5 sao
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-5 sao
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)  # Nhận xét tùy chọn
 
     # --- Timestamps ---
@@ -207,8 +210,10 @@ class GuestClaimToken(Base):
     token_hash: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 
     # --- Lifecycle ---
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)    # Hết hạn sau 24h
-    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # NULL = chưa dùng
+    # Hết hạn sau 24h
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # NULL = chưa dùng
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

@@ -236,12 +236,14 @@ class Activity(Base):
     image: Mapped[str] = mapped_column(String(500), default="", nullable=False)
     transportation: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
-    # --- Cost fields (đơn vị: VNĐ) ---
-    adult_price: Mapped[int | None] = mapped_column(Integer, nullable=True)      # Giá vé/ăn người lớn
-    child_price: Mapped[int | None] = mapped_column(Integer, nullable=True)      # Giá vé/ăn trẻ em
-    custom_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)      # Chi phí tùy chỉnh (shopping, entertainment)
-    bus_ticket_price: Mapped[int | None] = mapped_column(Integer, nullable=True) # Giá vé xe buýt/người
-    taxi_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)        # Tổng chi phí taxi
+    # Giá vé/ăn người lớn
+    adult_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    child_price: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Giá vé/ăn trẻ em
+    # Chi phí tùy chỉnh (shopping, entertainment)
+    custom_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Giá vé xe buýt/người
+    bus_ticket_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    taxi_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Tổng chi phí taxi
 
     # --- Ordering ---
     order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -303,8 +305,9 @@ class ExtraExpense(Base):
 
     # --- Expense info ---
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    amount: Mapped[int] = mapped_column(Integer, nullable=False)       # Đơn vị: VNĐ
-    category: Mapped[str] = mapped_column(String(30), nullable=False)  # food|attraction|entertainment|transportation|shopping
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)  # Đơn vị: VNĐ
+    # food|attraction|entertainment|transportation|shopping
+    category: Mapped[str] = mapped_column(String(30), nullable=False)
 
     # --- Relationships ---
     activity: Mapped["Activity | None"] = relationship(back_populates="extra_expenses")

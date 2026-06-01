@@ -43,7 +43,6 @@ from src.itineraries.schemas import (
 )
 from src.itineraries.service import ItineraryService
 
-
 # ---------------------------------------------------------------------------
 # Router setup
 # ---------------------------------------------------------------------------
