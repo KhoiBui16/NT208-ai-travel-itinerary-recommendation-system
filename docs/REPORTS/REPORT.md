@@ -229,6 +229,30 @@ Month 1: Not enough enabled days (1), trying next month
 
 Historical sections above and below are phase snapshots. Current 00059B readiness supersedes older calendar-blocker wording and older test-count summaries.
 
+## 00059C Real End-user Manual UAT
+
+| File | Nội dung |
+|---|---|
+| [00059c_real_end_user_manual_uat.md](00059c_real_end_user_manual_uat.md) | 2026-06-01: Real browser/API end-user evidence for homepage, claim, auth, workspace, edit persistence, share, and error UX — **PARTIAL_READY_FOR_00060** |
+| [pr_00059c_description.md](pr_00059c_description.md) | PR body template for docs/00059C |
+| [../USER_JOURNEY_UAT.md](../USER_JOURNEY_UAT.md) | Updated with latest real-manual-evidence statuses |
+| [ISSUES/issue_nested_trip_subresource_membership_authz_gap.md](ISSUES/issue_nested_trip_subresource_membership_authz_gap.md) | Concrete exploit evidence added — **OPEN / HIGH** |
+
+**Manual UAT highlights:**
+- ✅ Real browser: homepage CTA/product understanding
+- ✅ Real browser: guest claim after auth
+- ✅ Real browser: register/login/logout/session
+- ✅ Real browser: trip library/workspace load
+- ✅ Real browser: activity edit persists after reload
+- ✅ Real browser: share link + public shared read-only route
+- ⚠️ Mocked-only by policy: generate success, 429 UX, backend 422 mapping, 503 UX
+- ❌ API reproduction: nested subresource ownership bypass is actively exploitable
+
+**Readiness decision:**
+- `00060` review phase: YES
+- Direct C3/C4 implementation-heavy work: NO
+- Recommended next: `00060A — Fix nested subresource authz gap`, then `00060B — Architecture/System Review + Go/No-Go before C3/C4`
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |
