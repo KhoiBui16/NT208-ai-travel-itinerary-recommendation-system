@@ -274,6 +274,31 @@ Historical sections above and below are phase snapshots. Current 00059B readines
 - `00060B — Architecture/System Review + Go/No-Go before C3/C4`: YES
 - This specific ownership-bypass blocker no longer blocks the architecture review phase
 
+## 00060B Architecture/System Review + Go/No-Go before C3/C4
+
+| File | Nội dung |
+|---|---|
+| [00060b_architecture_c3_c4_readiness.md](00060b_architecture_c3_c4_readiness.md) | 2026-06-01: Product-aware architecture review, C3/C4 readiness decision, and phased implementation plan — **GO_WITH_LIMITATIONS** |
+| [../ARCHITECTURE_C3_C4_READINESS.md](../ARCHITECTURE_C3_C4_READINESS.md) | Kiến trúc hiện tại, ownership model, quota/error review, và readiness decision |
+| [../C3_C4_IMPLEMENTATION_PLAN.md](../C3_C4_IMPLEMENTATION_PLAN.md) | Chia nhỏ C3A/C3B/C3C/C4A/C4B theo backend/frontend/tests/exit criteria |
+| [pr_00060b_description.md](pr_00060b_description.md) | PR body template for docs/00060B |
+
+**Key findings:**
+- ✅ `00059C` đã chứng minh các flow end-user cốt lõi của sản phẩm đã được manual UAT bằng browser/API thật
+- ✅ `00060A` đã resolve nested trip subresource authz gap, nên ownership model hiện tại đủ an toàn để bắt đầu phase foundation cho chat
+- ✅ Source hiện tại đã có schema `chat_sessions` + `chat_messages`; C3A không cần dựng lại toàn bộ data model từ đầu
+- ✅ `TripWorkspace` là điểm gắn companion chat đúng nhất vì đã có `tripId`, itinerary context, và owner-only access
+- ⚠️ `FloatingAIChat` hiện chỉ là mock UI, chưa trip-aware và chưa gọi API thật
+- ⚠️ Chat quota riêng chưa được tách khỏi generate quota; đây là risk mở cho `C3B`
+- ⚠️ Stale patch handling vẫn là design gap mở cho giai đoạn apply-patch
+- ⚠️ `docs/05_database_etl.md` còn drift ở migration-history line cho chat tables; source hiện tại mới là current truth
+
+**Readiness decision:**
+- `C3A — Chat Session Foundation`: YES
+- `C3B — Companion Chat API`: NO direct start
+- `C4 — Chat History`: NO direct start
+- Overall: `GO_WITH_LIMITATIONS`
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |
