@@ -1,17 +1,7 @@
 """C.1 AI itinerary generation pipeline.
 
-Module này chịu trách nhiệm orchestrate quá trình tạo lịch trình bằng AI:
-
-  1. Resolve destination → Destination entity (từ DB)
-  2. Load context data  → Places + Hotels cho AI recommendation
-  3. Build prompt       → Gọi LLM (Gemini) với context
-  4. Validate response  → Kiểm tra format, day count, budget
-  5. Persist to DB      → Tạo Trip + Days + Activities + Accommodations
-
-Phân tách trách nhiệm:
-  • Shared AI infrastructure → src/agent/ (LLM client, prompts, schemas)
-  • DB reads/writes          → src/itineraries/ (repository, models)
-  • Business orchestration   → file này (ItineraryPipeline)
+This module owns itinerary business orchestration. Shared AI infrastructure
+stays under src/agent, while DB reads/writes remain in the itineraries domain.
 """
 
 import asyncio
@@ -34,35 +24,21 @@ from src.itineraries.repository import TripRepository
 from src.itineraries.schemas import GenerateItineraryRequest
 from src.places.models import Hotel, Place
 
-# ---------------------------------------------------------------------------
-# Constants — Cấu hình pipeline
-# ---------------------------------------------------------------------------
-
-# Các loại activity hợp lệ trong hệ thống
 VALID_ACTIVITY_CATEGORIES = {"food", "attraction", "nature", "entertainment", "shopping"}
-
-# Mapping sở thích user → category DB (normalize user input)
 INTEREST_CATEGORY_ALIASES = {
     "culture": "attraction",
     "cultural": "attraction",
     "history": "attraction",
 }
-
-# Giới hạn context gửi cho LLM (tránh prompt quá dài)
 MAX_CONTEXT_PLACES = 15
 MAX_CONTEXT_HOTELS = 4
-
-# Giới hạn số ngày tối đa cho 1 trip
 MAX_TRIP_DAYS = 14
 
 logger = get_logger(__name__)
 
 
 class ItineraryPipeline:
-    """Generate và persist lịch trình AI từ DB recommendation context.
-
-    Flow chính: generate() → _call_llm_with_retries() → _persist_itinerary()
-    """
+    """Generate and persist an AI itinerary from DB recommendation context."""
 
     def __init__(
         self,
@@ -79,29 +55,14 @@ class ItineraryPipeline:
         self.llm = llm or GeminiLLM(AgentConfig.from_settings(self.settings))
         self.retry_delay_seconds = retry_delay_seconds
 
-    # ===================================================================
-    # Public API — Entry point
-    # ===================================================================
-
     async def generate(
         self,
         request: GenerateItineraryRequest,
         user_id: int | None,
     ) -> Trip:
-        """Generate lịch trình AI và persist vào DB.
-
-        Flow:
-          1. Tính số ngày → validate (1-14)
-          2. Resolve destination → Destination entity
-          3. Load places + hotels context
-          4. Gọi LLM → validate response
-          5. Persist Trip + Days + Activities + Accommodations
-          6. Return Trip (eager-loaded)
-        """
+        """Generate an itinerary and persist Trip/Days/Activities/Accommodations."""
         started_at = perf_counter()
         day_count = self._day_count(request)
-
-        # --- Log bắt đầu ---
         logger.info(
             "ai_generate_started",
             destination=request.destination,
@@ -116,8 +77,6 @@ class ItineraryPipeline:
             min_activities_per_day=self.settings.agent_min_activities_per_day,
             max_activities_per_day=self.settings.agent_max_activities_per_day,
         )
-
-        # --- Step 1: Resolve destination ---
         destination = await self.repo.resolve_destination_for_ai(request.destination)
         if not destination:
             logger.warning(
@@ -131,7 +90,6 @@ class ItineraryPipeline:
         destination_id = destination.id
         destination_name = destination.name
 
-        # --- Step 2: Load context places ---
         categories = self._normalize_interests(request.interests)
         places = await self.repo.search_places_for_ai(
             destination_id,
@@ -148,8 +106,6 @@ class ItineraryPipeline:
             minimum_required_places=min_required,
             context_place_limit=MAX_CONTEXT_PLACES,
         )
-
-        # Nếu không đủ places với category filter → fallback lấy tất cả categories
         if len(places) < min_required and categories:
             places = await self.repo.search_places_for_ai(
                 destination_id,
@@ -162,8 +118,6 @@ class ItineraryPipeline:
                 places_count=len(places),
                 context_place_limit=MAX_CONTEXT_PLACES,
             )
-
-        # Vẫn không đủ → raise error
         if len(places) < min_required:
             logger.warning(
                 "ai_generate_context_insufficient",
@@ -176,7 +130,6 @@ class ItineraryPipeline:
                 "Not enough destination places for AI recommendation. Please run Goong ETL first."
             )
 
-        # --- Step 3: Load context hotels + Call LLM ---
         hotels = await self.repo.get_hotels_for_ai(destination_id, limit=MAX_CONTEXT_HOTELS)
         itinerary = await self._call_llm_with_retries(
             request=request,
@@ -185,8 +138,6 @@ class ItineraryPipeline:
             hotels=hotels,
             day_count=day_count,
         )
-
-        # --- Step 4: Persist to DB ---
         trip = await self._persist_itinerary(
             request=request,
             user_id=user_id,
@@ -195,8 +146,6 @@ class ItineraryPipeline:
             hotels=hotels,
             itinerary=itinerary,
         )
-
-        # --- Log hoàn thành ---
         logger.info(
             "ai_generate_completed",
             trip_id=trip.id,
@@ -208,10 +157,6 @@ class ItineraryPipeline:
         )
         return trip
 
-    # ===================================================================
-    # LLM Interaction — Gọi AI model với retry
-    # ===================================================================
-
     async def _call_llm_with_retries(
         self,
         *,
@@ -221,22 +166,10 @@ class ItineraryPipeline:
         hotels: list[Hotel],
         day_count: int,
     ) -> AgentItinerary:
-        """Gọi LLM với retry logic (exponential backoff).
-
-        Mỗi attempt:
-          1. Build prompt (kèm validation errors từ attempt trước nếu có)
-          2. Call LLM → parse JSON response
-          3. Validate itinerary (day count, budget, activity count)
-
-        Retry khi: LLMGenerationError hoặc ValidationError
-        Không retry khi: ServiceUnavailableException (LLM down)
-        """
         errors: list[str] = []
         attempts = self.settings.agent_max_retries + 1
         for attempt in range(attempts):
             attempt_started_at = perf_counter()
-
-            # Build prompt — kèm validation errors từ attempt trước (nếu có)
             prompt = build_itinerary_prompt(
                 request=request,
                 destination_name=destination_name,
@@ -260,8 +193,6 @@ class ItineraryPipeline:
                     day_count=day_count,
                     previous_validation_errors=len(errors),
                 )
-
-                # Gọi LLM
                 raw_text = await self.llm.generate_text(prompt)
                 logger.info(
                     "ai_generate_llm_attempt_received",
@@ -270,12 +201,8 @@ class ItineraryPipeline:
                     response_estimated_tokens=self._estimate_tokens(raw_text),
                     duration_ms=self._elapsed_ms(attempt_started_at),
                 )
-
-                # Parse JSON response → validate schema
                 payload = parse_json_response(raw_text)
                 itinerary = AgentItinerary.model_validate(payload)
-
-                # Validate business rules (day count, budget, activity count)
                 self._validate_itinerary(itinerary, request, day_count)
                 logger.info(
                     "ai_generate_llm_attempt_validated",
@@ -286,9 +213,7 @@ class ItineraryPipeline:
                     duration_ms=self._elapsed_ms(attempt_started_at),
                 )
                 return itinerary
-
             except ServiceUnavailableException as exc:
-                # LLM service down → không retry
                 logger.warning(
                     "ai_generate_llm_attempt_unavailable",
                     attempt=attempt + 1,
@@ -297,7 +222,6 @@ class ItineraryPipeline:
                 )
                 raise
             except (LLMGenerationError, ValidationError) as exc:
-                # Parse/validation error → retry với feedback
                 errors.append(str(exc))
                 logger.warning(
                     "ai_generate_llm_attempt_invalid",
@@ -307,21 +231,15 @@ class ItineraryPipeline:
                     retrying=attempt < attempts - 1,
                     duration_ms=self._elapsed_ms(attempt_started_at),
                 )
-                # Exponential backoff trước khi retry
                 if attempt < attempts - 1 and self.retry_delay_seconds > 0:
                     await asyncio.sleep(self.retry_delay_seconds * (2**attempt))
 
-        # Hết retry → raise error
         logger.error(
             "ai_generate_llm_validation_exhausted",
             attempts=attempts,
             validation_errors=len(errors),
         )
         raise ServiceUnavailableException("AI itinerary generation failed validation")
-
-    # ===================================================================
-    # Persistence — Lưu kết quả AI vào DB
-    # ===================================================================
 
     async def _persist_itinerary(
         self,
@@ -333,16 +251,8 @@ class ItineraryPipeline:
         hotels: list[Hotel],
         itinerary: AgentItinerary,
     ) -> Trip:
-        """Persist AI-generated itinerary vào DB.
-
-        Tạo: Trip → TripDay (per day) → Activity (per activity) → Accommodation (per hotel)
-        Verify place_id/hotel_id tồn tại trong context trước khi link.
-        """
-        # Tạo set IDs hợp lệ để verify foreign keys
         place_ids = {place.id for place in places}
         hotel_ids = {hotel.id for hotel in hotels}
-
-        # Tạo Trip record
         trip = await self.repo.create_trip(
             user_id=user_id,
             destination=destination_name,
@@ -358,7 +268,6 @@ class ItineraryPipeline:
             ai_generated=True,
         )
 
-        # Tạo Days + Activities
         for idx, day in enumerate(sorted(itinerary.days, key=lambda item: item.day_number)):
             trip_date = request.start_date + timedelta(days=idx)
             trip_day = await self.repo.add_day(
@@ -369,7 +278,6 @@ class ItineraryPipeline:
                 destination_name=destination_name,
             )
             for order_index, activity in enumerate(day.activities):
-                # Chỉ link place_id nếu tồn tại trong context
                 place_id = activity.place_id if activity.place_id in place_ids else None
                 await self.repo.add_activity(
                     trip_day_id=trip_day.id,
@@ -390,9 +298,7 @@ class ItineraryPipeline:
                     order_index=order_index,
                 )
 
-        # Tạo Accommodations
         for accommodation in itinerary.accommodations:
-            # Chỉ link hotel_id nếu tồn tại trong context
             hotel_id = accommodation.hotel_id if accommodation.hotel_id in hotel_ids else None
             await self.repo.add_accommodation(
                 trip_id=trip.id,
@@ -407,7 +313,6 @@ class ItineraryPipeline:
                 day_ids=accommodation.day_ids,
             )
 
-        # Flush + expire → re-fetch để eager-load tất cả data
         await self.session.flush()
         trip_id = trip.id
         self.session.expire_all()
@@ -416,23 +321,12 @@ class ItineraryPipeline:
             raise ServiceUnavailableException("Generated trip could not be loaded")
         return refreshed
 
-    # ===================================================================
-    # Validation — Kiểm tra kết quả AI
-    # ===================================================================
-
     def _validate_itinerary(
         self,
         itinerary: AgentItinerary,
         request: GenerateItineraryRequest,
         day_count: int,
     ) -> None:
-        """Validate AI-generated itinerary theo business rules.
-
-        Kiểm tra:
-          • Số ngày = số ngày yêu cầu
-          • Tổng chi phí <= 120% budget (tolerance 20%)
-          • Mỗi ngày có đủ activities (min/max từ settings)
-        """
         if len(itinerary.days) != day_count:
             raise LLMGenerationError("AI itinerary day count does not match request")
         if itinerary.total_cost > int(request.budget * 1.2):
@@ -448,13 +342,8 @@ class ItineraryPipeline:
                     f"AI itinerary day {day.day_number} has too many activities"
                 )
 
-    # ===================================================================
-    # Utility — Các helper nhỏ
-    # ===================================================================
-
     @staticmethod
     def _day_count(request: GenerateItineraryRequest) -> int:
-        """Tính số ngày trip từ start_date và end_date. Validate range 1-14."""
         day_count = (request.end_date - request.start_date).days + 1
         if day_count < 1 or day_count > MAX_TRIP_DAYS:
             raise ValidationException("Trip duration must be between 1 and 14 days")
@@ -462,16 +351,10 @@ class ItineraryPipeline:
 
     @staticmethod
     def _minimum_required_places(day_count: int) -> int:
-        """Tính số places tối thiểu cần có để AI tạo lịch trình hợp lý."""
         return min(max(day_count * 2, 2), 6)
 
     @staticmethod
     def _normalize_interests(interests: list[str]) -> list[str]:
-        """Normalize user interests → DB categories.
-
-        Ví dụ: "culture" → "attraction", "cultural" → "attraction"
-        Chỉ giữ categories hợp lệ, loại bỏ duplicates.
-        """
         categories: list[str] = []
         for interest in interests:
             normalized = INTEREST_CATEGORY_ALIASES.get(interest, interest)
@@ -481,7 +364,6 @@ class ItineraryPipeline:
 
     @staticmethod
     def _place_context(place: Place) -> dict[str, Any]:
-        """Convert Place ORM → dict context cho LLM prompt."""
         return {
             "placeId": place.id,
             "name": place.name,
@@ -497,7 +379,6 @@ class ItineraryPipeline:
 
     @staticmethod
     def _hotel_context(hotel: Hotel) -> dict[str, Any]:
-        """Convert Hotel ORM → dict context cho LLM prompt."""
         return {
             "hotelId": hotel.id,
             "name": hotel.name,
@@ -510,10 +391,8 @@ class ItineraryPipeline:
 
     @staticmethod
     def _elapsed_ms(started_at: float) -> int:
-        """Tính thời gian đã trôi qua (milliseconds) từ started_at."""
         return round((perf_counter() - started_at) * 1000)
 
     @staticmethod
     def _estimate_tokens(text: str) -> int:
-        """Ước tính số tokens từ text (rough: 1 token ≈ 4 chars)."""
         return max(1, round(len(text) / 4))
