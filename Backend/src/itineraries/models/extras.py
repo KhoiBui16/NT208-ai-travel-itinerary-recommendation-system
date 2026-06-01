@@ -71,7 +71,7 @@ class Accommodation(Base):
 
     # --- Extended booking info ---
     booking_url: Mapped[str | None] = mapped_column(String(500), nullable=True)  # External link
-    booking_type: Mapped[str | None] = mapped_column(String(20), nullable=True)  # hourly/nightly/daily
+    booking_type: Mapped[str | None] = mapped_column(String(20), nullable=True)  # hourly/nightly
     duration: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Number of units booked
 
     # --- Day association (JSON array of TripDay IDs) ---

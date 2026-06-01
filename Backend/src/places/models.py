@@ -120,7 +120,7 @@ class Place(Base):
 
     # --- Descriptive info ---
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)  # Searchable name
-    category: Mapped[str] = mapped_column(String(30), nullable=False, index=True)  # food/attraction/etc
+    category: Mapped[str] = mapped_column(String(30), nullable=False, index=True)  # food/attraction
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     location: Mapped[str] = mapped_column(String(300), default="", nullable=False)  # Address text
 
@@ -160,7 +160,7 @@ class Place(Base):
 
     # --- Relationships ---
     destination: Mapped[Destination] = relationship(back_populates="places")
-    activities: Mapped[list["Activity"]] = relationship(back_populates="place")  # Activities referencing this place
+    activities: Mapped[list["Activity"]] = relationship(back_populates="place")
     saved_by: Mapped[list["SavedPlace"]] = relationship(back_populates="place")  # User bookmarks
 
 
@@ -279,7 +279,7 @@ class ScrapedSource(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # --- Source identification ---
-    source_name: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g. "goong", "tripadvisor"
+    source_name: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g. "goong"
     city: Mapped[str | None] = mapped_column(String(100), nullable=True)  # Target city name
     url: Mapped[str | None] = mapped_column(Text, nullable=True)  # Source URL if applicable
 
@@ -290,8 +290,8 @@ class ScrapedSource(Base):
         nullable=False,
     )
     items_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)  # Places found
-    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)  # pending/done/error
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)  # Error details if failed
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)  # Status
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)  # Error details
 
     # --- Timestamp ---
     created_at: Mapped[datetime] = mapped_column(
