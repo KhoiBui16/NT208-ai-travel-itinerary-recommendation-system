@@ -1817,6 +1817,7 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 - `00060D-FIX` browser `429` submit-path UX: **PASS**
 - `00060D-R` browser `503` UX from controlled provider-timeout path: **PASS**
 - `00060D-FIX` `FloatingAIChat` hardcoded-`Hà Nội` context bug: **FIXED_PRE_C3A**
+- `00060G` Home destination image fallback and AI provider-timeout submit-path UX regressions: **PASS**
 
 ### Backend Tests
 
@@ -1836,11 +1837,11 @@ uv run pytest tests/unit/ -v
 uv run pytest tests/integration/ -v
 ```
 
-**Kết quả hiện tại:** 125 unit tests + 51 integration tests = **176 backend tests**
+**Kết quả hiện tại:** 126 unit tests + 51 integration tests = **177 backend tests**
 
 | Suite | Số test | Mô tả |
 |---|---|---|
-| Unit | 125 | Service logic, schema validation, security utils, token hashing, AI pipeline, ETL/Goong mocks, authz regressions |
+| Unit | 126 | Service logic, schema validation, security utils, token hashing, AI pipeline, ETL/Goong mocks, authz regressions, AI timeout no-persist contract |
 | Integration | 51 | Endpoint tests với DB thật (PostgreSQL + Redis), gồm nested trip authz regression coverage |
 
 ### Frontend E2E Tests (Playwright)
@@ -1861,16 +1862,18 @@ npx playwright test --ui
 npx playwright show-report
 ```
 
-**Kết quả hiện tại:** 24 Playwright tests total; latest local UAT result: **21 passed, 3 skipped**.
+**Kết quả hiện tại:** 26 Playwright tests total; latest full local result: **15 passed, 11 skipped**.
 
 | Suite | Số test | Mô tả |
 |---|---|---|
 | Calendar + destination readiness | 2 | Calendar helper/date range, partial destination advisory |
 | Rate-limit UX | 5 | 429 response structure, CreateTrip shell, submit-path 429 regression |
-| Auth flow | 5 | Register, login, protected route redirect, guest claim after login/register |
-| Trip CRUD | 3 | Create trip, view list, delete trip |
+| Auth flow | 5 skipped locally | Register, login, protected route redirect, guest claim after login/register |
+| Trip CRUD | 3 skipped locally | Create trip, view list, delete trip |
 | Public pages | 5 | Home, login, register, forgot-password, 404 |
 | Floating chat pre-C3A context | 1 | Non-Hà Nội trip no longer shows hardcoded `Hà Nội` |
+| Home destination image fallback | 1 | Empty/null/broken API images fall back to stable destination/default images |
+| AI timeout UX | 1 | 503 `AI_PROVIDER_TIMEOUT` submit path stays on CreateTrip and shows actionable copy |
 | Legacy B3 flows | 3 skipped | Historical fullstack observation flows kept skipped in current suite |
 
 ### CI/CD — GitHub Actions
@@ -2019,7 +2022,7 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   ├── geo/                       # Goong REST client
 │   │   └── shared/                    # Truly shared base helpers
 │   ├── tests/
-│   │   ├── unit/                      # 125 unit tests
+│   │   ├── unit/                      # 126 unit tests
 │   │   └── integration/               # 51 integration tests
 │   ├── alembic/                       # DB migrations
 │   │   └── versions/
@@ -2042,7 +2045,7 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   │   ├── types/                 # trip.types.ts (FE-BE contract)
 │   │   │   └── utils/
 │   │   └── styles/
-│   ├── tests/e2e/                     # 24 Playwright tests total (latest local UAT: 21 passed, 3 skipped)
+│   ├── tests/e2e/                     # 26 Playwright tests total (latest local full suite: 15 passed, 11 skipped)
 │   ├── playwright.config.ts
 │   ├── package.json
 │   └── vite.config.ts

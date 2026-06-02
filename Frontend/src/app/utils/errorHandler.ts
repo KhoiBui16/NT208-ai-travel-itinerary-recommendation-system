@@ -137,15 +137,17 @@ export function getGenerateErrorMessage(error: unknown, context?: GenerateErrorC
   // 503 Service Unavailable
   if (status === 503) {
     const detail = typeof body.detail === "string" ? body.detail : "";
+    const errorCode = typeof body.error_code === "string" ? body.error_code : "";
     const detailLower = detail.toLowerCase();
 
     if (
+      errorCode === "AI_PROVIDER_TIMEOUT" ||
       detailLower.includes("ai") ||
       detailLower.includes("gemini") ||
       detailLower.includes("timeout") ||
       detailLower.includes("llm")
     ) {
-      return "Dịch vụ AI đang bận hoặc phản hồi quá lâu. Vui lòng thử lại sau ít phút.";
+      return "Dịch vụ AI đang phản hồi quá lâu nên chưa thể tạo lịch trình. Chưa có lịch trình nào được lưu. Vui lòng thử lại sau, hoặc tạo chuyến đi ngắn hơn 1–2 ngày để kiểm tra nhanh.";
     }
 
     if (detailLower.includes("redis") || detailLower.includes("cache")) {

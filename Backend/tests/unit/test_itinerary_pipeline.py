@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from src.core.config import AppSettings
-from src.core.exceptions import ValidationException
+from src.core.exceptions import ServiceUnavailableException, ValidationException
 from src.itineraries.models.extras import Accommodation
 from src.itineraries.models.trip import Activity, Trip, TripDay
 from src.itineraries.pipeline import ItineraryPipeline
@@ -34,6 +34,19 @@ class FakeLLM:
         self.calls += 1
         index = min(self.calls - 1, len(self.responses) - 1)
         return json.dumps(self.responses[index])
+
+
+class FakeTimeoutLLM:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def generate_text(self, prompt: str) -> str:
+        self.calls += 1
+        raise ServiceUnavailableException(
+            "Dịch vụ AI đang phản hồi quá lâu. Vui lòng thử lại sau hoặc tạo chuyến đi ngắn hơn.",
+            error_code="AI_PROVIDER_TIMEOUT",
+            retryable=True,
+        )
 
 
 class FakeRepo:
@@ -315,3 +328,24 @@ async def test_pipeline__retries_invalid_output_then_accepts_valid() -> None:
 
     assert trip.trip_name == "AI Hà Nội Trip"
     assert llm.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_pipeline__ai_timeout__raises_retryable_timeout_without_persisting() -> None:
+    llm = FakeTimeoutLLM()
+    repo = FakeRepo(places=_make_places())
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=repo,  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    with pytest.raises(ServiceUnavailableException) as exc_info:
+        await pipeline.generate(_make_request(), user_id=None)
+
+    assert llm.calls == 1
+    assert repo.trip is None
+    assert exc_info.value.error_code == "AI_PROVIDER_TIMEOUT"
+    assert exc_info.value.retryable is True

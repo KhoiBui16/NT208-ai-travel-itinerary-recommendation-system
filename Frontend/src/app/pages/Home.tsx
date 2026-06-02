@@ -11,6 +11,37 @@ interface DisplayDest {
   description: string;
 }
 
+const DEFAULT_DESTINATION_IMAGE =
+  "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080";
+
+const destinationImageAliases: Record<string, string> = {
+  "Hạ Long": "Vịnh Hạ Long",
+  "Ha Long": "Vịnh Hạ Long",
+  "TP. Hồ Chí Minh": "TP. Hồ Chí Minh",
+  "Hồ Chí Minh": "TP. Hồ Chí Minh",
+  "Ho Chi Minh": "TP. Hồ Chí Minh",
+};
+
+function normalizeDestinationName(name: string): string {
+  return name.trim();
+}
+
+function getFallbackDestinationImage(name: string): string {
+  const normalizedName = normalizeDestinationName(name);
+  const aliasName = destinationImageAliases[normalizedName] ?? normalizedName;
+
+  const directFallback = mockDestinations.find(
+    (dest) => normalizeDestinationName(dest.name) === aliasName,
+  );
+
+  return directFallback?.image || DEFAULT_DESTINATION_IMAGE;
+}
+
+function resolveDestinationImage(name: string, apiImage?: string | null): string {
+  const trimmedImage = apiImage?.trim();
+  return trimmedImage || getFallbackDestinationImage(name);
+}
+
 export default function Home() {
   const [destinations, setDestinations] = useState<DisplayDest[]>(mockDestinations);
 
@@ -25,7 +56,7 @@ export default function Home() {
           setDestinations(
             apiDests.map((d: DestinationResponse) => ({
               name: d.name,
-              image: d.image || "",
+              image: resolveDestinationImage(d.name, d.image),
               description: d.country || "",
             })),
           );
@@ -154,6 +185,11 @@ export default function Home() {
                 <img
                   src={dest.image}
                   alt={dest.name}
+                  onError={(event) => {
+                    if (event.currentTarget.src !== DEFAULT_DESTINATION_IMAGE) {
+                      event.currentTarget.src = DEFAULT_DESTINATION_IMAGE;
+                    }
+                  }}
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
