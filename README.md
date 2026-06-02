@@ -316,6 +316,13 @@ graph LR
     RP --> M
 ```
 
+#### Ý nghĩa sơ đồ
+
+- Router nhận request và chỉ làm nhiệm vụ parse input, gọi dependency FastAPI, rồi chuyển xuống service.
+- `ItineraryService` là nơi giữ business rules như owner check, validation, và orchestration nhiều repository call.
+- `TripRepository` chỉ nên chứa SQL/query logic; không nhét auth rule hay decision nghiệp vụ xuống đây.
+- Kiểu phân tầng này là khuôn hiện tại để `C3A` thêm session foundation theo đúng style repo, thay vì tạo một nhánh xử lý chat tách rời khỏi `itineraries/`.
+
 ### 4.2 Backend — Domain Structure
 
 ```mermaid
@@ -383,6 +390,13 @@ graph TD
     APP --> AGENT
 ```
 
+#### Ý nghĩa sơ đồ
+
+- `main.py` chỉ đóng vai trò app factory và mount router tổng `api/v1`.
+- Các domain chính đang vận hành là `auth/`, `itineraries/`, và `places/`; chúng mới là nơi chứa business flow user-facing.
+- `agent/` hiện là hạ tầng AI dùng chung, không phải nơi chứa companion chat business logic.
+- Vì vậy nếu đi tiếp `C3A/C3B`, phần trip-bound companion nên bám vào `itineraries/`, còn `agent/` chỉ giữ provider/prompt infra tái sử dụng.
+
 ### 4.3 Frontend — Component & Data Flow
 
 ```mermaid
@@ -439,6 +453,13 @@ graph TD
     API -->|"HTTP REST"| BE["FastAPI Backend<br/>localhost:8000"]
 ```
 
+#### Ý nghĩa sơ đồ
+
+- `AuthProvider` chịu trách nhiệm giữ JWT state, load profile, và chạy `executePendingClaim()` sau login/register.
+- Các page chính đi qua hook layer (`useTripSync`, `useActivityManager`, `useAccommodation`, `usePlacesManager`) thay vì gọi API trực tiếp trong JSX.
+- `services/api.ts` là lớp bọc chung cho Bearer injection, auto-refresh 401, và parse metadata như `Retry-After` / `X-RateLimit-*`.
+- `FloatingAIChat` hiện vẫn chỉ là mock UI; điểm đúng quan trọng là context đã derive từ trip hiện tại thay vì hardcoded `Hà Nội`.
+
 ### 4.4 Optimistic Update Pattern (FE)
 
 ```mermaid
@@ -467,6 +488,13 @@ sequenceDiagram
         Hook->>User: show error toast
     end
 ```
+
+#### Ý nghĩa luồng
+
+- FE ưu tiên cập nhật UI trước để thao tác sửa activity/accommodation mượt hơn cho người dùng.
+- Hook luôn giữ `prevState` để có thể rollback nếu BE trả lỗi hoặc timeout.
+- Quy tắc này chỉ áp dụng cho CRUD đã có thật trong workspace; nó không thay thế confirm flow cho future `apply-patch` ở chat.
+- Vì vậy `C3A` có thể gắn panel chat vào `TripWorkspace` mà không cần thay đổi cơ chế optimistic update hiện tại.
 
 ### 4.6 Backend — Cấu trúc file theo domain
 
@@ -670,7 +698,7 @@ erDiagram
 
     trip_ratings {
         int id PK
-        int trip_id FK UK
+        int trip_id FK "unique"
         int rating
         string feedback
         timestamp created_at
@@ -678,7 +706,7 @@ erDiagram
 
     share_links {
         int id PK
-        int trip_id FK UK
+        int trip_id FK "unique"
         string token_hash UK
         int created_by_user_id FK
         string permission
@@ -801,6 +829,25 @@ erDiagram
     chat_sessions ||--o{ chat_messages : "contains"
 ```
 
+#### Cách đọc ERD
+
+- `users` là bảng trung tâm cho tài khoản đăng nhập. Các bảng như `refresh_tokens`, `trips`, `saved_places`, `share_links` và `chat_sessions` liên kết về `users` để xác định chủ sở hữu hoặc người thực hiện hành động.
+- `trips` là thực thể nghiệp vụ chính của hệ thống. Một trip có nhiều `trip_days`, mỗi ngày có nhiều `activities`, và activity có thể tham chiếu đến `places`; phần lưu trú được tách riêng qua `accommodations` và có thể tham chiếu đến `hotels`.
+- `destinations` đại diện cho thành phố/điểm đến cấp cao như Hà Nội, Huế, Đà Lạt. Các bảng dữ liệu địa điểm như `places` và `hotels` gắn về `destinations` để phục vụ generate itinerary và kiểm tra data readiness.
+- `share_links` dùng cho public shared view. `trip_id FK "unique"` nghĩa là link gắn với một trip và đang bị ràng buộc unique theo thiết kế hiện tại; Mermaid dùng comment `"unique"` để tránh lỗi render khi một field vừa là FK vừa có unique constraint.
+- `guest_claim_tokens` hỗ trợ guest claim flow. Token thật không lưu plaintext mà chỉ lưu dạng hash để giảm rủi ro lộ token.
+- `trip_ratings` lưu đánh giá sau chuyến đi. `trip_id FK "unique"` biểu diễn quan hệ một đánh giá cho một trip theo ràng buộc hiện tại.
+- `chat_sessions` và `chat_messages` đã có trong schema để làm nền cho Phase `C3/C4`, nhưng API chat thật vẫn chưa được implement trước `C3A`.
+
+**Quy ước ký hiệu:**
+
+| Ký hiệu | Ý nghĩa |
+|---|---|
+| `PK` | Primary key, khóa chính của bảng |
+| `FK` | Foreign key, khóa ngoại liên kết sang bảng khác |
+| `UK` | Unique key, giá trị duy nhất |
+| `FK "unique"` | Field là khóa ngoại và có ràng buộc unique; viết dạng comment để GitHub Mermaid render hợp lệ |
+
 ### 5.2 Quan hệ chính
 
 ```
@@ -890,23 +937,22 @@ saved_places
 share_links
   ├── id (PK)
   ├── trip_id (FK → trips.id)
-  ├── created_by (FK → users.id)
-  ├── share_token_hash (SHA-256, unique)
+  ├── created_by_user_id (FK → users.id)
+  ├── token_hash (SHA-256, unique)
   ├── permission (view)
   ├── expires_at (nullable)
-  └── is_revoked
+  └── revoked_at (nullable)
 
 guest_claim_tokens
   ├── id (PK)
   ├── trip_id (FK → trips.id)
-  ├── token_hash (SHA-256)
+  ├── token_hash (SHA-256, unique)
   ├── expires_at
   └── consumed_at (nullable — one-time use)
 
 trip_ratings
   ├── id (PK)
   ├── trip_id (FK → trips.id)
-  ├── user_id (FK → users.id)
   ├── rating (1–5)
   └── feedback, created_at
 ```
@@ -920,8 +966,9 @@ trip_ratings
 | `trip_days` → `activities` | 1:N (ordered by order_index) |
 | `activities` → `extra_expenses` | 1:N |
 | `trips` → `accommodations` | 1:N |
-| `trips` → `share_links` | 1:N |
+| `trips` → `share_links` | 1:1 (current unique constraint on `trip_id`) |
 | `trips` → `guest_claim_tokens` | 1:N |
+| `trips` → `trip_ratings` | 1:1 (current unique constraint on `trip_id`) |
 | `destinations` → `places` | 1:N |
 | `destinations` → `hotels` | 1:N |
 | `users` → `saved_places` | 1:N |
@@ -1057,7 +1104,7 @@ User → POST /itineraries {destination, tripName, dates, budget, ...}
   → create Trip (user_id = user.id hoặc NULL nếu guest)
   → Nếu guest: tạo claimToken (raw + hash, expires 24h)
   → Return ItineraryResponse (+ claimToken nếu guest)
-  → FE lưu claimToken vào localStorage (pendingClaims)
+  → FE lưu claimToken vào sessionStorage (pendingClaim)
 
 [Chỉnh sửa — Auto-save]
 User thay đổi → FE optimistic update (UI cập nhật ngay lập tức)
@@ -1230,6 +1277,13 @@ sequenceDiagram
     end
 ```
 
+#### Ý nghĩa luồng
+
+- Generate pipeline đi qua đầy đủ các chốt quan trọng: validate input, rate-limit Redis, resolve destination, lấy recommendation context từ DB, rồi mới gọi Gemini.
+- `422`, `429`, và `503` đều được tách rõ ở tầng service/pipeline để FE có thể hiển thị UX cụ thể thay vì lỗi mơ hồ.
+- Guest generate chỉ khác auth flow ở bước phát hành `claimToken`; core AI pipeline vẫn dùng chung.
+- `C3A` không được chạm vào luồng này ngoài việc cùng sống an toàn bên trong `TripWorkspace` sau khi generate xong.
+
 ### 8.2 C.2 — Suggestion Service (Mermaid)
 
 ```mermaid
@@ -1254,6 +1308,13 @@ flowchart TD
     style K fill:#ffd93d
     style O fill:#6bcb77
 ```
+
+#### Ý nghĩa luồng
+
+- Đây là luồng gợi ý thay thế dựa trên DB, không gọi Gemini và không tiêu quota generate.
+- Owner check vẫn được giữ vì activity phải thuộc trip của user hiện tại.
+- Kết quả trả về là danh sách candidate để FE cho user chọn, không tự mutate itinerary.
+- Mô hình này là tiền đề tốt cho future companion actions: chat có thể đề xuất trước, còn việc persist chỉ xảy ra sau confirm.
 
 ### 8.3 C.1 — Generate Pipeline Text Flow
 
@@ -1396,6 +1457,13 @@ sequenceDiagram
     FE->>User: redirect "/" hoặc trang đang cố truy cập
 ```
 
+#### Ý nghĩa luồng
+
+- Cả register và login đều quy về một điểm chung: nhận JWT pair, hydrate profile, rồi xử lý pending guest claim nếu có.
+- OTP/email verification hiện không nằm trên critical path runtime này; flow hiện tại dựa vào auth API đang merge trên `main`.
+- Việc claim trip sau auth là lý do `C3A` phải coi guest-unclaimed trip là ngoài phạm vi owner chat.
+- Diagram này cũng nhắc reviewer rằng login state và claim flow đã gắn với nhau ngay từ tầng `AuthContext`.
+
 ### 9.2 Token Refresh Flow (Mermaid)
 
 ```mermaid
@@ -1429,6 +1497,13 @@ sequenceDiagram
     end
 ```
 
+#### Ý nghĩa luồng
+
+- `api.ts` tự động refresh khi gặp `401`, nên phần lớn page/hook không phải tự viết retry logic riêng.
+- Refresh token được hash trong DB và rotate mỗi lần dùng để giảm rủi ro replay.
+- Nếu refresh fail, FE phải clear token và đưa user về `/login`; không có fail-open cho auth state.
+- Pattern này tiếp tục hữu ích cho `C3A/C3B` vì chat REST endpoints cũng sẽ đi qua cùng API client.
+
 ### 9.3 Guest Claim Flow (Mermaid)
 
 ```mermaid
@@ -1447,7 +1522,7 @@ sequenceDiagram
     SVC->>SVC: create_opaque_token("claim") → raw + hash
     SVC->>DB: INSERT guest_claim_tokens (hash, expires_at=+24h)
     SVC-->>FE: ItineraryResponse + claimToken (raw)
-    FE->>FE: localStorage.set("pendingClaims", [{tripId, claimToken}])
+    FE->>FE: sessionStorage.set("pendingClaim", {tripId, claimToken, returnTo})
     FE->>FE: navigate /trip-workspace?tripId={id}
     Note over FE: TripWorkspace là protected route → redirect /login
 
@@ -1468,10 +1543,17 @@ sequenceDiagram
         SVC->>DB: UPDATE guest_claim_tokens SET consumed_at=now()
         SVC->>DB: UPDATE trips SET user_id={current_user.id}
         SVC-->>FE: {claimed: true, tripId}
-        FE->>FE: xóa pendingClaims khỏi localStorage
+        FE->>FE: xóa pendingClaim khỏi sessionStorage
         FE->>FE: navigate /trip-workspace?tripId={id}
     end
 ```
+
+#### Ý nghĩa luồng
+
+- Guest claim flow hiện dùng `sessionStorage` với một object `pendingClaim`, không còn dùng mảng `pendingClaims` trong `localStorage`.
+- Raw claim token chỉ tồn tại ở FE tạm thời; BE chỉ lưu hash để chống lộ token và chống replay.
+- Shared/public view là read-only và không thay thế cho claim flow; muốn thành owner thì phải đi qua bước claim thật.
+- Đây là boundary quan trọng cho `C3A`: guest phải claim trip xong rồi mới được tạo session chat owner-only.
 
 ### 9.4 JWT Token Architecture
 
@@ -1836,6 +1918,13 @@ flowchart TD
     style OSM_FALLBACK fill:#ffd93d
 ```
 
+#### Ý nghĩa luồng ETL
+
+- ETL đi theo hướng Goong-first nhưng vẫn có OSM fallback để tránh đứt pipeline khi nguồn chính không đủ dữ liệu.
+- Sau khi transform và upsert xong, Redis cache của destinations/places phải bị invalidate để generate dùng dữ liệu mới.
+- Chất lượng `C.1 Generate` phụ thuộc trực tiếp vào luồng này, nhưng `C3A` không cần thay đổi ETL để bắt đầu session foundation.
+- Các API như `Direction` hay `DistanceMatrix` vẫn là tiềm năng cho giai đoạn companion nâng cao sau này, chưa phải scope runtime hiện tại.
+
 ### 13.2 Goong API Endpoints đang dùng
 
 ETL dùng **3 Goong REST API endpoints** từ `https://rsapi.goong.io`:
@@ -1951,7 +2040,7 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   │   ├── types/                 # trip.types.ts (FE-BE contract)
 │   │   │   └── utils/
 │   │   └── styles/
-│   ├── tests/e2e/                     # 22 Playwright e2e tests (latest local UAT: 19 pass, 3 skip)
+│   ├── tests/e2e/                     # 24 Playwright tests total (latest local UAT: 21 passed, 3 skipped)
 │   ├── playwright.config.ts
 │   ├── package.json
 │   └── vite.config.ts
