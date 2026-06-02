@@ -299,6 +299,28 @@ Historical sections above and below are phase snapshots. Current 00059B readines
 - `C4 — Chat History`: NO direct start
 - Overall: `GO_WITH_LIMITATIONS`
 
+## 00060C Source/Docs/README Sync + C3A Entry Gate
+
+| File | Nội dung |
+|---|---|
+| [00060c_source_docs_readme_sync_c3a_entry_gate.md](00060c_source_docs_readme_sync_c3a_entry_gate.md) | 2026-06-01: Source-vs-docs audit, README/docs/report sync, và C3A entry gate — **SYNCED_FOR_C3A** |
+| [pr_00060c_description.md](pr_00060c_description.md) | PR body template for docs/00060C |
+| [../ARCHITECTURE_C3_C4_READINESS.md](../ARCHITECTURE_C3_C4_READINESS.md) | Kiến trúc hiện tại sau khi sync lại docs drift |
+| [../C3_C4_IMPLEMENTATION_PLAN.md](../C3_C4_IMPLEMENTATION_PLAN.md) | Risk-to-phase mapping và C3A non-goals rõ hơn |
+
+**Key findings:**
+- ✅ Source code, `README.md`, technical docs, và report index đã được sync lại với current truth sau `00060A` / `00060B`
+- ✅ Chat tables được ghi đúng là đã nằm trong initial migration; không còn docs drift kiểu "future chat migration on main"
+- ✅ `FloatingAIChat` vẫn được document rõ là mock local-state; `C3A` phải thay/wrap nó thành session-aware placeholder
+- ✅ `C3A` vẫn là next allowed phase
+- ⚠️ Chat quota riêng, real provider smoke, và stale patch handling vẫn là risk mở nhưng không block `C3A`
+
+**Entry-gate decision:**
+- Source/docs/README sync: `SYNCED`
+- `C3A — Chat Session Foundation`: YES
+- `C3B — Companion Chat API`: NO direct start
+- `C4 — Chat History`: NO direct start
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |

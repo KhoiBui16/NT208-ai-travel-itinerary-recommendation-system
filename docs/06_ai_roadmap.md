@@ -2,7 +2,7 @@
 
 ## Mục đích
 
-File này mô tả **chi tiết kiến trúc AI cho Phase C** — generate pipeline, companion chat, suggestion service, chat history. C.1 direct generate pipeline đã được implement trong branch `feat/00041-c-generate-pipeline`; các phần C.2-C.5 vẫn theo roadmap.
+File này mô tả **kiến trúc AI dài hạn cho Phase C** — generate pipeline, companion chat, suggestion service, chat history. Current source truth cho gate trước khi code chat/history nằm ở `docs/ARCHITECTURE_C3_C4_READINESS.md` và `docs/C3_C4_IMPLEMENTATION_PLAN.md`.
 
 **Khi nào đọc file này:**
 
@@ -20,8 +20,9 @@ File này mô tả **chi tiết kiến trúc AI cho Phase C** — generate pipel
 - Destination slug matching đã được cải thiện: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" (không dấu) → slug "ha-noi" → match DB.
 - Chat/companion UI ở FE là **mock/demo**, không nối API thật.
 - DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn), nhưng chưa có API.
-- Chưa có `CompanionService`, `ChatService`, analytics.
-- C.1 không phải multi-agent; LangGraph/tool-calling để dành cho C.3 Companion Chat.
+- Chưa có session/message API, chưa có `companion_service.py`, chưa có `chat_service.py`, analytics chưa bật.
+- `00060B` / `00060C` chốt current gate là `GO_WITH_LIMITATIONS`: chỉ `C3A` được phép bắt đầu; `C3B` và `C4` chưa được direct start.
+- C.1 không phải multi-agent; provider/tool-calling để dành cho giai đoạn sau `C3A`.
 
 ---
 
@@ -145,6 +146,8 @@ Ngày 2026-05-25:
 ---
 
 ## 3. Companion Chat — Patch-Confirm Flow
+
+> **Lưu ý:** Phần này là future target architecture cho `C3B/C3C`, không phải current API surface. `C3A` chỉ dựng session foundation owner-only, trip-scoped; không gọi Gemini thật, không gửi message thật, và không apply-patch.
 
 ### 3.1 Kiến trúc tổng thể
 
@@ -270,13 +273,13 @@ Ngày 2026-05-25:
 
 | File Backend                          | Mục đích                               | Layer   |
 | ------------------------------------- | -------------------------------------- | ------- |
-| `src/itineraries/router.py` (mở rộng) | Chat + apply-patch endpoints           | Router  |
-| `src/itineraries/companion.py`        | Intent routing, tool-calling, LLM chat | Service |
+| `src/itineraries/router.py` (mở rộng) | Message + apply-patch endpoints        | Router  |
+| `src/itineraries/companion_service.py`| Message handling, tool-calling, provider abstraction | Service |
 
 | File Frontend        | Mục đích                                              |
 | -------------------- | ----------------------------------------------------- |
-| `services/agent.ts`  | Chat/apply-patch API client                           |
-| `FloatingAIChat.tsx` | Thay mock bằng API thật, hiển thị proposed operations |
+| `services/agent.ts` hoặc `services/chat.ts` | Chat/apply-patch API client                 |
+| `FloatingAIChat.tsx` / `ChatPanel`          | Thay mock bằng panel/session-aware UI       |
 | `companion/*.tsx`    | Nối real suggestions, confirm UI                      |
 
 ---
@@ -420,16 +423,15 @@ Nếu bật Text-to-SQL analytics (EP-34), **bắt buộc** có các guardrails:
 | File Backend                              | Mục đích                              | Layer      |
 | ----------------------------------------- | ------------------------------------- | ---------- |
 | `src/itineraries/pipeline.py`             | LLM orchestration cho generate        | Service    |
-| `src/itineraries/companion.py`            | Intent routing, tool-calling cho chat | Service    |
+| `src/itineraries/companion_service.py`    | Message handling, tool-calling cho chat | Service (planned) |
 | `src/places/suggestion_service.py`        | Gợi ý DB-only (không LLM)             | Service    |
-| `src/itineraries/chat_service.py`         | Quản lý chat session/message          | Service    |
-| `src/itineraries/router.py` (mở rộng)     | Chat + apply-patch endpoints          | Router     |
-| `src/itineraries/router.py` (mở rộng)     | Chat history endpoints                | Router     |
+| `src/itineraries/chat_service.py`         | Quản lý chat session/message          | Service (planned) |
+| `src/itineraries/router.py` (mở rộng)     | Session/message/apply-patch endpoints | Router     |
 | `src/itineraries/schemas.py` (mở rộng)    | AI generate response schema           | Schema     |
 | `src/itineraries/repository.py` (mở rộng) | Chat DB queries                       | Repository |
 
-| File Frontend        | Mục đích                         |
-| -------------------- | -------------------------------- |
-| `services/agent.ts`  | Chat/apply-patch API client      |
-| `FloatingAIChat.tsx` | Thay mock bằng API thật          |
-| `companion/*.tsx`    | Nối real suggestions, confirm UI |
+| File Frontend                           | Mục đích                                  |
+| --------------------------------------- | ----------------------------------------- |
+| `services/agent.ts` hoặc `services/chat.ts` | Chat/session/apply-patch API client (planned) |
+| `FloatingAIChat.tsx` / `ChatPanel`      | Thay mock bằng session-aware UI           |
+| `companion/*.tsx`                       | Nối real suggestions, confirm UI          |

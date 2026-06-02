@@ -72,7 +72,7 @@ Frontend/
 │   │       └── tripConstants.ts   # Trip constants
 │   ├── styles/                     # Tailwind + global CSS
 │   └── imports/                    # Shared imports
-├── tests/e2e/                      # Playwright e2e tests
+├── tests/e2e/                      # 22 Playwright e2e tests
 │   ├── auth.spec.ts
 │   ├── trips.spec.ts
 │   ├── public.spec.ts
@@ -535,15 +535,17 @@ Tất cả trang chính đã nối BE API. Mock chỉ dùng fallback.
 - **Timeout**: 30 giây, retries: 2 trên CI
 - **WebServer**: Tự động start `npm run dev` nếu chưa chạy
 
-### Test suites (11 tests)
+### Test suites (22 tests total; latest local UAT: 19 pass, 3 skip)
 
-**Auth flow (3 tests):**
+**Auth flow (5 tests):**
 
 | Test | Flow | Mô tả |
 |---|---|---|
 | register → success → redirect home | UI form | Điền form, submit, redirect `/` |
 | login → success → redirect home | API + UI | Register qua API, login qua UI |
 | protected route → redirect login → login → show page | UI navigation | `/trip-library` chưa auth → `/login` → login → access granted |
+| guest claim after login | API + UI | Guest trip được claim sau login và quay lại workspace |
+| guest claim after register | API + UI | Guest trip được claim sau register và quay lại workspace |
 
 **Trip CRUD (3 tests):**
 
@@ -553,15 +555,14 @@ Tất cả trang chính đã nối BE API. Mock chỉ dùng fallback.
 | view trip list in TripLibrary | API + UI | Tạo trip, mở TripLibrary, verify card |
 | delete trip from TripHistory | API + UI | Tạo trip, mở ItineraryView, xóa |
 
-**Public pages (5 tests):**
+**Calendar + rate-limit + public pages + legacy flows:**
 
-| Test | Mô tả |
-|---|---|
-| home page loads | Verify `/` trả banner |
-| login page loads | Verify heading "Chào mừng bạn trở lại!" |
-| register page loads | Verify heading "Đăng Ký" |
-| forgot-password page loads | Verify URL đúng |
-| not-found page | Verify heading "404" |
+| Suite | Count | Mô tả |
+|---|---|---|
+| Calendar + destination readiness | 2 | Helper date-range selection và partial destination advisory |
+| Rate-limit UX shell | 4 | 429 response shape, CreateTrip button/load shell |
+| Public pages | 5 | Home, login, register, forgot-password, 404 |
+| Legacy B3 flows | 3 skipped | Historical observational flows vẫn để skip trong suite hiện tại |
 
 ### Test helpers
 
@@ -587,9 +588,9 @@ Job `frontend-e2e` trong `frontend-ci.yml`:
 
 ## 11. Known Gaps
 
-- FloatingAIChat vẫn mock vì C.3 companion chat chưa implement.
+- FloatingAIChat vẫn là mock local-state và đang được `TripWorkspace` mount với `selectedCities={["Hà Nội"]}` hardcoded.
 - CreateTrip đã gọi BE generate API thật; chất lượng lịch trình phụ thuộc Goong ETL data + Gemini key.
-- E2E chưa cover: trip workspace drag-and-drop, calendar interaction, accommodation CRUD.
+- E2E hiện chưa cover sâu: trip workspace drag-and-drop, accommodation CRUD, và future chat/session UX.
 - CityList chủ yếu dùng mock data (BE cần nhiều destinations hơn).
 - Visual regression testing chưa có.
 

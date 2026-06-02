@@ -120,13 +120,13 @@ $env:E2E_API_URL = "http://localhost:8000"
 npx playwright test --reporter=list
 ```
 
-Expected current result for `00059B`:
+Expected current merged-source result after `00060A` / `00060B`:
 
 - Backend ruff check: pass.
 - Backend ruff format check: pass.
 - Alembic upgrade/check: pass.
-- Backend unit: 119 passed.
-- Backend integration: 44 passed.
+- Backend unit: 125 passed.
+- Backend integration: 51 passed.
 - Frontend build: pass with Vite chunk-size warning only.
 - Playwright: 19 passed, 3 skipped.
 
