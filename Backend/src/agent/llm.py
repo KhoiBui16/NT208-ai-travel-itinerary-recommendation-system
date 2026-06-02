@@ -69,7 +69,14 @@ class GeminiLLM:
                 timeout_seconds=self.config.timeout_seconds,
                 duration_ms=round((perf_counter() - started_at) * 1000),
             )
-            raise ServiceUnavailableException("Gemini request timed out") from exc
+            raise ServiceUnavailableException(
+                (
+                    "Dịch vụ AI đang phản hồi quá lâu. "
+                    "Vui lòng thử lại sau hoặc tạo chuyến đi ngắn hơn."
+                ),
+                error_code="AI_PROVIDER_TIMEOUT",
+                retryable=True,
+            ) from exc
         except ServiceUnavailableException:
             raise
         except Exception as exc:

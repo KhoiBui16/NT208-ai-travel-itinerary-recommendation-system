@@ -397,6 +397,28 @@ Historical sections above and below are phase snapshots. Current 00059B readines
 - Auto-deploy now: `NO, manual-first`
 - Clean PR-to-`main` readiness: `YES`
 
+## 00060G AI Latency + Home Image Hardening
+
+| File | Nội dung |
+|---|---|
+| [00060g_ai_latency_image_hardening.md](00060g_ai_latency_image_hardening.md) | 2026-06-03: Home destination image fallback, AI provider-timeout UX, backend timeout contract, and latency RCA logging |
+| [pr_00060g_description.md](pr_00060g_description.md) | PR body template for AI latency/image hardening |
+| [../README.md](../README.md) | Latest backend/frontend test counts and pre-staging UAT snapshot |
+
+**Key findings:**
+- ✅ Home destination cards now keep a usable image when API image data is empty, null, unknown, or broken
+- ✅ CreateTrip now shows a visible, actionable Vietnamese message for `AI_PROVIDER_TIMEOUT` 503 responses
+- ✅ Backend Gemini timeout response stays 503 but includes structured `error_code` and `retryable=true`
+- ✅ Pipeline logging now captures local context/prompt/persistence duration fields without logging prompt content or secrets
+- ✅ Timeout no-persist behavior is covered by a backend unit test
+- ⚠️ Real Gemini provider latency can still happen; this phase hardens observability and UX, not provider availability itself
+
+**Decision:**
+- Home images fixed: `YES`
+- AI timeout UX fixed: `YES`
+- Real Gemini timeout eliminated: `PARTIAL`
+- Proceed to manual staging deploy after merge: `YES`
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |

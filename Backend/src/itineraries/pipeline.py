@@ -140,6 +140,7 @@ class ItineraryPipeline:
         )
 
         # --- Step 1: Resolve destination from DB ---
+        destination_lookup_started_at = perf_counter()
         destination = await self.repo.resolve_destination_for_ai(request.destination)
         if not destination:
             logger.warning(
@@ -152,8 +153,15 @@ class ItineraryPipeline:
             )
         destination_id = destination.id
         destination_name = destination.name
+        logger.info(
+            "ai_generate_destination_resolved",
+            destination_id=destination_id,
+            destination=destination_name,
+            duration_ms=self._elapsed_ms(destination_lookup_started_at),
+        )
 
         # --- Step 2: Load place context (filtered by user interests) ---
+        context_started_at = perf_counter()
         categories = self._normalize_interests(request.interests)
         places = await self.repo.search_places_for_ai(
             destination_id,
@@ -171,6 +179,7 @@ class ItineraryPipeline:
             places_count=len(places),
             minimum_required_places=min_required,
             context_place_limit=MAX_CONTEXT_PLACES,
+            duration_ms=self._elapsed_ms(context_started_at),
         )
 
         # --- Step 3: Fallback to all categories if insufficient matches ---
@@ -185,6 +194,7 @@ class ItineraryPipeline:
                 destination_id=destination_id,
                 places_count=len(places),
                 context_place_limit=MAX_CONTEXT_PLACES,
+                duration_ms=self._elapsed_ms(context_started_at),
             )
 
         # Validate minimum place count after fallback
@@ -201,7 +211,15 @@ class ItineraryPipeline:
             )
 
         # --- Step 4: Load hotel context and call LLM ---
+        hotels_started_at = perf_counter()
         hotels = await self.repo.get_hotels_for_ai(destination_id, limit=MAX_CONTEXT_HOTELS)
+        logger.info(
+            "ai_generate_hotels_loaded",
+            destination_id=destination_id,
+            hotels_count=len(hotels),
+            context_hotel_limit=MAX_CONTEXT_HOTELS,
+            duration_ms=self._elapsed_ms(hotels_started_at),
+        )
         itinerary = await self._call_llm_with_retries(
             request=request,
             destination_name=destination_name,
@@ -211,6 +229,7 @@ class ItineraryPipeline:
         )
 
         # --- Step 5: Persist to database ---
+        persistence_started_at = perf_counter()
         trip = await self._persist_itinerary(
             request=request,
             user_id=user_id,
@@ -218,6 +237,11 @@ class ItineraryPipeline:
             places=places,
             hotels=hotels,
             itinerary=itinerary,
+        )
+        logger.info(
+            "ai_generate_persisted",
+            trip_id=trip.id,
+            duration_ms=self._elapsed_ms(persistence_started_at),
         )
 
         # Log successful completion with metrics
@@ -260,6 +284,7 @@ class ItineraryPipeline:
             attempt_started_at = perf_counter()
 
             # Build prompt with context, including any previous validation errors
+            prompt_started_at = perf_counter()
             prompt = build_itinerary_prompt(
                 request=request,
                 destination_name=destination_name,
@@ -269,6 +294,7 @@ class ItineraryPipeline:
                 max_activities_per_day=self.settings.agent_max_activities_per_day,
                 validation_feedback=errors or None,
             )
+            prompt_build_duration_ms = self._elapsed_ms(prompt_started_at)
 
             try:
                 # Log attempt details for observability
@@ -280,6 +306,7 @@ class ItineraryPipeline:
                     timeout_seconds=self.settings.agent_timeout_seconds,
                     prompt_chars=len(prompt),
                     prompt_estimated_tokens=self._estimate_tokens(prompt),
+                    prompt_build_duration_ms=prompt_build_duration_ms,
                     candidate_places=len(places),
                     candidate_hotels=len(hotels),
                     day_count=day_count,
