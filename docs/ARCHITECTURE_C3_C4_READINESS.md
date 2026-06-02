@@ -154,12 +154,13 @@ Giải thích ngắn:
 - local state-only
 - không gọi API
 - quick replies cứng
-- `selectedCities={["Hà Nội"]}` được truyền cố định từ `TripWorkspace`
+- từ `00060D-FIX`, `selectedCities` đã derive từ trip hiện tại thay vì hardcode `Hà Nội`
 
 Điều này chứng minh:
 
 - repo đã có vị trí UI cho chat
-- nhưng chưa có wiring thật theo `tripId` và dữ liệu trip thật
+- context bug trước `C3A` đã được fix ở mức UI shell
+- nhưng chưa có wiring thật theo `tripId`, session, và API chat thật
 - C3A nên thay mock này bằng ChatPanel/session-aware foundation, chưa cần AI thật
 
 ### Recommended FE insertion for C3
@@ -364,6 +365,6 @@ FE chat nên hiển thị:
 | Item | Finding | Impact |
 |---|---|---|
 | `docs/05_database_etl.md` migration history | Đã được sync ở `00060C`; chat tables hiện được ghi đúng là nằm trong initial schema trên `main` | Không còn là drift blocker cho C3A docs gate |
-| `FloatingAIChat` | Đã có shell UI nhưng hardcoded `selectedCities={["Hà Nội"]}` và fake replies | C3A cần thay mock bằng trip-aware panel foundation |
+| `FloatingAIChat` | Đã có shell UI với fake replies; context bug hardcoded `Hà Nội` đã được fix pre-C3A nhưng panel vẫn chưa session-aware/API-backed | C3A cần thay mock bằng trip-aware panel foundation |
 | Chat quota issue | Đã có issue mở `c3_chat_quota_shared_with_generate.md` | Không block `C3A`, block việc gọi AI thật nếu chưa chốt policy |
 | Stale patch handling | Đã có issue mở `c3_stale_patch_handling_missing.md` | Không block `C3A`, nhưng ảnh hưởng `C3B/C3C` và future `apply-patch` |
