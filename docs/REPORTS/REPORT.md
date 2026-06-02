@@ -350,6 +350,28 @@ Historical sections above and below are phase snapshots. Current 00059B readines
 - `C3B — Companion Chat API`: NO direct start
 - `C4 — Chat History`: NO direct start
 
+## 00060E Final Docs Sync + Mermaid Render Fix
+
+| File | Nội dung |
+|---|---|
+| [00060e_final_docs_sync_mermaid_fix.md](00060e_final_docs_sync_mermaid_fix.md) | 2026-06-02: Final docs-only sync before `C3A`, fix GitHub Mermaid ERD render blocker, thêm README diagram explanations, và re-check active docs truth — **DOCS_SYNCED_FOR_C3A** |
+| [pr_00060e_description.md](pr_00060e_description.md) | PR body template for docs/00060E |
+| [../README.md](../README.md) | Mermaid ERD updated to GitHub-compatible attribute syntax; key diagrams now have concise reading guides |
+
+**Key findings:**
+- ✅ GitHub Mermaid ERD blocker fixed: multi-key attributes of the form `FK` + `UK` were replaced with `FK "unique"` comments, preserving data-model semantics
+- ✅ README now includes a short `Cách đọc ERD` section so reviewer can understand one-to-one constraints, guest-claim hashing, and why `FK "unique"` appears in Mermaid
+- ✅ README now adds short explanations after the important Mermaid blocks for backend/frontend architecture, AI flow, auth/claim flow, and ETL
+- ✅ Static scan across active `README.md` + `docs/**/*.md` no longer finds any Mermaid attribute lines with adjacent multi-key markers
+- ✅ Mermaid CLI render verification passed for all 14 active Mermaid blocks (`README.md` + `docs/ARCHITECTURE_C3_C4_READINESS.md`)
+- ✅ Active docs remain aligned with `00060D-FIX`: `FloatingAIChat` wrong-city fix is documented, browser `429` submit UX is `PASS`, pending claim storage is synced to `sessionStorage (pendingClaim)`, and `C3A` remains the next allowed phase
+
+**Decision:**
+- Mermaid ERD render blocker: `FIXED`
+- Active docs/source sync before `C3A`: `SYNCED`
+- `C3A — Chat Session Foundation`: YES
+- After merge, can proceed to `00060F — Staging Deployment Readiness + Deploy`: YES
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |

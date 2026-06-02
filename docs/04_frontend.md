@@ -72,7 +72,7 @@ Frontend/
 │   │       └── tripConstants.ts   # Trip constants
 │   ├── styles/                     # Tailwind + global CSS
 │   └── imports/                    # Shared imports
-├── tests/e2e/                      # 22 Playwright e2e tests
+├── tests/e2e/                      # 24 Playwright tests total
 │   ├── auth.spec.ts
 │   ├── trips.spec.ts
 │   ├── public.spec.ts
@@ -192,15 +192,15 @@ AuthContext
   │   ├── refreshToken: string | null (localStorage)
   │   ├── isAuthenticated: boolean
   │   ├── isLoading: boolean
-  │   └── pendingClaims: { tripId, claimToken }[] (localStorage)
+  │   └── pendingClaim: { tripId, claimToken, returnTo? } | null (sessionStorage)
   │
   ├── Methods:
   │   ├── login(email, password) → API call → save tokens → load profile → executePendingClaim()
   │   ├── register(email, password, name) → API call → save tokens → executePendingClaim()
   │   ├── logout() → API call revoke → clear tokens → clear user
   │   ├── refreshUser() → GET /users/profile → update user state
-  │   ├── storePendingClaim(tripId, claimToken) → save to localStorage
-  │   └── executePendingClaim() → for each pending: POST /itineraries/{id}/claim
+  │   ├── storePendingClaim(tripId, claimToken, returnTo?) → save to sessionStorage
+  │   └── executePendingClaim() → nếu có pendingClaim thì POST /itineraries/{id}/claim
   │
   └── Auto-check on mount:
       ├── Read tokens from localStorage
@@ -218,16 +218,16 @@ AuthContext
 │     → POST /itineraries (không Bearer)                   │
 │     → Response chứa claimToken                            │
 │     → AuthContext.storePendingClaim(tripId, claimToken)   │
-│     → Lưu vào localStorage: pendingClaims[]              │
+│     → Lưu vào sessionStorage: pendingClaim               │
 │                                                           │
 │  2. Guest đăng nhập hoặc đăng ký                         │
 │     → Login/Register success → tokens saved              │
 │     → AuthContext.executePendingClaim()                   │
-│     → For each pending:                                   │
+│     → Nếu có pendingClaim:                                │
 │         POST /itineraries/{tripId}/claim                  │
-│           { claimToken: "raw_token_from_localStorage" }   │
+│           { claimToken: "raw_token_from_sessionStorage" } │
 │         → Success: trip now owned by user                │
-│         → Remove from pendingClaims                      │
+│         → Remove pendingClaim                            │
 │                                                           │
 │  3. Result: Guest trip → Owner trip                       │
 └──────────────────────────────────────────────────────────┘
@@ -314,7 +314,7 @@ TripWorkspace mount
   │       ├── Build trip data from wizard selections
   │       └── POST /itineraries (create new)
   │           ├── Success → set tripId, save to sessionStorage
-  │           └── If guest → storePendingClaim(claimToken)
+  │           └── If guest → storePendingClaim(tripId, claimToken)
   │
   ├── Auto-save on changes:
   │   ├── Debounce 500ms sau last change
@@ -535,7 +535,7 @@ Tất cả trang chính đã nối BE API. Mock chỉ dùng fallback.
 - **Timeout**: 30 giây, retries: 2 trên CI
 - **WebServer**: Tự động start `npm run dev` nếu chưa chạy
 
-### Test suites (22 tests total; latest local UAT: 19 pass, 3 skip)
+### Test suites (24 tests total; latest local UAT: 21 passed, 3 skipped)
 
 **Auth flow (5 tests):**
 
@@ -588,7 +588,7 @@ Job `frontend-e2e` trong `frontend-ci.yml`:
 
 ## 11. Known Gaps
 
-- FloatingAIChat vẫn là mock local-state và đang được `TripWorkspace` mount với `selectedCities={["Hà Nội"]}` hardcoded.
+- FloatingAIChat vẫn là mock local-state; bug hardcoded `Hà Nội` đã được fix pre-C3A bằng cách derive context từ trip hiện tại, nhưng panel vẫn chưa session-aware/API-backed.
 - CreateTrip đã gọi BE generate API thật; chất lượng lịch trình phụ thuộc Goong ETL data + Gemini key.
 - E2E hiện chưa cover sâu: trip workspace drag-and-drop, accommodation CRUD, và future chat/session UX.
 - CityList chủ yếu dùng mock data (BE cần nhiều destinations hơn).
