@@ -55,8 +55,29 @@ MVP1
 → FE revamp mạnh về UI/contract
 → BE refactor MVP2 theo FastAPI async + Alembic + repository/service
 → ETL foundation cho city/place/hotel data
-→ AI Phase C C.0/C.1 in progress: Goong-first ETL + direct generate pipeline
+→ AI Phase C C.1/C.2 đã merge
+→ 00060B chốt GO_WITH_LIMITATIONS trước khi vào chat/history
 ```
+
+### Current C3/C4 gate after 00060B / 00060C sync
+
+| Hạng mục | Current truth |
+|---|---|
+| Overall readiness | `GO_WITH_LIMITATIONS` |
+| Can start `C3A — Chat Session Foundation` | `YES` |
+| Can start `C3B` directly | `NO` |
+| Can start `C4` directly | `NO` |
+| `FloatingAIChat.tsx` | Vẫn là mock local-state |
+| `chat_sessions` / `chat_messages` | Đã có trong source/migration |
+| Chat REST API | Chưa có |
+| Real Gemini call trong `C3A` | Không có |
+| Chat quota riêng | Để `C3B` giải quyết |
+
+Điểm cần nhớ:
+
+- `C3A` chỉ dựng session foundation owner-only, trip-scoped trong `TripWorkspace`.
+- `C3B` mới xử lý message generation, provider abstraction, quota chat, và error UX riêng cho chat.
+- `C4` mới xử lý persisted history và session/history UX.
 
 ---
 
@@ -89,7 +110,7 @@ MVP1
 - Places/cache: destinations, destination detail, place search/detail, saved places, Redis read cache fail-open.
 - ETL D1/C.0: Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, `hotels.yaml`, `scraped_sources`.
 - AI C.1 generate pipeline: DB recommendation context, Gemini JSON output, Pydantic validation, retry, guest/user AI rate limit.
-- Tests current branch: 119 unit tests + 44 integration tests + 22 FE e2e tests; latest 00059B local UAT result is 19 passed, 3 skipped.
+- Tests current merged source: 125 unit tests + 51 integration tests + 22 FE e2e tests; latest local browser/UAT evidence still records 19 passed, 3 skipped on the FE suite while `00060A` raised backend coverage.
 - AI C.2 SuggestionService (EP-30): DB-only suggest alternatives, owner-check, no LLM.
 - Destination slug matching: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" → "ha-noi" → match DB.
 
@@ -174,4 +195,4 @@ MVP1
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. AI C.0/C.1 đã có Goong-first ETL readiness và direct generate pipeline để test local với Goong/Gemini key; giai đoạn tiếp theo là PR/CI, rồi C.2/C.3 sau khi C.1 ổn định.
+Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. `00060B` và `00060C` chốt rằng source hiện tại đã đủ để bắt đầu `C3A — Chat Session Foundation`, nhưng chưa đủ để nhảy thẳng vào `C3B` hoặc `C4`.

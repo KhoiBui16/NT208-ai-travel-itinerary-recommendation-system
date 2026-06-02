@@ -144,7 +144,7 @@ File này mô tả **chi tiết toàn bộ database schema** — từng bảng, 
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          AI/CHAT DOMAIN (schema sẵn, chưa có API)          │
+│                    AI/CHAT DOMAIN (schema đã có trên main, API chưa có)     │
 │                                                                             │
 │  ┌──────── chat_sessions ──────────┐     ┌──── chat_messages ────────────┐ │
 │  │ PK  id               int        │1──N │ PK  id                int     │ │
@@ -547,13 +547,16 @@ Schema đã có trong DB qua Alembic migration, nhưng chưa có API endpoints.
 | `20260504_0003_add_password_reset_fields` | 2026-05-04 | Password reset | `users` thêm `password_reset_token_hash`, `password_reset_expires_at` |
 | `20260525_0004_add_goong_place_metadata` | 2026-05-25 | Goong ETL metadata | `places` thêm `external_id` (120 char), `raw_metadata` (JSONB); index `ix_places_external_id` |
 | `20260525_0005_expand_goong_external_id` | 2026-05-25 | Long Goong place_id | `places.external_id` mở rộng `varchar(512)` để chứa Goong `place_id` dài |
-| `20260525_0006_add_companion_chat_tables` | tương lai | Chat history schema | `chat_sessions`, `chat_messages` (Phase C.3/C.4 — chưa chạy trên `main`) |
-
 **Nguyên tắc migration:**
 - Alembic là source of truth — không dùng `create_all()` trong production.
 - Mỗi migration phải có `upgrade()` và `downgrade()`.
 - Naming convention: `YYYYMMDD_NNNN_description.py`.
 - Chạy `alembic upgrade head` trước khi start BE.
+
+**Current truth after `00060B` / `00060C`:**
+- `chat_sessions` và `chat_messages` đã nằm trong `20260428_0001_initial_mvp2_schema`.
+- Trên `main` hiện tại không có migration riêng kiểu `add_companion_chat_tables`.
+- `C3A` cần thêm session API và ownership rules, không cần dựng lại chat tables từ đầu.
 
 ---
 

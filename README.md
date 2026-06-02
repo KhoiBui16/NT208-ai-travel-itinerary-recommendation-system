@@ -70,10 +70,38 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 | **Places** | Destination data quality advisory — limited-data cities (e.g., Đà Lạt) show non-blocking warning, remain submittable | ✅ Done |
 | **AI C.1** | Sinh lịch trình tự động bằng Gemini AI | ✅ Done |
 | **AI C.2** | Gợi ý địa điểm thay thế (DB-only, không LLM) | ✅ Done |
-| **AI C.3** | Companion chat + patch-confirm flow | 🔄 Todo |
-| **AI C.4** | Lịch sử chat | 🔄 Todo |
+| **AI C.3A** | Chat session foundation owner-only, trip-scoped | ⏭️ Next |
+| **AI C.3B** | Companion chat + patch-confirm flow | ⏸️ Planned after C3A |
+| **AI C.4** | Lịch sử chat | ⏸️ Planned after C3B |
 | **AI C.5** | Analytics Text-to-SQL (optional) | 🔄 Optional |
 | **ETL** | Goong-first ETL nạp dữ liệu địa điểm | ✅ Done |
+
+---
+
+## 1.1 Trạng thái hiện tại trước khi vào C3/C4
+
+`00060B` và `00060C` đã chốt current truth như sau:
+
+| Hạng mục | Trạng thái |
+|---|---|
+| Readiness tổng thể trước C3/C4 | `GO_WITH_LIMITATIONS` |
+| Có thể bắt đầu `C3A — Chat Session Foundation` | `YES` |
+| Có thể nhảy thẳng vào `C3B — Companion Chat API` | `NO` |
+| Có thể nhảy thẳng vào `C4 — Chat History` | `NO` |
+| `FloatingAIChat.tsx` hiện tại | Mock UI, chưa trip-aware, chưa gọi API thật |
+| `chat_sessions` / `chat_messages` | Đã có trong source/migration |
+| Chat session/message API | Chưa có |
+| Real AI call trong `C3A` | Không có |
+| Chat quota tách khỏi generate quota | Chưa làm, để `C3B` |
+
+**Ý nghĩa thực tế:**
+
+- `C3A` chỉ dựng session foundation owner-only, trip-scoped trong `TripWorkspace`.
+- `C3A` không gọi Gemini thật, không gửi message thật, và không apply patch vào itinerary.
+- `C3B` mới xử lý message generation, provider abstraction, chat quota, và chat error UX.
+- `C4` mới xử lý persisted history, reload session, và session/history UX.
+- `FloatingAIChat` mock + chưa có session API là gap cần xử lý ngay trong `C3A`.
+- Chat quota riêng, real provider smoke, và stale patch handling không block `C3A`; chúng thuộc `C3B/C3C` trở đi.
 
 ---
 
@@ -1256,33 +1284,26 @@ WHY DB-only: Gợi ý địa điểm chỉ cần filter + sort data có sẵn.
              Không cần "sáng tạo" nội dung mới.
 ```
 
-### 8.5 C.3 — Companion Chat + Patch-Confirm (Todo)
+### 8.5 C.3A — Chat Session Foundation (Next gate)
 
 ```
 FE (FloatingAIChat.tsx)
-  → POST /api/v1/agent/chat { message, tripId }
+  → thay mock bằng ChatPanel session-aware trong TripWorkspace
+  → POST /api/v1/itineraries/{tripId}/chat-sessions
+  → GET  /api/v1/itineraries/{tripId}/chat-sessions
+  → GET  /api/v1/itineraries/chat-sessions/{sessionId}
 
-CompanionService.chat()
-  1. Classify intent (modify / info / suggest / general)
-  2. Load trip context (OWNER-CHECK bắt buộc)
-  3. Call Gemini LLM với tool definitions
-  4. Return:
-     {
-       message: "Tôi đề xuất thêm Văn Miếu vào ngày 2...",
-       requiresConfirmation: true,
-       proposedOperations: [
-         { type: "add_activity", description: "...",
-           target: { dayId: 2, activity: {...} } }
-       ]
-     }
+Chat session foundation
+  1. Verify owner hiện tại của trip
+  2. Guest chưa claim → không tạo session
+  3. Shared viewer → không tạo/đọc session
+  4. Return session metadata + empty state
 
-FE hiển thị proposed changes + confirm button
-  → User confirm
-  → POST /api/v1/agent/apply-patch { operations }
-  → BE validate + apply to DB
-
-KEY: Chat KHÔNG TỰ PERSIST DB trước khi user confirm.
-     Mỗi operation có audit-friendly type + description.
+KEY:
+  - C3A KHÔNG gọi Gemini thật
+  - C3A KHÔNG gửi message thật
+  - C3A KHÔNG apply patch vào itinerary
+  - C3A chỉ dựng owner-only, trip-scoped session foundation
 ```
 
 ```
@@ -1322,16 +1343,16 @@ WHY DB-only: Gợi ý địa điểm chỉ cần filter + sort data có sẵn.
              Không cần "sáng tạo" nội dung mới.
 ```
 
-### C.3 — Companion Chat + Patch-Confirm (Todo)
+### C.3B/C.3C — Future Companion Chat + Patch-Confirm (sau C3A)
 
 ```
-FE (FloatingAIChat.tsx)
-  → POST /api/v1/agent/chat { message, tripId }
+FE (ChatPanel trong TripWorkspace)
+  → POST /api/v1/itineraries/chat-sessions/{sessionId}/messages
 
 CompanionService.chat()
   1. Classify intent (modify / info / suggest / general)
-  2. Load trip context (OWNER-CHECK bắt buộc)
-  3. Call Gemini LLM với tool definitions
+  2. Load trip context + chat history (OWNER-CHECK bắt buộc)
+  3. Call provider abstraction (fake provider trong test, real provider ở smoke riêng)
   4. Return:
      {
        message: "Tôi đề xuất thêm Văn Miếu vào ngày 2...",
@@ -1344,11 +1365,11 @@ CompanionService.chat()
 
 FE hiển thị proposed changes + confirm button
   → User confirm
-  → POST /api/v1/agent/apply-patch { operations }
-  → BE validate + apply to DB
+  → future apply-patch endpoint (không thuộc C3A)
 
 KEY: Chat KHÔNG TỰ PERSIST DB trước khi user confirm.
-     Mỗi operation có audit-friendly type + description.
+     Quota chat phải tách khỏi generate quota ở C3B.
+     Shared viewer không có owner chat controls mặc định.
 ```
 
 ---
@@ -1645,13 +1666,14 @@ POST /auth/reset-password {token, newPassword}
 
 ## 10. Trạng thái Phase C
 
-| Phase | Tính năng | Branch | Trạng thái |
+| Phase | Tính năng | Current gate | Trạng thái |
 |---|---|---|---|
-| **C.1** | AI Generate Itinerary (Gemini direct pipeline) | `feat/00046` | ✅ merged |
-| **C.2** | Suggestion Service (DB-only, EP-30) | `feat/00047` | ✅ merged |
-| **C.3** | Companion Chat + patch-confirm flow | `feat/00048` | 🔄 Todo |
-| **C.4** | Chat history API | `feat/00049` | 🔄 Todo |
-| **C.5** | Analytics Text-to-SQL (optional) | `feat/00050` | 🔄 Optional |
+| **C.1** | AI Generate Itinerary (Gemini direct pipeline) | `merged` | ✅ Done |
+| **C.2** | Suggestion Service (DB-only, EP-30) | `merged` | ✅ Done |
+| **C.3A** | Chat Session Foundation (owner-only, trip-scoped, no real AI call) | `next` | ✅ Allowed after `00060B` / `00060C` |
+| **C.3B** | Companion Chat API + provider abstraction + chat quota | `after C3A` | ⏸️ Not direct start |
+| **C.4** | Chat history persistence + session UX | `after C3B` | ⏸️ Not direct start |
+| **C.5** | Analytics Text-to-SQL (optional) | `future optional` | 🔄 Optional |
 
 ### File map Phase C
 
@@ -1663,8 +1685,9 @@ POST /auth/reset-password {token, newPassword}
 | `src/agent/prompts/itinerary_prompts.py` | Generate prompt builder | Shared AI infra | ✅ C.1 |
 | `src/agent/schemas/itinerary_schemas.py` | LLM output schema | Shared AI infra | ✅ C.1 |
 | `src/places/suggestion_service.py` | Gợi ý DB-only (không LLM) | Service | ✅ C.2 |
-| `src/itineraries/companion.py` | Intent routing, tool-calling cho chat | Service | 🔄 C.3 |
-| `src/itineraries/chat_service.py` | Quản lý chat session/message | Service | 🔄 C.4 |
+| `src/itineraries/models/chat.py` | `ChatSession`, `ChatMessage` schema đã có sẵn | Model | ✅ Schema ready |
+| `src/itineraries/chat_service.py` | Quản lý chat session/message | Service | 🔄 Planned for `C3A/C4` |
+| `src/itineraries/companion_service.py` | Message handling + provider abstraction + patch contract | Service | 🔄 Planned for `C3B/C3C` |
 
 ---
 
@@ -1774,12 +1797,12 @@ uv run pytest tests/unit/ -v
 uv run pytest tests/integration/ -v
 ```
 
-**Kết quả hiện tại:** 119 unit tests + 44 integration tests = **163 backend tests**
+**Kết quả hiện tại:** 125 unit tests + 51 integration tests = **176 backend tests**
 
 | Suite | Số test | Mô tả |
 |---|---|---|
-| Unit | 119 | Service logic, schema validation, security utils, token hashing, AI pipeline, ETL/Goong mocks |
-| Integration | 44 | Endpoint tests với DB thật (PostgreSQL + Redis) |
+| Unit | 125 | Service logic, schema validation, security utils, token hashing, AI pipeline, ETL/Goong mocks, authz regressions |
+| Integration | 51 | Endpoint tests với DB thật (PostgreSQL + Redis), gồm nested trip authz regression coverage |
 
 ### Frontend E2E Tests (Playwright)
 
@@ -1940,22 +1963,17 @@ NT208-ai-travel-itinerary-recommendation-system/
 ├── Backend/
 │   ├── src/
 │   │   ├── main.py                    # App factory, middleware, router registration
-│   │   ├── api/v1/                    # Router layer (34 endpoints)
-│   │   │   ├── auth.py
-│   │   │   ├── users.py
-│   │   │   ├── itineraries.py
-│   │   │   ├── places.py
-│   │   │   └── shared.py
-│   │   ├── core/                      # Cross-cutting: config, db, security, exceptions
-│   │   ├── models/                    # SQLAlchemy ORM models
-│   │   ├── repositories/              # DB query layer
-│   │   ├── schemas/                   # Pydantic request/response schemas
-│   │   ├── services/                  # Business logic layer
-│   │   ├── agent/                     # AI infrastructure (Gemini client, prompts, schemas)
-│   │   └── etl/                       # Goong Maps ETL pipeline
+│   │   ├── auth/                      # Auth + user domain
+│   │   ├── itineraries/               # Trip CRUD, generate, share/claim, chat schema
+│   │   ├── places/                    # Destinations, places, hotels, saved places
+│   │   ├── agent/                     # Shared AI infrastructure only
+│   │   ├── core/                      # Config, db, security, exceptions, rate-limit
+│   │   ├── etl/                       # Goong Maps ETL pipeline
+│   │   ├── geo/                       # Goong REST client
+│   │   └── shared/                    # Truly shared base helpers
 │   ├── tests/
-│   │   ├── unit/                      # 119 unit tests
-│   │   └── integration/               # 44 integration tests
+│   │   ├── unit/                      # 125 unit tests
+│   │   └── integration/               # 51 integration tests
 │   ├── alembic/                       # DB migrations
 │   │   └── versions/
 │   ├── config.yaml                    # Non-secret config
@@ -1977,7 +1995,7 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   │   ├── types/                 # trip.types.ts (FE-BE contract)
 │   │   │   └── utils/
 │   │   └── styles/
-│   ├── tests/e2e/                     # 13 Playwright e2e tests
+│   ├── tests/e2e/                     # 22 Playwright e2e tests (latest local UAT: 19 pass, 3 skip)
 │   ├── playwright.config.ts
 │   ├── package.json
 │   └── vite.config.ts

@@ -31,6 +31,18 @@ Ngày cập nhật: 2026-06-01
 | C4A | Persist và reload history | message list API + pagination | mở lại session cũ và giữ history | cross-user/history tests | session growth/performance | reload page vẫn thấy history |
 | C4B | Quản lý history và security hardening | session management + access tests | session list, rename/delete nếu scope cho phép | security/e2e tests | public share confusion | session history quản lý được và không lộ chéo user |
 
+## Risk-to-Phase Mapping
+
+| Risk / Gap | Source evidence | Blocker for C3A? | Target phase | Required action |
+|---|---|---:|---|---|
+| FloatingAIChat vẫn mock | `FloatingAIChat.tsx`, `TripWorkspace.tsx` | YES | C3A | thay mock bằng session-aware ChatPanel placeholder |
+| Chưa có session ownership API | `itineraries/router.py`, `models/chat.py` | YES | C3A | tạo/list/get session trip-scoped owner-only |
+| Chưa có message ownership/send API | `router.py`, `models/chat.py` | NO | C3B/C4 | thêm message send/history ownership checks |
+| Chat quota chưa tách generate quota | `rate_limiter.py`, issue `c3_chat_quota_shared_with_generate.md` | NO | C3B | thêm namespace quota chat riêng |
+| Real Gemini/live outage evidence vẫn partial | `00059C`, `00060B` | NO | C3B / provider smoke | fake provider trong test + live smoke tách riêng |
+| Goong/live ETL partial | `00059C`, ETL reports | NO | generate/data hardening | không block chat foundation |
+| Stale patch handling còn mở | issue `c3_stale_patch_handling_missing.md` | NO | C3C / future apply-patch | chốt conflict/version strategy trước mutation |
+
 ## C3A — Chat Session Foundation
 
 ### Goal
@@ -81,6 +93,15 @@ Tạo nền tảng chat session gắn với trip, không cần AI thật.
 - Không có AI thật
 - Ownership-safe session foundation hoạt động
 - FE không còn chỉ là mock local-state
+
+### C3A must not do
+
+- Không gọi Gemini thật
+- Không gửi message thật
+- Không dùng shared viewer như owner chat
+- Không cho guest chưa claim tạo session
+- Không giải quyết quota chat riêng trong phase này
+- Không apply-patch vào itinerary
 
 ## C3B — Companion Chat API
 

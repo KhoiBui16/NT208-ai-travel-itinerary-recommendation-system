@@ -35,7 +35,7 @@ Backend/
 │   │   ├── models/
 │   │   │   ├── trip.py            # Trip, TripDay, Activity, ExtraExpense
 │   │   │   ├── extras.py          # Accommodation, ShareLink, TripRating, GuestClaimToken
-│   │   │   └── chat.py            # ChatSession, ChatMessage (schema ready, API todo C.3/C.4)
+│   │   │   └── chat.py            # ChatSession, ChatMessage (schema đã có; C3A mới thêm session API)
 │   │   ├── pipeline.py            # C.1 ItineraryPipeline (Gemini → validate → persist)
 │   │   ├── repository.py          # TripRepository (CRUD + AI context queries)
 │   │   ├── router.py              # EP-8..21 + generate + shared_router
@@ -53,7 +53,7 @@ Backend/
 │   ├── agent/                     # Shared AI infrastructure
 │   │   ├── config.py              # AgentConfig (model, temp, retries, timeout, pacing)
 │   │   ├── llm.py                 # GeminiLLM wrapper + parse_json_response()
-│   │   ├── router.py              # /agent prefix — EP-30 suggest (C.3 chat/apply-patch todo)
+│   │   ├── router.py              # /agent prefix — EP-30 suggest only (chat/apply-patch chưa implement)
 │   │   ├── prompts/
 │   │   │   └── itinerary_prompts.py   # build_itinerary_prompt() cho C.1
 │   │   └── schemas/
@@ -91,8 +91,8 @@ Backend/
 │   └── shared/                    # Shared base classes
 │       └── service.py             # BaseService
 ├── tests/
-│   ├── unit/                      # 97 unit tests
-│   └── integration/               # 44 integration tests
+│   ├── unit/                      # 125 unit tests
+│   └── integration/               # 51 integration tests
 ├── alembic/
 │   └── versions/                  # DB migration files
 ├── config.yaml                    # Non-secret config
@@ -665,8 +665,9 @@ EmailService
 
 ## 11. Backend còn thiếu
 
-- AI companion chat + patch-confirm flow (C.3 — `feat/00051-c3-companion-chat`).
-- Chat history API endpoints (C.4 — `feat/00052-c4-chat-history`).
-- Analytics optional EP-34 với SQL guardrails (C.5 — `feat/00053-c5-analytics-optional`, optional).
+- `C3A — Chat Session Foundation`: session create/list/get owner-only, trip-scoped, không gọi AI thật.
+- `C3B — Companion Chat API`: message send, provider abstraction, quota chat riêng, patch-confirm contract.
+- `C4 — Chat History`: persisted message/session history sau khi `C3A/C3B` đã có foundation.
+- Analytics optional EP-34 với SQL guardrails (C.5, optional).
 
-> **C.2 SuggestionService** (EP-30) đã merged trên `feat/00047-c-suggestion-service` → PR #49. Xem `docs/REPORTS/phase_c2_suggestion_service.md`.
+> **Current gate:** sau `00060B` / `00060C`, repo chỉ sẵn sàng để bắt đầu `C3A`. Không nên nhảy thẳng vào `C3B` hoặc `C4`.

@@ -363,7 +363,7 @@ FE chat nên hiển thị:
 
 | Item | Finding | Impact |
 |---|---|---|
-| `docs/05_database_etl.md` migration history | Vẫn có dòng tương lai `20260525_0006_add_companion_chat_tables` dù source hiện tại đã có chat tables trong initial schema | Không block `C3A`, nhưng là docs drift cần đồng bộ ở phase docs phù hợp |
+| `docs/05_database_etl.md` migration history | Đã được sync ở `00060C`; chat tables hiện được ghi đúng là nằm trong initial schema trên `main` | Không còn là drift blocker cho C3A docs gate |
 | `FloatingAIChat` | Đã có shell UI nhưng hardcoded `selectedCities={["Hà Nội"]}` và fake replies | C3A cần thay mock bằng trip-aware panel foundation |
 | Chat quota issue | Đã có issue mở `c3_chat_quota_shared_with_generate.md` | Không block `C3A`, block việc gọi AI thật nếu chưa chốt policy |
 | Stale patch handling | Đã có issue mở `c3_stale_patch_handling_missing.md` | Không block `C3A`, nhưng ảnh hưởng `C3B/C3C` và future `apply-patch` |
