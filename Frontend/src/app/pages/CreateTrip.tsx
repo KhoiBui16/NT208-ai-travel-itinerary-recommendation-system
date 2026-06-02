@@ -406,7 +406,13 @@ export default function CreateTrip() {
             </div>
           )}
           {validationError && (
-            <p className="mt-2 text-sm text-red-500 text-center">{validationError}</p>
+            <p
+              role="alert"
+              aria-live="assertive"
+              className="mt-2 text-sm text-red-500 text-center"
+            >
+              {validationError}
+            </p>
           )}
         </div>
 

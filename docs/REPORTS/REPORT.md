@@ -321,6 +321,35 @@ Historical sections above and below are phase snapshots. Current 00059B readines
 - `C3B — Companion Chat API`: NO direct start
 - `C4 — Chat History`: NO direct start
 
+## 00060D Real Fullstack Run + End-user C3A Entry Verification
+
+| File | Nội dung |
+|---|---|
+| [00060d_real_fullstack_c3a_entry_verification.md](00060d_real_fullstack_c3a_entry_verification.md) | 2026-06-02: Real FE-BE local startup, real Gemini smoke, live hardening evidence, và pre-C3A UX blocker fixes — **C3A_READY_AFTER_PRE_C3A_HARDENING** |
+| [pr_00060d_description.md](pr_00060d_description.md) | PR body template for docs/00060D |
+| [../C3_C4_IMPLEMENTATION_PLAN.md](../C3_C4_IMPLEMENTATION_PLAN.md) | Updated with runtime notes for pre-C3A chat-context hardening, real Gemini smoke, and actual `429/503` baseline |
+| [../README.md](../README.md) | Updated with rate-limit/share/C3A boundary hardening and latest live UAT snapshot |
+
+**Key findings:**
+- ✅ Real fullstack startup pass: DB, Redis, backend health, frontend dev server
+- ✅ Real Gemini generate smoke pass for auth user (`201`, ~31s), and resulting workspace renders correctly
+- ✅ Real browser flow pass for home, create-trip, login/register, trip-library, workspace, share view, and protected-route redirect
+- ✅ Runtime verified that partial destination advisory (`Đà Lạt`) still works as advisory-only
+- ✅ Trip edit persistence pass after browser reload on real workspace data
+- ✅ Public shared view has no owner controls and no floating chat trigger
+- ✅ Actual `429` generate contract verified with real headers/body without spending Gemini quota
+- ✅ Actual browser `503` timeout UX verified through controlled provider-timeout path
+- ✅ Pre-C3A frontend fix removed hardcoded `Hà Nội` from `FloatingAIChat`; context now derives from current trip
+- ✅ Browser `429` submit path is now covered by a dedicated Playwright regression without burning Gemini quota
+- ⚠️ `FloatingAIChat` is still only a mock UI and not yet session-aware/API-backed
+
+**Entry-gate decision:**
+- Fullstack startup: `PASS`
+- End-user flow: `PASS`
+- `C3A — Chat Session Foundation`: YES
+- `C3B — Companion Chat API`: NO direct start
+- `C4 — Chat History`: NO direct start
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |

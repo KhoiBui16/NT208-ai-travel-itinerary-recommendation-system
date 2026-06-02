@@ -1,11 +1,17 @@
 # C3/C4 Implementation Plan
 
-Ngày cập nhật: 2026-06-01
+Ngày cập nhật: 2026-06-02
 
 ## Current truth before planning
 
 - `TripWorkspace` đã tồn tại và là chỗ đúng để gắn chat.
 - `FloatingAIChat.tsx` hiện chỉ là mock UI.
+- `00060D` đã xác minh runtime rằng mock chat từng còn hardcoded context và có thể hiển thị city không khớp trip thật.
+- `00060D-FIX` đã sửa pre-C3A context bug: `TripWorkspace` derive `selectedCities` từ trip hiện tại, nhưng chat vẫn chỉ là mock UI.
+- `00060D-R` đã verify một lần generate Gemini thật thành công (`201`) cho auth user trước khi vào `C3A`.
+- `00060D-R` đã verify actual `429` generate contract với headers/body thật mà không cần spam Gemini quota.
+- `00060D-R` đã verify browser `503` UX qua controlled provider-timeout path.
+- `00060D-FIX` đã verify browser-level submit-path `429` UX bằng route-mocked Playwright regression, không gọi Gemini thật.
 - `chat_sessions` và `chat_messages` đã tồn tại trong source/migration.
 - Chưa có chat REST API, chưa có `CompanionService`, chưa có history API thật.
 - Guest phải claim trip trước khi chat.
@@ -35,11 +41,11 @@ Ngày cập nhật: 2026-06-01
 
 | Risk / Gap | Source evidence | Blocker for C3A? | Target phase | Required action |
 |---|---|---:|---|---|
-| FloatingAIChat vẫn mock | `FloatingAIChat.tsx`, `TripWorkspace.tsx` | YES | C3A | thay mock bằng session-aware ChatPanel placeholder |
+| FloatingAIChat vẫn mock | `FloatingAIChat.tsx`, `TripWorkspace.tsx`, `00060D-FIX` | YES | C3A | thay mock bằng session-aware ChatPanel placeholder |
 | Chưa có session ownership API | `itineraries/router.py`, `models/chat.py` | YES | C3A | tạo/list/get session trip-scoped owner-only |
 | Chưa có message ownership/send API | `router.py`, `models/chat.py` | NO | C3B/C4 | thêm message send/history ownership checks |
 | Chat quota chưa tách generate quota | `rate_limiter.py`, issue `c3_chat_quota_shared_with_generate.md` | NO | C3B | thêm namespace quota chat riêng |
-| Real Gemini/live outage evidence vẫn partial | `00059C`, `00060B` | NO | C3B / provider smoke | fake provider trong test + live smoke tách riêng |
+| Chat/live provider behavior chưa có | `00060D-R`, `00059C`, `00060B` | NO | C3B / provider smoke | dùng fake provider trong test và kế thừa contract `429/503` đã verify ở generate |
 | Goong/live ETL partial | `00059C`, ETL reports | NO | generate/data hardening | không block chat foundation |
 | Stale patch handling còn mở | issue `c3_stale_patch_handling_missing.md` | NO | C3C / future apply-patch | chốt conflict/version strategy trước mutation |
 
@@ -272,7 +278,7 @@ Làm history dễ quản lý và giữ an toàn ownership.
 ### C3A end-user check
 
 - Auth user mở `TripWorkspace`
-- Chat panel xuất hiện như session-aware placeholder, không còn chỉ là mock local-state
+- Chat panel xuất hiện như session-aware placeholder, không còn chỉ là mock local-state gắn cứng vào flow hiện tại
 - Session có thể được tạo hoặc load theo đúng `tripId`
 - Public shared view không có owner chat controls
 - User khác không truy cập được session của trip không thuộc mình

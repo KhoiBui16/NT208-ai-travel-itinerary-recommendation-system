@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
 import { FloatingAIChat } from "../components/FloatingAIChat";
@@ -106,6 +106,19 @@ export default function TripWorkspace() {
   // ── 2-Step "Add Days" Flow States ────────────────────────────────────────
   const [showAddDaysModal, setShowAddDaysModal] = useState(false);
   const selectedDay = days.find((d) => d.id === selectedDayId)!;
+  const chatSelectedCities = useMemo(() => {
+    const fromDays = days
+      .map((day) => day.destinationName?.trim())
+      .filter((name): name is string => Boolean(name));
+
+    const uniqueCities = Array.from(new Set(fromDays));
+    if (uniqueCities.length > 0) return uniqueCities;
+
+    const selectedDayDestination = selectedDay?.destinationName?.trim();
+    if (selectedDayDestination) return [selectedDayDestination];
+
+    return [];
+  }, [days, selectedDay?.destinationName]);
   
   const {
     accommodations, setAccommodations, showHotelSelection, setShowHotelSelection,
@@ -446,7 +459,7 @@ export default function TripWorkspace() {
       />
       
       <FloatingAIChat 
-        selectedCities={["Hà Nội"]} 
+        selectedCities={chatSelectedCities}
         onOpen={() => {
           setHasOpenedChat(true);
           sessionStorage.setItem('hasOpenedAIChat', 'true');
