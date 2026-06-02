@@ -670,7 +670,7 @@ erDiagram
 
     trip_ratings {
         int id PK
-        int trip_id FK UK
+        int trip_id FK "unique"
         int rating
         string feedback
         timestamp created_at
@@ -678,7 +678,7 @@ erDiagram
 
     share_links {
         int id PK
-        int trip_id FK UK
+        int trip_id FK "unique"
         string token_hash UK
         int created_by_user_id FK
         string permission
@@ -801,6 +801,25 @@ erDiagram
     chat_sessions ||--o{ chat_messages : "contains"
 ```
 
+#### Cách đọc ERD
+
+- `users` là bảng trung tâm cho tài khoản đăng nhập. Các bảng như `refresh_tokens`, `trips`, `saved_places`, `share_links` và `chat_sessions` liên kết về `users` để xác định chủ sở hữu hoặc người thực hiện hành động.
+- `trips` là thực thể nghiệp vụ chính của hệ thống. Một trip có nhiều `trip_days`, mỗi ngày có nhiều `activities`, và activity có thể tham chiếu đến `places`; phần lưu trú được tách riêng qua `accommodations` và có thể tham chiếu đến `hotels`.
+- `destinations` đại diện cho thành phố/điểm đến cấp cao như Hà Nội, Huế, Đà Lạt. Các bảng dữ liệu địa điểm như `places` và `hotels` gắn về `destinations` để phục vụ generate itinerary và kiểm tra data readiness.
+- `share_links` dùng cho public shared view. `trip_id FK "unique"` nghĩa là link gắn với một trip và đang bị ràng buộc unique theo thiết kế hiện tại; Mermaid dùng comment `"unique"` để tránh lỗi render khi một field vừa là FK vừa có unique constraint.
+- `guest_claim_tokens` hỗ trợ guest claim flow. Token thật không lưu plaintext mà chỉ lưu dạng hash để giảm rủi ro lộ token.
+- `trip_ratings` lưu đánh giá sau chuyến đi. `trip_id FK "unique"` biểu diễn quan hệ một đánh giá cho một trip theo ràng buộc hiện tại.
+- `chat_sessions` và `chat_messages` đã có trong schema để làm nền cho Phase `C3/C4`, nhưng API chat thật vẫn chưa được implement trước `C3A`.
+
+**Quy ước ký hiệu:**
+
+| Ký hiệu | Ý nghĩa |
+|---|---|
+| `PK` | Primary key, khóa chính của bảng |
+| `FK` | Foreign key, khóa ngoại liên kết sang bảng khác |
+| `UK` | Unique key, giá trị duy nhất |
+| `FK "unique"` | Field là khóa ngoại và có ràng buộc unique; viết dạng comment để GitHub Mermaid render hợp lệ |
+
 ### 5.2 Quan hệ chính
 
 ```
@@ -890,23 +909,22 @@ saved_places
 share_links
   ├── id (PK)
   ├── trip_id (FK → trips.id)
-  ├── created_by (FK → users.id)
-  ├── share_token_hash (SHA-256, unique)
+  ├── created_by_user_id (FK → users.id)
+  ├── token_hash (SHA-256, unique)
   ├── permission (view)
   ├── expires_at (nullable)
-  └── is_revoked
+  └── revoked_at (nullable)
 
 guest_claim_tokens
   ├── id (PK)
   ├── trip_id (FK → trips.id)
-  ├── token_hash (SHA-256)
+  ├── token_hash (SHA-256, unique)
   ├── expires_at
   └── consumed_at (nullable — one-time use)
 
 trip_ratings
   ├── id (PK)
   ├── trip_id (FK → trips.id)
-  ├── user_id (FK → users.id)
   ├── rating (1–5)
   └── feedback, created_at
 ```
@@ -920,8 +938,9 @@ trip_ratings
 | `trip_days` → `activities` | 1:N (ordered by order_index) |
 | `activities` → `extra_expenses` | 1:N |
 | `trips` → `accommodations` | 1:N |
-| `trips` → `share_links` | 1:N |
+| `trips` → `share_links` | 1:1 (current unique constraint on `trip_id`) |
 | `trips` → `guest_claim_tokens` | 1:N |
+| `trips` → `trip_ratings` | 1:1 (current unique constraint on `trip_id`) |
 | `destinations` → `places` | 1:N |
 | `destinations` → `hotels` | 1:N |
 | `users` → `saved_places` | 1:N |
