@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MessageCircle, X, Send, AlertCircle } from "lucide-react";
 
 interface FloatingAIChatProps {
@@ -13,8 +13,31 @@ interface Message {
   timestamp: Date;
 }
 
+function buildGreeting(selectedCities: string[]): Message {
+  const contextLabel =
+    selectedCities.length > 0 ? selectedCities.join(", ") : "chuyến đi này";
+
+  return {
+    id: 1,
+    text: `Xin chào! Tôi có thể giúp bạn tối ưu hóa lịch trình hoặc gợi ý địa điểm cho ${contextLabel}.`,
+    sender: "ai",
+    timestamp: new Date(),
+  };
+}
+
 export function FloatingAIChat({ selectedCities, onOpen }: FloatingAIChatProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const normalizedSelectedCities = useMemo(
+    () => selectedCities.map((city) => city.trim()).filter(Boolean),
+    [selectedCities],
+  );
+  const contextKey = useMemo(
+    () => normalizedSelectedCities.join("|"),
+    [normalizedSelectedCities],
+  );
+  const contextLabel = normalizedSelectedCities.length > 0
+    ? normalizedSelectedCities.join(", ")
+    : "chuyến đi này";
   
   const handleOpen = () => {
     setIsOpen(true);
@@ -22,15 +45,18 @@ export function FloatingAIChat({ selectedCities, onOpen }: FloatingAIChatProps) 
       onOpen();
     }
   };
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: `Xin chào! Tôi có thể giúp bạn tối ưu hóa lịch trình hoặc gợi ý địa điểm tại: ${selectedCities.join(", ")}`,
-      sender: "ai",
-      timestamp: new Date(),
-    },
+  const [messages, setMessages] = useState<Message[]>(() => [
+    buildGreeting(normalizedSelectedCities),
   ]);
   const [inputValue, setInputValue] = useState("");
+
+  useEffect(() => {
+    setMessages((prev) => {
+      const isOnlyInitialGreeting = prev.length === 1 && prev[0]?.sender === "ai";
+      if (!isOnlyInitialGreeting) return prev;
+      return [buildGreeting(normalizedSelectedCities)];
+    });
+  }, [contextKey, normalizedSelectedCities]);
 
   const quickReplies = [
     { id: 1, text: "Tối ưu lịch trình", icon: "✨" },
@@ -84,7 +110,7 @@ export function FloatingAIChat({ selectedCities, onOpen }: FloatingAIChatProps) 
         <div>
           <h3 className="font-bold">AI Travel Assistant</h3>
           <p className="text-xs text-white/80">
-            Gợi ý trong: {selectedCities.join(", ")}
+            Gợi ý trong: {contextLabel}
           </p>
         </div>
         <button

@@ -10,6 +10,17 @@ export interface GenerateErrorContext {
   quotaLimit?: number;
 }
 
+function formatRetryAfter(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "";
+
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes <= 1) return "khoảng 1 phút";
+  if (minutes < 60) return `khoảng ${minutes} phút`;
+
+  const hours = Math.ceil(minutes / 60);
+  return `khoảng ${hours} giờ`;
+}
+
 /**
  * Maps API errors to user-friendly messages for AI itinerary generation.
  *
@@ -100,6 +111,8 @@ export function getGenerateErrorMessage(error: unknown, context?: GenerateErrorC
     if (error.headers && error.headers.remaining !== undefined) {
       const { limit, remaining, resetAt, retryAfter } = error.headers;
       const resetTime = resetAt ? new Date(resetAt) : null;
+      const waitText = retryAfter ? formatRetryAfter(retryAfter) : "";
+      const retryText = waitText ? ` Bạn có thể thử lại sau ${waitText}.` : "";
 
       // Format reset time for user (e.g., "23:59" or "HH:mm tomorrow")
       let resetTimeString = "";
@@ -110,7 +123,7 @@ export function getGenerateErrorMessage(error: unknown, context?: GenerateErrorC
       }
 
       if (remaining === 0) {
-        return `Bạn đã dùng hết ${limit} lượt tạo lịch trình AI hôm nay. Hạn mức sẽ được đặt lại ${resetTimeString}.`;
+        return `Bạn đã dùng hết ${limit} lượt tạo lịch trình AI hôm nay. Hạn mức sẽ được đặt lại ${resetTimeString}.${retryText}`;
       } else {
         return `Còn ${remaining} lượt tạo lịch trình AI hôm nay (${limit} lượt tổng).`;
       }

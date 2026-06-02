@@ -80,7 +80,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 
 ## 1.1 Trạng thái hiện tại trước khi vào C3/C4
 
-`00060B` và `00060C` đã chốt current truth như sau:
+`00060B`, `00060C`, `00060D`, và hardening `00060D-R` đã chốt current truth như sau:
 
 | Hạng mục | Trạng thái |
 |---|---|
@@ -93,6 +93,9 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 | Chat session/message API | Chưa có |
 | Real AI call trong `C3A` | Không có |
 | Chat quota tách khỏi generate quota | Chưa làm, để `C3B` |
+| Real Gemini generate smoke trước `C3A` | Đã verify controlled live UAT (`201`, auth user, workspace render) |
+| `FloatingAIChat.tsx` runtime hiện tại | Vẫn là mock UI, nhưng context đã derive từ trip hiện tại; không còn hardcoded `Hà Nội` trước `C3A` |
+| Browser `429` submit path trước `C3A` | Đã verify bằng Playwright route-mocked regression, không gọi Gemini thật |
 
 **Ý nghĩa thực tế:**
 
@@ -100,7 +103,8 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 - `C3A` không gọi Gemini thật, không gửi message thật, và không apply patch vào itinerary.
 - `C3B` mới xử lý message generation, provider abstraction, chat quota, và chat error UX.
 - `C4` mới xử lý persisted history, reload session, và session/history UX.
-- `FloatingAIChat` mock + chưa có session API là gap cần xử lý ngay trong `C3A`.
+- `FloatingAIChat` vẫn là mock UI và chưa có session API; `00060D-FIX` chỉ sửa context bug trước `C3A`.
+- Browser `429` submit-path đã có regression test trước `C3A`, nhưng chat quota riêng vẫn chưa tồn tại.
 - Chat quota riêng, real provider smoke, và stale patch handling không block `C3A`; chúng thuộc `C3B/C3C` trở đi.
 
 ---
@@ -1120,7 +1124,7 @@ Người khác mở link:
 
 [Guest Claim Flow]
 Guest tạo trip → nhận claimToken trong response
-  → FE lưu {tripId, claimToken} vào localStorage (pendingClaims)
+  → FE lưu {tripId, claimToken} vào sessionStorage (pendingClaim)
 
 Guest đăng nhập / đăng ký:
   → AuthContext.executePendingClaim()
@@ -1129,8 +1133,14 @@ Guest đăng nhập / đăng ký:
   → Verify: !consumed_at + expires_at > now()
   → trip.user_id = current_user.id (transfer ownership)
   → consumed_at = now() (one-time use — chống replay)
-  → FE xóa pending claim khỏi localStorage
+  → FE xóa pending claim khỏi sessionStorage
 ```
+
+**Boundary notes:**
+
+- Public shared view chỉ đọc (`read-only`) và không có owner controls.
+- Future owner-only chat controls không được xuất hiện ở shared view mặc định.
+- Guest phải claim trip xong rồi mới được vào session/chat owner-only của `C3A`.
 
 ---
 
@@ -1306,44 +1316,11 @@ KEY:
   - C3A chỉ dựng owner-only, trip-scoped session foundation
 ```
 
-```
-FE (CreateTrip.tsx)
-  → POST /api/v1/itineraries/generate
-    { destination, startDate, endDate, budget, adults, children, interests }
+> Note: Detailed C.1/C.2 flow is already documented in sections **8.3** và **8.4** ở trên. Phần dưới đây chỉ tập trung vào future boundary của companion chat sau khi `C3A` hoàn tất.
 
-ItineraryService.generate()
-  1. Validate request (dates hợp lệ, budget > 0)
-  2. ItineraryPipeline.generate(request)
-     ├── Resolve destination → query DB lấy places/hotels làm recommendation context
-     ├── Build prompt với context (không hallucinate — chỉ dùng data từ DB)
-     ├── Gemini LLM structured output (JSON schema)
-     ├── Pydantic validation (tối đa 3 attempts, 2 retries nếu parse fail)
-     └── Return validated DaySchema[] + AccommodationSchema[]
-  3. Save trip + days + activities + accommodations vào DB
-  4. Return ItineraryResponse (camelCase)
+> Runtime note (`00060D-FIX`): `TripWorkspace` hiện đã derive `selectedCities` từ current trip/days nên floating chat không còn hardcoded `Hà Nội` trên trip `Huế`. Tuy vậy, nó vẫn chỉ là mock UI và `C3A` vẫn phải thay hoặc wrap nó bằng panel session-aware.
 
-FE navigate → /trip-workspace?tripId={id}
-
-KEY: Generate KHÔNG qua Supervisor — gọi direct ItineraryPipeline.
-     Mặc định 5 hoạt động/ngày (cấu hình qua AGENT_MIN/MAX_ACTIVITIES_PER_DAY).
-```
-
-### C.2 — Suggestion Service (DB-Only)
-
-```
-GET /api/v1/agent/suggest/{activityId}
-  → Owner check (trip.user_id == user.id)
-  → SuggestionService.find_alternatives(activity_id, limit)
-     ├── Lấy activity hiện tại → xác định category + destination
-     ├── Query places cùng category + destination từ DB
-     ├── Loại trừ places đã có trong trip
-     └── Return list[PlaceResponse] (không gọi LLM)
-
-WHY DB-only: Gợi ý địa điểm chỉ cần filter + sort data có sẵn.
-             Không cần "sáng tạo" nội dung mới.
-```
-
-### C.3B/C.3C — Future Companion Chat + Patch-Confirm (sau C3A)
+### 8.6 C.3B/C.3C — Future Companion Chat + Patch-Confirm (sau C3A)
 
 ```
 FE (ChatPanel trong TripWorkspace)
@@ -1593,62 +1570,9 @@ POST /auth/reset-password {token, newPassword}
 └─────────────────────────────────────────────────────┘
 ```
 
-### Register Flow
+> Note: Detailed register/login/refresh/reset subflows are already documented in sections **9.5** đến **9.8** ở trên. Phần dưới đây giữ lại checklist vận hành ngắn gọn.
 
-```
-User điền form Register
-  → POST /api/v1/auth/register {email, password, name}
-  → BE validate (email unique, password ≥ 6 chars)
-  → bcrypt hash password
-  → create User + create JWT pair
-  → hash refresh token → lưu refresh_tokens
-  → Return {accessToken, refreshToken, user}
-  → FE lưu tokens localStorage → executePendingClaim() → redirect "/"
-```
-
-### Login Flow
-
-```
-User điền form Login
-  → POST /api/v1/auth/login {email, password}
-  → BE get_by_email → verify bcrypt (generic error message — chống enumeration)
-  → check user.is_active
-  → tạo JWT pair → hash refresh → lưu DB
-  → Return {accessToken, refreshToken, user}
-  → FE lưu tokens → GET /users/profile → executePendingClaim() → redirect
-```
-
-### Token Refresh Flow
-
-```
-API call → 401 Unauthorized
-  → FE POST /auth/refresh {refreshToken}
-  → BE hash(raw) → lookup refresh_tokens
-  → Không tìm thấy / is_revoked → 401
-  → revoke(stored.id) → tạo JWT pair mới
-  → FE update localStorage → retry original request
-  → Nếu refresh fail → clear tokens → redirect /login
-```
-
-### Forgot / Reset Password Flow
-
-```
-POST /auth/forgot-password {email}
-  → BE lookup email → SILENT nếu không tồn tại (chống enumeration)
-  → create_password_reset_token() → raw + hash + expires 1h
-  → lưu hash vào users.password_reset_token_hash
-  → EmailService: SMTP configured → gửi email | No SMTP → log console
-  → Return 200 (luôn luôn, không tiết lộ email có tồn tại không)
-
-POST /auth/reset-password {token, newPassword}
-  → BE hash(token) → lookup user
-  → check expires_at > now()
-  → bcrypt hash newPassword → update user
-  → clear reset token fields
-  → token_repo.revoke_all_for_user() → FORCE RE-LOGIN mọi thiết bị
-```
-
-### 9.9 Security Rules Summary
+### 9.10 Security Rules Summary (Operational)
 
 | Rule | Chi tiết |
 |---|---|
@@ -1662,6 +1586,19 @@ POST /auth/reset-password {token, newPassword}
 | AI rate limit fail-closed | Redis down → block AI requests (không bypass) |
 | Places cache fail-open | Redis down → query DB trực tiếp (app vẫn chạy) |
 
+### 9.11 Rate Limit & Quota Boundary
+
+- Generate quota hiện tại bảo vệ **AI itinerary generation**.
+- Authenticated user và guest được key riêng theo source implementation hiện tại.
+- Redis-backed AI limiter là **fail-closed**: Redis unavailable sẽ block AI requests thay vì bypass quota.
+- Runtime `00060D-R` đã xác minh response `429` thực tế trả về:
+  - `X-RateLimit-Limit`
+  - `X-RateLimit-Remaining`
+  - `X-RateLimit-Reset`
+  - `Retry-After`
+- Runtime `00060D-R` cũng xác minh browser UX cho một path `503` thực tế theo provider-timeout control, với copy thân thiện thay vì stack trace.
+- Chat quota **chưa** được implement trong `C3A`; `C3B` phải thêm namespace quota riêng cho chat thay vì dùng chung quota generate.
+
 ---
 
 ## 10. Trạng thái Phase C
@@ -1674,6 +1611,14 @@ POST /auth/reset-password {token, newPassword}
 | **C.3B** | Companion Chat API + provider abstraction + chat quota | `after C3A` | ⏸️ Not direct start |
 | **C.4** | Chat history persistence + session UX | `after C3B` | ⏸️ Not direct start |
 | **C.5** | Analytics Text-to-SQL (optional) | `future optional` | 🔄 Optional |
+
+**Latest runtime snapshot before `C3A`:**
+
+- `00060D-R` đã verify một lần generate Gemini thật thành công cho auth user (`201`, ~31s), workspace render đúng, và trip vẫn mở lại được sau refresh.
+- `00060D-R` đã re-check edit persistence bằng browser trên activity thật sau reload.
+- `00060D-R` đã confirm public shared view vẫn read-only và không có floating owner chat trigger.
+- `00060D-FIX` đã bỏ hardcoded `Hà Nội` của `FloatingAIChat` bằng cách derive context từ trip hiện tại.
+- `00060D-FIX` đã verify browser-level submit-path `429` UX bằng Playwright route-mocked regression mà không tiêu Gemini quota.
 
 ### File map Phase C
 
@@ -1779,6 +1724,16 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 
 ## 12. Tests & Verification
 
+### 12.1 Latest live UAT snapshot before C3A
+
+- `00060D-R` real Gemini smoke: **PASS** (`201`, auth user, workspace render)
+- `00060D-R` trip edit persistence re-check: **PASS**
+- `00060D-R` share/public boundary: **PASS**
+- `00060D-R` actual `429` API contract: **PASS**
+- `00060D-FIX` browser `429` submit-path UX: **PASS**
+- `00060D-R` browser `503` UX from controlled provider-timeout path: **PASS**
+- `00060D-FIX` `FloatingAIChat` hardcoded-`Hà Nội` context bug: **FIXED_PRE_C3A**
+
 ### Backend Tests
 
 ```bash
@@ -1822,15 +1777,16 @@ npx playwright test --ui
 npx playwright show-report
 ```
 
-**Kết quả hiện tại:** 22 Playwright tests total; latest local UAT result: **19 passed, 3 skipped**.
+**Kết quả hiện tại:** 24 Playwright tests total; latest local UAT result: **21 passed, 3 skipped**.
 
 | Suite | Số test | Mô tả |
 |---|---|---|
 | Calendar + destination readiness | 2 | Calendar helper/date range, partial destination advisory |
-| Rate-limit UX shell | 4 | 429 response structure, CreateTrip load/button/calendar shell |
+| Rate-limit UX | 5 | 429 response structure, CreateTrip shell, submit-path 429 regression |
 | Auth flow | 5 | Register, login, protected route redirect, guest claim after login/register |
 | Trip CRUD | 3 | Create trip, view list, delete trip |
 | Public pages | 5 | Home, login, register, forgot-password, 404 |
+| Floating chat pre-C3A context | 1 | Non-Hà Nội trip no longer shows hardcoded `Hà Nội` |
 | Legacy B3 flows | 3 skipped | Historical fullstack observation flows kept skipped in current suite |
 
 ### CI/CD — GitHub Actions
