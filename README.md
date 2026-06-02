@@ -1721,6 +1721,8 @@ POST /auth/reset-password {token, newPassword}
 ## 11. Quick Start
 
 > 💡 **Local UAT guide:** Quy trình PowerShell-safe mới nhất nằm ở [`docs/LOCAL_MANUAL_UAT_GUIDE.md`](docs/LOCAL_MANUAL_UAT_GUIDE.md). User journey matrix nằm ở [`docs/USER_JOURNEY_UAT.md`](docs/USER_JOURNEY_UAT.md). Các lệnh human-facing dùng `localhost:<port>`; không ghi địa chỉ máy cá nhân vào docs/reports.
+>
+> 🚀 **Staging deploy guide:** Khi cần dựng môi trường internet-facing theo current source truth, xem [`docs/STAGING_DEPLOYMENT_GUIDE.md`](docs/STAGING_DEPLOYMENT_GUIDE.md).
 
 ### Cách 1 — Docker Compose (khuyến nghị)
 

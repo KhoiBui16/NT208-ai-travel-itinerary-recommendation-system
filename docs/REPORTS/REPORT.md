@@ -372,6 +372,31 @@ Historical sections above and below are phase snapshots. Current 00059B readines
 - `C3A — Chat Session Foundation`: YES
 - After merge, can proceed to `00060F — Staging Deployment Readiness + Deploy`: YES
 
+## 00060F Staging Deployment Readiness + Deploy CI/CD Plan
+
+| File | Nội dung |
+|---|---|
+| [00060f_staging_deployment_readiness.md](00060f_staging_deployment_readiness.md) | 2026-06-02: Staging deployment inventory, platform decision, Vercel/Render runbook, và manual-first CI/CD recommendation — **READY_FOR_MANUAL_STAGING_PLAN** |
+| [pr_00060f_description.md](pr_00060f_description.md) | PR body template for docs/00060F |
+| [../STAGING_DEPLOYMENT_GUIDE.md](../STAGING_DEPLOYMENT_GUIDE.md) | Current-source deployment guide for Vercel + Render + managed Postgres/Redis |
+| [../README.md](../README.md) | Quick pointer to staging deployment guide |
+
+**Key findings:**
+- ✅ Current source fits `Vercel + Render Web Service + managed Postgres + managed Redis` without forcing Docker first
+- ✅ Frontend uses `createBrowserRouter`, so SPA rewrite on Vercel is required; `Frontend/vercel.json` has been added for that fallback
+- ✅ Backend expects TCP Postgres + TCP Redis via `DATABASE_URL` and `REDIS_URL`; REST-only Redis providers are not source-compatible
+- ✅ Render health check can use `/api/v1/health`
+- ✅ Manual-first deployment is the least risky next step; auto-deploy should wait until staging URLs, migration flow, and smoke tests are stable
+- ⚠️ Current source does not expose a dedicated `ALEMBIC_DATABASE_URL`; if migration needs a different URI, it must be overridden operationally for the migration command only
+- ✅ `00060E-R2` is now merged into `main`, so `00060F` can be opened from a clean `main`-based docs branch
+
+**Decision:**
+- Recommended staging architecture: `Vercel + Render Python + Render Postgres/Redis`
+- Docker required now: `NO`
+- Manual staging deploy path: `YES`
+- Auto-deploy now: `NO, manual-first`
+- Clean PR-to-`main` readiness: `YES`
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |
