@@ -1,9 +1,10 @@
 """Middleware and exception handler registration.
 
-Sets up three layers on the FastAPI app:
-  1. CORS — allow FE origins from settings.cors_origins.
-  2. Request logging — log method, path, status, duration for every request.
-  3. Exception handlers — format AppException and HTTPException into consistent JSON.
+Sets up four layers on the FastAPI app:
+  1. Request ID — attach/propagate X-Request-ID for log correlation.
+  2. CORS — allow FE origins from settings.cors_origins.
+  3. Request logging — log method, path, status, duration for every request.
+  4. Exception handlers — format AppException and HTTPException into consistent JSON.
 """
 
 import time
@@ -16,18 +17,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.core.config import AppSettings
 from src.core.exceptions import AppException, app_exception_handler, http_exception_handler
 from src.core.logger import get_logger
+from src.core.middleware.request_id import RequestIDMiddleware
 
 logger = get_logger(__name__)
 
 
 def setup_middlewares(app: FastAPI, settings: AppSettings) -> None:
-    """Register CORS, request logging, and exception handlers.
+    """Register Request ID, CORS, request logging, and exception handlers.
+
+    Middleware is applied in reverse registration order (last-registered = outermost).
+    Registration order here means execution order is: RequestID → CORS → logging.
 
     Args:
         app: The FastAPI application instance.
         settings: AppSettings for CORS origins and other config.
     """
-    # Layer 1: CORS — allow FE development servers
+    # Layer 1: Request logging middleware (innermost — runs last)
+    app.middleware("http")(request_logging_middleware)
+    # Layer 2: CORS — allow FE development servers
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -35,9 +42,10 @@ def setup_middlewares(app: FastAPI, settings: AppSettings) -> None:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    # Layer 2: Request logging middleware
-    app.middleware("http")(request_logging_middleware)
-    # Layer 3: Consistent exception formatting
+    # Layer 3: Request ID — outermost, runs before CORS so request_id is available
+    # for all downstream log events including CORS preflight
+    app.add_middleware(RequestIDMiddleware)
+    # Layer 4: Consistent exception formatting
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
 

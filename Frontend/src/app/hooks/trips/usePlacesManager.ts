@@ -22,7 +22,11 @@ export const usePlacesManager = (
   // Search places from API when search query or selected day changes
   useEffect(() => {
     const selectedDay = days.find(d => d.id === selectedDayId);
-    const city = selectedDay?.destinationName;
+    // Fix: fall back to first day with a destinationName when selected day has none
+    const city =
+      selectedDay?.destinationName ||
+      days.find(d => d.destinationName)?.destinationName ||
+      undefined;
     const query = placeSearch.trim();
 
     // Debounce API calls (300ms)
@@ -149,7 +153,19 @@ export const usePlacesManager = (
     const selectedDay = days.find(d => d.id === selectedDayId);
     const matchSearch = p.name.toLowerCase().includes(placeSearch.toLowerCase());
     const matchFilter = activeFilter === "all" || p.type === activeFilter;
-    const matchCity = selectedDay ? p.city === selectedDay.destinationName : false;
+
+    // Fix: if selectedDay has no destinationName, fall back to the first
+    // day with a destinationName, then to show all places rather than
+    // hiding everything. This prevents the blank-panel bug after reload.
+    const destinationName =
+      selectedDay?.destinationName ||
+      days.find(d => d.destinationName)?.destinationName ||
+      null;
+
+    // If no destination context is available at all, show all places so
+    // the user can still add activities to the trip.
+    const matchCity = destinationName ? p.city === destinationName : true;
+
     return matchSearch && matchFilter && matchCity;
   });
 

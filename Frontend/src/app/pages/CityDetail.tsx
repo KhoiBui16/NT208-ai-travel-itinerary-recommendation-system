@@ -65,7 +65,8 @@ export default function CityDetail() {
   useEffect(() => {
     if (!city || !isAuthenticated) return;
     listSavedPlaces().then((data) => {
-      const names = new Set(data.map((p: any) => p.placeName || p.name));
+      // Correct BE shape: { id: savedId, place: { id: placeId, name, ... } }
+      const names = new Set(data.map((p: any) => p.place?.name || p.placeName || p.name).filter(Boolean));
       setSavedPlaceNames(names);
       const matchedIds = city.popularPlaces
         .filter(p => names.has(p.name))
@@ -116,10 +117,10 @@ export default function CityDetail() {
 
     try {
       if (isAlreadySaved) {
-        // Find saved place ID to unsave — fallback by name match
+        // Find saved place ID to unsave — use correct BE shape: { id: savedId, place: { name } }
         const savedList = await listSavedPlaces();
-        const match = savedList.find((p: any) => (p.placeName || p.name) === place.name);
-        if (match) await unsavePlace(match.id);
+        const match = savedList.find((p: any) => (p.place?.name || p.placeName || p.name) === place.name);
+        if (match) await unsavePlace(match.id); // match.id is the savedId (bookmark row)
       } else {
         await savePlace(placeId);
       }
@@ -349,8 +350,7 @@ export default function CityDetail() {
               Địa điểm từ cơ sở dữ liệu
             </h2>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {apiPlaces.map((place) => (
-                <div
+              {apiPlaces.map((place) => (                <div
                   key={place.id}
                   className="overflow-hidden rounded-2xl border-2 border-gray-200 bg-white shadow-md transition-all hover:shadow-xl"
                 >

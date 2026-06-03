@@ -173,7 +173,13 @@ export default function Home() {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {destinations.map((dest) => (
+          {destinations.length === 0 ? (
+            <div className="col-span-3 rounded-xl bg-yellow-50 border border-yellow-200 px-6 py-10 text-center text-yellow-800">
+              <p className="text-lg font-semibold">Chưa có dữ liệu điểm đến.</p>
+              <p className="mt-1 text-sm">Hãy chạy ETL để tải dữ liệu.</p>
+            </div>
+          ) : (
+            destinations.map((dest) => (
             <Link
               key={dest.name}
               to="/cities"
@@ -196,7 +202,8 @@ export default function Home() {
                 <p className="text-gray-200">{dest.description}</p>
               </div>
             </Link>
-          ))}
+            ))
+          )}
         </div>
       </section>
 
