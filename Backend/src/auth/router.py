@@ -51,9 +51,9 @@ async def register(
     service: AuthService = Depends(_auth_service),
 ) -> AuthResponse:
     """EP-1: Register a new user account.
-    
+
     Tính năng: Đăng ký / đăng nhập / đăng xuất
-    
+
     Flow đăng ký:
       1. Client gửi email, password, name, phone (optional)
       2. Service kiểm tra email chưa được đăng ký trước đó
@@ -61,15 +61,15 @@ async def register(
       4. Tạo user record trong DB
       5. Tạo JWT access token (15 phút) + refresh token (7 ngày) + lưu hash refresh token
       6. Trả về tokens + user profile
-    
+
     Response:
       - access_token: JWT để gọi các endpoint authenticated
       - refresh_token: Dùng để lấy access_token mới khi hết hạn
       - expires_in: Thời gian sống của access token (giây)
       - user: Hồ sơ người dùng vừa tạo
-    
+
     Status: 201 Created (user mới được tạo thành công)
-    
+
     Exceptions:
       - 409 Conflict: Email đã được đăng ký
     """
@@ -87,9 +87,9 @@ async def login(
     service: AuthService = Depends(_auth_service),
 ) -> AuthResponse:
     """EP-2: Login with email and password.
-    
+
     Tính năng: Đăng ký / đăng nhập / đăng xuất
-    
+
     Flow đăng nhập:
       1. Client gửi email + password
       2. Service tìm user theo email
@@ -97,12 +97,12 @@ async def login(
       4. Kiểm tra user.is_active (tài khoản không bị vô hiệu hóa)
       5. Tạo JWT access token + refresh token + lưu hash refresh token
       6. Trả về tokens + user profile
-    
+
     Response:
       - access_token: JWT (15 phút) cho subsequent authenticated requests
       - refresh_token: Dùng endpoint /refresh để lấy access_token mới
       - user: Thông tin người dùng (id, email, name, phone, interests, etc.)
-    
+
     Exceptions:
       - 401 Unauthorized: Email không tồn tại hoặc password sai
       - 401 Unauthorized: Tài khoản bị vô hiệu hóa (is_active=false)
@@ -116,9 +116,9 @@ async def refresh(
     service: AuthService = Depends(_auth_service),
 ) -> AuthResponse:
     """EP-3: Refresh the JWT pair using a valid refresh token.
-    
+
     Tính năng: Refresh token rotation (JWT)
-    
+
     Flow refresh token rotation:
       1. Client gửi refresh_token khi access_token hết hạn
       2. Service hash refresh_token (SHA-256)
@@ -129,13 +129,13 @@ async def refresh(
       5. REVOKE token cũ (đánh dấu is_revoked=true) - security best practice
       6. Tạo cặp access + refresh token MỚI + lưu hash token mới
       7. Trả về token pair mới
-    
+
     Security (Token Rotation):
       - Khi refresh được gọi, token cũ bị revoke ngay
       - Nếu token cũ bị dùng lại -> lỗi 401 (token revoked)
       - Ngăn chặn token reuse attacks
       - Detects token theft: nếu attacker dùng old token lần nữa
-    
+
     Exceptions:
       - 401 Unauthorized: Token không tồn tại hoặc đã bị revoke
       - 401 Unauthorized: User không tồn tại hoặc is_active=false
@@ -150,9 +150,9 @@ async def logout(
     service: AuthService = Depends(_auth_service),
 ) -> SuccessResponse:
     """EP-4: Logout by revoking the refresh token.
-    
+
     Tính năng: Đăng ký / đăng nhập / đăng xuất
-    
+
     Flow đăng xuất:
       1. Client gửi refresh_token cần revoke
       2. Require: User phải authenticated (access_token hợp lệ)
@@ -161,15 +161,15 @@ async def logout(
       4. Tìm refresh token record trong DB
       5. Nếu tìm thấy và chưa revoke -> đánh dấu is_revoked=true
       6. Trả về success message
-    
+
     Client-side:
       - Xóa refresh_token khỏi local storage/cookie
       - Xóa access_token khỏi memory
-    
+
     Server-side revocation:
       - refresh_token không thể dùng lại
       - Nếu user cố dùng lại -> 401 Unauthorized (token revoked)
-    
+
     Exceptions:
       - 401 Unauthorized: Access token không valid (get_current_user fails)
       - Logout vẫn succeed ngay cả nếu refresh_token không tìm thấy (idempotent)
@@ -184,9 +184,9 @@ async def forgot_password(
     service: AuthService = Depends(_auth_service),
 ) -> SuccessResponse:
     """EP-31: Request a password reset email.
-    
+
     Tính năng: Quên mật khẩu / đặt lại qua email
-    
+
     Flow quên mật khẩu:
       1. Client gửi email
       2. Service tìm user bằng email
@@ -199,14 +199,14 @@ async def forgot_password(
             - Email body: URL = https://frontend.com/reset-password?token=<raw_token>
             - Link có hiệu lực 1 giờ
       5. Trả về success message (cùng message cho tất cả email, bảo vệ privacy)
-    
+
     Security:
       - Không tiết lộ email tồn tại hay không
       - Token lưu là SHA-256 hash, không lưu raw token
       - Token tự hết hạn sau 1 giờ
       - Token single-use: sau khi dùng -> xóa từ DB
       - Console logging (fallback khi SMTP chưa config): in reset URL vào logs
-    
+
     Exceptions:
       - Luôn trả 200 (success message generic) để bảo vệ privacy
     """
@@ -222,9 +222,9 @@ async def reset_password(
     service: AuthService = Depends(_auth_service),
 ) -> SuccessResponse:
     """EP-32: Consume a reset token and set a new password.
-    
+
     Tính năng: Quên mật khẩu / đặt lại qua email
-    
+
     Flow đặt lại mật khẩu:
       1. Client gửi token (từ email link) + new_password
       2. Service hash token (SHA-256)
@@ -240,13 +240,13 @@ async def reset_password(
          d. **IMPORTANT**: Revoke ALL refresh tokens cho user (logout from all devices)
             -> security: nếu password bị compromise -> buộc login lại mọi nơi
       6. Trả về success message
-    
+
     Security (Password Reset):
       - Token single-use: xóa sau dùng
       - Token hết hạn: 1 giờ
       - Logout from all devices: buộc user login lại
       - Nếu attacker thay đổi password, user cũ không thể dùng lại old tokens
-    
+
     Exceptions:
       - 401 Unauthorized: Token không tồn tại
       - 401 Unauthorized: Token hết hạn
@@ -271,9 +271,9 @@ def _user_service(db: AsyncSession = Depends(get_db)) -> UserService:
 @user_router.get("/profile", response_model=UserResponse)
 async def get_profile(user: User = Depends(get_current_user)) -> UserResponse:
     """EP-5: Get the authenticated user's profile.
-    
+
     Tính năng: Xem / cập nhật hồ sơ, đổi mật khẩu
-    
+
     Flow xem profile:
       1. Client gửi request vập hẽữ endpoint này
       2. Require: User phải authenticated (access_token hợp lệ)
@@ -284,7 +284,7 @@ async def get_profile(user: User = Depends(get_current_user)) -> UserResponse:
             d. Query DB lấy user record
             e. Kiểm tra is_active
       3. Trả về user profileñ public fields (không trả password hash)
-    
+
     Response (UserResponse):
       - id: user ID
       - email: Địa chỉ email
@@ -293,7 +293,7 @@ async def get_profile(user: User = Depends(get_current_user)) -> UserResponse:
       - interests: Danh sách thành phố quan tâm (default: [])
       - is_active: Tài khoản có hoạt động
       - created_at, updated_at: Timestamps
-    
+
     Exceptions:
       - 401 Unauthorized: Không có token hoặc token không hợp lệ
       - 401 Unauthorized: User bị vô hiệu hóa (is_active=false)
@@ -308,9 +308,9 @@ async def update_profile(
     service: UserService = Depends(_user_service),
 ) -> UserResponse:
     """EP-6: Partially update the authenticated user's profile.
-    
+
     Tính năng: Xem / cập nhật hồ sơ, đổi mật khẩu
-    
+
     Flow cập nhật profile:
       1. Client gửi (optional) name, phone, interests
       2. Require: User phải authenticated
@@ -321,12 +321,12 @@ async def update_profile(
          - Không gủi email, password, is_active và có endpoint riêng
       4. Update DB
       5. Trả về user profile updated
-    
+
     Request:
       - name: Họ và tên mới (1-100 char, optional)
       - phone: Số điện thoại mới (max 30 char, optional)
       - interests: Danh sách thành phố quan tâm (list[str], optional)
-    
+
     Exceptions:
       - 401 Unauthorized: Không authenticated
       - 400 Bad Request: Validation failure (tổng dữ liệu invalid)
@@ -346,9 +346,9 @@ async def change_password(
     service: UserService = Depends(_user_service),
 ) -> SuccessResponse:
     """EP-7: Change the authenticated user's password.
-    
+
     Tính năng: Xem / cập nhật hồ sơ, đổi mật khẩu
-    
+
     Flow đổi mật khẩu:
       1. Client gửi current_password + new_password
       2. Require: User phải authenticated
@@ -362,15 +362,15 @@ async def change_password(
             - UN LIKE forgot_password/reset (là user initiated)
             - Change password = user tự tài khoản cũ -> không can interrupt sessions
       4. Trả về success
-    
+
     Request:
       - current_password: Mật khẩu hiện tại
       - new_password: Mật khẩu mới (phải khác current, min 6 char)
-    
+
     Security:
       - Verify current password: ngăn chặn đổi mật khẩu từ desktop/session không lấy
       - Không revoke tokens: user vẫn cũ logged in
-    
+
     Exceptions:
       - 401 Unauthorized: current_password sai
       - 401 Unauthorized: Không authenticated

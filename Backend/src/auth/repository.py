@@ -23,14 +23,14 @@ class UserRepository:
 
     async def get_by_id(self, user_id: int) -> User | None:
         """Fetch a user by primary key.
-        
+
         Lấy user theo ID chính.
-        
+
         Use Cases:
           - JWT verification: extract user_id từ token, query user
           - Refresh token validation: tìm user owner của token
           - Change password: lấy user để cập nhật password
-        
+
         Query: SELECT * FROM users WHERE id = ?
 
         Args:
@@ -120,19 +120,19 @@ class RefreshTokenRepository:
 
     async def find_by_hash(self, token_hash: str) -> RefreshToken | None:
         """Look up a refresh token by its SHA-256 hash.
-        
+
         Token Lookup Flow:
-        
+
         1. Client gửi raw token khi refresh/logout
         2. Service hash token: SHA-256(raw_token)
         3. Query DB: SELECT * FROM refresh_tokens WHERE token_hash = ?
         4. Return RefreshToken record nếu tìm thấy
-        
+
         Security:
           - Lưu hash, không lưu raw token -> DB breach safe
           - Token_hash indexed -> O(1) lookup
           - If token_hash không tồn tại -> None (invalid token)
-        
+
         Use Cases:
           - refresh token: Find stored token to check revoke status
           - logout: Find token to revoke
@@ -151,26 +151,26 @@ class RefreshTokenRepository:
 
     async def create(self, user_id: int, token_hash: str, expires_at: datetime) -> RefreshToken:
         """Persist a new refresh token hash.
-        
+
         Token Persistence Flow:
-        
+
         1. Service generates new refresh token
            - 128 bytes random (secure random)
            - Hash = SHA-256(raw_token)
-        
+
         2. Service calls: token_repo.create(user_id, token_hash, expires_at)
-        
+
         3. INSERT INTO refresh_tokens:
            - user_id: user owner
            - token_hash: SHA-256 hash (64 hex chars)
            - expires_at: token expiry time (typically now + 7 days)
            - is_revoked: false (default)
            - created_at: now (auto)
-        
+
         4. Flush vào DB (commit trong transaction)
-        
+
         5. Return RefreshToken ORM instance
-        
+
         Security:
           - KHÔNG lưu raw token (only in client memory)
           - Hash indexed for fast lookup
@@ -191,35 +191,35 @@ class RefreshTokenRepository:
 
     async def revoke(self, token_id: int) -> None:
         """Mark a single refresh token as revoked.
-        
+
         Token Revocation Flow:
-        
+
         1. Service finds token record
            - find_by_hash(token_hash) -> RefreshToken instance
-        
+
         2. Service calls: token_repo.revoke(token.id)
-        
+
         3. UPDATE refresh_tokens:
            - SET is_revoked = true
            - WHERE id = token_id
-        
+
         4. Flush vào DB
-        
+
         Security (Revocation Pattern):
           - Revoke = soft delete (không xóa record)
           - is_revoked flag prevents token reuse
           - Audit trail: can query revoked tokens later
-        
+
         Use Cases:
           1. Token Refresh (rotation):
              - Old token used -> revoke
              - New pair created
              - Prevents old token reuse
-          
+
           2. Logout:
              - Revoke current token
              - Token không thể dùng lại
-          
+
           3. (Optional) Logout from other device:
              - Revoke specific token ID
 
@@ -233,31 +233,31 @@ class RefreshTokenRepository:
 
     async def revoke_all_for_user(self, user_id: int) -> None:
         """Revoke all active refresh tokens for a user.
-        
+
         Bulk Revocation Flow:
-        
+
         1. Service calls: token_repo.revoke_all_for_user(user_id)
-        
+
         2. UPDATE refresh_tokens:
            - SET is_revoked = true
            - WHERE user_id = user_id AND is_revoked = false
            - Only revoke active tokens (skip already revoked)
-        
+
         3. Flush vào DB
-        
+
         Security (Force Logout All Devices):
           - Được thực hiện khi password reset
           - Nếu password bị compromise -> attacker không thể dùng old tokens
           - Force user login lại mọi nơi
-        
+
         Use Cases:
           1. Password Reset (forgot_password endpoint):
              - User quên password
              - Reset được kích hoạt -> trigger reset flow
              - Revoke all old tokens -> force login everywhere
              - Prevention: attacker thay password không thể dùng session cũ
-          
-          2. (Optional) Admin action: 
+
+          2. (Optional) Admin action:
              - Logout user from all devices
              - Security incident response
              - Account compromise cleanup

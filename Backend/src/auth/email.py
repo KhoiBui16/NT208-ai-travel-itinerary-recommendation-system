@@ -17,25 +17,25 @@ class EmailService:
         reset_token: str,
     ) -> None:
         """Send a password reset email (or log to console).
-        
+
         Email Sending Flow:
-        
+
         1. Construct reset URL
            - Base URL: settings.frontend_url (e.g., https://dulicviet.com)
            - Query param: token=<raw_reset_token>
            - URL: https://dulicviet.com/reset-password?token=xyz123
-        
+
         2. Check SMTP configuration
            - Nếu settings.smtp_host có:
              * Gửi email thời đời thực qua aiosmtplib
            - Else:
              * Log URL vào console (development fallback)
              * Useful khi testing, không setup mail server
-        
+
         3. (If SMTP) Gửi email qua aiosmtplib
            - async SMTP client (khong block event loop)
            - Host, port, credentials ở config
-        
+
         Use Case (Forgot Password):
           - User quên mật khẩu -> gửi email reset link
           - Email có tính duy nhất trong số giờ
@@ -60,21 +60,21 @@ class EmailService:
         settings: object,
     ) -> None:
         """Send email via aiosmtplib.
-        
+
         SMTP Email Sending:
-        
+
         1. Create EmailMessage
            - Python standard library: email.message.EmailMessage
            - From: noreply <noreply@dulicviet.com>
            - To: user email
            - Subject: "DuLichViet — Đặt lại mật khẩu"
-        
+
         2. Email body (Tiếng Việt)
            - Greeting: Xin chào
            - Call to action: Yêu cầu đặt lại mật khẩu
            - Reset link: URL cả chú thích kập thời hạn
            - Disclaimer: Nếu không yêu cầu
-        
+
         3. Send via aiosmtplib
            - Async SMTP client (non-blocking)
            - Config:
@@ -84,13 +84,13 @@ class EmailService:
              * password: app password (secret)
              * start_tls: true (encrypt)
            - Timeout: default 30s
-        
+
         4. Log success
-        
+
         Error Handling:
           - Nếu SMTP fail: Được bỏ qua (forgot_password returns 200 anyway)
           - If error: exception propagates (caller should handle)
-        
+
         Config (environment):
           - SMTP_HOST
           - SMTP_PORT
