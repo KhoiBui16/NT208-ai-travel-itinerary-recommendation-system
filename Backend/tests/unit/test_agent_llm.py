@@ -1,8 +1,25 @@
-"""Unit tests for LLM response parsing helpers."""
+"""Unit tests for Gemini LLM helpers."""
+
+import asyncio
+from types import SimpleNamespace
 
 import pytest
 
-from src.agent.llm import LLMGenerationError, parse_json_response
+from src.agent.config import AgentConfig
+from src.agent.llm import GeminiLLM, LLMGenerationError, parse_json_response
+from src.core.exceptions import ServiceUnavailableException
+
+
+def _make_config(timeout_seconds: int = 1) -> AgentConfig:
+    return AgentConfig(
+        api_key="test-key",
+        model="gemini-2.5-flash",
+        temperature=0.2,
+        max_retries=1,
+        timeout_seconds=timeout_seconds,
+        min_activities_per_day=5,
+        max_activities_per_day=5,
+    )
 
 
 def test_parse_json_response__plain_object() -> None:
@@ -16,3 +33,60 @@ def test_parse_json_response__fenced_json() -> None:
 def test_parse_json_response__invalid_json_raises() -> None:
     with pytest.raises(LLMGenerationError):
         parse_json_response("not-json")
+
+
+@pytest.mark.asyncio
+async def test_generate_text__success_uses_response_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    llm = GeminiLLM(_make_config())
+
+    async def fake_generate_with_client(prompt: str) -> object:
+        return SimpleNamespace(text='{"tripName":"Test"}')
+
+    monkeypatch.setattr(llm, "_generate_with_client", fake_generate_with_client)
+
+    result = await llm.generate_text("hello")
+
+    assert result == '{"tripName":"Test"}'
+
+
+@pytest.mark.asyncio
+async def test_generate_text__success_falls_back_to_candidate_parts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    llm = GeminiLLM(_make_config())
+    response = SimpleNamespace(
+        text=None,
+        candidates=[
+            SimpleNamespace(
+                content=SimpleNamespace(parts=[SimpleNamespace(text='{"tripName":"Alt"}')])
+            )
+        ],
+    )
+
+    async def fake_generate_with_client(prompt: str) -> object:
+        return response
+
+    monkeypatch.setattr(llm, "_generate_with_client", fake_generate_with_client)
+
+    result = await llm.generate_text("hello")
+
+    assert result == '{"tripName":"Alt"}'
+
+
+@pytest.mark.asyncio
+async def test_generate_text__timeout_returns_retryable_service_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    llm = GeminiLLM(_make_config(timeout_seconds=0))
+
+    async def fake_generate_with_client(prompt: str) -> object:
+        await asyncio.sleep(0.01)
+        return SimpleNamespace(text='{"tripName":"Late"}')
+
+    monkeypatch.setattr(llm, "_generate_with_client", fake_generate_with_client)
+
+    with pytest.raises(ServiceUnavailableException) as exc_info:
+        await llm.generate_text("hello")
+
+    assert exc_info.value.error_code == "AI_PROVIDER_TIMEOUT"
+    assert exc_info.value.retryable is True

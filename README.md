@@ -80,7 +80,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 
 ## 1.1 Trạng thái hiện tại trước khi vào C3/C4
 
-`00060B`, `00060C`, `00060D`, và hardening `00060D-R` đã chốt current truth như sau:
+`00060B`, `00060C`, `00060D`, `00060G`, và `00060H` đã chốt current truth như sau:
 
 | Hạng mục | Trạng thái |
 |---|---|
@@ -96,6 +96,9 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 | Real Gemini generate smoke trước `C3A` | Đã verify controlled live UAT (`201`, auth user, workspace render) |
 | `FloatingAIChat.tsx` runtime hiện tại | Vẫn là mock UI, nhưng context đã derive từ trip hiện tại; không còn hardcoded `Hà Nội` trước `C3A` |
 | Browser `429` submit path trước `C3A` | Đã verify bằng Playwright route-mocked regression, không gọi Gemini thật |
+| Guest AI workspace trong cùng browser session | Đã ổn định bằng `sessionStorage.currentTrip` + `pendingClaim`; chưa đăng nhập vẫn xem được trip vừa generate |
+| Generated activity images sau reload | Đã ưu tiên `Place.image` khi `place_id` hợp lệ, FE có fallback khi image rỗng/hỏng |
+| Gemini SDK backend | Đã migrate sang `google-genai`; timeout vẫn trả `503 AI_PROVIDER_TIMEOUT` |
 
 **Ý nghĩa thực tế:**
 
@@ -105,6 +108,8 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 - `C4` mới xử lý persisted history, reload session, và session/history UX.
 - `FloatingAIChat` vẫn là mock UI và chưa có session API; `00060D-FIX` chỉ sửa context bug trước `C3A`.
 - Browser `429` submit-path đã có regression test trước `C3A`, nhưng chat quota riêng vẫn chưa tồn tại.
+- Guest chưa đăng nhập vẫn có thể generate và xem trip vừa tạo trong chính browser session hiện tại; đăng nhập mới cần để nhận ownership dài hạn, share, và edit/save server-side đầy đủ.
+- Generate hiện vẫn là sync HTTP flow; tăng timeout chỉ giúp local/staging dễ smoke hơn, còn "eventually complete" cần background job/polling ở phase tương lai.
 - Chat quota riêng, real provider smoke, và stale patch handling không block `C3A`; chúng thuộc `C3B/C3C` trở đi.
 
 ---
@@ -123,7 +128,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 | Migration | Alembic | 1.14+ |
 | Cache | Redis | 7 |
 | Auth | JWT (python-jose) + bcrypt | — |
-| AI | Google Gemini (google-generativeai) | gemini-2.5-flash |
+| AI | Google Gemini (google-genai SDK) | gemini-2.5-flash |
 | HTTP Client | httpx | 0.28+ |
 | Email | aiosmtplib | 3.0+ |
 | Logging | structlog | 24.4+ |
@@ -563,14 +568,14 @@ App.tsx
                 │   ├── /daily-itinerary → DailyItinerary
                 │   └── /shared/:token  → SharedTripView
                 │
-                ├── Protected routes (cần login → redirect /login)
+                ├── Protected / owner routes (đa số cần login → redirect /login)
                 │   ├── /trip-library     → TripLibrary
                 │   ├── /saved-places     → SavedPlaces
                 │   ├── /account          → Account
                 │   ├── /trip-history     → TripHistory
                 │   ├── /settings         → Settings
                 │   ├── /manual-trip-setup → ManualTripSetup
-                │   ├── /trip-workspace   → TripWorkspace
+                │   ├── /trip-workspace   → TripWorkspace (guest được vào khi có local `currentTrip` hợp lệ)
                 │   ├── /itinerary/:id    → ItineraryView
                 │   ├── /profile          → Profile
                 │   └── /saved-itineraries → SavedItineraries
@@ -1185,6 +1190,8 @@ Guest đăng nhập / đăng ký:
 
 **Boundary notes:**
 
+- Sau guest generate thành công, FE lưu thêm session snapshot `currentTrip` để `TripWorkspace` trong cùng browser session render itinerary ngay cả trước khi claim.
+- Nếu chưa đăng nhập, các chỉnh sửa ở workspace chỉ được giữ tạm trong trình duyệt hiện tại; owner-only save/share/list vẫn cần auth.
 - Public shared view chỉ đọc (`read-only`) và không có owner controls.
 - Future owner-only chat controls không được xuất hiện ở shared view mặc định.
 - Guest phải claim trip xong rồi mới được vào session/chat owner-only của `C3A`.
@@ -1523,8 +1530,9 @@ sequenceDiagram
     SVC->>DB: INSERT guest_claim_tokens (hash, expires_at=+24h)
     SVC-->>FE: ItineraryResponse + claimToken (raw)
     FE->>FE: sessionStorage.set("pendingClaim", {tripId, claimToken, returnTo})
+    FE->>FE: sessionStorage.set("currentTrip", mappedItinerarySnapshot)
     FE->>FE: navigate /trip-workspace?tripId={id}
-    Note over FE: TripWorkspace là protected route → redirect /login
+    Note over FE: Nếu có currentTrip hợp lệ thì guest xem được workspace trong cùng browser session; muốn ownership đầy đủ thì vẫn phải login/claim
 
     Note over Guest,DB: GUEST ĐĂNG NHẬP / ĐĂNG KÝ
     Guest->>FE: Login hoặc Register
@@ -1672,6 +1680,9 @@ POST /auth/reset-password {token, newPassword}
 
 - Generate quota hiện tại bảo vệ **AI itinerary generation**.
 - Authenticated user và guest được key riêng theo source implementation hiện tại.
+- Namespace hiện tại là:
+  - `rate:ai:user:{id}:{YYYYMMDD}`
+  - `rate:ai:guest:{hash}:{YYYYMMDD}`
 - Redis-backed AI limiter là **fail-closed**: Redis unavailable sẽ block AI requests thay vì bypass quota.
 - Runtime `00060D-R` đã xác minh response `429` thực tế trả về:
   - `X-RateLimit-Limit`
@@ -1679,7 +1690,11 @@ POST /auth/reset-password {token, newPassword}
   - `X-RateLimit-Reset`
   - `Retry-After`
 - Runtime `00060D-R` cũng xác minh browser UX cho một path `503` thực tế theo provider-timeout control, với copy thân thiện thay vì stack trace.
-- Chat quota **chưa** được implement trong `C3A`; `C3B` phải thêm namespace quota riêng cho chat thay vì dùng chung quota generate.
+- `00060H` giữ nguyên generate namespace hiện tại nhưng chốt plan rằng `C3B` phải tách riêng:
+  - `rate:ai:generate:user:{id}:{YYYYMMDD}`
+  - `rate:ai:generate:guest:{hash}:{YYYYMMDD}`
+  - `rate:ai:chat:user:{id}:{YYYYMMDD}`
+- Guest chat chưa được mở trong `C3A`; nếu mở ở `C3B` thì phải có policy riêng, quota riêng, hoặc explicit login-required rule.
 
 ---
 
@@ -1701,6 +1716,10 @@ POST /auth/reset-password {token, newPassword}
 - `00060D-R` đã confirm public shared view vẫn read-only và không có floating owner chat trigger.
 - `00060D-FIX` đã bỏ hardcoded `Hà Nội` của `FloatingAIChat` bằng cách derive context từ trip hiện tại.
 - `00060D-FIX` đã verify browser-level submit-path `429` UX bằng Playwright route-mocked regression mà không tiêu Gemini quota.
+- `00060H` đã chốt guest generate flow: FE lưu `currentTrip` + `pendingClaim`, nên guest có thể mở `TripWorkspace` trong cùng browser session mà không bị ép login ngay.
+- `00060H` đã sửa generated activity image persistence: activity có `place_id` hợp lệ sẽ ưu tiên `Place.image`, còn FE vẫn có fallback image khi dữ liệu rỗng hoặc URL hỏng.
+- `00060H` đã migrate backend Gemini client sang `google-genai`; timeout `503` vẫn được classify rõ là `AI_PROVIDER_TIMEOUT`.
+- `00060H` cũng chốt rõ rằng sync generate chưa thể hứa "eventually complete"; muốn đảm bảo hoàn tất khi provider chậm cần background job/polling ở phase tương lai.
 
 ### File map Phase C
 
@@ -1708,7 +1727,7 @@ POST /auth/reset-password {token, newPassword}
 |---|---|---|---|
 | `src/itineraries/pipeline.py` | LLM orchestration cho generate | Service | ✅ C.1 |
 | `src/agent/config.py` | AI config facade | Shared AI infra | ✅ C.1 |
-| `src/agent/llm.py` | Gemini client wrapper + JSON parsing | Shared AI infra | ✅ C.1 |
+| `src/agent/llm.py` | `google-genai` client wrapper + JSON parsing | Shared AI infra | ✅ C.1 |
 | `src/agent/prompts/itinerary_prompts.py` | Generate prompt builder | Shared AI infra | ✅ C.1 |
 | `src/agent/schemas/itinerary_schemas.py` | LLM output schema | Shared AI infra | ✅ C.1 |
 | `src/places/suggestion_service.py` | Gợi ý DB-only (không LLM) | Service | ✅ C.2 |
@@ -1818,6 +1837,8 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 - `00060D-R` browser `503` UX from controlled provider-timeout path: **PASS**
 - `00060D-FIX` `FloatingAIChat` hardcoded-`Hà Nội` context bug: **FIXED_PRE_C3A**
 - `00060G` Home destination image fallback and AI provider-timeout submit-path UX regressions: **PASS**
+- `00060H` guest generate → same-browser `TripWorkspace` continuity via `currentTrip` / `pendingClaim`: **PASS**
+- `00060H` generated activity image persistence + UI fallback after reload: **PASS**
 
 ### Backend Tests
 
@@ -1837,12 +1858,12 @@ uv run pytest tests/unit/ -v
 uv run pytest tests/integration/ -v
 ```
 
-**Kết quả hiện tại:** 126 unit tests + 51 integration tests = **177 backend tests**
+**Kết quả local mới nhất:** 131 unit tests pass; scoped integration run cho `generate / itinerary / rate` đạt **17 passed, 9 skipped, 25 deselected**.
 
 | Suite | Số test | Mô tả |
 |---|---|---|
-| Unit | 126 | Service logic, schema validation, security utils, token hashing, AI pipeline, ETL/Goong mocks, authz regressions, AI timeout no-persist contract |
-| Integration | 51 | Endpoint tests với DB thật (PostgreSQL + Redis), gồm nested trip authz regression coverage |
+| Unit | 131 | Service logic, schema validation, security utils, token hashing, AI pipeline, guest claim, generated-image persistence, ETL/Goong mocks, authz regressions, AI timeout no-persist contract |
+| Integration | Scoped local run: 17 pass / 9 skip | Endpoint tests với DB thật (PostgreSQL + Redis) cho generate/itinerary/rate-limit contracts; full suite tiếp tục được giữ ở CI |
 
 ### Frontend E2E Tests (Playwright)
 
@@ -1862,7 +1883,7 @@ npx playwright test --ui
 npx playwright show-report
 ```
 
-**Kết quả hiện tại:** 26 Playwright tests total; latest full local result: **15 passed, 11 skipped**.
+**Kết quả hiện tại:** 28 Playwright tests total; latest full local result: **17 passed, 11 skipped**.
 
 | Suite | Số test | Mô tả |
 |---|---|---|
@@ -1874,6 +1895,7 @@ npx playwright show-report
 | Floating chat pre-C3A context | 1 | Non-Hà Nội trip no longer shows hardcoded `Hà Nội` |
 | Home destination image fallback | 1 | Empty/null/broken API images fall back to stable destination/default images |
 | AI timeout UX | 1 | 503 `AI_PROVIDER_TIMEOUT` submit path stays on CreateTrip and shows actionable copy |
+| Guest workspace boundary | 2 | Guest generate giữ được `currentTrip` + `pendingClaim`; auth generate vẫn ưu tiên API state thay vì session fallback |
 | Legacy B3 flows | 3 skipped | Historical fullstack observation flows kept skipped in current suite |
 
 ### CI/CD — GitHub Actions

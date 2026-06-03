@@ -419,6 +419,30 @@ Historical sections above and below are phase snapshots. Current 00059B readines
 - Real Gemini timeout eliminated: `PARTIAL`
 - Proceed to manual staging deploy after merge: `YES`
 
+## 00060H Guest/Auth Boundary + Gemini SDK + Generated Image Boundary
+
+| File | Nội dung |
+|---|---|
+| [00060h_guest_gemini_image_boundary.md](00060h_guest_gemini_image_boundary.md) | 2026-06-03: Guest/auth workspace boundary hardening, Gemini SDK migration to `google-genai`, generated activity image persistence fix, và pre-`00061A` chat quota/provider plan |
+| [pr_00060h_description.md](pr_00060h_description.md) | PR body template cho boundary hardening trước `00061A` |
+| [../README.md](../README.md) | Current truth cho guest workspace continuity, `google-genai`, rate-limit namespace plan, và latest test snapshot |
+| [../C3_C4_IMPLEMENTATION_PLAN.md](../C3_C4_IMPLEMENTATION_PLAN.md) | Updated plan cho `C3B` provider abstraction, chat quota namespace, và long-running generation boundary |
+| [../ARCHITECTURE_C3_C4_READINESS.md](../ARCHITECTURE_C3_C4_READINESS.md) | Updated readiness notes cho guest session workspace, auth boundary, và chat-owner-only rule |
+
+**Key findings:**
+- ✅ Backend Gemini client đã migrate từ SDK deprecated `google-generativeai` sang `google-genai`
+- ✅ Generated activities giờ persist lại `Place.image` khi `place_id` hợp lệ, nên reload workspace không còn blank image theo path đó
+- ✅ Guest generate giờ giữ được `currentTrip` + `pendingClaim` trong `sessionStorage`, nên user có thể xem trip vừa tạo trong cùng browser session mà không bị ép login ngay
+- ✅ `ProtectedRoute`/`TripWorkspace` vẫn giữ owner-only boundary cho save/share/chat path; guest local workspace không đồng nghĩa với full server ownership
+- ✅ README/docs/plan đã chốt rõ rằng `C3A` không gọi Gemini, `C3B` mới dùng provider abstraction + chat quota riêng
+- ✅ Phase này cũng chốt rõ rằng sync HTTP generate không thể hứa "eventually complete" nếu chưa có background job/polling
+
+**Decision:**
+- Guest/auth boundary: `READY`
+- Gemini SDK migration: `READY`
+- Generated activity image persistence: `READY`
+- `00061A` preflight readiness after merge: `YES`
+
 ## B1.5 Observability & ETL Scheduling Audit
 
 | Finding | Status |

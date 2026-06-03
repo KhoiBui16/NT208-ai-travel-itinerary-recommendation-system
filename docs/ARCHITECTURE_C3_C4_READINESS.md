@@ -1,6 +1,6 @@
 # Architecture Review and C3/C4 Readiness
 
-Ngày cập nhật: 2026-06-01
+Ngày cập nhật: 2026-06-03
 
 ## Mục tiêu
 
@@ -33,7 +33,7 @@ C3/C4 chỉ có ý nghĩa nếu tiếp tục phục vụ đúng flow trên, thay
 
 | Persona | Goal | Important flows |
 |---|---|---|
-| Guest user | Thử tạo trip nhanh mà chưa cần đăng nhập ngay | mở home → create trip → generate → bị yêu cầu login/register → claim trip |
+| Guest user | Thử tạo trip nhanh mà chưa cần đăng nhập ngay | mở home → create trip → generate → xem workspace trong cùng browser session → login/register khi muốn claim và giữ ownership lâu dài |
 | Auth user | Tạo và quản lý trip của riêng mình lâu dài | login → generate/create trip → workspace → edit → share → trip library |
 | Returning user | Quay lại trip cũ để xem/chỉnh/sau này chat tiếp | login → trip library → mở workspace → tiếp tục thao tác trên trip đã có |
 | Shared-link viewer | Chỉ xem trip được chia sẻ | mở `/shared/:token` → xem read-only itinerary |
@@ -42,7 +42,7 @@ C3/C4 chỉ có ý nghĩa nếu tiếp tục phục vụ đúng flow trên, thay
 
 | Journey | Current behavior | Evidence | C3/C4 implication |
 |---|---|---|---|
-| Guest create trip | Guest có thể tạo trip, nhận `claimToken`, bị đẩy qua auth nếu cần để vào protected workspace | `00059C`, `AuthContext`, `CreateTrip.tsx`, `service.py` | Chat không nên chạy trước claim/auth |
+| Guest create trip | Guest có thể tạo trip, nhận `claimToken`, lưu thêm `currentTrip` trong `sessionStorage`, và mở `TripWorkspace` trong cùng browser session trước khi claim | `00059C`, `00060H`, `AuthContext`, `CreateTrip.tsx`, `useTripSync`, `service.py` | Guest vẫn chưa đủ điều kiện vào owner chat; chat không nên chạy trước claim/auth |
 | Auth generate trip | Auth user generate xong đi thẳng vào workspace owner-only | `00059C`, `CreateTrip.tsx`, `router.py`, `pipeline.py` | C3 nên xuất hiện sau khi trip đã tồn tại |
 | TripWorkspace usage | Workspace đã load trip thật, edit activities/accommodations, save state | `00059C`, `TripWorkspace.tsx`, `useTripSync`, `00060A` | Đây là anchor chính cho C3 |
 | Claim trip | Guest trip được claim sau login/register | `00059C`, `AuthContext`, `service.py` | C3A nên yêu cầu claim xong mới tạo session |
@@ -104,7 +104,7 @@ Giải thích ngắn:
 |---|---|---|
 | Public routes | `/`, `/cities`, `/cities/:slug`, `/create-trip`, `/shared/:token`, auth pages | Shared view là public read-only, không nên có chat |
 | Protected routes | `/trip-library`, `/trip-workspace`, `/profile`, `/saved-places`, các trang user-only | Chat session nên được tạo và đọc trong protected trip routes |
-| CreateTrip | Dùng backend destinations + calendar + generate API; guest flow lưu pending claim rồi redirect login/workspace | Chat không nên bắt đầu từ CreateTrip; nó bắt đầu sau khi trip đã tồn tại |
+| CreateTrip | Dùng backend destinations + calendar + generate API; guest flow lưu `pendingClaim` + `currentTrip`, rồi vào workspace trong cùng browser session | Chat không nên bắt đầu từ CreateTrip; nó bắt đầu sau khi trip đã tồn tại |
 | TripLibrary/MyTrips | Liệt kê trip owner-only | Có thể là nơi vào lại các trip có chat session cũ |
 | SharedTripView | Dùng share token, chỉ xem read-only | Không public chat history theo share link nếu chưa có thiết kế riêng |
 
@@ -113,8 +113,8 @@ Giải thích ngắn:
 | Concern | Current truth | C3/C4 implication |
 |---|---|---|
 | AuthContext | Lưu access/refresh token, tự refresh, claim pending guest trip sau login/register | Chat nên dùng đúng auth context hiện tại, không tạo auth flow riêng |
-| Pending guest claim | `sessionStorage` giữ `{tripId, claimToken}` để claim sau auth | Theo invariant hiện tại, guest phải claim trip rồi mới được chat |
-| ProtectedRoute | Chặn vào workspace/library nếu chưa auth | C3A nên reuse đúng rule này: chat session là owner-only |
+| Pending guest claim | `sessionStorage` giữ `{tripId, claimToken}` để claim sau auth, và `currentTrip` giữ snapshot itinerary cho cùng browser session | Theo invariant hiện tại, guest phải claim trip rồi mới được chat |
+| ProtectedRoute | Chặn phần lớn owner routes nếu chưa auth, nhưng cho guest mở `TripWorkspace` khi có local session trip hợp lệ | C3A nên reuse đúng boundary này: guest được xem local workspace, nhưng chat session vẫn là owner-only |
 
 ### API client và error handling
 
@@ -181,7 +181,7 @@ Giải thích ngắn:
 | Repositories | `itineraries/repository.py` đã chịu trách nhiệm CRUD + AI context queries | Chat queries nên mở rộng cùng trip repository/chat repo theo trip ownership |
 | Models/Schemas | Trip domain và auth domain đã tách rõ; chat schema đã tồn tại | Không cần vẽ lại data model từ số 0 cho C3A |
 | Auth/JWT/refresh | Đã hoạt động, có access/refresh, profile, logout | Chat API nên dùng cùng auth stack, không được bypass |
-| Guest identity/claim | Guest generate/manual create có `claimToken`, claim sau login/register | Theo invariant hiện tại, guest chưa claim thì không được chat |
+| Guest identity/claim | Guest generate/manual create có `claimToken`, `currentTrip` local session, claim sau login/register | Theo invariant hiện tại, guest chưa claim thì không được chat |
 | Trip/itinerary CRUD | Owner-only, shared view public read-only | Chat session/message phải kế thừa rule owner-only |
 | Share | Share token public để xem trip read-only | Không tự suy diễn shared viewer có quyền chat |
 | Rate-limit/quota | Redis-backed AI limit, fail-closed khi Redis down | Chat phải có quota riêng hoặc namespace riêng; không reuse mù generate quota |
@@ -273,6 +273,17 @@ Lý do:
 - chat là thao tác nhẹ nhưng lặp lại nhiều lần
 - nếu dùng chung quota `3/day`, user có thể hết quota generate rồi chat bị vô hiệu hóa ngay trong workspace
 
+Namespace hiện tại của generate vẫn là:
+
+- `rate:ai:user:{id}:{YYYYMMDD}`
+- `rate:ai:guest:{hash}:{YYYYMMDD}`
+
+Khuyến nghị cho `C3B`:
+
+- `rate:ai:generate:user:{id}:{YYYYMMDD}`
+- `rate:ai:generate:guest:{hash}:{YYYYMMDD}`
+- `rate:ai:chat:user:{id}:{YYYYMMDD}`
+
 ### Guest chat có nên được phép không?
 
 Khuyến nghị cho `C3A` và `C3B`: **Không**.
@@ -329,6 +340,7 @@ FE chat nên hiển thị:
 | Auth/ownership | READY_WITH_FIXED_BLOCKER | 00060A đã resolve nested authz gap | chat session ownership chưa có API |
 | TripWorkspace stability | READY | Workspace load/edit/share đã có evidence | chat panel hiện vẫn là mock |
 | Generate pipeline | PARTIAL_BUT_ACCEPTABLE_FOR_C3A | C.1 đã chạy, older smoke có real generate; latest manual UAT giữ policy không gọi provider thật | C3B không nên dựa vào live provider ngay |
+| Guest workspace continuity | READY_WITH_BOUNDARY | `00060H` đã verify guest generate có thể mở `TripWorkspace` qua `sessionStorage.currentTrip`, không ép login ngay | Chat session vẫn phải owner-only sau claim/auth |
 | Rate-limit/quota | PARTIAL | generate quota có sẵn; chat quota riêng chưa có | nếu reuse quota chung sẽ gây UX tệ |
 | Error UX | PARTIAL_READY | FE đã có error mapping cho 401/403/422/429/503 | chat-specific copy và retry UX chưa có |
 | Data model readiness | READY_FOR_C3A | chat tables đã có trong source/migration | docs ETL/migration history còn drift |
