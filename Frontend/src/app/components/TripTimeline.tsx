@@ -1,6 +1,7 @@
 import React from "react";
 import { Calendar, Plus, GripVertical, Clock, MapPin, Trash2, Eye } from "lucide-react";
 import { Day, Activity } from "../types/trip.types";
+import { applyPlaceImageFallback, resolvePlaceImage } from "../utils/placeImage";
 import { typeColors, typeLabels } from "../utils/tripConstants";
 
 interface TripTimelineProps {
@@ -87,8 +88,9 @@ export function TripTimeline({
                 </div>
 
                 <img
-                  src={act.image}
+                  src={resolvePlaceImage(act.image)}
                   alt={act.name}
+                  onError={applyPlaceImageFallback}
                   className="h-20 w-24 flex-shrink-0 rounded-xl object-cover"
                 />
 

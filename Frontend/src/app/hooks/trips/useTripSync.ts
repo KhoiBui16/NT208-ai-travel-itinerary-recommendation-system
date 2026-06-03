@@ -6,6 +6,7 @@ import { Day, Accommodation, TravelerInfo, Place, Activity, ExtraExpense, DayExt
 import { getItinerary, createItinerary, updateItinerary } from "../../services/itinerary";
 import { useTripWizard } from "../../contexts/TripWizardContext";
 import { storePendingClaim } from "../../contexts/AuthContext";
+import { readSessionTrip, writeSessionTrip } from "../../utils/tripResponseMapper";
 
 /** Convert dd/MM/yyyy → yyyy-MM-dd for API. Pass-through if already ISO or empty. */
 function toISODate(d: string): string {
@@ -23,6 +24,7 @@ export const useTripSync = (
   setAccommodations: React.Dispatch<React.SetStateAction<Record<number, Accommodation>>>,
   totalBudget: number,
   setTotalBudget: React.Dispatch<React.SetStateAction<number>>,
+  travelers: TravelerInfo,
   setTravelers: React.Dispatch<React.SetStateAction<TravelerInfo>>,
   setIsAuthenticated: React.Dispatch<React.SetStateAction<boolean>>,
   setPlaces: React.Dispatch<React.SetStateAction<Place[]>>,
@@ -61,6 +63,7 @@ export const useTripSync = (
 
           if (resp.tripName) setTripName(resp.tripName);
           if (resp.budget) setTotalBudget(resp.budget);
+          if (resp.travelerInfo) setTravelers(resp.travelerInfo);
 
           if (resp.days && resp.days.length > 0) {
             const mappedDays: Day[] = resp.days.map((d, idx) => ({
@@ -129,29 +132,26 @@ export const useTripSync = (
       }
 
       // Fallback: check sessionStorage for workspace-passed data (wizard flow)
-      const savedTrip = sessionStorage.getItem("currentTrip");
-      if (savedTrip) {
-        try {
-          const tripData = JSON.parse(savedTrip);
-          if (tripData.days && tripData.days.length > 0) {
-            if (tripData.name) setTripName(tripData.name);
-            setDays(tripData.days);
-            setSelectedDayId(tripData.days[0].id);
-            if (tripData.accommodations) setAccommodations(tripData.accommodations);
-            if (tripData.totalBudget) setTotalBudget(tripData.totalBudget);
+      const tripData = readSessionTrip();
+      if (tripData?.days?.length) {
+        if (tripData.tripId) setCurrentTripId(tripData.tripId);
+        if (tripData.name) setTripName(tripData.name);
+        setDays(tripData.days);
+        setSelectedDayId(tripData.days[0].id);
+        if (tripData.accommodations) setAccommodations(tripData.accommodations);
+        if (tripData.totalBudget) setTotalBudget(tripData.totalBudget);
+        if (tripData.travelers) setTravelers(tripData.travelers);
 
-            let maxId = 0;
-            tripData.days.forEach((day: Day) => {
-              if (day.id > maxId) maxId = day.id;
-              day.activities?.forEach((act: Activity) => {
-                if (act.id > maxId) maxId = act.id;
-              });
-            });
-            updateNextId(maxId + 1);
-            isInitialMount.current = false;
-            return;
-          }
-        } catch (error) {}
+        let maxId = 0;
+        tripData.days.forEach((day: Day) => {
+          if (day.id > maxId) maxId = day.id;
+          day.activities?.forEach((act: Activity) => {
+            if (act.id > maxId) maxId = act.id;
+          });
+        });
+        updateNextId(maxId + 1);
+        isInitialMount.current = false;
+        return;
       }
 
       // NẾU LÀ LỊCH TRÌNH MỚI TINH (Từ bước manual setup sang) — read from wizard context
@@ -197,11 +197,17 @@ export const useTripSync = (
   useEffect(() => {
     if (isInitialMount.current) return;
     if (days.length > 0) {
-      const tripData = { name: tripName, days, accommodations, totalBudget, savedAt: new Date().toISOString() };
-      // Always save to sessionStorage as quick-restore cache
-      sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
+      writeSessionTrip({
+        tripId: currentTripIdRef.current,
+        name: tripName,
+        days,
+        accommodations,
+        totalBudget,
+        travelers,
+        savedAt: new Date().toISOString(),
+      });
     }
-  }, [days, accommodations, totalBudget, tripName]);
+  }, [days, accommodations, totalBudget, travelers, tripName]);
 
   // 3. Save to API
   const handleSaveItinerary = useCallback(async () => {
@@ -210,7 +216,15 @@ export const useTripSync = (
       return;
     }
 
-    const tripData = { name: tripName, days, accommodations, totalBudget, savedAt: new Date().toISOString() };
+    const tripData = {
+      tripId: currentTripIdRef.current,
+      name: tripName,
+      days,
+      accommodations,
+      totalBudget,
+      travelers,
+      savedAt: new Date().toISOString(),
+    };
 
     try {
       if (currentTripIdRef.current) {
@@ -310,15 +324,15 @@ export const useTripSync = (
       }
 
       // Also save to sessionStorage as cache
-      sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
+      writeSessionTrip(tripData);
       toast.success("Đã lưu lịch trình thành công", { position: "top-right" });
     } catch (error) {
       console.error("Error saving itinerary:", error);
       // Fallback: save to sessionStorage only
-      sessionStorage.setItem("currentTrip", JSON.stringify(tripData));
+      writeSessionTrip(tripData);
       toast.error("Lưu lên server thất bại, đã lưu tạm thời", { position: "top-right" });
     }
-  }, [isAuthenticated, tripName, days, accommodations, totalBudget, setShowLoginModal]);
+  }, [isAuthenticated, tripName, days, accommodations, totalBudget, travelers, setShowLoginModal]);
 
   return { handleSaveItinerary, currentTripId };
 };

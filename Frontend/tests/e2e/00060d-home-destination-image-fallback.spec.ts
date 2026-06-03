@@ -68,7 +68,7 @@ test.describe("00060G home destination image fallback", () => {
     });
 
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Hạ Long", { exact: true })).toBeVisible();
 
     for (const destination of mockDestinations) {
       await expect(page.getByText(destination.name, { exact: true })).toBeVisible();

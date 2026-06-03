@@ -5,6 +5,9 @@ import json
 from time import perf_counter
 from typing import Any
 
+from google import genai
+from google.genai import types
+
 from src.agent.config import AgentConfig
 from src.core.exceptions import ServiceUnavailableException
 from src.core.logger import get_logger
@@ -26,29 +29,40 @@ class GeminiLLM:
     def __init__(self, config: AgentConfig) -> None:
         self.config = config
 
+    async def _generate_with_client(self, prompt: str) -> Any:
+        async with genai.Client(api_key=self.config.api_key).aio as client:
+            return await client.models.generate_content(
+                model=self.config.model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=self.config.temperature,
+                    response_mime_type="application/json",
+                ),
+            )
+
+    @staticmethod
+    def _extract_response_text(response: Any) -> str:
+        text = getattr(response, "text", None)
+        if text:
+            return str(text)
+
+        for candidate in getattr(response, "candidates", None) or []:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or []
+            candidate_text = "".join(
+                str(part_text) for part in parts if (part_text := getattr(part, "text", None))
+            ).strip()
+            if candidate_text:
+                return candidate_text
+
+        raise LLMGenerationError("Gemini returned an empty response")
+
     async def generate_text(self, prompt: str) -> str:
         """Call Gemini and return response text."""
         if not self.config.api_key:
             raise ServiceUnavailableException("GEMINI_API_KEY is required for AI generation")
 
         started_at = perf_counter()
-
-        def _call_gemini() -> str:
-            import google.generativeai as genai
-
-            genai.configure(api_key=self.config.api_key)
-            model = genai.GenerativeModel(
-                self.config.model,
-                generation_config={
-                    "temperature": self.config.temperature,
-                    "response_mime_type": "application/json",
-                },
-            )
-            response = model.generate_content(prompt)
-            text = getattr(response, "text", None)
-            if not text:
-                raise LLMGenerationError("Gemini returned an empty response")
-            return str(text)
 
         try:
             logger.info(
@@ -58,10 +72,19 @@ class GeminiLLM:
                 prompt_chars=len(prompt),
                 prompt_estimated_tokens=max(1, round(len(prompt) / 4)),
             )
-            return await asyncio.wait_for(
-                asyncio.to_thread(_call_gemini),
+            response = await asyncio.wait_for(
+                self._generate_with_client(prompt),
                 timeout=self.config.timeout_seconds,
             )
+            text = self._extract_response_text(response)
+            logger.info(
+                "gemini_request_completed",
+                model=self.config.model,
+                duration_ms=round((perf_counter() - started_at) * 1000),
+                response_chars=len(text),
+                response_estimated_tokens=max(1, round(len(text) / 4)),
+            )
+            return text
         except TimeoutError as exc:
             logger.warning(
                 "gemini_request_timeout",

@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { Header } from "../components/Header";
 import { destinations as mockDestinations, features, heroFeatures } from "../data/homeData";
 import { listDestinations, type DestinationResponse } from "../services/places";
+import { applyPlaceImageFallback, DEFAULT_PLACE_IMAGE } from "../utils/placeImage";
 import { Sparkles, MapPin, Plane, ArrowRight } from "lucide-react";
 
 interface DisplayDest {
@@ -10,9 +11,6 @@ interface DisplayDest {
   image: string;
   description: string;
 }
-
-const DEFAULT_DESTINATION_IMAGE =
-  "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080";
 
 const destinationImageAliases: Record<string, string> = {
   "Hạ Long": "Vịnh Hạ Long",
@@ -34,7 +32,7 @@ function getFallbackDestinationImage(name: string): string {
     (dest) => normalizeDestinationName(dest.name) === aliasName,
   );
 
-  return directFallback?.image || DEFAULT_DESTINATION_IMAGE;
+  return directFallback?.image || DEFAULT_PLACE_IMAGE;
 }
 
 function resolveDestinationImage(name: string, apiImage?: string | null): string {
@@ -185,11 +183,7 @@ export default function Home() {
                 <img
                   src={dest.image}
                   alt={dest.name}
-                  onError={(event) => {
-                    if (event.currentTarget.src !== DEFAULT_DESTINATION_IMAGE) {
-                      event.currentTarget.src = DEFAULT_DESTINATION_IMAGE;
-                    }
-                  }}
+                  onError={applyPlaceImageFallback}
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />

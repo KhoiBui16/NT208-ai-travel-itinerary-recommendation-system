@@ -118,6 +118,32 @@ async def test_create_manual__guest__gets_claim_token(
     assert result.claim_token == "claim_abc123"
 
 
+async def test_generate__guest__gets_claim_token(
+    service: ItineraryService, mock_repo: AsyncMock
+) -> None:
+    trip = _make_trip(user_id=None)
+
+    from src.itineraries.schemas import GenerateItineraryRequest
+
+    req = GenerateItineraryRequest(
+        destination="Hà Nội",
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 3),
+        budget=5000000,
+        adults=2,
+        children=0,
+        interests=["food"],
+    )
+
+    with (
+        patch("src.itineraries.service.ItineraryPipeline.generate", AsyncMock(return_value=trip)),
+        patch.object(service, "_issue_claim_token", return_value="claim_abc123"),
+    ):
+        result = await service.generate(req, user_id=None)
+
+    assert result.claim_token == "claim_abc123"
+
+
 # --- get_by_id ---
 
 

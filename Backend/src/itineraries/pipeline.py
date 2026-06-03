@@ -399,6 +399,7 @@ class ItineraryPipeline:
         """
         # Build lookup sets for validating AI-referenced IDs
         place_ids = {place.id for place in places}
+        place_by_id = {place.id: place for place in places}
         hotel_ids = {hotel.id for hotel in hotels}
 
         # Create the root Trip record
@@ -443,7 +444,12 @@ class ItineraryPipeline:
                     type=activity.type,
                     location=activity.location,
                     description=activity.description,
-                    image="",  # AI doesn't generate images
+                    image=self._activity_image_for_generated_activity(
+                        activity,
+                        place_id=place_id,
+                        place_by_id=place_by_id,
+                        places=places,
+                    ),
                     transportation=activity.transportation,
                     adult_price=activity.adult_price,
                     child_price=activity.child_price,
@@ -478,6 +484,40 @@ class ItineraryPipeline:
         if not refreshed:
             raise ServiceUnavailableException("Generated trip could not be loaded")
         return refreshed
+
+    def _activity_image_for_generated_activity(
+        self,
+        activity: Any,
+        *,
+        place_id: int | None,
+        place_by_id: dict[int, Place],
+        places: list[Place],
+    ) -> str:
+        """Resolve a persisted activity image from known place context.
+
+        Gemini does not generate image URLs. When the model references a valid
+        `place_id`, prefer the DB-backed `Place.image`. If the id is missing or
+        invalid, fall back to a conservative exact match on generated name and
+        location so reloads still have a stable thumbnail when source truth is
+        obvious.
+        """
+        if place_id is not None:
+            matched_place = place_by_id.get(place_id)
+            if matched_place and matched_place.image:
+                return matched_place.image
+
+        normalized_name = self._normalize_text(getattr(activity, "name", ""))
+        normalized_location = self._normalize_text(getattr(activity, "location", ""))
+
+        for place in places:
+            if self._normalize_text(place.name) != normalized_name:
+                continue
+            place_location = self._normalize_text(place.location)
+            if normalized_location and place_location and place_location != normalized_location:
+                continue
+            return place.image or ""
+
+        return ""
 
     # ===================================================================
     # Validation — Business rules for generated itineraries
@@ -605,3 +645,7 @@ class ItineraryPipeline:
         Uses the simple heuristic of ~4 characters per token.
         """
         return max(1, round(len(text) / 4))
+
+    @staticmethod
+    def _normalize_text(value: str | None) -> str:
+        return " ".join((value or "").strip().lower().split())

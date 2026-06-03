@@ -8,6 +8,7 @@ import { travelTypes, budgetLevels, interests, popularDestinations } from "../ut
 import { generateItinerary } from "../services/itinerary";
 import { useDestinations } from "../hooks/useDestinations";
 import { getGenerateErrorMessage } from "../utils/errorHandler";
+import { mapItineraryResponseToSessionTrip, writeSessionTrip } from "../utils/tripResponseMapper";
 import {
   Sparkles,
   MapPin,
@@ -122,6 +123,8 @@ export default function CreateTrip() {
         children: childrenMap[travelType] || 0,
         interests: selectedInterests,
       });
+
+      writeSessionTrip(mapItineraryResponseToSessionTrip(resp));
 
       if (resp.claimToken) {
         storePendingClaim(resp.id, resp.claimToken);
@@ -375,8 +378,9 @@ export default function CreateTrip() {
           {/* AI Limit Notice */}
           <div className="mb-6 rounded-xl bg-amber-50 border border-amber-200 p-3">
             <p className="text-sm text-amber-800">
-              ℹ️ Người dùng miễn phí có thể tạo tối đa{" "}
-              <strong>3 lịch trình AI mỗi ngày</strong>.
+              ℹ️ Chưa đăng nhập vẫn có thể tạo thử tối đa{" "}
+              <strong>3 lịch trình AI mỗi ngày</strong>. Đăng nhập để lưu lịch
+              trình vào tài khoản và nhận quyền chỉnh sửa/chia sẻ đầy đủ.
             </p>
           </div>
 

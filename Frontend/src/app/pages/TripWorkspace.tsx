@@ -74,11 +74,12 @@ export default function TripWorkspace() {
   const [activeTab, setActiveTab] = useState<"places" | "accommodation">("places");
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(authIsAuthenticated);
+  const remoteTripId = isAuthenticated ? tripId : null;
   const {
     places, setPlaces, placeSearch, setPlaceSearch, activeFilter, setActiveFilter,
     showSavedSuggestions, setShowSavedSuggestions, savedSuggestions, setSavedSuggestions,
     filteredPlaces, handleAddSuggestionToItinerary, handleRemoveSavedSuggestion, toggleSavePlace
-  } = usePlacesManager(days, setDays, selectedDayId, isAuthenticated, setShowLoginModal, tripId);
+  } = usePlacesManager(days, setDays, selectedDayId, isAuthenticated, setShowLoginModal, remoteTripId);
   
   // Place Selection Modal state
   const [showPlaceSelectionModal, setShowPlaceSelectionModal] = useState(false);
@@ -127,7 +128,7 @@ export default function TripWorkspace() {
     bookingType, setBookingType, bookingDuration, setBookingDuration,
     getAccommodationForDay, getHotelsForCity, handleSelectHotel,
     handleConfirmAccommodation, handleChangeAccommodation
-  } = useAccommodation(days, selectedDayId, tripId);
+  } = useAccommodation(days, selectedDayId, remoteTripId);
 
   const {
     calculateHotelCost, calculateActivityCost, calculateDayCost,
@@ -137,7 +138,7 @@ export default function TripWorkspace() {
 
   const { handleSaveItinerary, currentTripId } = useTripSync(
     days, setDays, setSelectedDayId, accommodations, setAccommodations,
-    totalBudget, setTotalBudget, setTravelers, setIsAuthenticated, setPlaces,
+    totalBudget, setTotalBudget, travelers, setTravelers, setIsAuthenticated, setPlaces,
     isAuthenticated, setShowLoginModal, updateNextId,
     tripName, setTripName,
     tripIdParam ? Number(tripIdParam) : null
@@ -155,7 +156,7 @@ export default function TripWorkspace() {
     handleDeleteActivity, handleViewDetails, checkTimeConflict, handleSaveActivityDetails,
     addActivityToDay,
     handleAddDayExtraExpenseFromSidebar, handleRemoveDayExtraExpense
-  } = useActivityManager(days, setDays, selectedDayId, tripId);
+  } = useActivityManager(days, setDays, selectedDayId, remoteTripId);
 
   // ── Add Place from PlaceSelectionModal ──────────────────────────────────
   const handleAddPlaceFromModal = (place: any) => {
@@ -230,7 +231,7 @@ export default function TripWorkspace() {
       <TopActionBar
           travelersTotal={travelers.total}
           tripName={tripName || "Lịch trình mới"}
-          tripId={tripIdParam ? Number(tripIdParam) : null}
+          tripId={remoteTripId}
           onNameChange={(newName) => {
             setTripName(newName);
           }}
@@ -470,7 +471,7 @@ export default function TripWorkspace() {
       <LoginRequiredModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
-        reason="Đăng nhập để lưu lịch trình và sử dụng đầy đủ tính năng"
+        reason="Đăng nhập để lưu lịch trình thủ công vào tài khoản. Nếu chưa đăng nhập, lịch trình chỉ được lưu tạm trong trình duyệt này."
       />
 
       {showPlaceSelectionModal && selectedDayForPlaces !== null && (

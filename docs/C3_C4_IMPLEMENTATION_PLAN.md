@@ -1,6 +1,6 @@
 # C3/C4 Implementation Plan
 
-Ngày cập nhật: 2026-06-02
+Ngày cập nhật: 2026-06-03
 
 ## Current truth before planning
 
@@ -12,9 +12,14 @@ Ngày cập nhật: 2026-06-02
 - `00060D-R` đã verify actual `429` generate contract với headers/body thật mà không cần spam Gemini quota.
 - `00060D-R` đã verify browser `503` UX qua controlled provider-timeout path.
 - `00060D-FIX` đã verify browser-level submit-path `429` UX bằng route-mocked Playwright regression, không gọi Gemini thật.
+- `00060G` đã classify provider-timeout rõ thành `AI_PROVIDER_TIMEOUT` và giữ submit-path UX thân thiện khi generate bị chậm.
+- `00060H` đã migrate Gemini SDK backend sang `google-genai` nhưng chưa thay đổi boundary rằng `C3A` không gọi AI thật.
+- `00060H` đã cho phép guest giữ `currentTrip` + `pendingClaim` trong `sessionStorage` để xem workspace cùng browser session trước khi claim, nhưng owner chat rule vẫn chưa đổi.
+- `00060H` đã sửa generated activity images theo `Place.image` khi `place_id` hợp lệ, nên workspace context ổn định hơn cho chat foundation.
 - `chat_sessions` và `chat_messages` đã tồn tại trong source/migration.
 - Chưa có chat REST API, chưa có `CompanionService`, chưa có history API thật.
 - Guest phải claim trip trước khi chat.
+- Sync generate hiện vẫn là blocking HTTP request; nếu muốn "eventually complete even when slow" thì phải có background job/polling ở phase tương lai, không giải quyết trong `C3A/C3B` hiện tại.
 
 ## Nguyên tắc khóa trước khi implement
 
@@ -46,6 +51,7 @@ Ngày cập nhật: 2026-06-02
 | Chưa có message ownership/send API | `router.py`, `models/chat.py` | NO | C3B/C4 | thêm message send/history ownership checks |
 | Chat quota chưa tách generate quota | `rate_limiter.py`, issue `c3_chat_quota_shared_with_generate.md` | NO | C3B | thêm namespace quota chat riêng |
 | Chat/live provider behavior chưa có | `00060D-R`, `00059C`, `00060B` | NO | C3B / provider smoke | dùng fake provider trong test và kế thừa contract `429/503` đã verify ở generate |
+| Sync generate không đảm bảo eventually-complete | `00060G`, `00060H`, current blocking HTTP flow | NO | future async job phase | không hứa "generate xong dù chậm" nếu chưa có worker + polling/status API |
 | Goong/live ETL partial | `00059C`, ETL reports | NO | generate/data hardening | không block chat foundation |
 | Stale patch handling còn mở | issue `c3_stale_patch_handling_missing.md` | NO | C3C / future apply-patch | chốt conflict/version strategy trước mutation |
 
@@ -130,6 +136,8 @@ User gửi message vào AI với context của trip hiện tại.
 - AI abstraction:
   - fake/mock provider trong tests
   - real provider bật bằng env/config khi cần smoke riêng
+  - provider implementation đi qua shared `src/agent/llm.py` (đã migrate sang `google-genai`)
+  - CI/test suite không gọi real Gemini
 - Persist:
   - message user
   - message assistant
@@ -138,8 +146,16 @@ User gửi message vào AI với context của trip hiện tại.
   - `requiresConfirmation`
   - `proposedOperations`
 - Quota:
-  - namespace chat riêng
+  - giữ generate namespace hiện tại làm baseline:
+    - `rate:ai:user:{id}:{YYYYMMDD}`
+    - `rate:ai:guest:{hash}:{YYYYMMDD}`
+  - plan tách namespace riêng ở `C3B`:
+    - `rate:ai:generate:user:{id}:{YYYYMMDD}`
+    - `rate:ai:generate:guest:{hash}:{YYYYMMDD}`
+    - `rate:ai:chat:user:{id}:{YYYYMMDD}`
+  - default recommendation: guest chat chưa mở cho đến khi có explicit policy và abuse guard
   - không ăn chung quota generate
+  - fail-closed khi Redis down
 
 ### Frontend
 
@@ -156,6 +172,7 @@ User gửi message vào AI với context của trip hiện tại.
 - Ownership tests cho session/trip mismatch
 - Rate-limit tests cho quota chat riêng
 - Error mapping tests cho 429/503
+- Mock provider tests phải cover cả timeout/path `503` giống contract generate hiện tại
 
 ### Exit criteria
 
@@ -163,6 +180,12 @@ User gửi message vào AI với context của trip hiện tại.
 - Reply được lưu
 - Fake provider trả lời ổn
 - Không dùng quota generate chung
+
+### Provider + long-running boundary
+
+- Tăng timeout chỉ là giải pháp hỗ trợ local/staging smoke; nó không đảm bảo request HTTP sẽ luôn hoàn tất nếu provider hoặc proxy chậm.
+- `C3B` nên kế thừa timeout/error contract thân thiện từ generate (`429/503`, retryable provider timeout).
+- Nếu product thật sự cần "eventually generates/sends even when slow", phải mở phase async/background job riêng với worker + status endpoint/polling; không nên hứa điều đó trong sync MVP hiện tại.
 
 ## C3C — Companion Chat UX Hardening
 

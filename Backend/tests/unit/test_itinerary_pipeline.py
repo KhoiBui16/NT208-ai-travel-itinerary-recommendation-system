@@ -152,7 +152,7 @@ def _make_places(count: int = 4) -> list[Place]:
             avg_cost=50000,
             rating=4.5,
             review_count=100,
-            image="",
+            image=f"https://cdn.test/place-{idx + 1}.jpg",
             source="goong_places",
         )
         for idx in range(count)
@@ -307,9 +307,32 @@ async def test_pipeline__persists_generated_trip_and_nulls_unknown_place() -> No
     assert trip.ai_generated is True
     assert len(trip.days) == 2
     assert trip.days[0].activities[0].place_id == 1
+    assert trip.days[0].activities[0].image == "https://cdn.test/place-1.jpg"
     assert trip.days[0].activities[1].place_id is None
+    assert trip.days[0].activities[1].image == ""
     assert trip.accommodations[0].hotel_id == 1
     assert "5 to 5 activities" in llm.prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_pipeline__falls_back_to_exact_name_location_for_activity_image() -> None:
+    payload = _valid_ai_payload()
+    payload["days"][0]["activities"][1]["name"] = "Place 2"
+    payload["days"][0]["activities"][1]["location"] = "Hà Nội"
+
+    llm = FakeLLM([payload])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places()),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    trip = await pipeline.generate(_make_request(), user_id=None)
+
+    assert trip.days[0].activities[1].place_id is None
+    assert trip.days[0].activities[1].image == "https://cdn.test/place-2.jpg"
 
 
 @pytest.mark.asyncio
