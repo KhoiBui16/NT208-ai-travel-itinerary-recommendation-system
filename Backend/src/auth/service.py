@@ -56,7 +56,7 @@ class AuthService:
         phone: str | None = None,
     ) -> AuthResponse:
         """Register a new user and return JWT pair.
-        
+
         Flow: Đăng ký tài khoản
         1. Kiểm tra email chưa tồn tại (ConflictException nếu tồn tại)
         2. Hash password bằng bcrypt
@@ -90,7 +90,7 @@ class AuthService:
 
     async def login(self, email: str, password: str) -> AuthResponse:
         """Verify credentials and return JWT pair.
-        
+
         Flow: Đăng nhập
         1. Tìm user bằng email
         2. Xác minh password (verify_password: bcrypt comparison)
@@ -118,7 +118,7 @@ class AuthService:
 
     async def refresh(self, raw_refresh_token: str) -> AuthResponse:
         """Rotate refresh token: revoke old, issue new pair.
-        
+
         Flow: Token Rotation (Security best practice)
         1. Hash refresh token (để so sánh với database)
         2. Tìm token record trong database
@@ -153,7 +153,7 @@ class AuthService:
 
     async def logout(self, raw_refresh_token: str) -> None:
         """Revoke the refresh token to prevent further use.
-        
+
         Flow: Đăng xuất an toàn
         1. Hash refresh token
         2. Tìm token record trong database
@@ -171,7 +171,7 @@ class AuthService:
 
     async def forgot_password(self, email: str) -> None:
         """Generate a password reset token and send it via email.
-        
+
         Flow: Yêu cầu reset password
         1. Tìm user bằng email
         2. Nếu không tìm thấy hoặc account không active: return (security: không leak)
@@ -200,7 +200,7 @@ class AuthService:
 
     async def reset_password(self, raw_token: str, new_password: str) -> None:
         """Consume a password reset token and update the user's password.
-        
+
         Flow: Xác nhận reset password
         1. Hash reset token
         2. Tìm user có password_reset_token_hash khớp
@@ -246,7 +246,7 @@ class AuthService:
 
     async def _create_tokens(self, user: User) -> dict[str, str]:
         """Issue a new JWT access token and refresh token pair.
-        
+
         Flow: Phát hành JWT tokens
         1. Tạo access token (short-lived, vd: 15 phút)
            → Chứa user_id trong payload

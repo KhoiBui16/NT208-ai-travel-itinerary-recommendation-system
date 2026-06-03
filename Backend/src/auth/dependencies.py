@@ -28,9 +28,9 @@ async def _optional_token(request: Request) -> str | None:
     - Kiểm tra format: "Bearer " (case-insensitive)
     - Trả về token (không verify ở đây, verify ở endpoint hoặc dependency khác)
     - Nếu header không có hoặc format sai: trả về None
-    
+
     Dùng cho: get_current_user_optional dependency
-    
+
     Unlike OAuth2PasswordBearer which raises 401 when no token is present,
     this dependency silently returns None so that endpoints can serve both
     authenticated and anonymous users.
@@ -46,7 +46,7 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """Resolve the current authenticated user from a Bearer token.
-    
+
     Tính năng: Xác thực Bearer token (JWT Access Token)
     - FastAPI tự động extract "Bearer <token>" từ Authorization header
     - Nếu header không có token: OAuth2PasswordBearer raise 401 (Unauthorized)
@@ -55,7 +55,7 @@ async def get_current_user(
     - Tìm user trong database theo id
     - Kiểm tra user đang active (is_active = true)
     - Trả về User object; nếu lỗi: raise UnauthorizedException
-    
+
     Dùng cho: Dependency injection vào endpoints cần authenticated users
     Ví dụ: @app.get("/profile", Depends(get_current_user))
 
@@ -78,7 +78,7 @@ async def get_current_user_optional(
     db: AsyncSession = Depends(get_db),
 ) -> User | None:
     """Resolve the user when a valid token is present; otherwise return None.
-    
+
     Tính năng: Xác thực Bearer token (optional)
     - Khác get_current_user: endpoint này chấp nhận request không có token
     - Nếu header Authorization có "Bearer <token>":
@@ -88,7 +88,7 @@ async def get_current_user_optional(
     - Nếu header không có token hoặc token không hợp lệ:
       → Trả về None (không raise lỗi)
     - Endpoint có thể phục vụ cả user authenticated và anonymous
-    
+
     Dùng cho: Endpoints cần thông tin user nếu có, nhưng không bắt buộc
     Ví dụ: @app.get("/trips", Depends(get_current_user_optional))
            - Nếu user login: xem trip của user

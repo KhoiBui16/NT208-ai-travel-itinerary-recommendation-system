@@ -51,7 +51,7 @@ async def register(
     service: AuthService = Depends(_auth_service),
 ) -> AuthResponse:
     """EP-1: Register a new user account.
-    
+
     Tính năng: Đăng ký tài khoản mới
     - Nhận email, mật khẩu, tên, số điện thoại từ client
     - Kiểm tra email chưa tồn tại trong hệ thống
@@ -73,7 +73,7 @@ async def login(
     service: AuthService = Depends(_auth_service),
 ) -> AuthResponse:
     """EP-2: Login with email and password.
-    
+
     Tính năng: Đăng nhập với email và mật khẩu
     - Kiểm tra email có tồn tại trong database
     - Xác minh mật khẩu (so sánh với hash đã lưu)
@@ -90,7 +90,7 @@ async def refresh(
     service: AuthService = Depends(_auth_service),
 ) -> AuthResponse:
     """EP-3: Refresh the JWT pair using a valid refresh token.
-    
+
     Tính năng: Làm mới token JWT với Token Rotation
     - Nhận refresh token cũ từ client
     - Kiểm tra refresh token có trong database và không bị revoked
@@ -110,7 +110,7 @@ async def logout(
     service: AuthService = Depends(_auth_service),
 ) -> SuccessResponse:
     """EP-4: Logout by revoking the refresh token.
-    
+
     Tính năng: Đăng xuất an toàn
     - Yêu cầu user phải đã xác thực (Bearer token hợp lệ)
     - Nhận refresh token từ request body
@@ -128,7 +128,7 @@ async def forgot_password(
     service: AuthService = Depends(_auth_service),
 ) -> SuccessResponse:
     """EP-31: Request a password reset email.
-    
+
     Tính năng: Yêu cầu đặt lại mật khẩu qua email
     - Nhận email từ client
     - Kiểm tra email có tồn tại trong hệ thống
@@ -150,7 +150,7 @@ async def reset_password(
     service: AuthService = Depends(_auth_service),
 ) -> SuccessResponse:
     """EP-32: Consume a reset token and set a new password.
-    
+
     Tính năng: Đặt lại mật khẩu mới bằng reset token
     - Nhận reset token + mật khẩu mới từ client
     - Tìm user có hash token khớp trong database
