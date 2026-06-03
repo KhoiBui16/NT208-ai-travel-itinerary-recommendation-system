@@ -1,4 +1,5 @@
 """Request ID middleware for log correlation."""
+
 import uuid
 
 import structlog

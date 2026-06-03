@@ -198,7 +198,7 @@ export default function TripWorkspace() {
       name: place.name,
       time: time,
       endTime: minutesToTime(addMin + 60),
-      location: place.name,
+      location: place.location || place.name,
       description: typeLabels[place.type],
       type: place.type,
       image: place.image,

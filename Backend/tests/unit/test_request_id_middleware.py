@@ -1,4 +1,5 @@
 """Tests for RequestIDMiddleware."""
+
 import uuid
 
 import pytest
@@ -11,12 +12,8 @@ from src.main import create_app
 async def test_request_id_echoed_back():
     """X-Request-ID sent by the client is returned unchanged in the response."""
     app = create_app(verify_database=False)
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        response = await client.get(
-            "/api/v1/health", headers={"X-Request-ID": "test-123"}
-        )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/api/v1/health", headers={"X-Request-ID": "test-123"})
         assert response.headers.get("X-Request-ID") == "test-123"
 
 
@@ -24,9 +21,7 @@ async def test_request_id_echoed_back():
 async def test_request_id_generated_if_absent():
     """When no X-Request-ID is sent, the middleware generates a UUID4."""
     app = create_app(verify_database=False)
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/api/v1/health")
         request_id = response.headers.get("X-Request-ID")
         assert request_id is not None, "X-Request-ID header must be present"
@@ -39,9 +34,7 @@ async def test_request_id_generated_if_absent():
 async def test_request_id_unique_per_request():
     """Each request without an X-Request-ID gets a different generated ID."""
     app = create_app(verify_database=False)
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r1 = await client.get("/api/v1/health")
         r2 = await client.get("/api/v1/health")
         id1 = r1.headers.get("X-Request-ID")
