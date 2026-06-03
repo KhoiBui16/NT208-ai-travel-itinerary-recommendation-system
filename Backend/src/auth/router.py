@@ -50,7 +50,15 @@ async def register(
     body: RegisterRequest,
     service: AuthService = Depends(_auth_service),
 ) -> AuthResponse:
-    """EP-1: Register a new user account."""
+    """EP-1: Register a new user account.
+
+    Tính năng: Đăng ký tài khoản mới
+    - Nhận email, mật khẩu, tên, số điện thoại từ client
+    - Kiểm tra email chưa tồn tại trong hệ thống
+    - Mã hóa mật khẩu và lưu vào database
+    - Phát hành cặp token JWT (access + refresh)
+    - Trả về thông tin user + tokens cho client lưu
+    """
     return await service.register(
         email=body.email,
         password=body.password,
@@ -64,7 +72,15 @@ async def login(
     body: LoginRequest,
     service: AuthService = Depends(_auth_service),
 ) -> AuthResponse:
-    """EP-2: Login with email and password."""
+    """EP-2: Login with email and password.
+
+    Tính năng: Đăng nhập với email và mật khẩu
+    - Kiểm tra email có tồn tại trong database
+    - Xác minh mật khẩu (so sánh với hash đã lưu)
+    - Kiểm tra tài khoản có đang hoạt động (is_active = true)
+    - Phát hành cặp token JWT mới
+    - Trả về thông tin user + tokens để client lưu vào localStorage/sessionStorage
+    """
     return await service.login(email=body.email, password=body.password)
 
 
@@ -73,7 +89,17 @@ async def refresh(
     body: RefreshRequest,
     service: AuthService = Depends(_auth_service),
 ) -> AuthResponse:
-    """EP-3: Refresh the JWT pair using a valid refresh token."""
+    """EP-3: Refresh the JWT pair using a valid refresh token.
+
+    Tính năng: Làm mới token JWT với Token Rotation
+    - Nhận refresh token cũ từ client
+    - Kiểm tra refresh token có trong database và không bị revoked
+    - Lấy thông tin user từ token cũ
+    - Đánh dấu refresh token cũ là revoked (Security: ngăn token cũ dùng lại)
+    - Phát hành cặp token JWT mới (access token + refresh token mới)
+    - Trả về tokens mới cho client cập nhật
+    - Lợi ích: Nếu refresh token bị đánh cắp, attacker chỉ có token cũ (đã revoked)
+    """
     return await service.refresh(raw_refresh_token=body.refresh_token)
 
 
@@ -83,7 +109,15 @@ async def logout(
     _: User = Depends(get_current_user),
     service: AuthService = Depends(_auth_service),
 ) -> SuccessResponse:
-    """EP-4: Logout by revoking the refresh token."""
+    """EP-4: Logout by revoking the refresh token.
+
+    Tính năng: Đăng xuất an toàn
+    - Yêu cầu user phải đã xác thực (Bearer token hợp lệ)
+    - Nhận refresh token từ request body
+    - Đánh dấu refresh token là "revoked" trong database
+    - Ngăn chặn việc refresh token này được dùng lại
+    - Trả về success message, client xóa tokens khỏi storage
+    """
     await service.logout(raw_refresh_token=body.refresh_token)
     return SuccessResponse(message="Logged out successfully")
 
@@ -93,7 +127,17 @@ async def forgot_password(
     body: ForgotPasswordRequest,
     service: AuthService = Depends(_auth_service),
 ) -> SuccessResponse:
-    """EP-31: Request a password reset email."""
+    """EP-31: Request a password reset email.
+
+    Tính năng: Yêu cầu đặt lại mật khẩu qua email
+    - Nhận email từ client
+    - Kiểm tra email có tồn tại trong hệ thống
+    - Nếu không tồn tại: trả success response (security: không leak thông tin)
+    - Nếu tồn tại: tạo reset token có thời gian hết hạn (vd: 1 giờ)
+    - Lưu hash của reset token vào database
+    - Gửi email chứa reset token + reset link tới user
+    - User nhấp link trong email để truy cập trang reset password
+    """
     await service.forgot_password(email=body.email)
     return SuccessResponse(
         message="If the email exists, a reset link has been sent",
@@ -105,7 +149,18 @@ async def reset_password(
     body: ResetPasswordRequest,
     service: AuthService = Depends(_auth_service),
 ) -> SuccessResponse:
-    """EP-32: Consume a reset token and set a new password."""
+    """EP-32: Consume a reset token and set a new password.
+
+    Tính năng: Đặt lại mật khẩu mới bằng reset token
+    - Nhận reset token + mật khẩu mới từ client
+    - Tìm user có hash token khớp trong database
+    - Kiểm tra token không hết hạn (so sánh thời gian)
+    - Nếu hết hạn: xóa token khỏi database, báo lỗi
+    - Nếu hợp lệ: mã hóa mật khẩu mới, lưu vào user record
+    - Xóa reset token khỏi user (đảm bảo token chỉ dùng 1 lần)
+    - Revoke tất cả refresh tokens cũ của user (logout tất cả sessions)
+    - Trả về success message, user cần đăng nhập lại
+    """
     await service.reset_password(
         raw_token=body.token,
         new_password=body.new_password,
