@@ -180,7 +180,14 @@ def _user_service(db: AsyncSession = Depends(get_db)) -> UserService:
 
 @user_router.get("/profile", response_model=UserResponse)
 async def get_profile(user: User = Depends(get_current_user)) -> UserResponse:
-    """EP-5: Get the authenticated user's profile."""
+    """EP-5: Get the authenticated user's profile.
+
+    Tính năng: Xem hồ sơ cá nhân
+    - Yêu cầu Bearer token hợp lệ (get_current_user giải mã và load User)
+    - Trả về thông tin public của user: id, email, name, phone, interests, is_active, timestamps
+    - Không cần query thêm DB vì user đã được load sẵn bởi get_current_user dependency
+    - Hàm này không gọi qua UserService vì là thao tác read-only trực tiếp
+    """
     return UserResponse.model_validate(user)
 
 
@@ -190,7 +197,15 @@ async def update_profile(
     user: User = Depends(get_current_user),
     service: UserService = Depends(_user_service),
 ) -> UserResponse:
-    """EP-6: Partially update the authenticated user's profile."""
+    """EP-6: Partially update the authenticated user's profile.
+
+    Tính năng: Cập nhật hồ sơ cá nhân
+    - Chấp nhận các trường: name (tên), phone (số đt), interests (sở thích)
+    - Cả 3 trường đều là optional: chỉ field nào có trong body mới được ghi đè
+    - Email và is_active không đổi được qua endpoint này (readonly)
+    - UserService.update_profile xử lý logic xây dựng dict updates động
+    - Trả về UserResponse mới nhất sau khi cập nhật
+    """
     return await service.update_profile(
         user_id=user.id,
         name=body.name,
@@ -205,7 +220,16 @@ async def change_password(
     user: User = Depends(get_current_user),
     service: UserService = Depends(_user_service),
 ) -> SuccessResponse:
-    """EP-7: Change the authenticated user's password."""
+    """EP-7: Change the authenticated user's password.
+
+    Tính năng: Đổi mật khẩu
+    - Yêu cầu Bearer token hợp lệ (user phải đang đăng nhập)
+    - Xác minh current_password với bcrypt hash trong DB trước khi cho phép đổi
+    - new_password phải đạt độ dài tối thiểu (6 ký tự, schema validate)
+    - Lưu bcrypt hash của mật khẩu mới vào DB
+    - Không revoke refresh tokens hiện có (khác reset-password)
+    - Trả về SuccessResponse: client hiển thị thông báo thành công
+    """
     await service.change_password(
         user_id=user.id,
         current_password=body.current_password,
