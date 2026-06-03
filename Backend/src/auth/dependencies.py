@@ -21,9 +21,17 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 async def _optional_token(request: Request) -> str | None:
     """Extract Bearer token from the request, returning None if absent.
 
-    Unlike OAuth2PasswordBearer which raises 401 when no token is present,
-    this dependency silently returns None so that endpoints can serve both
-    authenticated and anonymous users.
+    Khác biệt với OAuth2PasswordBearer:
+      - OAuth2PasswordBearer: Tự động trả 401 khi không có token
+      - _optional_token: Trả None nếu không có token (cho phép endpoint quyết định)
+    
+    Cách sử dụng:
+      - Endpoint bắt buộc auth: Dùng get_current_user (oauth2_scheme)
+      - Endpoint tuỳ chọn auth: Dùng get_current_user_optional (_optional_token)
+    
+    Ví dụ EP-8 (generate):
+      - User authenticated: AI rate limit = pro quota
+      - User guest/anonymous: AI rate limit = guest quota
     """
     auth: str | None = request.headers.get("authorization")
     if not auth or not auth.lower().startswith("bearer "):
@@ -55,7 +63,17 @@ async def get_current_user_optional(
     token: str | None = Depends(_optional_token),
     db: AsyncSession = Depends(get_db),
 ) -> User | None:
-    """Resolve the user when a valid token is present; otherwise return None."""
+    """Resolve the user when a valid token is present; otherwise return None.
+    
+    Dùng cho endpoint hỗ trợ cả authenticated + anonymous users (EP-8, EP-9):
+      - Nếu client gửi Bearer token hợp lệ → trả về User object
+      - Nếu client không gửi token hoặc token invalid → trả về None
+      - Endpoint có thể kiểm tra: if user: (authenticated) else: (guest/anonymous)
+    
+    So sánh:
+      - get_current_user: Bắt buộc token, trả 401 nếu token không hợp lệ
+      - get_current_user_optional: Token tùy chọn, trả None nếu không có/invalid
+    """
     if not token:
         return None
     payload = verify_access_token(token)

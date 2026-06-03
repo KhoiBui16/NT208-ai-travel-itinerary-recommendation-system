@@ -9,7 +9,22 @@ logger = get_logger(__name__)
 
 
 class EmailService:
-    """Send password reset emails via SMTP or console fallback."""
+    \"\"\"Send password reset emails via SMTP or console fallback.
+    
+    Two modes:
+      1. SMTP mode (production): If SMTP_HOST configured, send real email via aiosmtplib
+      2. Console fallback (development): If no SMTP, log reset link to console
+    
+    EP-31 (forgot-password):
+      - Create random reset token (valid 1 hour)
+      - Send email with reset link: {frontend_url}/reset-password?token={raw_token}
+      - Client clicks link → navigates to ResetPassword page
+    
+    EP-32 (reset-password):
+      - Client submits new password with token from URL
+      - Server validates token hash matches + not expired
+      - Update user.hashed_password + clear token from DB
+    \"\"\"
 
     async def send_password_reset(
         self,

@@ -26,6 +26,13 @@ class User(Base):
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     interests: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # === Password Reset Token (EP-31/EP-32) ===
+    # password_reset_token_hash: SHA-256 hash của reset token (1 lần dùng)
+    #   - Tạo khi user yêu cầu forgot-password
+    #   - Xoá khi reset-password được consume hoặc hết hạn
+    # password_reset_expires_at: Thời gian hết hạn (mặc định 1 giờ)
+    #   - Kiểm tra khi user gọi reset-password
+    #   - Nếu hết hạn: token không hợp lệ, xoá khỏi DB
     password_reset_token_hash: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
@@ -60,7 +67,23 @@ class User(Base):
 
 
 class RefreshToken(Base):
-    """Hashed refresh token used for server-side revoke/logout."""
+    """Hashed refresh token used for server-side revoke/logout.
+    
+    Mô tả:
+      - Mỗi user có thể có nhiều refresh tokens (multi-device login)
+      - Token được hash SHA-256 trước lưu (không lưu raw)
+      - Mỗi token có expires_at (mặc định 7 ngày)
+      - is_revoked = True khi: logout hoặc token rotation
+    
+    Token Lifecycle:
+      1. User login/register → create RefreshToken mới
+      2. Client nhận raw token, lưu ở localStorage
+      3. Access token hết hạn → gọi refresh endpoint
+      4. Server revoke token cũ (is_revoked=True) + tạo token mới
+      5. Logout → revoke token (is_revoked=True)
+      6. Reset password → revoke tất cả token
+      7. Expired token tự động bị bỏ (cleanup batch job future)
+    """
 
     __tablename__ = "refresh_tokens"
 

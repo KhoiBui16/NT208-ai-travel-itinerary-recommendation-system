@@ -99,7 +99,14 @@ class AuthService:
         )
 
     async def refresh(self, raw_refresh_token: str) -> AuthResponse:
-        """Rotate refresh token: revoke old, issue new pair."""
+        """Rotate refresh token: revoke old, issue new pair.
+        
+        Token Rotation Security Pattern:
+          - Mỗi lần refresh, refresh token cũ bị revoke (is_revoked=True)
+          - Cấp token mới (access + refresh)
+          - Nếu hacker có token cũ → 401 (đã revoked)
+          - Nếu token cũ được dùng lại → phát hiện token leak
+        """
         token_hash = hash_token(raw_refresh_token)
         stored = await self.token_repo.find_by_hash(token_hash)
         if not stored or stored.is_revoked:
@@ -130,7 +137,20 @@ class AuthService:
             logger.info("user_logout", user_id=stored.user_id)
 
     async def forgot_password(self, email: str) -> None:
-        """Generate a password reset token and send it via email."""
+        """Generate a password reset token and send it via email.
+        
+        Quy trình:
+          1. Tìm user theo email
+          2. Nếu không tồn tại hoặc inactive: return silently (security)
+          3. Tạo reset token (opaque, 1 giờ hạn)
+          4. Hash token bằng SHA-256, lưu vào DB
+          5. Gửi email reset link chứa raw token
+        
+        Security:
+          - Không leak email tồn tại (response luôn success)
+          - Token 1 giờ hạn (brute force mitigated)
+          - Token hash lưu DB (không lưu raw)
+        """
         user = await self.user_repo.get_by_email(email)
         if not user or not user.is_active:
             return
@@ -148,7 +168,22 @@ class AuthService:
         logger.info("password_reset_requested", user_id=user.id)
 
     async def reset_password(self, raw_token: str, new_password: str) -> None:
-        """Consume a password reset token and update the user's password."""
+        """Consume a password reset token and update the user's password.
+        
+        Quy trình:
+          1. Hash raw_token bằng SHA-256
+          2. Tìm user với password_reset_token_hash == hash
+          3. Kiểm tra token chưa hết hạn (expires_at > now)
+          4. Nếu hết hạn: xoá token, trả Unauthorized
+          5. Hash password mới, cập nhật users.hashed_password
+          6. Xoá password_reset_token_hash + expires_at (1 lần dùng)
+          7. Revoke toàn bộ refresh tokens cũ (force re-login)
+        
+        Security:
+          - Token xoá khỏi DB sau reset (không thể tái sử dụng)
+          - Reset password = logout toàn bộ session
+          - Password hash bằng bcrypt, không lưu plaintext
+        """
         token_hash = hash_token(raw_token)
         user = await self.user_repo.get_by_reset_token_hash(token_hash)
 
