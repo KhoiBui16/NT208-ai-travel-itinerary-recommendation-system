@@ -190,7 +190,24 @@ export default function ItineraryView() {
     setIsSharing(true);
     try {
       const resp = await shareItinerary(Number(id));
-      const link = `${window.location.origin}/shared/${resp.shareToken}`;
+      // Guard against placeholder/invalid tokens returned by the BE
+      const token = resp.shareToken;
+      const isValidToken =
+        token &&
+        token !== "[REDACTED]" &&
+        !token.startsWith("[REDACTED") &&
+        token.length > 8;
+      if (!isValidToken) {
+        toast.warning(
+          "Không thể lấy link chia sẻ. Hãy thử lại để tạo link mới.",
+        );
+        return;
+      }
+      // Prefer the full URL returned by BE; fall back to building it from the token
+      const link =
+        resp.shareUrl && resp.shareUrl.startsWith("http")
+          ? resp.shareUrl
+          : `${window.location.origin}/shared/${token}`;
       setShareLink(link);
     } catch {
       toast.error("Không thể chia sẻ lịch trình");

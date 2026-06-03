@@ -27,13 +27,13 @@ export interface DestinationResponse {
   // --- Identity ---
   id: number;
   name: string; // City/destination display name
-  country: string; // Default: "Vietnam"
+  country: string; // Default: "Vietnam" (always present — BE defaults to "Vietnam")
 
   // --- Media ---
   image: string; // Cover image URL
 
   // --- Aggregate stats ---
-  rating: number; // Average rating across places
+  rating: number; // Average rating across places (defaults to 0 when no places)
   placesCount: number; // Number of places in this destination
   hotelsCount: number; // Number of hotels in this destination
 
@@ -56,15 +56,15 @@ export interface PlaceResponse {
 
   // --- Quality metrics ---
   reviewCount: number; // Number of reviews from source
-  rating: number; // 0-5 star rating
+  rating: number | null; // 0-5 star rating (null if unrated — BE sends null when unrated)
 
   // --- Classification ---
   type: string; // Category: "food" | "attraction" | "nature" | etc.
 
   // --- Media and location ---
   image: string; // Photo URL
-  price: number; // Average cost in VND
-  location: string; // Address text
+  price: string | null; // Display price string (formatted VND or null — BE sends string)
+  location: string | null; // Address text
 
   // --- Review info ---
   reviews: unknown[]; // Review details (if available)
@@ -74,7 +74,7 @@ export interface PlaceResponse {
 
   // --- Context ---
   city: string; // Parent destination name
-  description: string; // Place description
+  description: string | null; // Place description
 }
 
 /**

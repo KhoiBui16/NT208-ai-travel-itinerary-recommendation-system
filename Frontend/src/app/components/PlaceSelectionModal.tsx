@@ -39,7 +39,10 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
     }
     try {
       const data = await listSavedPlaces();
-      const names = new Set(data.map((p: any) => p.placeName || p.name));
+      // Build a Set of place names from the nested place object — using correct BE shape
+      const names = new Set(
+        data.map((p: any) => p.place?.name || p.placeName || p.name).filter(Boolean)
+      );
       setSavedPlaceNames(names);
       const matchedIds = places
         .filter((p) => names.has(p.name))
@@ -160,8 +163,9 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
     try {
       if (isCurrentlySaved) {
         const savedList = await listSavedPlaces();
-        const match = savedList.find((p: any) => (p.placeName || p.name) === place.name);
-        if (match) await unsavePlace(match.id);
+        // Use correct BE shape: { id: savedId, place: { id: placeId, name, ... } }
+        const match = savedList.find((p: any) => (p.place?.name || p.placeName || p.name) === place.name);
+        if (match) await unsavePlace(match.id); // match.id is the savedId (bookmark row), correct
       } else {
         await savePlace(placeId);
       }

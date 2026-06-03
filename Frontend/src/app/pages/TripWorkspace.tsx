@@ -172,7 +172,7 @@ export default function TripWorkspace() {
       name: place.name,
       time: startTime,
       endTime: endTime,
-      location: place.name,
+      location: place.location || place.name,
       description: place.description,
       type: "attraction",
       image: place.image,
