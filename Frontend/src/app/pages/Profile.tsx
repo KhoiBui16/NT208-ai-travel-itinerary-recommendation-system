@@ -9,8 +9,13 @@ import { INTEREST_OPTIONS } from "../utils/tripConstants";
 
 export default function Profile() {
   const navigate = useNavigate();
+  // user: thông tin user từ AuthContext (đồng bộ sau mỗi lần refreshUser)
+  // isAuthenticated: false nếu chưa đăng nhập → redirect sang /login
+  // refreshUser: gọi lại GET /api/v1/users/profile để cập nhật AuthContext sau khi save
   const { user, isAuthenticated, refreshUser } = useAuth();
 
+  // Form state: khởi tạo từ user hiện tại trong AuthContext
+  // email là read-only (không gửi lên BE khi update)
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -18,7 +23,9 @@ export default function Profile() {
     interests: user?.interests || [],
   });
 
+  // success: hiển thị banner xanh sau khi lưu thành công (tự ẩn sau 3 giây)
   const [success, setSuccess] = useState(false);
+  // saving: disable nút submit, hiển thị "Đang lưu..." khi đang gọi API
   const [saving, setSaving] = useState(false);
 
   // Sync form when user data changes (e.g. after refreshUser)
@@ -45,30 +52,39 @@ export default function Profile() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    // Lưu backup để rollback UI nếu API thất bại (optimistic-like pattern)
     const backup = { ...formData };
     try {
+      // Gọi EP-6: PUT /api/v1/users/profile với name, phone, interests
+      // email không được gửi lên vì là readonly field ở BE
       await updateProfile({
         name: formData.name,
         phone: formData.phone,
         interests: formData.interests,
       });
+      // Đồng bộ AuthContext với data mới nhất từ BE (gọi EP-5)
       await refreshUser();
       setSuccess(true);
+      // Tự ẩn banner thành công sau 3 giây
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
+      // Rollback form về trạng thái trước khi submit nếu API lỗi
       setFormData(backup);
-      toast.error("Cập nhật thất bại. Vui lòng thử lại.", { position: "top-right" });
+      toast.error("Cập nhật thất bại. Vui lòng thử lại.", {
+        position: "top-right",
+      });
     } finally {
       setSaving(false);
     }
   };
 
+  // Toggle sở thích: thêm vào array nếu chưa có, xóa nếu đã có
   const toggleInterest = (interest: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       interests: prev.interests.includes(interest)
-        ? prev.interests.filter(i => i !== interest)
-        : [...prev.interests, interest]
+        ? prev.interests.filter((i) => i !== interest)
+        : [...prev.interests, interest],
     }));
   };
 
@@ -86,7 +102,10 @@ export default function Profile() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-2xl bg-white p-8 shadow-xl">
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-2xl bg-white p-8 shadow-xl"
+        >
           {success && (
             <div className="mb-6 rounded-lg bg-green-50 p-4 text-green-600">
               Cập nhật thông tin thành công!
