@@ -35,6 +35,15 @@ function getFallbackDestinationImage(name: string): string {
   return directFallback?.image || DEFAULT_PLACE_IMAGE;
 }
 
+/**
+ * Resolves a destination image URL for display.
+ *
+ * Priority:
+ * 1. Non-empty API image (from BE /api/v1/places/destinations).
+ *    If the BE returns a relative path (e.g. `/img/destinations/ha-noi.jpg`),
+ *    it is prefixed with VITE_API_URL so the browser can load it.
+ * 2. Local mock/static fallback from homeData.ts when API has no image.
+ */
 function resolveDestinationImage(name: string, apiImage?: string | null): string {
   const trimmedImage = apiImage?.trim();
   if (trimmedImage) {

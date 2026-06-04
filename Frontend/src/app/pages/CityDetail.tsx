@@ -348,6 +348,7 @@ export default function CityDetail() {
         </div>
 
         {/* API Places — shown when BE has data */}
+        {/* PRODUCT RULE: Do NOT suggest choosing a different city. Show this exact copy when no places. */}
         {apiLoaded && apiPlaces.length === 0 && (
           <div className="mt-12 rounded-xl bg-amber-50 border border-amber-200 p-6 text-center">
             <p className="text-amber-800 font-semibold">

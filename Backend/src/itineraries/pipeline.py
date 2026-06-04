@@ -58,7 +58,11 @@ MAX_CONTEXT_PLACES = 15
 # Maximum number of hotels to include in the LLM prompt context
 MAX_CONTEXT_HOTELS = 4
 
-# Maximum allowed trip duration (prevents abuse and LLM context overflow)
+# Maximum allowed trip duration.
+# NOTE: This is a temporary technical guard accepted by the product team for the
+# current blocking-REST generation flow. Accepted value: 30 days (PR #85, 00060J).
+# If longer trips are required in future, either raise this limit (requires user
+# approval) or implement an async generation job — see follow-up task 00060L.
 MAX_TRIP_DAYS = 30
 
 logger = get_logger(__name__)
@@ -565,6 +569,12 @@ class ItineraryPipeline:
         """Calculate trip duration in days from the request dates.
 
         Validates that duration is between 1 and MAX_TRIP_DAYS.
+
+        Note:
+            MAX_TRIP_DAYS is currently 30 — a temporary technical limit for the
+            blocking-REST generation flow. Trips exceeding this raise a
+            user-visible error (Vietnamese generic message). For async generation
+            that can handle longer trips, see follow-up task 00060L.
         """
         day_count = (request.end_date - request.start_date).days + 1
         if day_count < 1 or day_count > MAX_TRIP_DAYS:
