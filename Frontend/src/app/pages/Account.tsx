@@ -1,7 +1,28 @@
 import { useState, useEffect } from "react";
 import { Header } from "../components/Header";
-import { User, Mail, Lock, Camera, Globe, Bell, Crown, Shield, Utensils, Mountain, Building, Music, ShoppingBag, Heart, Users, Baby } from "lucide-react";
-import { TRAVEL_TYPES, INTEREST_OPTIONS, BUDGET_LEVELS } from "../utils/tripConstants";
+import {
+  User,
+  Mail,
+  Lock,
+  Camera,
+  Globe,
+  Bell,
+  Crown,
+  Shield,
+  Utensils,
+  Mountain,
+  Building,
+  Music,
+  ShoppingBag,
+  Heart,
+  Users,
+  Baby,
+} from "lucide-react";
+import {
+  TRAVEL_TYPES,
+  INTEREST_OPTIONS,
+  BUDGET_LEVELS,
+} from "../utils/tripConstants";
 import { useAuth } from "../contexts/AuthContext";
 import * as userService from "../services/users";
 import { ApiError } from "../services/api";
@@ -9,12 +30,19 @@ import { toast } from "sonner";
 
 export default function Account() {
   const { user, refreshUser } = useAuth();
+  // editMode: bật/tắt chế độ chỉnh sửa thông tin tài khoản
   const [editMode, setEditMode] = useState(false);
+  // showPasswordChange: hiển/ẩn form đổi mật khẩu inline
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+  // saving: cờ đang gọi API (dùng chung cho cả save profile và change password)
   const [saving, setSaving] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
+  // userData: state nội bộ của form Account
+  // accountPlan, language, travelType, budgetLevel, notificationsEnabled là UI-only
+  // (chưa được persist lên BE trong phiên bản hiện tại)
+  // username và interests được đồng bộ từ AuthContext qua useEffect bên dưới
   const [userData, setUserData] = useState({
     username: "",
     email: "",
@@ -51,10 +79,13 @@ export default function Account() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
+      // Gọi EP-6: PUT /api/v1/users/profile với name và interests
+      // (Account.tsx không cho sửa phone, chỉ sửa username và interests)
       await userService.updateProfile({
         name: userData.username,
         interests: userData.interests,
       });
+      // Refresh AuthContext để Header và các component khác cập nhật tên mới
       await refreshUser();
       setEditMode(false);
       toast.success("Đã cập nhật thông tin!", { position: "top-right" });
@@ -68,21 +99,27 @@ export default function Account() {
   };
 
   const handleChangePassword = async () => {
+    // Validate phía client trước khi gọi API: tránh round-trip không cần thiết
     if (!currentPassword || !newPassword) {
       toast.error("Vui lòng nhập đầy đủ thông tin", { position: "top-right" });
       return;
     }
     if (newPassword.length < 6) {
-      toast.error("Mật khẩu mới phải có ít nhất 6 ký tự", { position: "top-right" });
+      toast.error("Mật khẩu mới phải có ít nhất 6 ký tự", {
+        position: "top-right",
+      });
       return;
     }
 
     setSaving(true);
     try {
+      // Gọi EP-7: PUT /api/v1/users/password
+      // BE sẽ xác minh currentPassword với bcrypt hash trước khi đổi
       await userService.changePassword({
         currentPassword,
         newPassword,
       });
+      // Ẩn form và xóa state mật khẩu sau khi đổi thành công
       setShowPasswordChange(false);
       setCurrentPassword("");
       setNewPassword("");
@@ -116,7 +153,9 @@ export default function Account() {
               <Crown className="h-8 w-8 text-white" />
               <div>
                 <p className="text-sm text-white/90">Gói hiện tại</p>
-                <p className="text-2xl font-bold text-white">{userData.accountPlan}</p>
+                <p className="text-2xl font-bold text-white">
+                  {userData.accountPlan}
+                </p>
               </div>
             </div>
             {userData.accountPlan === "Free" && (
