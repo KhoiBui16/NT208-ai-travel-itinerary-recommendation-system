@@ -47,6 +47,22 @@ export default function CreateTrip() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [validationError, setValidationError] = useState("");
   const [qualityWarning, setQualityWarning] = useState("");
+  const [generateStep, setGenerateStep] = useState(0);
+
+  const GENERATE_STEPS = [
+    "Đang chuẩn bị dữ liệu điểm đến...",
+    "Đang gửi yêu cầu tới AI...",
+    "Đang kiểm tra và lưu lịch trình...",
+    "Hoàn tất, đang mở lịch trình...",
+  ];
+
+  // Compute day count from dateRange
+  const dayCount =
+    dateRange.from && dateRange.to
+      ? Math.floor(
+          (dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)
+        ) + 1
+      : 0;
 
   // Use backend destinations if available, otherwise fallback to popularDestinations
   const availableDestinations = backendDests.length > 0
@@ -81,7 +97,10 @@ export default function CreateTrip() {
       return;
     }
 
-    // Pre-submit validation: if backend destinations loaded successfully, check if input is supported
+    // Calculate number of days
+    const dayCount = dateRange.from && dateRange.to
+      ? Math.floor((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      : 0;    // Pre-submit validation: if backend destinations loaded successfully, check if input is supported
     if (backendDests.length > 0 && !isUsingFallback) {
       const selectedDest = backendDests.find(
         (d) => d.name.toLowerCase() === destInput.toLowerCase()
@@ -106,6 +125,12 @@ export default function CreateTrip() {
 
     setValidationError("");
     setIsGenerating(true);
+    setGenerateStep(0);
+
+    // Cycle through progress steps during generation
+    const stepInterval = setInterval(() => {
+      setGenerateStep((prev) => Math.min(prev + 1, GENERATE_STEPS.length - 1));
+    }, 4000);
 
     try {
       // Map budgetLevel to budget number
@@ -134,6 +159,7 @@ export default function CreateTrip() {
     } catch (err) {
       setValidationError(getGenerateErrorMessage(err, { destination: destInput, quotaLimit: 3 }));
     } finally {
+      clearInterval(stepInterval);
       setIsGenerating(false);
     }
   };
@@ -393,7 +419,7 @@ export default function CreateTrip() {
             {isGenerating ? (
               <>
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                AI đang lên kế hoạch...
+                {GENERATE_STEPS[generateStep]}
               </>
             ) : (
               <>
@@ -402,6 +428,13 @@ export default function CreateTrip() {
               </>
             )}
           </button>
+          {dayCount > 7 && dayCount <= 30 && (
+            <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 mt-2">
+              <p className="text-sm text-blue-700">
+                ℹ️ Lịch trình dài có thể mất nhiều thời gian hơn. Hệ thống sẽ tạo dựa trên dữ liệu hiện có.
+              </p>
+            </div>
+          )}
           {qualityWarning && (
             <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
               <p className="text-sm text-amber-800">

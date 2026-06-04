@@ -59,7 +59,7 @@ MAX_CONTEXT_PLACES = 15
 MAX_CONTEXT_HOTELS = 4
 
 # Maximum allowed trip duration (prevents abuse and LLM context overflow)
-MAX_TRIP_DAYS = 14
+MAX_TRIP_DAYS = 30
 
 logger = get_logger(__name__)
 
@@ -568,7 +568,10 @@ class ItineraryPipeline:
         """
         day_count = (request.end_date - request.start_date).days + 1
         if day_count < 1 or day_count > MAX_TRIP_DAYS:
-            raise ValidationException("Trip duration must be between 1 and 14 days")
+            raise ValidationException(
+                "Số ngày chuyến đi không hợp lệ. "
+                f"Vui lòng liên hệ hỗ trợ nếu cần lịch trình dài hơn {MAX_TRIP_DAYS} ngày."
+            )
         return day_count
 
     @staticmethod

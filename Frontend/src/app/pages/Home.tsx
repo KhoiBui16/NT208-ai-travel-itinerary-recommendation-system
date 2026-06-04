@@ -37,7 +37,27 @@ function getFallbackDestinationImage(name: string): string {
 
 function resolveDestinationImage(name: string, apiImage?: string | null): string {
   const trimmedImage = apiImage?.trim();
-  return trimmedImage || getFallbackDestinationImage(name);
+  if (trimmedImage) {
+    // If relative path (e.g. /img/destinations/hanoi.jpg), prefix with API base URL
+    if (trimmedImage.startsWith("/")) {
+      const apiBase = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+      return `${apiBase}${trimmedImage}`;
+    }
+    return trimmedImage;
+  }
+  return getFallbackDestinationImage(name);
+}
+
+/** Convert a Vietnamese destination name to a URL-safe slug matching the cityId route param. */
+function nameToSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
 }
 
 export default function Home() {
@@ -182,7 +202,7 @@ export default function Home() {
             destinations.map((dest) => (
             <Link
               key={dest.name}
-              to="/cities"
+              to={`/cities/${nameToSlug(dest.name)}`}
               className="group relative overflow-hidden rounded-xl shadow-lg transition-all hover:-translate-y-1 hover:shadow-2xl"
             >
               <div className="relative h-64">

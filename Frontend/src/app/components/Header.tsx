@@ -109,7 +109,11 @@ export function Header() {
                       <p className="text-xs text-white/90 mb-3">
                         Unlock unlimited AI itineraries and more features
                       </p>
-                      <button className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-orange-600 transition-colors hover:bg-gray-50">
+                      <button
+                        disabled
+                        title="Tính năng đang phát triển"
+                        className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-orange-600 opacity-50 cursor-not-allowed"
+                      >
                         Nâng Cấp Ngay
                       </button>
                     </div>
