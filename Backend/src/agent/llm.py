@@ -94,8 +94,8 @@ class GeminiLLM:
             )
             raise ServiceUnavailableException(
                 (
-                    "Dịch vụ AI đang phản hồi quá lâu. "
-                    "Vui lòng thử lại sau hoặc tạo chuyến đi ngắn hơn."
+                    "Dịch vụ AI đang phản hồi quá lâu nên chưa thể tạo lịch trình. "
+                    "Chưa có lịch trình nào được lưu. Vui lòng thử lại sau."
                 ),
                 error_code="AI_PROVIDER_TIMEOUT",
                 retryable=True,

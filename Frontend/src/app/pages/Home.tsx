@@ -39,20 +39,20 @@ function getFallbackDestinationImage(name: string): string {
  * Resolves a destination image URL for display.
  *
  * Priority:
- * 1. Non-empty API image (from BE /api/v1/places/destinations).
- *    If the BE returns a relative path (e.g. `/img/destinations/ha-noi.jpg`),
- *    it is prefixed with VITE_API_URL so the browser can load it.
- * 2. Local mock/static fallback from homeData.ts when API has no image.
+ * 1. Absolute API image URL (http/https) from BE.
+ * 2. Fallback Unsplash URL from placeImage.ts.
+ *
+ * NOTE: Relative paths like `/img/destinations/...` are SKIPPED because
+ * the ETL placeholder paths don't map to actual files, causing 404 errors.
  */
 function resolveDestinationImage(name: string, apiImage?: string | null): string {
   const trimmedImage = apiImage?.trim();
   if (trimmedImage) {
-    // If relative path (e.g. /img/destinations/hanoi.jpg), prefix with API base URL
-    if (trimmedImage.startsWith("/")) {
-      const apiBase = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
-      return `${apiBase}${trimmedImage}`;
+    // Only use absolute URLs (http/https). Skip relative paths that would 404.
+    if (trimmedImage.startsWith("http://") || trimmedImage.startsWith("https://")) {
+      return trimmedImage;
     }
-    return trimmedImage;
+    // Relative path like `/img/destinations/...` - skip and use fallback
   }
   return getFallbackDestinationImage(name);
 }
