@@ -211,17 +211,20 @@ Place images rỗng hoàn toàn → `resolvePlaceImageWithCategory` với catego
 
 ## 8. Remaining Risks
 
-| Rủi ro | Mức độ | Ghi chú |
-|--------|--------|---------|
-| `nameToSlug` có thể không map chính xác với mọi slug trong `CityDetail.slugToName` | Trung bình | Đã test với 6 city chính; edge case: "TP. Hồ Chí Minh" → slug `tp-ho-chi-minh` (khớp với slugToName) |
-| Trip 15-30 ngày chưa được test end-to-end với AI | Trung bình | LLM có thể timeout với 20+ ngày; long trip banner đã cảnh báo user |
-| Ảnh place từ Pexels — CDN availability | Thấp | Fallback URLs stable, format đơn giản |
-| DailyItinerary share: user bị chuyển sang ItineraryView để share | Thấp | UX phụ, không blocking |
+| Rủi ro | Mức độ | Ghi chú | Follow-up |
+|--------|--------|---------|-----------|
+| `nameToSlug` có thể không map chính xác với mọi slug trong `CityDetail.slugToName` | Trung bình | Đã test với 6 city chính; edge case: "TP. Hồ Chí Minh" → slug `tp-ho-chi-minh` (khớp với slugToName) | Smoke test thủ công 10 destinations |
+| **`MAX_TRIP_DAYS = 30` vẫn là hard cap** — trips > 30 ngày vẫn bị reject với message tiếng Việt chung chung | **CAO** | User quyết định không giữ hard cap 14 ngày → đã nâng lên 30. Nếu user muốn bỏ hoàn toàn hoặc tăng thêm → cần approval | Cần user approval trước khi remove/tăng |
+| Place images rỗng trong DB (618/618) — category fallback từ Pexels chỉ là tạm | Cao | ETL Goong không crawl được image URLs | **00060K** ETL image crawl scheduler |
+| Blocking generate có thể timeout với trips dài (15–30 ngày) | Trung bình | Gemini có thể mất 30s+ cho trip dài; long trip banner đã cảnh báo | **00060L** async generation job |
+| Ảnh place từ Pexels — CDN availability | Thấp | Fallback URLs stable, format đơn giản | - |
+| DailyItinerary share: user bị chuyển sang ItineraryView để share | Thấp | UX phụ, không blocking | Phase D+ |
 
 ---
 
 ## 9. Commit / PR
 
 - **Branch:** `fix/00060-d-local-smoke-ux-data-fix`
-- **Commit message:** `fix: [#00060] fix local smoke ux and data blockers`
-- **Files changed:** 8 files (7 Frontend, 1 Backend)
+- **Commit 1:** `c1a56c9` — `fix: [#00060] fix local smoke ux and data blockers` (11 files)
+- **Commit 2:** `672ce31` — `fix: [#00060] align local smoke gate fixes with product decisions` (TopActionBar REDACTED guard)
+- **Files changed total:** 12 files (8 Frontend, 1 Backend, 2 docs, 1 TopActionBar fix-up)
