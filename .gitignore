@@ -72,3 +72,7 @@ References/
 Diagram/
 guidelines/
 md/
+
+# Runtime logs (for debugging, not committed)
+logs/
+*.log
