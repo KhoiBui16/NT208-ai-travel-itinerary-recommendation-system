@@ -1,7 +1,8 @@
 # PR #85 - Complete Description (R5 + R6 + R7A + R7C)
 
 **Branch**: `fix/00060-d-local-smoke-ux-data-fix`
-**PR**: #85 - "fix: [#00060] fix local smoke ux and data blockers"**Update Date**: 2026-06-05
+**PR**: #85 - "fix: [#00060] fix local smoke ux and data blockers"
+**Update Date**: 2026-06-05
 
 ---
 
@@ -18,7 +19,8 @@ This PR now includes **R5 + R6 + R7A + R7C** fixes for comprehensive end-user UX
 
 **Phase R6** (Commit ec0b23e):
 - ✅ Deep end-user smoke audit identifying 19 issues across P0-P2 severity
-- ✅ Source discovery matrix, endpoint mapping, UX message audit- ✅ Test coverage gap analysis, logging instrumentation audit
+- ✅ Source discovery matrix, endpoint mapping, UX message audit
+- ✅ Test coverage gap analysis, logging instrumentation audit
 - ✅ Fix classification into R7A/R7B/R7C groups
 - ✅ Database diagnostics: 10 destinations, 618 places, 22 hotels
 - ✅ All place images = NULL in DB (deferred to 00060K)
@@ -29,11 +31,16 @@ This PR now includes **R5 + R6 + R7A + R7C** fixes for comprehensive end-user UX
 3. ✅ **Save place feedback**: Added toast notifications for save/unsave actions
 4. ✅ **Premium UX**: Added onClick handler + coming-soon modal with benefits
 5. ✅ **Footer team info**: Updated to show full role "Bùi Nhật Anh Khôi — Leader, Backend, AI"
-6. ✅ **Chatbot overlap**: Reduced FloatingAIChat z-index (40→35) to avoid LiveBudgetBar button conflict
+6. ✅ **Chatbot overlap**: Repositioned FloatingAIChat to bottom-28 with z-20 to avoid LiveBudgetBar button conflict
 7. ✅ **Destination images**: R5 fix handles relative path fallback correctly
 
 **Phase R7C** (Critical Save Error Fixes):
 1. ✅ **Trip save error classification**: Improved error messages to distinguish quota/auth/network/validation errors
+
+**Phase R7-FIXUP** (Regression Fixes):
+1. ✅ **CityDetail unsupported copy**: Restored exact user-requested copy "Địa điểm chưa được hỗ trợ trong giai đoạn hiện tại, Vui lòng liên hệ để được cập nhật thêm địa điểm" (removed "chọn thành phố khác" suggestion)
+2. ✅ **FloatingAIChat layout**: Fixed invalid z-35 class, repositioned to bottom-28 (112px from bottom) with proper z-20 to avoid collision with Plus button
+3. ✅ **Error classification logic**: Fixed quota error detection by checking error_code BEFORE status code, ensuring 5/5 message displays correctly
 
 ---
 
@@ -41,7 +48,7 @@ This PR now includes **R5 + R6 + R7A + R7C** fixes for comprehensive end-user UX
 
 ### R7A/R7C Changes:
 1. `Frontend/index.html` - Web title updated
-2. `Frontend/src/app/components/FloatingAIChat.tsx` - z-index reduced
+2. `Frontend/src/app/components/FloatingAIChat.tsx` - Repositioned to bottom-28 with z-20
 3. `Frontend/src/app/components/Header.tsx` - Premium modal added
 4. `Frontend/src/app/hooks/trips/useTripSync.ts` - Error classification improved
 5. `Frontend/src/app/pages/Account.tsx` - Premium modal added
@@ -62,7 +69,8 @@ This PR now includes **R5 + R6 + R7A + R7C** fixes for comprehensive end-user UX
 - **After**: Skip relative paths, use fallback Unsplash URLs directly
 - **Impact**: No more broken image icons for destinations
 
-**F9: AI Timeout Message** - `Backend/src/agent/llm.py`- **Before**: "Vui lòng thử lại sau hoặc tạo chuyến đi ngắn hơn" (misleading for 2-day trips)
+**F9: AI Timeout Message** - `Backend/src/agent/llm.py`
+- **Before**: "Vui lòng thử lại sau hoặc tạo chuyến đi ngắn hơn" (misleading for 2-day trips)
 - **After**: "Dịch vụ AI đang phản hồi quá lâu nên chưa thể tạo lịch trình. Chưa có lịch trình nào được lưu. Vui lòng thử lại sau."
 - **Impact**: Clear generic message, no misleading duration suggestions
 
@@ -79,8 +87,8 @@ This PR now includes **R5 + R6 + R7A + R7C** fixes for comprehensive end-user UX
 
 **F4: City Detail State Messages** - `Frontend/src/app/pages/CityDetail.tsx`
 - **City not found**: "Thành phố không tồn tại" + "Vui lòng chọn thành phố khác từ danh sách"
-- **City exists no places**: "Địa điểm đang được cập nhật. Chúng tôi đang thu thập thông tin cho [city]. Vui lòng thử lại sau hoặc chọn thành phố khác."
-- **Impact**: Users can distinguish between invalid slug vs unsupported location
+- **City exists no places**: "Địa điểm chưa được hỗ trợ trong giai đoạn hiện tại, Vui lòng liên hệ để được cập nhật thêm địa điểm"
+- **Impact**: Users can distinguish between invalid slug vs unsupported location, with exact user-requested copy that does not suggest choosing a different city
 
 **F5: Save Place Feedback** - `Frontend/src/app/pages/CityDetail.tsx`
 - **Success**: Toast "Đã lưu địa điểm" / "Đã bỏ lưu địa điểm"
@@ -91,7 +99,8 @@ This PR now includes **R5 + R6 + R7A + R7C** fixes for comprehensive end-user UX
 **F6: Premium UX** - `Frontend/src/app/pages/Account.tsx` + `Frontend/src/app/components/Header.tsx`
 - **Added**: onClick handler + premium modal with benefits:
   - Lưu nhiều lịch trình hơn
-  - Tạo nhiều lịch trình AI hơn  - Ưu tiên tốc độ & gợi ý
+  - Tạo nhiều lịch trình AI hơn
+  - Ưu tiên tốc độ & gợi ý
 - **Impact**: Premium buttons now responsive with clear coming-soon message
 
 **F7: Footer Team Info** - `Frontend/src/app/pages/Home.tsx`
@@ -99,18 +108,19 @@ This PR now includes **R5 + R6 + R7A + R7C** fixes for comprehensive end-user UX
 - **Impact**: Complete role information displayed
 
 **F18: Chatbot Overlap** - `Frontend/src/app/components/FloatingAIChat.tsx`
-- **Change**: Reduced z-index from 40 to 35
-- **Impact**: No longer conflicts with LiveBudgetBar add expense button (z-30)
+- **Change**: Repositioned from bottom-6 to bottom-28 (112px higher), z-index from z-40 to z-20
+- **Impact**: No longer conflicts with LiveBudgetBar add expense button (which is at bottom-0, z-30)
 
 ### R7C Fixes:
 
 **F10/F11: Trip Save Error Classification** - `Frontend/src/app/hooks/trips/useTripSync.ts`
-- **Auth error (401/403)**: "Vui lòng đăng nhập để lưu lịch trình."
-- **Quota error (403/TRIP_LIMIT_EXCEEDED)**: "Bạn đã đạt giới hạn 5/5 lịch trình có thể lưu. Hãy xóa một lịch trình cũ hoặc nâng cấp khi Premium khả dụng."
+- **Quota error (TRIP_LIMIT_EXCEEDED/TRIP_QUOTA_EXCEEDED)**: "Bạn đã đạt giới hạn 5/5 lịch trình có thể lưu. Hãy xóa một lịch trình cũ hoặc nâng cấp khi Premium khả dụng."
+- **Auth error (401)**: "Vui lòng đăng nhập để lưu lịch trình."
+- **Generic forbidden (403)**: "Bạn không có quyền thực hiện hành động này."
 - **Rate limit (429)**: "Bạn đang thao tác quá nhanh. Vui lòng thử lại sau ít phút."
 - **Validation error (422)**: "Dữ liệu lịch trình không hợp lệ. Vui lòng kiểm tra và thử lại."
 - **Network/server error (500/503)**: "Không thể lưu lịch trình lên server lúc này. Lịch trình đã được lưu tạm trên thiết bị này."
-- **Impact**: Users understand exactly why save failed and what to do
+- **Impact**: Users understand exactly why save failed and what to do. Fixed quota detection by checking error_code before status code.
 
 ---
 

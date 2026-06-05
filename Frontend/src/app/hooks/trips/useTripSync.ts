@@ -336,19 +336,26 @@ export const useTripSync = (
       // Classify error type for better UX message
       if (error instanceof ApiError) {
         const { status, body } = error;
+        const errorCode = body?.error_code ?? body?.code;
 
-        // Auth errors (401/403)
-        if (status === 401 || status === 403) {
-          toast.error("Vui lòng đăng nhập để lưu lịch trình.", { position: "top-right" });
-          return;
-        }
-
-        // Quota/trip limit error
-        if (status === 403 || body.error_code === "TRIP_LIMIT_EXCEEDED") {
+        // Quota/trip limit error (check by error_code first, before status code)
+        if (errorCode === "TRIP_LIMIT_EXCEEDED" || errorCode === "TRIP_QUOTA_EXCEEDED") {
           toast.error(
             "Bạn đã đạt giới hạn 5/5 lịch trình có thể lưu. Hãy xóa một lịch trình cũ hoặc nâng cấp khi Premium khả dụng.",
             { position: "top-right", duration: 6000 }
           );
+          return;
+        }
+
+        // Auth error (401)
+        if (status === 401) {
+          toast.error("Vui lòng đăng nhập để lưu lịch trình.", { position: "top-right" });
+          return;
+        }
+
+        // Generic forbidden/no permission (403, but not quota which we already checked)
+        if (status === 403) {
+          toast.error("Bạn không có quyền thực hiện hành động này.", { position: "top-right" });
           return;
         }
 

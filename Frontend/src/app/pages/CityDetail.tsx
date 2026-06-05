@@ -359,10 +359,10 @@ export default function CityDetail() {
         {apiLoaded && apiPlaces.length === 0 && (
           <div className="mt-12 rounded-xl bg-amber-50 border border-amber-200 p-6 text-center">
             <p className="text-amber-800 font-semibold mb-2">
-              Địa điểm đang được cập nhật
+              Địa điểm chưa được hỗ trợ trong giai đoạn hiện tại
             </p>
             <p className="text-sm text-amber-700">
-              Chúng tôi đang thu thập thông tin cho {apiCityName || city.name}. Vui lòng thử lại sau hoặc chọn thành phố khác.
+              Vui lòng liên hệ để được cập nhật thêm địa điểm
             </p>
           </div>
         )}
