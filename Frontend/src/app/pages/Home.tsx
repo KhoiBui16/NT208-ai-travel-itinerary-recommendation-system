@@ -266,10 +266,10 @@ export default function Home() {
             <div>
               <h4 className="mb-4 text-xl font-bold">Đội ngũ phát triển</h4>
               <ul className="space-y-2 text-gray-300">
-                <li>Bùi Nhật Anh Khôi - Leader</li>
-                <li>Dương Đăng Chính - FrontEnd</li>
-                <li>Lê Văn Chí - BackEnd</li>
-                <li>Nguyễn Hữu Chiến - BackEnd</li>
+                <li>Bùi Nhật Anh Khôi — Leader, Backend, AI</li>
+                <li>Dương Đăng Chính — FrontEnd</li>
+                <li>Lê Văn Chí — Backend</li>
+                <li>Nguyễn Hữu Chiến — Backend</li>
               </ul>
             </div>
             <div>

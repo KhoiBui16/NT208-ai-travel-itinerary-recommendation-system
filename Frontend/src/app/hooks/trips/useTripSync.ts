@@ -7,6 +7,7 @@ import { getItinerary, createItinerary, updateItinerary } from "../../services/i
 import { useTripWizard } from "../../contexts/TripWizardContext";
 import { storePendingClaim } from "../../contexts/AuthContext";
 import { readSessionTrip, writeSessionTrip } from "../../utils/tripResponseMapper";
+import { ApiError } from "../../services/api";
 
 /** Convert dd/MM/yyyy → yyyy-MM-dd for API. Pass-through if already ISO or empty. */
 function toISODate(d: string): string {
@@ -328,9 +329,47 @@ export const useTripSync = (
       toast.success("Đã lưu lịch trình thành công", { position: "top-right" });
     } catch (error) {
       console.error("Error saving itinerary:", error);
+
       // Fallback: save to sessionStorage only
       writeSessionTrip(tripData);
-      toast.error("Lưu lên server thất bại, đã lưu tạm thời", { position: "top-right" });
+
+      // Classify error type for better UX message
+      if (error instanceof ApiError) {
+        const { status, body } = error;
+
+        // Auth errors (401/403)
+        if (status === 401 || status === 403) {
+          toast.error("Vui lòng đăng nhập để lưu lịch trình.", { position: "top-right" });
+          return;
+        }
+
+        // Quota/trip limit error
+        if (status === 403 || body.error_code === "TRIP_LIMIT_EXCEEDED") {
+          toast.error(
+            "Bạn đã đạt giới hạn 5/5 lịch trình có thể lưu. Hãy xóa một lịch trình cũ hoặc nâng cấp khi Premium khả dụng.",
+            { position: "top-right", duration: 6000 }
+          );
+          return;
+        }
+
+        // Rate limit error
+        if (status === 429) {
+          toast.error("Bạn đang thao tác quá nhanh. Vui lòng thử lại sau ít phút.", { position: "top-right" });
+          return;
+        }
+
+        // Validation error (422)
+        if (status === 422) {
+          toast.error("Dữ liệu lịch trình không hợp lệ. Vui lòng kiểm tra và thử lại.", { position: "top-right" });
+          return;
+        }
+      }
+
+      // Network/server errors (500/503) or unknown errors
+      toast.error(
+        "Không thể lưu lịch trình lên server lúc này. Lịch trình đã được lưu tạm trên thiết bị này.",
+        { position: "top-right" }
+      );
     }
   }, [isAuthenticated, tripName, days, accommodations, totalBudget, travelers, setShowLoginModal]);
 

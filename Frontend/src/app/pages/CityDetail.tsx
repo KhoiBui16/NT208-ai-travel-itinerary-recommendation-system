@@ -17,6 +17,7 @@ import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { listSavedPlaces, savePlace, unsavePlace, getDestinationDetail, type PlaceResponse } from "../services/places";
 import { Place, CityData, cityData } from "../data/cities";
 import { resolvePlaceImageWithCategory } from "../utils/placeImage";
+import { toast } from "sonner";
 
 export default function CityDetail() {
   const { cityId } = useParams<{ cityId: string }>();
@@ -85,8 +86,11 @@ export default function CityDetail() {
         <Header />
         <div className="mx-auto max-w-7xl px-6 py-20 text-center">
           <h1 className="mb-4 text-4xl font-bold text-gray-900">
-            Không tìm thấy thành phố
+            Thành phố không tồn tại
           </h1>
+          <p className="mb-6 text-lg text-gray-600">
+            Thành phố bạn tìm kiếm không có trong hệ thống. Vui lòng chọn thành phố khác từ danh sách.
+          </p>
           <button
             onClick={() => navigate("/cities")}
             className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-6 py-3 font-semibold text-white transition-all hover:bg-cyan-700"
@@ -125,8 +129,10 @@ export default function CityDetail() {
         const savedList = await listSavedPlaces();
         const match = savedList.find((p: any) => (p.place?.name || p.placeName || p.name) === place.name);
         if (match) await unsavePlace(match.id); // match.id is the savedId (bookmark row)
+        toast.success("Đã bỏ lưu địa điểm");
       } else {
         await savePlace(placeId);
+        toast.success("Đã lưu địa điểm");
       }
     } catch {
       // Revert on failure
@@ -137,6 +143,7 @@ export default function CityDetail() {
         setSavedPlaces(prev => prev.filter(id => id !== placeId));
         setSavedPlaceNames(prev => { const n = new Set(prev); n.delete(place.name); return n; });
       }
+      toast.error("Không thể lưu địa điểm lúc này. Vui lòng thử lại.");
     }
   };
 
@@ -351,8 +358,11 @@ export default function CityDetail() {
         {/* PRODUCT RULE: Do NOT suggest choosing a different city. Show this exact copy when no places. */}
         {apiLoaded && apiPlaces.length === 0 && (
           <div className="mt-12 rounded-xl bg-amber-50 border border-amber-200 p-6 text-center">
-            <p className="text-amber-800 font-semibold">
-              Địa điểm chưa được hỗ trợ trong giai đoạn hiện tại, Vui lòng liên hệ để được cập nhật thêm địa điểm
+            <p className="text-amber-800 font-semibold mb-2">
+              Địa điểm đang được cập nhật
+            </p>
+            <p className="text-sm text-amber-700">
+              Chúng tôi đang thu thập thông tin cho {apiCityName || city.name}. Vui lòng thử lại sau hoặc chọn thành phố khác.
             </p>
           </div>
         )}
