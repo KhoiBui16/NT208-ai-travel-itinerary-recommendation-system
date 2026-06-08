@@ -205,3 +205,22 @@ Expected post-PR41 local result on 2026-05-26:
 | FE shows generic generate error | FE hides detailed BE error | Inspect network response and backend logs |
 
 Do not log provider keys, JWTs, refresh tokens, or raw claim tokens.
+
+---
+
+## Documentation
+
+📖 **Comprehensive documentation:** See [`docs/INDEX.md`](../docs/INDEX.md) for:
+- Architecture and design docs
+- API reference and endpoint documentation
+- Testing strategies and results
+- Issue tracking and bug reports
+- Phase C implementation status
+
+**Key docs for Backend:**
+- [`docs/03_backend.md`](../docs/03_backend.md) - Backend architecture and API reference
+- [`docs/05_database_etl.md`](../docs/05_database_etl.md) - Database schema and ETL pipeline
+- [`docs/06_ai_roadmap.md`](../docs/06_ai_roadmap.md) - AI implementation roadmap
+- [`docs/08_testing_local_run.md`](../docs/08_testing_local_run.md) - Local testing guide
+- [`docs/REPORTS/00060k_r2_backend_testing_report.md`](../docs/REPORTS/00060k_r2_backend_testing_report.md) - Latest backend testing report
+

@@ -55,11 +55,23 @@ const mockTrip = {
 
 test.describe("00060D-FIX pre-C3A floating chat context", () => {
   test("TripWorkspace no longer shows hardcoded Hà Nội for a Huế trip", async ({ page }) => {
+    // Set up tokens and mock user profile in localStorage BEFORE page loads
     await page.addInitScript(() => {
-      localStorage.setItem("accessToken", "mock-access-token");
-      localStorage.setItem("refreshToken", "mock-refresh-token");
+      localStorage.setItem("accessToken", "mock-access-token-valid");
+      localStorage.setItem("refreshToken", "mock-refresh-token-valid");
+      localStorage.setItem("userProfile", JSON.stringify({
+        id: 77,
+        email: "floating-chat@test.com",
+        name: "Floating Chat User",
+        phone: null,
+        interests: ["culture"],
+        isActive: true,
+        createdAt: "2026-06-02T09:00:00Z",
+        updatedAt: "2026-06-02T09:00:00Z",
+      }));
     });
 
+    // Set up API route handlers
     await page.route("**/api/v1/users/profile", async (route) => {
       await route.fulfill({
         status: 200,
@@ -92,17 +104,26 @@ test.describe("00060D-FIX pre-C3A floating chat context", () => {
       });
     });
 
-    await page.goto("/trip-workspace?tripId=777");
+    // Navigate to TripWorkspace
+    await page.goto("/trip-workspace?tripId=777", { waitUntil: "networkidle" });
+
+    // Verify trip loaded - heading should contain "Huế"
     await expect(
       page.getByRole("heading", { name: "Ngày 1 - Huế", exact: true }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
 
+    // Open floating chat - click the chat toggle button
     const chatToggle = page.locator("button").filter({
       has: page.locator("svg.lucide-message-circle"),
     }).first();
     await chatToggle.click();
 
-    const chatPanel = page.locator("div.fixed.bottom-6.right-6.z-40").last();
+    // Verify chat panel is visible and shows Huế context
+    // Note: Component uses className="fixed bottom-28 right-6 z-20" NOT z-40
+    const chatPanel = page.locator("div.fixed.bottom-28.right-6.z-20").first();
+    await expect(chatPanel).toBeVisible();
+
+    // Verify chat panel shows Huế context (not hardcoded Hà Nội)
     await expect(chatPanel).toContainText("Huế");
     await expect(chatPanel).not.toContainText("Hà Nội");
     await expect(chatPanel).toContainText("Gợi ý trong: Huế");

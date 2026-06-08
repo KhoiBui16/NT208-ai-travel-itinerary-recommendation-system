@@ -44,10 +44,11 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 8. [AI Pipeline Flow](#8-ai-pipeline-flow)
 9. [Auth & Security Flow](#9-auth--security-flow)
 10. [Trạng thái Phase C](#10-trạng-thái-phase-c)
-11. [Quick Start](#11-quick-start)
-12. [Tests & Verification](#12-tests--verification)
-13. [ETL](#13-etl)
-14. [Cấu trúc thư mục](#14-cấu-trúc-thư-mục)
+11. [Tài liệu Documentation](#11-tài-liệu-documentation)
+12. [Quick Start](#12-quick-start)
+13. [Tests & Verification](#13-tests--verification)
+14. [ETL](#14-etl)
+15. [Cấu trúc thư mục](#15-cấu-trúc-thư-mục)
 15. [Team](#15-team)
 
 ---
@@ -1737,7 +1738,66 @@ POST /auth/reset-password {token, newPassword}
 
 ---
 
-## 11. Quick Start
+## 11. Tài liệu Documentation 📚
+
+> **📖 Documentation Index:** Xem [`docs/INDEX.md`](docs/INDEX.md) để xem danh sách đầy đủ **150 files documentation** với categorization và navigation guide.
+
+### Core Architecture Docs (Bắt buộc đọc)
+
+| Tài liệu | Mô tả | Khi nào đọc |
+|----------|--------|-------------|
+| [`01_overview.md`](docs/01_overview.md) | Entry point, reading order, invariant rules | **Đọc đầu tiên** |
+| [`02_architecture.md`](docs/02_architecture.md) | System architecture FE-BE-DB-Redis-AI | Understanding system design |
+| [`03_backend.md`](docs/03_backend.md) | Backend endpoints, services, repositories | Backend development |
+| [`04_frontend.md`](docs/04_frontend.md) | Frontend components, hooks, API client | Frontend development |
+| [`05_database_etl.md`](docs/05_database_etl.md) | Database ERD, Redis, ETL pipeline | Data layer understanding |
+| [`06_ai_roadmap.md`](docs/06_ai_roadmap.md) | Phase C AI architecture | AI feature planning |
+| [`07_workflow_ci.md`](docs/07_workflow_ci.md) | Branch/commit/PR format, CI/CD rules | Contributing |
+| [`08_testing_local_run.md`](docs/08_testing_local_run.md) | Local development and testing guide | Running tests |
+| [`09_execution_tracker.md`](docs/09_execution_tracker.md) | Task/branch/PR tracker | Project status |
+
+### Strategic Planning
+
+| Tài liệu | Mô tả |
+|----------|--------|
+| [`C3_C4_IMPLEMENTATION_PLAN.md`](docs/C3_C4_IMPLEMENTATION_PLAN.md) | Detailed C3/C4 implementation phases |
+| [`LOCAL_MANUAL_UAT_GUIDE.md`](docs/LOCAL_MANUAL_UAT_GUIDE.md) | PowerShell-safe manual UAT guide |
+| [`STAGING_DEPLOYMENT_GUIDE.md`](docs/STAGING_DEPLOYMENT_GUIDE.md) | Production deployment strategy |
+| [`USER_JOURNEY_UAT.md`](docs/USER_JOURNEY_UAT.md) | End-to-end user journey matrix |
+
+### Critical Reports (00060 Series)
+
+**Phase trước C3/C4 - Các reports quan trọng nhất:**
+
+| Report | Mô tả | Trạng thái |
+|--------|--------|------------|
+| [`00060b_architecture_c3_c4_readiness.md`](docs/REPORTS/00060b_architecture_c3_c4_readiness.md) | **KEY** C3/C4 go/no-go decision | ✅ Approved |
+| [`00060k_r2_full_testing_report.md`](docs/REPORTS/00060k_r2_full_testing_report.md) | Complete testing report | ✅ Complete |
+| [`00060k_r1_critical_data_fixes.md`](docs/REPORTS/00060k_r1_critical_data_fixes.md) | Bug #1, #3 fixes | ✅ Fixed |
+| [`00060i_real_user_smoke_critical_flow.md`](docs/REPORTS/00060i_real_user_smoke_critical_flow.md) | Critical user flow testing | ✅ Verified |
+
+### Issue Reports (Bugs & Plans)
+
+| Issue | Mô tả | Trạng thái |
+|-------|--------|------------|
+| [`issue_generated_accommodation_dayids_do_not_match_tripday_ids.md`](docs/REPORTS/ISSUES/issue_generated_accommodation_dayids_do_not_match_tripday_ids.md) | **Bug #1 (P0)** - Accommodation dayIds mismatch | ✅ FIXED |
+| [`issue_etl_place_image_pipeline_gap.md`](docs/REPORTS/ISSUES/issue_etl_place_image_pipeline_gap.md) | **Bug #2** - Place images empty (Goong API limitation) | ⏸️ Pending decision |
+| [`plan_00060_critical_data_fixes.md`](docs/REPORTS/ISSUES/plan_00060_critical_data_fixes.md) | **Bug #3 (P1)** - DB loader conflict update | ✅ FIXED |
+| [`explanation_option_c_admin_panel.md`](docs/REPORTS/ISSUES/explanation_option_c_admin_panel.md) | **Option C** - Admin Panel solution for Bug #2 | ✅ APPROVED |
+
+### Documentation Index
+
+📖 **[`docs/INDEX.md`](docs/INDEX.md)** - Navigation cho toàn bộ 150 .md files:
+- Core Architecture (13 files)
+- Strategic Planning (4 files)
+- Phase Reports (40+ files)
+- Numbered Series (00050-00060)
+- PR Descriptions (35+ files)
+- Issue Reports (45+ files)
+
+---
+
+## 12. Quick Start
 
 > 💡 **Local UAT guide:** Quy trình PowerShell-safe mới nhất nằm ở [`docs/LOCAL_MANUAL_UAT_GUIDE.md`](docs/LOCAL_MANUAL_UAT_GUIDE.md). User journey matrix nằm ở [`docs/USER_JOURNEY_UAT.md`](docs/USER_JOURNEY_UAT.md). Các lệnh human-facing dùng `localhost:<port>`; không ghi địa chỉ máy cá nhân vào docs/reports.
 >
@@ -1837,7 +1897,7 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 
 ---
 
-## 12. Tests & Verification
+## 13. Tests & Verification
 
 ### 12.1 Latest live UAT snapshot before C3A
 
@@ -1926,7 +1986,7 @@ npx playwright show-report
 
 ---
 
-## 13. ETL
+## 14. ETL
 
 > ETL pipeline nạp dữ liệu địa điểm từ Goong Maps API vào PostgreSQL. Đây là bước **bắt buộc** trước khi AI generate có thể hoạt động — pipeline cần ít nhất 6 places/destination để không trả 422.
 
@@ -2040,7 +2100,7 @@ docker compose exec api python -m src.etl
 
 ---
 
-## 14. Cấu trúc thư mục
+## 15. Cấu trúc thư mục
 
 ```
 NT208-ai-travel-itinerary-recommendation-system/

@@ -62,13 +62,23 @@ class GoongExtractor:
         return await self.client.place_detail(place_id)
 
     async def extract_pois(self, city: str, max_items: int = 75) -> list[dict[str, Any]]:
-        """Extract POIs for a city using Goong Autocomplete + Place Detail."""
+        """Extract POIs for a city using Goong Autocomplete + Place Detail.
+
+        Uses inter-request delays to avoid hitting Goong rate limits:
+        - 1.5s between keyword searches
+        - 0.5s between place detail calls
+        These delays are conservative to stay within Goong free tier quota.
+        """
+        import asyncio as _asyncio
+
         location = await self._city_bias_location(city)
         pois: list[dict[str, Any]] = []
         seen_place_ids: set[str] = set()
 
         for category, keywords in GOONG_CATEGORY_KEYWORDS.items():
             for keyword_template in keywords:
+                # Delay between keyword searches to avoid rate limiting
+                await _asyncio.sleep(1.5)
                 predictions = await self.autocomplete(
                     keyword_template.format(city=city), location=location
                 )
@@ -78,6 +88,8 @@ class GoongExtractor:
                         continue
                     seen_place_ids.add(place_id)
 
+                    # Delay before each place detail call
+                    await _asyncio.sleep(0.5)
                     detail = await self.place_detail(str(place_id))
                     raw_poi = self._build_raw_poi(
                         city=city,
