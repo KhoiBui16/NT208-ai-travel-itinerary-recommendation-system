@@ -27,7 +27,7 @@ from src.places.schemas import (
     SavedPlaceRequest,
     SavedPlaceResponse,
 )
-from src.shared.cache import CacheClient
+from src.shared.cache import CacheClient, normalize_cache_key
 from src.shared.service import BaseService
 
 logger = logging.getLogger(__name__)
@@ -138,8 +138,8 @@ class PlaceService(BaseService):
         Results are ordered by rating descending.
         Cache TTL: place_search_cache_ttl_seconds from settings.
         """
-        # Build cache key from all search parameters
-        cache_key = f"places:search:{query}:{city}:{category}:{limit}"
+        # Build normalized cache key from all search parameters
+        cache_key = normalize_cache_key("places", "search", query, city, category, limit)
 
         # Try cache first
         cached = await self.cache.get(cache_key)
