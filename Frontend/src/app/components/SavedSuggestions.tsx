@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Star, MapPin, Bookmark, Plus, Calendar, Clock } from "lucide-react";
 import { listSavedPlaces, unsavePlace } from "../services/places";
+import { findSavedPlaceByName, normalizeSavedPlaces } from "../utils/savedPlaces";
 export interface SavedSuggestion {
   id: string;
   name: string;
@@ -56,18 +57,18 @@ export function SavedSuggestions({
   useEffect(() => {
     if (!isOpen) return;
     listSavedPlaces().then((data) => {
-      const mapped: SavedPlace[] = data.map((p: any) => ({
-        id: String(p.id),
-        name: p.placeName || p.name,
-        type: p.placeType || "attraction",
-        rating: p.rating || 0,
+      const mapped: SavedPlace[] = normalizeSavedPlaces(data).map((p) => ({
+        id: String(p.savedId),
+        name: p.name,
+        type: p.category || "attraction",
+        rating: 0,
         reviewCount: 0,
         estimatedCost: "",
         priceLevel: "",
         image: p.image || "",
-        description: p.description || "",
-        address: p.city || "",
-        savedAt: p.savedAt || new Date().toISOString(),
+        description: "",
+        address: p.location || p.city || "",
+        savedAt: p.createdAt || new Date().toISOString(),
         isBookmarked: true,
       }));
       setSavedPlaces(mapped);
@@ -83,8 +84,8 @@ export function SavedSuggestions({
     setSavedPlaces((prev) => prev.filter((p) => p.name !== placeName));
     try {
       const savedList = await listSavedPlaces();
-      const match = savedList.find((p: any) => (p.placeName || p.name) === placeName);
-      if (match) await unsavePlace(match.id);
+      const match = findSavedPlaceByName(normalizeSavedPlaces(savedList), placeName);
+      if (match) await unsavePlace(match.savedId);
     } catch {
       // Revert handled by next open sync
     }

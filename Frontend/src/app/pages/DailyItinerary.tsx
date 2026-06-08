@@ -8,6 +8,7 @@ import { Suggestion, mockSuggestions } from "../data/suggestions";
 import { useAuth } from "../contexts/AuthContext";
 import { getItinerary } from "../services/itinerary";
 import { listSavedPlaces, savePlace, unsavePlace } from "../services/places";
+import { findSavedPlaceByName, normalizeSavedPlaces } from "../utils/savedPlaces";
 import {
   Plus,
   Sparkles,
@@ -150,10 +151,12 @@ export default function DailyItinerary() {
     // Load saved places from API
     if (isAuthenticated) {
       listSavedPlaces().then((data) => {
-        const savedNames = data.map((p: any) => p.placeName || p.name);
+        const savedNames = new Set(
+          normalizeSavedPlaces(data).map((p) => p.name),
+        );
         const matchedIds = mockSuggestions
-          .filter(s => savedNames.includes(s.name))
-          .map(s => s.id);
+          .filter((s) => savedNames.has(s.name))
+          .map((s) => s.id);
         setSavedSuggestions(matchedIds);
       }).catch(() => {});
     }
@@ -199,8 +202,8 @@ export default function DailyItinerary() {
     try {
       if (isAlreadySaved) {
         const savedList = await listSavedPlaces();
-        const match = savedList.find((p: any) => (p.placeName || p.name) === suggestion.name);
-        if (match) await unsavePlace(match.id);
+        const match = findSavedPlaceByName(normalizeSavedPlaces(savedList), suggestion.name);
+        if (match) await unsavePlace(match.savedId);
       } else {
         await savePlace(suggestion.id);
       }

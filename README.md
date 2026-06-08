@@ -1772,42 +1772,54 @@ Sau khi khởi động:
 - **API Docs (Swagger):** `http://localhost:8000/docs`
 - **Health check:** `http://localhost:8000/api/v1/health`
 
-### Cách 2 — Local Dev (không Docker)
+### Cách 2 — Local Dev (Windows PowerShell, khuyến nghị khi dev hàng ngày)
 
-**Yêu cầu:** Python 3.12+, Node.js 20+, PostgreSQL 16, Redis 7, `uv` package manager.
+**Yêu cầu:** Python 3.12+, Node.js 20+, Docker Desktop (cho PostgreSQL + Redis), `uv`, `npm`.
 
-#### Backend
+```powershell
+$ROOT = git rev-parse --show-toplevel
+Set-Location $ROOT
 
-```bash
-cd Backend
+# 1) DB + Redis
+docker compose up -d db redis
+docker compose ps
 
-# Cài dependencies
+# 2) Backend env (bắt buộc: JWT_SECRET_KEY; generate/ETL cần GEMINI_API_KEY + GOONG_API_KEY)
+Set-Location "$ROOT\Backend"
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 uv sync
-
-# Tạo .env
-cp .env.example .env
-# Chỉnh sửa DATABASE_URL, REDIS_URL, JWT_SECRET_KEY
-
-# Chạy migration
 uv run alembic upgrade head
 
-# Khởi động server
-uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+# 3) ETL — nạp địa điểm thật từ Goong (chạy lại sau khi sửa db_loader)
+uv run python -m src.etl --cities "Hà Nội" "TP. Hồ Chí Minh" "Đà Nẵng" "Hội An" "Huế" "Nha Trang" "Hạ Long" "Phú Quốc" "Sapa" "Đà Lạt"
+
+# 4) Terminal Backend
+$env:AGENT_TIMEOUT_SECONDS="120"
+uv run uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
+
+# 5) Terminal Frontend
+Set-Location "$ROOT\Frontend"
+npm ci
+$env:VITE_API_URL="http://127.0.0.1:8000"
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-#### Frontend
+**Sau khi chạy:**
+- Frontend: `http://127.0.0.1:5173`
+- Backend health: `http://127.0.0.1:8000/api/v1/health`
+- Swagger: `http://127.0.0.1:8000/docs`
 
-```bash
-cd Frontend
+**Lưu ý dữ liệu thật vs fallback:**
+- Places/hotels trong PostgreSQL là **nguồn thật** sau ETL Goong.
+- Goong Place Detail **không trả URL ảnh** — `places.image` có thể rỗng; FE dùng fallback có nhãn, không phải ảnh từ Goong.
+- Map tile Goong (`VITE_GOONG_MAP_KEY`) và companion chat C3 **chưa** implement.
 
-# Cài dependencies
-npm install
+#### Kiểm tra DB nhanh (sau ETL)
 
-# Tạo .env.local
-echo "VITE_API_URL=http://localhost:8000" > .env.local
-
-# Khởi động dev server
-npm run dev
+```powershell
+docker compose exec db psql -U postgres -d dulichviet -c "select d.name, count(p.id) places from destinations d left join places p on p.destination_id=d.id group by d.name order by d.name;"
+docker compose exec db psql -U postgres -d dulichviet -c "select max(id) latest_trip_id from trips;"
+docker compose exec db psql -U postgres -d dulichviet -c "select id, trip_id, day_ids from accommodations where trip_id = (select max(id) from trips);"
 ```
 
 #### Kiểm tra nhanh

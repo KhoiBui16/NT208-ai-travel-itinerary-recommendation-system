@@ -3,6 +3,7 @@
 import json
 from datetime import date, datetime
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -311,7 +312,34 @@ async def test_pipeline__persists_generated_trip_and_nulls_unknown_place() -> No
     assert trip.days[0].activities[1].place_id is None
     assert trip.days[0].activities[1].image == ""
     assert trip.accommodations[0].hotel_id == 1
+    assert trip.accommodations[0].day_ids == [11, 12]
     assert "5 to 5 activities" in llm.prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_pipeline__drops_invalid_accommodation_day_ids_and_logs_warning() -> None:
+    payload = _valid_ai_payload()
+    payload["accommodations"][0]["dayIds"] = [2, 99, 2, 0]
+
+    llm = FakeLLM([payload])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places()),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    with patch("src.itineraries.pipeline.logger.warning") as warning_mock:
+        trip = await pipeline.generate(_make_request(), user_id=None)
+
+    assert trip.accommodations[0].day_ids == [12]
+    warning_mock.assert_called_once()
+    _, kwargs = warning_mock.call_args
+    assert kwargs["trip_id"] == 1
+    assert kwargs["accommodation_name"] == "Hotel A"
+    assert kwargs["raw_day_ids"] == [2, 99, 2, 0]
+    assert kwargs["invalid_day_ids"] == [99, 0]
 
 
 @pytest.mark.asyncio

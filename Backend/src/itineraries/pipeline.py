@@ -422,8 +422,12 @@ class ItineraryPipeline:
             ai_generated=True,
         )
 
-        # Create days and activities (sorted by day_number for consistency)
-        for idx, day in enumerate(sorted(itinerary.days, key=lambda item: item.day_number)):
+        # Create days first and track both AI day number and generated order → TripDay.id mapping.
+        sorted_days = sorted(itinerary.days, key=lambda item: item.day_number)
+        days: list[Any] = []
+        day_number_to_id: dict[int, int] = {}
+        day_order_to_id: dict[int, int] = {}
+        for idx, day in enumerate(sorted_days):
             # Calculate the actual calendar date for this day
             trip_date = request.start_date + timedelta(days=idx)
 
@@ -434,6 +438,9 @@ class ItineraryPipeline:
                 date=trip_date.isoformat(),
                 destination_name=destination_name,
             )
+            days.append(trip_day)
+            day_number_to_id[day.day_number] = trip_day.id
+            day_order_to_id[idx + 1] = trip_day.id
 
             # Create activities for this day
             for order_index, activity in enumerate(day.activities):
@@ -463,10 +470,35 @@ class ItineraryPipeline:
                     order_index=order_index,
                 )
 
-        # Create accommodation records
+        # Create accommodation records, remapping AI day numbers to persisted TripDay IDs.
         for accommodation in itinerary.accommodations:
             # Validate hotel_id against context — only set if it's a known hotel
             hotel_id = accommodation.hotel_id if accommodation.hotel_id in hotel_ids else None
+
+            remapped_day_ids: list[int] = []
+            invalid_day_ids: list[int] = []
+            seen_day_ids: set[int] = set()
+            for raw_day_id in accommodation.day_ids:
+                db_day_id = day_number_to_id.get(raw_day_id) or day_order_to_id.get(raw_day_id)
+                if db_day_id is None:
+                    invalid_day_ids.append(raw_day_id)
+                    continue
+                if db_day_id in seen_day_ids:
+                    continue
+                remapped_day_ids.append(db_day_id)
+                seen_day_ids.add(db_day_id)
+
+            if invalid_day_ids:
+                logger.warning(
+                    "ai_generate_accommodation_invalid_day_ids",
+                    trip_id=trip.id,
+                    accommodation_name=accommodation.name,
+                    raw_day_ids=accommodation.day_ids,
+                    invalid_day_ids=invalid_day_ids,
+                    valid_day_numbers=sorted(day_number_to_id),
+                    persisted_day_ids=sorted(day_order_to_id.values()),
+                )
+
             await self.repo.add_accommodation(
                 trip_id=trip.id,
                 hotel_id=hotel_id,
@@ -477,7 +509,7 @@ class ItineraryPipeline:
                 total_price=accommodation.total_price,
                 booking_type=accommodation.booking_type,
                 duration=accommodation.duration,
-                day_ids=accommodation.day_ids,
+                day_ids=remapped_day_ids,
             )
 
         # Flush all inserts, then re-fetch with eager loading
