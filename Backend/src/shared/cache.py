@@ -36,7 +36,7 @@ def normalize_cache_key(*parts: str | None) -> str:
             normalized.append("None")
         else:
             # URL-encode to handle UTF-8 Vietnamese characters
-            encoded = urllib.parse.quote(str(part), safe='')
+            encoded = urllib.parse.quote(str(part), safe="")
             normalized.append(encoded)
     return ":".join(normalized)
 

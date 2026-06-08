@@ -21,11 +21,9 @@ DEFAULT_RATINGS: dict[str, float] = {
     # Attraction-based places get higher ratings (tourist value)
     "attraction": 4.2,
     "nature": 4.0,
-
     # Commercial places get moderate ratings
     "food": 3.8,
     "shopping": 3.7,
-
     # Entertainment gets baseline rating
     "entertainment": 3.9,
 }
