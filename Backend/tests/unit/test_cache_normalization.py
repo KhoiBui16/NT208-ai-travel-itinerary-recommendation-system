@@ -6,7 +6,7 @@ def test_normalize_cache_key_with_vietnamese():
     """Test cache key normalization handles Vietnamese characters properly."""
     # Test with "Hà Nội"
     result = normalize_cache_key("places", "search", None, "Hà Nội", None, 20)
-    expected = "places:search:None:H%E1%BB%8i%20N%E1%BB%99i:None:20"
+    expected = "places:search:None:H%C3%A0%20N%E1%BB%99i:None:20"
     assert result == expected, f"Expected {expected}, got {result}"
 
     # Test with "Đà Nẵng"
@@ -21,7 +21,9 @@ def test_normalize_cache_key_with_vietnamese():
 
     # Test with empty strings
     result = normalize_cache_key("places", "search", "", "", "", 20)
-    expected = "places:search:::20"
+    # Empty strings encode to empty, creating extra colons - this is correct behavior
+    # as it preserves the positional parameter structure
+    expected = "places:search::::20"
     assert result == expected
 
 

@@ -14,6 +14,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import text
 from sqlalchemy.sql import table, column
 
 # revision identifiers, used by Alembic.
@@ -30,16 +31,19 @@ def upgrade() -> None:
     connection = op.get_bind()
 
     # First, let's check how many accommodations are affected
-    check_query = """
+    # Note: day_ids is JSON type, so we need to properly extract and compare values
+    check_query = text("""
         SELECT COUNT(*)
         FROM accommodations a
         WHERE EXISTS (
             SELECT 1
             FROM trip_days td
             WHERE td.trip_id = a.trip_id
-              AND td.day_number = ANY(a.day_ids)
+              AND td.day_number IN (
+                  SELECT (jsonb_array_elements_text(a.day_ids::jsonb))::int
+              )
         )
-    """
+    """)
     result = connection.execute(check_query)
     affected_count = result.scalar()
 
@@ -49,9 +53,9 @@ def upgrade() -> None:
         print("No accommodations need fixing - migration complete")
         return
 
-    # Core fix logic: For each accommodation, remap day_ids from day_number to TripDay.id
+    # Core fix logic: For each accommodation, remap day_ids from day_number to TripDay ID
     # This handles the case where day_ids contains [1, 2] but should be [188, 189]
-    migration_query = """
+    migration_query = text("""
         UPDATE accommodations a
         SET day_ids = (
             SELECT jsonb_agg(trip_day_id)
@@ -59,7 +63,7 @@ def upgrade() -> None:
                 SELECT td.id as trip_day_id
                 FROM trip_days td
                 WHERE td.trip_id = a.trip_id
-                  AND td.day_number = ANY(
+                  AND td.day_number IN (
                       -- Extract day numbers from current day_ids JSON array
                       SELECT (jsonb_array_elements_text(a.day_ids::jsonb))::int
                   )
@@ -67,36 +71,38 @@ def upgrade() -> None:
             ) AS mapped_ids
         )
         WHERE a.day_ids IS NOT NULL
-          AND a.day_ids::jsonb != 'null'::jsonb
+          AND a.day_ids::text != 'null'
+          AND jsonb_array_length(a.day_ids::jsonb) > 0
           AND EXISTS (
               -- Only update if we have valid mappings
               SELECT 1
               FROM trip_days td
               WHERE td.trip_id = a.trip_id
-                AND td.day_number = ANY(
+                AND td.day_number IN (
                     SELECT (jsonb_array_elements_text(a.day_ids::jsonb))::int
                 )
           )
-    """
+    """)
 
     print("Executing migration query...")
     connection.execute(migration_query)
     print("Migration completed successfully")
 
     # Verification query - check if any accommodations still have invalid day_ids
-    verify_query = """
+    verify_query = text("""
         SELECT COUNT(*)
         FROM accommodations a
         WHERE a.day_ids IS NOT NULL
-          AND a.day_ids::jsonb != 'null'::jsonb
+          AND a.day_ids::text != 'null'
+          AND jsonb_array_length(a.day_ids::jsonb) > 0
           AND NOT EXISTS (
               SELECT 1
               FROM trip_days td
-              WHERE td.id = ANY(
+              WHERE td.id IN (
                   SELECT (jsonb_array_elements_text(a.day_ids::jsonb))::int
               )
           )
-    """
+    """)
     result = connection.execute(verify_query)
     broken_count = result.scalar()
 
@@ -120,7 +126,7 @@ def downgrade() -> None:
     # To rollback, we need to remap from TripDay.id back to day_number
     # Note: This is a best-effort rollback and may not be 100% accurate
     # if some accommodations already had correct IDs before migration
-    rollback_query = """
+    rollback_query = text("""
         UPDATE accommodations a
         SET day_ids = (
             SELECT jsonb_agg(day_number)
@@ -128,15 +134,16 @@ def downgrade() -> None:
                 SELECT td.day_number
                 FROM trip_days td
                 WHERE td.trip_id = a.trip_id
-                  AND td.id = ANY(
+                  AND td.id IN (
                       SELECT (jsonb_array_elements_text(a.day_ids::jsonb))::int
                   )
                 ORDER BY td.day_number
             ) AS day_numbers
         )
         WHERE a.day_ids IS NOT NULL
-          AND a.day_ids::jsonb != 'null'::jsonb
-    """
+          AND a.day_ids::text != 'null'
+          AND jsonb_array_length(a.day_ids::jsonb) > 0
+    """)
 
     print("Executing rollback - this may not restore exact original state...")
     connection.execute(rollback_query)
