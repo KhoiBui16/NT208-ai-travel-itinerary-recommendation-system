@@ -1,6 +1,4 @@
 """Unit tests for cache key normalization with Vietnamese characters."""
-
-import urllib.parse
 from src.shared.cache import normalize_cache_key
 
 

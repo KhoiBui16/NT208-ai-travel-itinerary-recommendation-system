@@ -6,7 +6,6 @@ quality ranking for place search and AI generate operations.
 """
 
 import logging
-from typing import Dict
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Default ratings by place category
 # These are conservative estimates to provide meaningful ranking
 # Admin can override these with manual ratings via admin endpoints
-DEFAULT_RATINGS: Dict[str, float] = {
+DEFAULT_RATINGS: dict[str, float] = {
     # Attraction-based places get higher ratings (tourist value)
     "attraction": 4.2,
     "nature": 4.0,
@@ -70,7 +69,7 @@ async def seed_default_ratings(
     return updated_count
 
 
-async def get_rating_statistics(session: AsyncSession) -> Dict[str, int]:
+async def get_rating_statistics(session: AsyncSession) -> dict[str, int]:
     """Get current rating distribution statistics.
 
     Args:
