@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { Header } from "../components/Header";
 import { Bookmark, MapPin, Clock, Star, Plus, Trash2, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
 import * as placesService from "../services/places";
 import { normalizeSavedPlaces, type NormalizedSavedPlace } from "../utils/savedPlaces";
@@ -60,6 +61,10 @@ export default function SavedPlaces() {
       setSavedLocations(mapped);
     }).catch(() => {
       setSavedLocations([]);
+      toast.error("Không thể tải danh sách địa điểm đã lưu. Vui lòng thử lại sau.", {
+        position: "top-right",
+        duration: 4000,
+      });
     });
   }, []);
 
@@ -69,10 +74,32 @@ export default function SavedPlaces() {
 
     if (place.isBookmarked === false) {
       // Re-save via API using the actual place ID
-      placesService.savePlace(place.placeId).catch(() => {});
+      placesService.savePlace(place.placeId).catch(() => {
+        // Revert UI
+        setSavedLocations((prev) =>
+          prev.map((loc) =>
+            loc.savedId === savedId ? { ...loc, isBookmarked: place.isBookmarked } : loc
+          )
+        );
+        toast.error("Không thể lưu địa điểm. Vui lòng thử lại sau.", {
+          position: "top-right",
+          duration: 4000,
+        });
+      });
     } else {
       // Unsave via API using the bookmark row ID (savedId, not placeId)
-      placesService.unsavePlace(savedId).catch(() => {});
+      placesService.unsavePlace(savedId).catch(() => {
+        // Revert UI
+        setSavedLocations((prev) =>
+          prev.map((loc) =>
+            loc.savedId === savedId ? { ...loc, isBookmarked: place.isBookmarked } : loc
+          )
+        );
+        toast.error("Không thể bỏ lưu địa điểm. Vui lòng thử lại sau.", {
+          position: "top-right",
+          duration: 4000,
+        });
+      });
     }
 
     setSavedLocations(prevLocations =>
@@ -84,7 +111,12 @@ export default function SavedPlaces() {
 
   const handleDelete = (savedId: number) => {
     // Always use savedId (bookmark row ID) for unsave, never placeId
-    placesService.unsavePlace(savedId).catch(() => {});
+    placesService.unsavePlace(savedId).catch(() => {
+      toast.error("Không thể xóa địa điểm. Vui lòng thử lại sau.", {
+        position: "top-right",
+        duration: 4000,
+      });
+    });
     const updated = savedLocations.filter(loc => loc.savedId !== savedId);
     setSavedLocations(updated);
   };

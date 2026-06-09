@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { Place, Day, Activity } from "../../types/trip.types";
 import { allPlaces } from "../../utils/tripConstants";
 import * as placesService from "../../services/places";
@@ -122,6 +123,10 @@ export const usePlacesManager = (
             day.id !== dayId ? day : { ...day, activities: day.activities.filter((a: Activity) => a.id !== act.id) }
           )
         );
+        toast.error("Không thể thêm gợi ý vào lịch trình. Vui lòng thử lại sau.", {
+          position: "top-right",
+          duration: 4000,
+        });
       });
     }
   };
