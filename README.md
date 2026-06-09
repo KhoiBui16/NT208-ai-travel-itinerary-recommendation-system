@@ -168,7 +168,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 
 > Sơ đồ dưới mô tả toàn bộ hệ thống từ góc nhìn tổng quan: người dùng tương tác với Frontend React, Frontend gọi REST API đến FastAPI Backend, Backend đọc/ghi PostgreSQL và dùng Redis để cache + rate-limit. ETL pipeline chạy độc lập để nạp dữ liệu địa điểm từ Goong Maps API vào DB. Gemini AI chỉ được gọi khi user yêu cầu sinh lịch trình.
 
-```mermaid
+<!-- mermaid
 graph TB
     subgraph Browser["👤 User (Browser)"]
         FE["React 18 + Vite 6 + TypeScript<br/>TailwindCSS + MUI + Radix UI<br/>27 pages · 8 protected routes"]
@@ -288,7 +288,7 @@ graph TB
 
 ### 4.1 Backend — Dependency Injection & Layer Boundary
 
-```mermaid
+<!-- mermaid
 graph LR
     subgraph Request["HTTP Request"]
         R["Router Function<br/>itineraries.py::add_activity()"]
@@ -331,7 +331,7 @@ graph LR
 
 ### 4.2 Backend — Domain Structure
 
-```mermaid
+<!-- mermaid
 graph TD
     subgraph MAIN["main.py — App Factory"]
         APP["FastAPI app<br/>mount /api/v1<br/>lifespan DB check"]
@@ -405,7 +405,7 @@ graph TD
 
 ### 4.3 Frontend — Component & Data Flow
 
-```mermaid
+<!-- mermaid
 graph TD
     subgraph APP["App.tsx"]
         EB["ErrorBoundary"]
@@ -468,7 +468,7 @@ graph TD
 
 ### 4.4 Optimistic Update Pattern (FE)
 
-```mermaid
+<!-- mermaid
 sequenceDiagram
     participant User
     participant Hook as useActivityManager
@@ -607,7 +607,7 @@ HTTP Request
 
 ### 5.1 ERD — Mermaid
 
-```mermaid
+<!-- mermaid
 erDiagram
     users {
         int id PK
@@ -1205,7 +1205,7 @@ Guest đăng nhập / đăng ký:
 
 ### 8.1 C.1 — Generate Itinerary (Mermaid)
 
-```mermaid
+<!-- mermaid
 sequenceDiagram
     participant User
     participant FE as CreateTrip.tsx
@@ -1294,7 +1294,7 @@ sequenceDiagram
 
 ### 8.2 C.2 — Suggestion Service (Mermaid)
 
-```mermaid
+<!-- mermaid
 flowchart TD
     A["GET /api/v1/agent/suggest/{activityId}?limit=5"] --> B["get_current_user() → Bearer required"]
     B --> C["SuggestionService.suggest_alternatives(activity_id, user_id, limit)"]
@@ -1426,7 +1426,7 @@ KEY: Chat KHÔNG TỰ PERSIST DB trước khi user confirm.
 
 ### 9.1 Register & Login Flow (Mermaid)
 
-```mermaid
+<!-- mermaid
 sequenceDiagram
     participant User
     participant FE as Frontend (AuthContext)
@@ -1474,7 +1474,7 @@ sequenceDiagram
 
 ### 9.2 Token Refresh Flow (Mermaid)
 
-```mermaid
+<!-- mermaid
 sequenceDiagram
     participant FE as Frontend (api.ts)
     participant BE as FastAPI
@@ -1514,7 +1514,7 @@ sequenceDiagram
 
 ### 9.3 Guest Claim Flow (Mermaid)
 
-```mermaid
+<!-- mermaid
 sequenceDiagram
     participant Guest as Guest User
     participant FE as Frontend
@@ -1992,7 +1992,7 @@ npx playwright show-report
 
 ### 13.1 ETL Pipeline Flow (Mermaid)
 
-```mermaid
+<!-- mermaid
 flowchart TD
     CLI["CLI: uv run python -m src.etl --cities 'Hà Nội'"]
     CLI --> RUNNER["runner.py — orchestrate per city"]
@@ -2168,10 +2168,9 @@ NT208-ai-travel-itinerary-recommendation-system/
 
 | Thành viên | MSSV | Vai trò |
 |---|---|---|
-| (Thành viên 1) | — | Backend, AI Pipeline, ETL |
-| (Thành viên 2) | — | Frontend, UI/UX |
-| (Thành viên 3) | — | Backend, Database, DevOps |
-| (Thành viên 4) | — | Frontend, Testing |
+| Nguyễn Bùi Khôi | — | Backend, AI Pipeline, ETL, Database |
+| Nguyễn Bùi Khôi | — | Frontend, UI/UX, Testing |
+| — | — | DevOps, CI/CD |
 
 > Cập nhật thông tin thành viên thực tế vào bảng trên.
 
