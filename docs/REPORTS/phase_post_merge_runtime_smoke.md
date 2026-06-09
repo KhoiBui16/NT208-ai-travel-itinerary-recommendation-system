@@ -19,11 +19,11 @@ docker compose up -d db redis
 cd Backend
 uv sync
 uv run alembic upgrade head
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8000
+uv run uvicorn src.main:app --host localhost --port 8000
 cd Frontend
 npm ci
-$env:VITE_API_URL="http://127.0.0.1:8000"
-npm run dev -- --host 127.0.0.1 --port 5173
+$env:VITE_API_URL="http://localhost:8000"
+npm run dev -- --host localhost --port 5173
 ```
 
 ## Kết Quả
@@ -34,7 +34,7 @@ npm run dev -- --host 127.0.0.1 --port 5173
 | Docker redis | Healthy, port 6379 |
 | Backend | Healthy, port 8000 |
 | Frontend | Running, port 5173 |
-| Vite API base | `VITE_API_URL=http://127.0.0.1:8000` |
+| Vite API base | `VITE_API_URL=http://localhost:8000` |
 | Browser smoke | Pass |
 
 ## Browser Evidence

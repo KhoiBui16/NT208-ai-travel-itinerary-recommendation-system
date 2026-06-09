@@ -33,12 +33,12 @@ uv run alembic upgrade head
 $env:AGENT_TIMEOUT_SECONDS="120"
 $env:AGENT_MIN_ACTIVITIES_PER_DAY="5"
 $env:AGENT_MAX_ACTIVITIES_PER_DAY="5"
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn src.main:app --host localhost --port 8000 --reload
 
 # Terminal 3: Frontend
 cd Frontend
-$env:VITE_API_URL="http://127.0.0.1:8000"
-npm run dev -- --host 127.0.0.1 --port 5173
+$env:VITE_API_URL="http://localhost:8000"
+npm run dev -- --host localhost --port 5173
 ```
 
 ### 2. Preflight Checklist
@@ -57,11 +57,11 @@ Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
   Select-Object LocalAddress,LocalPort,OwningProcess
 
 # Backend health
-curl.exe -i http://127.0.0.1:8000/api/v1/health
+curl.exe -i http://localhost:8000/api/v1/health
 
 # Verify Vite API base
-(Invoke-WebRequest -Uri "http://127.0.0.1:5173/src/app/services/api.ts" -UseBasicParsing).Content |
-  Select-String -Pattern "VITE_API_URL|127.0.0.1:8000|localhost:8000"
+(Invoke-WebRequest -Uri "http://localhost:5173/src/app/services/api.ts" -UseBasicParsing).Content |
+  Select-String -Pattern "VITE_API_URL|localhost:8000|localhost:8000"
 ```
 
 ---
@@ -74,7 +74,7 @@ curl.exe -i http://127.0.0.1:8000/api/v1/health
 
 **Steps:**
 1. Open browser (incognito)
-2. Navigate to `http://127.0.0.1:5173`
+2. Navigate to `http://localhost:5173`
 3. Capture pre-action screenshot
 4. Verify: Home page loads
 5. Check: Network requests (status codes)
@@ -881,8 +881,8 @@ For each test, use this template:
 
 #### Environment
 - Branch: `fix/00060-d-local-smoke-ux-data-fix`
-- Frontend: `http://127.0.0.1:5173`
-- Backend: `http://127.0.0.1:8000`
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:8000`
 - Docker services: db (Up), redis (Up)
 
 #### Screenshots

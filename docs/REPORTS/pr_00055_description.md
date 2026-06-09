@@ -18,8 +18,8 @@ Fullstack browser regression sau khi 00051/00052 đã merge. Mục tiêu là ki�
 
 ### Runtime
 
-- Backend: `http://127.0.0.1:8000`
-- Frontend: `http://127.0.0.1:5173`
+- Backend: `http://localhost:8000`
+- Frontend: `http://localhost:5173`
 
 ### Commands
 

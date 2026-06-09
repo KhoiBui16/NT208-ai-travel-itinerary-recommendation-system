@@ -105,10 +105,10 @@ get_current_user
 docker compose up -d db redis
 cd Backend
 uv run alembic upgrade head
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8020
+uv run uvicorn src.main:app --host localhost --port 8020
 
 # Sau khi login + có trip với activity id X:
-curl.exe -H "Authorization: Bearer <token>" http://127.0.0.1:8020/api/v1/agent/suggest/X
+curl.exe -H "Authorization: Bearer <token>" http://localhost:8020/api/v1/agent/suggest/X
 ```
 
 ## Endpoint count
