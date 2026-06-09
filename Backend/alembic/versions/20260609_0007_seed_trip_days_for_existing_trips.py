@@ -19,8 +19,8 @@ Safety:
 from collections.abc import Sequence
 from datetime import timedelta
 
+from alembic import op
 from sqlalchemy import text
-from sqlalchemy.engine import Connection
 
 # revision identifiers, used by Alembic.
 revision: str = "20260609_0007"
