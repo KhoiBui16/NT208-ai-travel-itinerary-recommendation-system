@@ -170,44 +170,80 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 
 ```mermaid
 graph TB
-    subgraph Browser["👤 User (Browser)"]
-        FE["React 18 + Vite 6 + TypeScript<br/>TailwindCSS + MUI + Radix UI<br/>27 pages · 8 protected routes"]
-        API_CLIENT["API Client Layer<br/>services/api.ts + auth/itinerary/places/users<br/>JWT Bearer injection · auto-refresh on 401<br/>Optimistic update · revert-on-failure"]
+    subgraph Browser["👤 Trình duyệt người dùng"]
+        FE["React Frontend<br/>Giao diện người dùng<br/>27 trang · 8 routes bảo vệ"]
+        API_CLIENT["Lớp API Client<br/>Gọi HTTP · Quản lý token<br/>Optimistic update UI"]
         FE --> API_CLIENT
     end
 
-    API_CLIENT -->|"HTTP REST<br/>JSON camelCase"| BACKEND
+    API_CLIENT -->|"Gửi API request<br/>JSON format"| BACKEND
 
-    subgraph BACKEND["FastAPI Backend (port 8000)"]
-        MW["Middleware Pipeline<br/>CORS → RequestLog → RateLimiter → ErrorHandler"]
-        ROUTER["Router Layer /api/v1/<br/>auth(6) · users(3) · itineraries(14) · places(7) · shared(1) · agent(1)"]
-        SERVICE["Service Layer<br/>AuthService · UserService · ItineraryService<br/>PlaceService · SuggestionService · ItineraryPipeline"]
-        REPO["Repository Layer<br/>UserRepo · TripRepo · PlaceRepo · TokenRepo"]
+    subgraph BACKEND["🖥️ Backend Server"]
+        MW["Middleware<br/>CORS · Logging · RateLimit · Errors"]
+        ROUTER["Router<br/>Phân tích request · Auth check<br/>Route đến handler"]
+        SERVICE["Service Layer<br/>Business Logic · Owner check<br/>AI Generate · CRUD"]
+        REPO["Repository Layer<br/>SQL queries · Database access<br/>Không có business logic"]
         MW --> ROUTER --> SERVICE --> REPO
     end
 
-    REPO -->|"async SQLAlchemy"| PG[("PostgreSQL 16<br/>15+ tables<br/>Alembic migrations")]
-    SERVICE -->|"Redis cache<br/>rate-limit"| REDIS[("Redis 7<br/>places cache TTL 30min<br/>destinations cache TTL 1h<br/>AI rate-limit keys")]
+    REPO -->|"Lưu/đọc dữ liệu"| PG[("PostgreSQL<br/>Database chính<br/>15+ bảng")]
+    SERVICE -->|"Cache · Rate limit"| REDIS[("Redis<br/>Cache · Rate limit<br/>TTL tự động")]
 
-    SERVICE -->|"Gemini API<br/>structured JSON output"| GEMINI["Google Gemini<br/>gemini-2.5-flash<br/>AI Generate only"]
+    SERVICE -->|"Gọi AI Generate"| GEMINI["Google Gemini AI<br/>Sinh lịch trình<br/>Structured JSON"]
 
-    subgraph ETL["Goong ETL (CLI runner)"]
-        GOONG_API["Goong Maps API<br/>autocomplete · place detail · geocode"]
-        TRANSFORM["Transformer<br/>normalize · deduplicate · map category"]
-        LOADER["DB Loader<br/>upsert destinations · places · hotels"]
+    subgraph ETL["🔄 ETL Pipeline"]
+        GOONG_API["Goong Maps API<br/>Nguồn dữ liệu<br/>Địa điểm Việt Nam"]
+        TRANSFORM["Transformer<br/>Chuẩn hóa · Deduplicate<br/>Map category"]
+        LOADER["DB Loader<br/>Upsert dữ liệu<br/>vào Database"]
         GOONG_API --> TRANSFORM --> LOADER
     end
 
-    LOADER -->|"upsert"| PG
-    LOADER -->|"invalidate cache"| REDIS
+    LOADER -->|"Lưu data"| PG
+    LOADER -->|"Xóa cache cũ"| REDIS
 ```
 
-**Giải thích luồng chính:**
-- **FE → BE:** Mọi request đều qua API Client Layer — tự động inject Bearer token, tự refresh khi 401, optimistic update UI trước khi API confirm.
-- **BE layers:** Router chỉ parse/route, Service chứa business logic (owner check, rate limit), Repository chỉ query DB.
-- **Redis:** Cache places/destinations (fail-open — Redis down thì query DB), rate-limit AI (fail-closed — Redis down thì block).
-- **Gemini:** Chỉ được gọi từ `ItineraryPipeline` khi user generate lịch trình, không gọi từ suggestion service.
-- **ETL:** Chạy độc lập qua CLI, không phụ thuộc vào app server.
+**Luồng chi tiết theo từng bước:**
+
+**Bước 1: Người dùng tương tác với Frontend**
+- User mở browser và truy cập ứng dụng React
+- Frontend render 27 pages với 8 protected routes
+- Các thao tác trên UI (click, submit form, v.v.) trigger actions
+
+**Bước 2: API Client Layer xử lý request**
+- Tự động inject JWT Bearer token vào mọi request
+- Tự động refresh token khi nhận 401 Unauthorized
+- Optimistic update UI ngay lập tức trước khi API confirm
+- Nếu API fail, revert UI về state trước đó
+
+**Bước 3: Backend nhận và xử lý request**
+- **Middleware Pipeline:** CORS → RequestLog → RateLimiter → ErrorHandler
+- **Router Layer:** Parse request, auth dependency injection, route đến handler phù hợp
+- **Service Layer:** 
+  - AuthService: Xử lý đăng ký/đăng nhập/refresh token
+  - ItineraryService: CRUD trip, generate AI, share/claim
+  - PlaceService: Tìm kiếm, cache places/destinations
+  - SuggestionService: Gợi ý địa điểm (DB-only, không LLM)
+- **Repository Layer:** Thực thi SQL queries, không chứa business logic
+
+**Bước 4: Tương tác với Database và Cache**
+- **PostgreSQL:** Lưu trữ persistently (users, trips, places, destinations, v.v.)
+- **Redis:** 
+  - Cache places/destinations (TTL 30min-1h, fail-open nếu down)
+  - Rate-limit AI (fail-closed nếu down - block request)
+- **Gemini AI:** Chỉ gọi khi user generate itinerary, không dùng cho suggestions
+
+**Bước 5: ETL Pipeline nạp dữ liệu (chạy độc lập)**
+- Goong Maps API cung cấp dữ liệu địa điểm
+- Transformer normalize và deduplicate dữ liệu
+- DB Loader upsert vào PostgreSQL
+- Redis cache bị invalidate sau ETL
+
+**Kiến trúc quan trọng:**
+- **FE → BE:** HTTP REST, JSON camelCase format
+- **BE → DB:** Async SQLAlchemy, non-blocking
+- **Redis:** Dual role - cache (fail-open) và rate-limit (fail-closed)
+- **AI:** Isolated - chỉ cho generate, không cho suggestions
+- **ETL:** Decoupled - chạy CLI riêng, không phụ thuộc app server
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -1207,90 +1243,151 @@ Guest đăng nhập / đăng ký:
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant FE as CreateTrip.tsx
-    participant BE as FastAPI Router
-    participant RL as RateLimiter (Redis)
-    participant SVC as ItineraryService
-    participant PIPE as ItineraryPipeline
-    participant REPO as TripRepository
-    participant DB as PostgreSQL
-    participant LLM as Gemini API
+    participant User as 👤 Người dùng
+    participant FE as Frontend<br/>CreateTrip Page
+    participant BE as Backend<br/>FastAPI Router
+    participant RL as Rate Limiter<br/>Redis Quota Check
+    participant SVC as Itinerary Service<br/>Business Logic
+    participant PIPE as AI Pipeline<br/>Generate Logic
+    participant REPO as Trip Repository<br/>Database Queries
+    participant DB as PostgreSQL<br/>Data Storage
+    participant LLM as Gemini AI<br/>LLM Provider
 
-    User->>FE: Điền form (destination, dates, budget, interests)
+    User->>FE: Nhập thông tin chuyến đi
+    Note over User: Điểm đến · Ngày · Ngân sách · Sở thích
     FE->>BE: POST /api/v1/itineraries/generate
-    BE->>RL: enforce_ai_limit(user_id) hoặc enforce_ai_guest_limit(ip+ua)
+    BE->>RL: Kiểm tra quota AI
 
-    alt Rate limit exceeded
+    alt Quota exceeded (vượt giới hạn)
         RL-->>BE: RateLimitException (429)
-        BE-->>FE: 429 + message hướng dẫn đăng ký
-    else Redis down
-        RL-->>BE: ServiceUnavailableException (503) — fail-closed
-        BE-->>FE: 503
-    else OK
-        RL-->>BE: pass
+        BE-->>FE: 429 Quá hạn - Đề nghị đăng ký
+    else Redis unavailable
+        RL-->>BE: ServiceUnavailable (503)
+        BE-->>FE: 503 Dịch vụ tạm thời unavailable
+    else Quota OK (trong giới hạn)
+        RL-->>BE: Pass - Cho phép tiếp tục
         BE->>SVC: generate(request, user_id)
-        SVC->>PIPE: generate(request, user_id)
+        SVC->>PIPE: Khởi động AI pipeline
 
-        PIPE->>REPO: resolve_destination_for_ai(destination)
-        Note over REPO: 1. exact match<br/>2. slug match (ha-noi)<br/>3. fuzzy ILIKE
+        PIPE->>REPO: Tìm destination trong DB
+        Note over REPO: 1. Exact match (tên chính xác)<br/>2. Slug match (ha-noi)<br/>3. Fuzzy search (gần đúng)
         REPO->>DB: SELECT destinations WHERE ...
-        DB-->>REPO: Destination row
+        DB-->>REPO: Destination data
 
-        alt Destination not found
+        alt Destination NOT FOUND
             PIPE-->>SVC: ValidationException (422)
-            SVC-->>FE: 422 "Destination data not found"
-        else Found
-            PIPE->>REPO: search_places_for_ai(dest_id, categories, limit=15)
-            REPO->>DB: SELECT places ORDER BY rating DESC
-            DB-->>REPO: list[Place]
+            SVC-->>FE: 422 Không tìm thấy destination
+        else Destination FOUND
+            PIPE->>REPO: Lấy places cho destination
+            Note over REPO: Lấy tối đa 15 places<br/>Sắp xếp theo rating DESC
+            REPO->>DB: SELECT places ORDER BY rating
+            DB-->>REPO: Danh sách places
 
-            alt Not enough places (< min_required)
+            alt Not enough places (< 6 places)
                 PIPE-->>SVC: ValidationException (422)
-                SVC-->>FE: 422 "Not enough destination places"
-            else Enough context
-                PIPE->>REPO: get_hotels_for_ai(dest_id, limit=4)
-                DB-->>REPO: list[Hotel]
+                SVC-->>FE: 422 Không đủ dữ liệu destination
+            else Enough data (>= 6 places)
+                PIPE->>REPO: Lấy hotels cho destination
+                DB-->>REPO: Danh sách hotels
 
-                loop Max 3 attempts (2 retries)
-                    PIPE->>LLM: generate_text(prompt with context)
-                    LLM-->>PIPE: raw JSON text
+                loop Retry tối đa 3 lần (nếu LLM fail)
+                    PIPE->>LLM: Gửi prompt + context
+                    Note over PIPE: Prompt chứa: destination, places, hotels,<br/>dates, budget, interests
+                    LLM-->>PIPE: Trả về JSON text
 
-                    PIPE->>PIPE: parse_json_response(raw)
-                    PIPE->>PIPE: AgentItinerary.model_validate(payload)
-                    PIPE->>PIPE: _validate_itinerary(itinerary, request)
+                    PIPE->>PIPE: Parse JSON response
+                    PIPE->>PIPE: Validate với Pydantic schema
+                    PIPE->>PIPE: Validate với business rules
 
-                    alt Validation pass
-                        Note over PIPE: Break retry loop
-                    else Validation fail
-                        Note over PIPE: Build error feedback → retry
+                    alt Validation PASS
+                        Note over PIPE: Dữ liệu hợp lệ - Break loop
+                    else Validation FAIL
+                        Note over PIPE: Thử lại với error feedback
                     end
                 end
 
-                PIPE->>REPO: create_trip + add_days + add_activities + add_accommodations
-                REPO->>DB: INSERT trips, trip_days, activities, accommodations
-                DB-->>REPO: Trip with full data
+                PIPE->>REPO: Lưu trip + days + activities + hotels
+                REPO->>DB: INSERT vào database
 
-                alt Guest user
-                    SVC->>REPO: create_claim_token(trip_id)
-                    REPO->>DB: INSERT guest_claim_tokens
+                alt Guest user (chưa đăng nhập)
+                    SVC->>REPO: Tạo claim token
                     SVC-->>FE: ItineraryResponse + claimToken
-                else Auth user
+                else Auth user (đã đăng nhập)
                     SVC-->>FE: ItineraryResponse
                 end
 
-                FE->>FE: navigate /trip-workspace?tripId={id}
+                FE->>FE: Navigate to TripWorkspace
+                Note over FE: Redirect đến /trip-workspace?tripId=ID
             end
         end
     end
 ```
 
-#### Ý nghĩa luồng
+#### Luồng chi tiết AI Generate Pipeline
 
-- Generate pipeline đi qua đầy đủ các chốt quan trọng: validate input, rate-limit Redis, resolve destination, lấy recommendation context từ DB, rồi mới gọi Gemini.
-- `422`, `429`, và `503` đều được tách rõ ở tầng service/pipeline để FE có thể hiển thị UX cụ thể thay vì lỗi mơ hồ.
-- Guest generate chỉ khác auth flow ở bước phát hành `claimToken`; core AI pipeline vẫn dùng chung.
-- `C3A` không được chạm vào luồng này ngoài việc cùng sống an toàn bên trong `TripWorkspace` sau khi generate xong.
+**Bước 1: Người dùng nhập thông tin chuyến đi**
+- Nhập destination (Hà Nội, Đà Nẵng, v.v.)
+- Chọn ngày bắt đầu và kết thúc
+- Thiết lập ngân sách cho chuyến đi
+- Chọn số người (người lớn, trẻ em)
+- Chọn sở thích (food, culture, nature, v.v.)
+
+**Bước 2: Frontend gửi request đến Backend**
+- FE call POST /api/v1/itineraries/generate
+- Gửi kèm toàn bộ thông tin người dùng vừa nhập
+- Request được định dạng JSON camelCase
+
+**Bước 3: Backend kiểm tra Rate Limit**
+- Kiểm tra quota AI trong Redis
+- **Auth user:** 5 trips/ngày, key: `rate:ai:user:{id}:{YYYYMMDD}`
+- **Guest user:** 3 trips/ngày, key: `rate:ai:guest:{hash}:{YYYYMMDD}`
+- Nếu vượt giới hạn → return 429 với message gợi ý đăng ký
+- Nếu Redis down → return 503 (fail-closed, không bypass)
+
+**Bước 4: Resolve Destination từ Database**
+- Tìm destination theo 3 cách (từ chính xác → gần đúng):
+  1. Exact match: "Hà Nội" → "Hà Nội"
+  2. Slug match: "Ha Noi" → slug "ha-noi" → "Hà Nội"
+  3. Fuzzy ILIKE: "hà nôi" → ILIKE "%hà nôi%"
+- Nếu không tìm thấy → return 422 "Destination data not found"
+
+**Bước 5: Lấy Recommendation Context**
+- Lấy tối đa 15 places từ destination, sắp xếp theo rating DESC
+- Lấy tối đa 4 hotels từ destination
+- Nếu places < 6 → return 422 "Not enough destination places"
+- Context này dùng để build prompt cho Gemini (không hallucinate)
+
+**Bước 6: Gọi Gemini AI Generate**
+- Gửi prompt chứa: destination, places, hotels, dates, budget, interests
+- Yêu cầu Gemini trả về structured JSON (schema đã định nghĩa)
+- Retry tối đa 3 lần nếu parse/validate fail
+- Mỗi lần retry có error feedback để Gemini cải thiện
+
+**Bước 7: Validate và Persist**
+- Parse JSON response từ Gemini
+- Validate với Pydantic schema (AgentItinerary)
+- Validate với business rules (số days, activities per day, v.v.)
+- Nếu validation pass → lưu vào database:
+  - INSERT trips
+  - INSERT trip_days
+  - INSERT activities
+  - INSERT accommodations
+
+**Bước 8: Xử lý Guest vs Auth User**
+- **Auth user:** Return ItineraryResponse với trip data
+- **Guest user:** Return ItineraryResponse + claimToken
+  - claimToken dùng để claim về account sau khi đăng nhập
+  - Token lưu trong sessionStorage (pendingClaim)
+
+**Bước 9: Navigate đến TripWorkspace**
+- FE redirect đến /trip-workspace?tripId={id}
+- User có thể xem/chỉnh sửa lịch trình vừa sinh
+
+**Quan trọng:**
+- Generate pipeline KHÔNG gọi Gemini cho suggestions (C.2) - chỉ cho C.1
+- Guest và Auth user dùng chung pipeline, chỉ khác ở claimToken
+- `C3A` (companion chat) không chạm vào pipeline này
+- Rate limit fail-closed: Redis down → block AI requests
 
 ### 8.2 C.2 — Suggestion Service (Mermaid)
 
@@ -1855,19 +1952,19 @@ uv run python -m src.etl --cities "Hà Nội" "TP. Hồ Chí Minh" "Đà Nẵng"
 
 # 4) Terminal Backend
 $env:AGENT_TIMEOUT_SECONDS="120"
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn src.main:app --host localhost --port 8000 --reload
 
 # 5) Terminal Frontend
 Set-Location "$ROOT\Frontend"
 npm ci
-$env:VITE_API_URL="http://127.0.0.1:8000"
-npm run dev -- --host 127.0.0.1 --port 5173
+$env:VITE_API_URL="http://localhost:8000"
+npm run dev -- --host localhost --port 5173
 ```
 
 **Sau khi chạy:**
-- Frontend: `http://127.0.0.1:5173`
-- Backend health: `http://127.0.0.1:8000/api/v1/health`
-- Swagger: `http://127.0.0.1:8000/docs`
+- Frontend: `http://localhost:5173`
+- Backend health: `http://localhost:8000/api/v1/health`
+- Swagger: `http://localhost:8000/docs`
 
 **Lưu ý dữ liệu thật vs fallback:**
 - Places/hotels trong PostgreSQL là **nguồn thật** sau ETL Goong.
