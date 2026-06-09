@@ -168,7 +168,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 
 > Sơ đồ dưới mô tả toàn bộ hệ thống từ góc nhìn tổng quan: người dùng tương tác với Frontend React, Frontend gọi REST API đến FastAPI Backend, Backend đọc/ghi PostgreSQL và dùng Redis để cache + rate-limit. ETL pipeline chạy độc lập để nạp dữ liệu địa điểm từ Goong Maps API vào DB. Gemini AI chỉ được gọi khi user yêu cầu sinh lịch trình.
 
-<!-- mermaid
+```mermaid
 graph TB
     subgraph Browser["👤 User (Browser)"]
         FE["React 18 + Vite 6 + TypeScript<br/>TailwindCSS + MUI + Radix UI<br/>27 pages · 8 protected routes"]
@@ -288,7 +288,7 @@ graph TB
 
 ### 4.1 Backend — Dependency Injection & Layer Boundary
 
-<!-- mermaid
+```mermaid
 graph LR
     subgraph Request["HTTP Request"]
         R["Router Function<br/>itineraries.py::add_activity()"]
@@ -301,7 +301,7 @@ graph LR
     end
 
     subgraph SVC["Service Layer"]
-        S["ItineraryService(session)<br/>• owner check: trip.user_id == user.id<br/>• business validation<br/>• orchestrate repo calls"]
+        S["ItineraryService(session)<br/>• owner check: trip.user_id equals user.id<br/>• business validation<br/>• orchestrate repo calls"]
     end
 
     subgraph REPO["Repository Layer"]
@@ -331,7 +331,7 @@ graph LR
 
 ### 4.2 Backend — Domain Structure
 
-<!-- mermaid
+```mermaid
 graph TD
     subgraph MAIN["main.py — App Factory"]
         APP["FastAPI app<br/>mount /api/v1<br/>lifespan DB check"]
@@ -405,7 +405,7 @@ graph TD
 
 ### 4.3 Frontend — Component & Data Flow
 
-<!-- mermaid
+```mermaid
 graph TD
     subgraph APP["App.tsx"]
         EB["ErrorBoundary"]
@@ -468,7 +468,7 @@ graph TD
 
 ### 4.4 Optimistic Update Pattern (FE)
 
-<!-- mermaid
+```mermaid
 sequenceDiagram
     participant User
     participant Hook as useActivityManager
@@ -479,7 +479,7 @@ sequenceDiagram
     User->>Hook: deleteActivity(activityId)
     Hook->>UI: setDays(daysWithoutActivity) ← optimistic
     Note over UI: UI cập nhật ngay lập tức
-    Hook->>API: DELETE /itineraries/{id}/activities/{actId}
+    Hook->>API: DELETE /itineraries/ID/activities/actID
     API->>BE: HTTP DELETE request
 
     alt API success
@@ -607,7 +607,7 @@ HTTP Request
 
 ### 5.1 ERD — Mermaid
 
-<!-- mermaid
+```mermaid
 erDiagram
     users {
         int id PK
@@ -1205,7 +1205,7 @@ Guest đăng nhập / đăng ký:
 
 ### 8.1 C.1 — Generate Itinerary (Mermaid)
 
-<!-- mermaid
+```mermaid
 sequenceDiagram
     participant User
     participant FE as CreateTrip.tsx
@@ -1294,22 +1294,22 @@ sequenceDiagram
 
 ### 8.2 C.2 — Suggestion Service (Mermaid)
 
-<!-- mermaid
+```mermaid
 flowchart TD
-    A["GET /api/v1/agent/suggest/{activityId}?limit=5"] --> B["get_current_user() → Bearer required"]
-    B --> C["SuggestionService.suggest_alternatives(activity_id, user_id, limit)"]
-    C --> D["TripRepository.get_activity_with_trip(activity_id)"]
-    D --> E{Activity found?}
+    A["GET suggest endpoint"] --> B["get_current_user - Bearer required"]
+    B --> C["SuggestionService.suggest_alternatives"]
+    C --> D["TripRepository.get_activity_with_trip"]
+    D --> E{"Activity found?"}
     E -->|No| F["NotFoundException 404"]
-    E -->|Yes| G{trip.user_id == user.id?}
+    E -->|Yes| G{"trip.user_id equals user_id?"}
     G -->|No| H["ForbiddenException 403"]
-    G -->|Yes| I["PlaceRepository.get_destination_by_name(trip.destination)"]
-    I --> J{Destination found?}
-    J -->|No| K["Return SuggestionResponse(suggestions=[])"]
-    J -->|Yes| L["TripRepository.get_place_ids_in_trip(trip_id)"]
-    L --> M["PlaceRepository.find_alternatives(dest_id, category, exclude_ids, limit)"]
-    M --> N["SELECT places WHERE dest=? AND category=? AND id NOT IN exclude<br/>ORDER BY rating DESC, review_count DESC<br/>LIMIT limit"]
-    N --> O["Return SuggestionResponse(activityId, currentName, suggestions[])"]
+    G -->|Yes| I["PlaceRepository.get_destination_by_name"]
+    I --> J{"Destination found?"}
+    J -->|No| K["Return empty suggestions array"]
+    J -->|Yes| L["TripRepository.get_place_ids_in_trip"]
+    L --> M["PlaceRepository.find_alternatives"]
+    M --> N["Query places by dest and category<br/>exclude trip places<br/>order by rating DESC"]
+    N --> O["Return SuggestionResponse"]
 
     style F fill:#ff6b6b
     style H fill:#ff6b6b
@@ -1426,7 +1426,7 @@ KEY: Chat KHÔNG TỰ PERSIST DB trước khi user confirm.
 
 ### 9.1 Register & Login Flow (Mermaid)
 
-<!-- mermaid
+```mermaid
 sequenceDiagram
     participant User
     participant FE as Frontend (AuthContext)
@@ -1474,7 +1474,7 @@ sequenceDiagram
 
 ### 9.2 Token Refresh Flow (Mermaid)
 
-<!-- mermaid
+```mermaid
 sequenceDiagram
     participant FE as Frontend (api.ts)
     participant BE as FastAPI
@@ -1514,7 +1514,7 @@ sequenceDiagram
 
 ### 9.3 Guest Claim Flow (Mermaid)
 
-<!-- mermaid
+```mermaid
 sequenceDiagram
     participant Guest as Guest User
     participant FE as Frontend
@@ -1992,7 +1992,7 @@ npx playwright show-report
 
 ### 13.1 ETL Pipeline Flow (Mermaid)
 
-<!-- mermaid
+```mermaid
 flowchart TD
     CLI["CLI: uv run python -m src.etl --cities 'Hà Nội'"]
     CLI --> RUNNER["runner.py — orchestrate per city"]
