@@ -2162,17 +2162,16 @@ NT208-ai-travel-itinerary-recommendation-system/
 
 ---
 
-## 15. Team
+## 16. Team
 
 **NT208 — Web Programming · UIT 2023.2**
 
 | Thành viên | MSSV | Vai trò |
 |---|---|---|
-| Nguyễn Bùi Khôi | — | Backend, AI Pipeline, ETL, Database |
-| Nguyễn Bùi Khôi | — | Frontend, UI/UX, Testing |
-| — | — | DevOps, CI/CD |
-
-> Cập nhật thông tin thành viên thực tế vào bảng trên.
+| Bùi Nhật Anh Khôi | — | Leader, Backend, AI |
+| Dương Đăng Chính | — | Frontend |
+| Lê Văn Chí | — | Backend |
+| Nguyễn Hữu Chiến | — | Backend |
 
 ---
 

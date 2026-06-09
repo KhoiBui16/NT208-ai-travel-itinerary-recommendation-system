@@ -46,6 +46,7 @@ Frontend/dist/
 Frontend/dist_ci/
 Frontend/test-results/
 Frontend/.build-tmp/
+Frontend/.build-tmpverify*/
 Frontend/playwright-report/
 
 # Claude local-only settings
