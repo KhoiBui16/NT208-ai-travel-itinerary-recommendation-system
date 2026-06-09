@@ -98,10 +98,13 @@ class PlaceService(BaseService):
         if cached is not None:
             return json.loads(cached)
 
-        # Resolve destination — try name first, then slug
+        # Resolve destination — try name first, then slug, then fuzzy match
         dest = await self.repo.get_destination_by_name(name)
         if not dest:
             dest = await self.repo.get_destination_by_slug(name)
+        if not dest:
+            # BUG-BE-003 fix: Add fuzzy fallback (similar to AI pipeline resolution)
+            dest = await self.repo.get_destination_by_fuzzy(name)
         if not dest:
             raise NotFoundException("Destination not found")
 

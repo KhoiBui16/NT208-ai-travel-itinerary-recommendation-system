@@ -176,6 +176,10 @@ class ItineraryService(BaseService):
             trip.trip_name = data.trip_name
         if data.budget is not None:
             trip.budget = data.budget
+        # BUG-BE-001 fix: Update traveler count if provided
+        if data.traveler_info is not None:
+            trip.adults_count = data.traveler_info.adults
+            trip.children_count = data.traveler_info.children
 
         # Step 2: Sync days + activities (diff logic — handles create/update/delete)
         if data.days is not None:
@@ -705,9 +709,20 @@ class ItineraryService(BaseService):
         """Convert Activity ORM to ActivitySchema without triggering lazy loads.
 
         Used for single-activity CRUD responses where we don't need to
-        load the full trip tree. Extra expenses are returned as empty list
-        to avoid N+1 queries.
+        load the full trip tree. BUG-BE-002 fix: Serialize actual extra_expenses.
         """
+        # Serialize extra_expenses if they exist (may be unloaded, that's okay)
+        # If relationship is not loaded, accessing it will return empty list due to
+        # SQLAlchemy default behavior for unloaded relationships
+        extra_expenses_list = (
+            [
+                ExtraExpenseSchema(id=e.id, name=e.name, amount=e.amount, category=e.category)
+                for e in activity.extra_expenses
+            ]
+            if activity.extra_expenses
+            else []
+        )
+
         return ActivitySchema(
             id=activity.id,
             name=activity.name,
@@ -723,7 +738,7 @@ class ItineraryService(BaseService):
             custom_cost=activity.custom_cost,
             bus_ticket_price=activity.bus_ticket_price,
             taxi_cost=activity.taxi_cost,
-            extra_expenses=[],
+            extra_expenses=extra_expenses_list,  # BUG-BE-002 fix: use actual data
         )
 
     async def _to_response(self, trip: Trip) -> ItineraryResponse:

@@ -92,8 +92,25 @@ class PlaceRepository:
         return result.scalar_one_or_none()
 
     async def get_destination_by_name(self, name: str) -> Destination | None:
-        """Look up a destination by its exact display name."""
-        stmt = select(Destination).where(Destination.name == name)
+        """Look up a destination by its display name (case-insensitive).
+
+        BUG-BE-003 fix: Changed from exact match to case-insensitive match
+        to handle variations like "Ha Noi" vs "Hà Nội".
+        """
+        from sqlalchemy import func
+
+        stmt = select(Destination).where(func.lower(Destination.name) == func.lower(name))
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_destination_by_fuzzy(self, name: str) -> Destination | None:
+        """Fuzzy match destination name using ILIKE (BUG-BE-003 fix)."""
+        stmt = (
+            select(Destination)
+            .where(Destination.name.ilike(f"%{name}%"))
+            .order_by(Destination.places_count.desc().nulls_last())
+            .limit(1)
+        )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 

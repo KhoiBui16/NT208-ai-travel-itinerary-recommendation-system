@@ -348,20 +348,34 @@ class TripRepository:
         """Insert a new Activity row.
 
         Flushes and refreshes to get the generated ID and server defaults.
+        Also eager-loads extra_expenses relationship for schema conversion.
         """
         activity = Activity(**kwargs)  # type: ignore[arg-type]
         self.session.add(activity)
         await self.session.flush()
         await self.session.refresh(activity)
+        # Eager-load extra_expenses to avoid lazy-load in sync context (PR #86 fix)
+        await self.session.refresh(
+            activity,
+            attribute_names=["extra_expenses"],
+        )
         return activity
 
     async def update_activity(self, activity: Activity, **kwargs: object) -> Activity:
-        """Update activity fields from keyword arguments (skip None values)."""
+        """Update activity fields from keyword arguments (skip None values).
+
+        Also eager-loads extra_expenses relationship after refresh for schema conversion.
+        """
         for key, value in kwargs.items():
             if value is not None:
                 setattr(activity, key, value)
         await self.session.flush()
         await self.session.refresh(activity)
+        # Eager-load extra_expenses to avoid lazy-load in sync context (PR #86 fix)
+        await self.session.refresh(
+            activity,
+            attribute_names=["extra_expenses"],
+        )
         return activity
 
     async def delete_activity(self, activity: Activity) -> None:

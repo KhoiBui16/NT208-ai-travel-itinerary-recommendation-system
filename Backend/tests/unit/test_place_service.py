@@ -155,6 +155,7 @@ async def test_get_destination_detail__not_found(
     mock_redis.get.return_value = None
     mock_repo.get_destination_by_name.return_value = None
     mock_repo.get_destination_by_slug.return_value = None
+    mock_repo.get_destination_by_fuzzy.return_value = None  # BUG-BE-003: Mock new fuzzy method
 
     with pytest.raises(NotFoundException):
         await service.get_destination_detail("nonexistent")

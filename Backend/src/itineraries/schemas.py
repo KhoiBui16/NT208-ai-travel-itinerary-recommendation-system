@@ -213,6 +213,7 @@ class UpdateTripRequest(CamelCaseModel):
 
     trip_name: str | None = None  # Updated trip title
     budget: int | None = Field(default=None, gt=0)  # Updated budget in VND
+    traveler_info: TravelerInfo | None = None  # Updated traveler count (BUG-BE-001 fix)
     days: list[DaySchema] | None = None  # Full day structure for diff/sync
     accommodations: list[AccommodationSchema] | None = None  # Full accommodation list
 
