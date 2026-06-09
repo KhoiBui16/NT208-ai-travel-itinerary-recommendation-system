@@ -53,10 +53,13 @@ INTEREST_CATEGORY_ALIASES = {
 }
 
 # Maximum number of places to include in the LLM prompt context
-MAX_CONTEXT_PLACES = 15
+# PERF-01 Fix: Reduced from 15 to 10 to reduce prompt size by 30-40%
+# This improves response time and reduces timeout risk for longer trips
+MAX_CONTEXT_PLACES = 10
 
 # Maximum number of hotels to include in the LLM prompt context
-MAX_CONTEXT_HOTELS = 4
+# PERF-01 Fix: Reduced from 4 to 3 to further optimize prompt size
+MAX_CONTEXT_HOTELS = 3
 
 # Maximum allowed trip duration.
 # NOTE: This is a temporary technical guard accepted by the product team for the
@@ -108,6 +111,39 @@ class ItineraryPipeline:
     # Public API — Main generation entry point
     # ===================================================================
 
+    @staticmethod
+    def _calculate_dynamic_timeout(day_count: int, interests_count: int) -> int:
+        """Calculate dynamic LLM timeout based on trip complexity.
+
+        PERF-02 Fix: Timeout scales with trip complexity instead of fixed 30s.
+
+        Formula:
+        - Base: 30 seconds (minimum)
+        - Per day: 2 seconds (more days = more context to process)
+        - Per interest: 5 seconds (more interests = more complex constraints)
+
+        Max: 180 seconds (3 minutes) to prevent indefinite hangs.
+
+        Examples:
+        - 1 day, 1 interest: 30 + 2*1 + 5*1 = 37s
+        - 3 days, 2 interests: 30 + 2*3 + 5*2 = 46s
+        - 7 days, 3 interests: 30 + 2*7 + 5*3 = 59s
+        - 14 days, 4 interests: 30 + 2*14 + 5*4 = 78s
+        - 30 days, 5 interests: 30 + 2*30 + 5*5 = 115s
+
+        Args:
+            day_count: Number of days in the trip (1-30)
+            interests_count: Number of user interests (0-10)
+
+        Returns:
+            Timeout in seconds (30-180)
+        """
+        base = 30
+        per_day = 2
+        per_interest = 5
+        calculated = base + (day_count * per_day) + (interests_count * per_interest)
+        return min(calculated, 180)
+
     async def generate(
         self,
         request: GenerateItineraryRequest,
@@ -126,6 +162,28 @@ class ItineraryPipeline:
         """
         started_at = perf_counter()
         day_count = self._day_count(request)
+        interests_count = len(request.interests)
+
+        # PERF-02 Fix: Calculate dynamic timeout based on trip complexity
+        dynamic_timeout = self._calculate_dynamic_timeout(day_count, interests_count)
+
+        # Use provided LLM (for tests) or create new instance with dynamic timeout (for production)
+        if self.llm is not None:
+            # Tests inject fake LLM - use as-is
+            llm = self.llm
+        else:
+            # Production: create LLM instance with dynamic timeout for this request
+            base_config = AgentConfig.from_settings(self.settings)
+            dynamic_config = AgentConfig(
+                api_key=base_config.api_key,
+                model=base_config.model,
+                temperature=base_config.temperature,
+                max_retries=base_config.max_retries,
+                timeout_seconds=dynamic_timeout,
+                min_activities_per_day=base_config.min_activities_per_day,
+                max_activities_per_day=base_config.max_activities_per_day,
+            )
+            llm = GeminiLLM(dynamic_config)
 
         # Log pipeline start with all relevant parameters
         logger.info(
@@ -138,7 +196,7 @@ class ItineraryPipeline:
             budget=request.budget,
             authenticated=bool(user_id),
             model=self.settings.agent_model,
-            timeout_seconds=self.settings.agent_timeout_seconds,
+            timeout_seconds=dynamic_timeout,
             min_activities_per_day=self.settings.agent_min_activities_per_day,
             max_activities_per_day=self.settings.agent_max_activities_per_day,
         )
@@ -230,6 +288,7 @@ class ItineraryPipeline:
             places=places,
             hotels=hotels,
             day_count=day_count,
+            llm=llm,
         )
 
         # --- Step 5: Persist to database ---
@@ -272,6 +331,7 @@ class ItineraryPipeline:
         places: list[Place],
         hotels: list[Hotel],
         day_count: int,
+        llm: GeminiLLM,
     ) -> AgentItinerary:
         """Call the LLM with retry logic and structured validation.
 
@@ -280,6 +340,9 @@ class ItineraryPipeline:
         - Exponential backoff between retries (delay * 2^attempt)
         - Previous validation errors are fed back to the LLM as feedback
         - ServiceUnavailableException (upstream LLM errors) are not retried
+
+        Args:
+            llm: LLM instance with dynamic timeout for this request
         """
         errors: list[str] = []
         attempts = self.settings.agent_max_retries + 1
@@ -318,7 +381,7 @@ class ItineraryPipeline:
                 )
 
                 # Call the LLM and parse the JSON response
-                raw_text = await self.llm.generate_text(prompt)
+                raw_text = await llm.generate_text(prompt)
                 logger.info(
                     "ai_generate_llm_attempt_received",
                     attempt=attempt + 1,
