@@ -128,6 +128,10 @@ export const useTripSync = (
           return;
         } catch (error) {
           console.error("Error loading trip from API:", error);
+          toast.warning("Không thể tải dữ liệu từ server. Đang dùng dữ liệu đã lưu.", {
+            position: "top-right",
+            duration: 3000,
+          });
           // Fall through to sessionStorage fallback
         }
       }
@@ -185,7 +189,13 @@ export const useTripSync = (
             if (wizardBudget > 0) setTotalBudget(wizardBudget);
             sessionStorage.removeItem("selectedTripId");
           }
-        } catch (error) {}
+        } catch (error) {
+          console.error("[useTripSync] Failed to generate wizard trip:", error);
+          toast.error("Không thể tạo lịch trình mới. Vui lòng thử lại sau.", {
+            position: "top-right",
+            duration: 5000,
+          });
+        }
       }
       isInitialMount.current = false;
     };
@@ -329,6 +339,10 @@ export const useTripSync = (
       toast.success("Đã lưu lịch trình thành công", { position: "top-right" });
     } catch (error) {
       console.error("Error saving itinerary:", error);
+      toast.error("Không thể lưu lịch trình lên server. Vui lòng thử lại sau.", {
+        position: "top-right",
+        duration: 5000,
+      });
 
       // Fallback: save to sessionStorage only
       writeSessionTrip(tripData);
