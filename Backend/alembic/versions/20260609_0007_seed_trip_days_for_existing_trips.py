@@ -29,9 +29,10 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-def upgrade(conn: Connection) -> None:
+def upgrade() -> None:
     """Seed trip_days for all trips that don't have any."""
     # Get all trips without trip_days
+    conn = op.get_bind()
     trips_without_days = conn.execute(
         text("""
             SELECT id, destination, start_date, end_date
@@ -82,7 +83,7 @@ def upgrade(conn: Connection) -> None:
         print(f"Created {day_count} trip_days for trip {trip_id}")
 
 
-def downgrade(conn: Connection) -> None:
+def downgrade() -> None:
     """Remove trip_days created by this migration.
 
     WARNING: This will delete ALL trip_days, not just the ones created
@@ -90,6 +91,7 @@ def downgrade(conn: Connection) -> None:
     """
     # For safety, only delete trip_days that were likely created by this migration
     # (simple labels with "Ngày X" pattern and no activities)
+    conn = op.get_bind()
     conn.execute(
         text("""
             DELETE FROM trip_days
