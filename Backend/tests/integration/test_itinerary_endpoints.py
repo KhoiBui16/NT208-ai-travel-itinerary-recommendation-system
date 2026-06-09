@@ -307,11 +307,16 @@ def test_update_activity__owner_activity_in_own_trip__returns_200(client: TestCl
         activity_name="Original Activity",
     )
 
+    # Only send updateable fields, avoid nested objects that cause validation issues
     update_payload = {
-        **activity,
         "name": "Updated Activity",
         "time": "10:15",
         "endTime": "11:00",
+        "type": activity.get("type"),
+        "location": activity.get("location"),
+        "description": activity.get("description"),
+        "image": activity.get("image"),
+        "transportation": activity.get("transportation"),
     }
     response = client.put(
         f"/api/v1/itineraries/{trip['id']}/activities/{activity['id']}",
