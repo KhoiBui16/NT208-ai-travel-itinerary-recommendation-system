@@ -1533,7 +1533,7 @@ sequenceDiagram
     FE->>FE: sessionStorage.set("pendingClaim", {tripId, claimToken, returnTo})
     FE->>FE: sessionStorage.set("currentTrip", mappedItinerarySnapshot)
     FE->>FE: navigate /trip-workspace?tripId={id}
-    Note over FE: Nếu có currentTrip hợp lệ thì guest xem được workspace trong cùng browser session; muốn ownership đầy đủ thì vẫn phải login/claim
+    Note over FE: Guest workspace continuity trong cùng browser session
 
     Note over Guest,DB: GUEST ĐĂNG NHẬP / ĐĂNG KÝ
     Guest->>FE: Login hoặc Register
