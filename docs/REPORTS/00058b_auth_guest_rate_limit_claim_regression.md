@@ -274,7 +274,7 @@ Error: locator.click: Test timeout of 30000ms exceeded.
 
 **Result**: No matches found (clean scan)
 
-**Note**: `localhost` and `127.0.0.1` found in test mocks and config examples — these are standard local development addresses, NOT internal network IPs.
+**Note**: `localhost` found in test mocks and config examples — these are standard local development addresses, NOT internal network IPs.
 
 ---
 

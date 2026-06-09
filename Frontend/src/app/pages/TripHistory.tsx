@@ -4,6 +4,22 @@ import { MapPin, Calendar, DollarSign, Clock, TrendingUp, Edit2, Eye, FileText, 
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { listItineraries, updateItinerary, deleteItinerary } from "../services/itinerary";
+import { getDestinationFallbackImage } from "../utils/placeImage";
+
+/** Compute trip status based on today vs start/end dates. */
+function computeStatus(
+  startDate?: string,
+  endDate?: string,
+): "upcoming" | "completed" | "planning" {
+  if (!startDate || !endDate) return "planning";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (end < today) return "completed";
+  if (start <= today && today <= end) return "planning"; // in progress
+  return "upcoming";
+}
 
 interface SavedTrip {
   id: string;
@@ -48,8 +64,8 @@ export default function TripHistory() {
         endDate: trip.endDate,
         days: trip.days?.length || 0,
         estimatedCost: trip.budget || 0,
-        status: "planning" as const,
-        coverImage: trip.coverImage || "",
+        status: computeStatus(trip.startDate, trip.endDate),
+        coverImage: trip.coverImage || getDestinationFallbackImage(trip.destination),
         tripData: trip,
       }));
       mapped.sort((a, b) => b.createdAt - a.createdAt);

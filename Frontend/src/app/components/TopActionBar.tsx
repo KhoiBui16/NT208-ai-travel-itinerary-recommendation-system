@@ -130,7 +130,25 @@ export function TopActionBar({ travelersTotal, tripName, tripId, onEditTravelers
                 setIsSharing(true);
                 try {
                   const resp = await shareItinerary(tripId);
-                  const link = `${window.location.origin}/shared/${resp.shareToken}`;
+                  // Guard against placeholder/invalid tokens returned by the BE
+                  const token = resp.shareToken;
+                  const isValidToken =
+                    token &&
+                    !token.startsWith("[REDACTED") &&
+                    token !== "undefined" &&
+                    token !== "null" &&
+                    token.length > 8;
+                  if (!isValidToken) {
+                    toast.error(
+                      "Không thể hiển thị lại liên kết chia sẻ cũ. Vui lòng tạo liên kết chia sẻ mới sau khi đăng nhập.",
+                    );
+                    return;
+                  }
+                  // Prefer full URL from BE; fall back to building from token
+                  const link =
+                    resp.shareUrl && resp.shareUrl.startsWith("http")
+                      ? resp.shareUrl
+                      : `${window.location.origin}/shared/${token}`;
                   setShareLink(link);
                 } catch {
                   toast.error("Không thể chia sẻ lịch trình");

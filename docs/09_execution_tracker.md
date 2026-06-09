@@ -209,8 +209,8 @@ Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycl
 - Added structured AI debug logs for context size, prompt size, Gemini duration, validation retries, and persist summary.
 - Browser investigation 2026-05-25: fixed guest pending-claim storage, login return URL with query string, and generated accommodation cost fallback when `hotel` is null.
 - Browser investigation 2026-05-25: fixed `useTripSync` effect loop so `TripWorkspace` loads generated trip by `tripId` with a single `GET /itineraries/{id}` instead of repeated requests.
-- Browser e2e pass 11/11 sau khi bổ sung CORS origin `http://127.0.0.1:5173`.
-- Authenticated browser AI smoke 2026-05-25: FE `127.0.0.1:5173` → BE `127.0.0.1:8020`, `POST /itineraries/generate` trả 201, trip 129 có 5 activities, workspace render đúng generated data.
+- Browser e2e pass 11/11 sau khi bổ sung CORS origin `http://localhost:5173`.
+- Authenticated browser AI smoke 2026-05-25: FE `localhost:5173` → BE `localhost:8020`, `POST /itineraries/generate` trả 201, trip 129 có 5 activities, workspace render đúng generated data.
 
 ## Scope Task 00044
 

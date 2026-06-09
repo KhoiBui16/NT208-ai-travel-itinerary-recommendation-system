@@ -7,8 +7,8 @@
 ## B3 Playwright Evidence (2026-05-28)
 
 Tool: Playwright 1.59.1 Chromium  
-Frontend: `http://127.0.0.1:5173`  
-Backend: `http://127.0.0.1:8000`  
+Frontend: `http://localhost:5173`
+Backend: `http://localhost:8000`  
 Test files: `Frontend/tests/e2e/b3/` (untracked)
 
 ### Flow A — TP.HCM Generate Error Visibility
@@ -31,7 +31,7 @@ Test files: `Frontend/tests/e2e/b3/` (untracked)
 | Item | Result |
 |---|---|
 | Login | PASS — `b2test_matrix@example.com` |
-| Route | `http://127.0.0.1:5173/trip-workspace?tripId=235` |
+| Route | `http://localhost:5173/trip-workspace?tripId=235` |
 | Render status | **PASS** |
 | Redirect to login | NO — workspace renders correctly |
 | Hà Nội content visible | YES |

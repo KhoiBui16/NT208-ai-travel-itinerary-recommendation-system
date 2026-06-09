@@ -23,7 +23,7 @@ Document production deployment strategy for ETL pipeline when migrating from loc
 
 | Layer | Current Setup | Notes |
 |---|---|---|
-| Frontend | Local Vite dev server (`npm run dev`) | Port 5173, `VITE_API_URL=http://127.0.0.1:8000` |
+| Frontend | Local Vite dev server (`npm run dev`) | Port 5173, `VITE_API_URL=http://localhost:8000` |
 | Backend API | Local Docker Compose | Port 8000, `DATABASE_URL=postgresql+asyncpg://...` |
 | Database | Local PostgreSQL via Docker | DB name: `dulichviet`, port 5432 |
 | Redis | Local Docker | Port 6379 |

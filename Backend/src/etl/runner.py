@@ -103,6 +103,20 @@ async def run_etl(
                 city_start = time.monotonic()
                 result = ETLResult(city=city, status="skipped")
 
+                # Add inter-city delay to avoid Goong API rate limiting.
+                # Skip delay for the first city; use 10s between cities to allow
+                # Goong quota to recover between city crawls.
+                if idx > 0:
+                    inter_city_delay = 10.0
+                    logger.info(
+                        "Inter-city delay %.1fs before %s (%d/%d)",
+                        inter_city_delay,
+                        city,
+                        idx + 1,
+                        len(target_cities),
+                    )
+                    await asyncio.sleep(inter_city_delay)
+
                 try:
                     places = await _extract_places_for_city(
                         city=city,

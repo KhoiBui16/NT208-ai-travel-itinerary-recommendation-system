@@ -52,6 +52,7 @@ import { useAccommodation } from "../hooks/trips/useAccommodation";
 import { usePlacesManager } from "../hooks/trips/usePlacesManager";
 import { useTripSync } from "../hooks/trips/useTripSync";
 import { listSavedPlaces } from "../services/places";
+import { buildSavedPlaceIdSet, normalizeSavedPlaces } from "../utils/savedPlaces";
 import { useAuth } from "../contexts/AuthContext";
 // Khởi tạo ID (để tránh lỗi khi tạo hoạt động mới)
 let nextId = 500;
@@ -427,11 +428,10 @@ export default function TripWorkspace() {
             setShowSavedSuggestions(false);
             // Re-sync bookmark state from API
             listSavedPlaces().then((data) => {
-              const savedNames = new Set(data.map((p: any) => p.placeName || p.name));
-              setPlaces(prev => prev.map(p => ({
-                ...p,
-                saved: savedNames.has(p.name),
-              })));
+              const savedIds = buildSavedPlaceIdSet(normalizeSavedPlaces(data));
+              setPlaces((prev) =>
+                prev.map((p) => ({ ...p, saved: savedIds.has(p.id) })),
+              );
             }).catch(() => {});
           }}
           suggestions={savedSuggestions}
@@ -482,11 +482,10 @@ export default function TripWorkspace() {
             setSelectedDayForPlaces(null);
             // Re-sync bookmark state from API after modal closes
             listSavedPlaces().then((data) => {
-              const savedNames = new Set(data.map((p: any) => p.placeName || p.name));
-              setPlaces(prev => prev.map(p => ({
-                ...p,
-                saved: savedNames.has(p.name),
-              })));
+              const savedIds = buildSavedPlaceIdSet(normalizeSavedPlaces(data));
+              setPlaces((prev) =>
+                prev.map((p) => ({ ...p, saved: savedIds.has(p.id) })),
+              );
             }).catch(() => {});
           }}
           currentDayLabel={days.find((d) => d.id === selectedDayForPlaces)?.label || ""}

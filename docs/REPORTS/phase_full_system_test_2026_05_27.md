@@ -12,8 +12,8 @@
 | Thành phần | Giá trị |
 |---|---|
 | Branch | `main` — `7608424 add plan and modified .gitignore (#47)` |
-| BE URL | `http://127.0.0.1:8020` |
-| FE URL | `http://127.0.0.1:5173` |
+| BE URL | `http://localhost:8020` |
+| FE URL | `http://localhost:5173` |
 | Docker PostgreSQL | `localhost:5432` — healthy |
 | Docker Redis | `localhost:6379` — healthy |
 | Python | 3.12.13 |
@@ -288,12 +288,12 @@ docker compose up -d db redis
 # Terminal 2: Backend
 cd Backend
 uv run alembic upgrade head
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn src.main:app --host localhost --port 8000 --reload
 
 # Terminal 3: Frontend
 cd Frontend
-$env:VITE_API_URL="http://127.0.0.1:8000"
-npm run dev -- --host 127.0.0.1 --port 5173
+$env:VITE_API_URL="http://localhost:8000"
+npm run dev -- --host localhost --port 5173
 ```
 
 ---

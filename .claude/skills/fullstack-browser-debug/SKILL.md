@@ -41,15 +41,15 @@ uv run alembic upgrade head
 $env:AGENT_TIMEOUT_SECONDS="120"   # only for AI generate smoke if needed
 $env:AGENT_MIN_ACTIVITIES_PER_DAY="5"
 $env:AGENT_MAX_ACTIVITIES_PER_DAY="5"
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8000
+uv run uvicorn src.main:app --host localhost --port 8000
 ```
 
 Frontend:
 
 ```powershell
 cd Frontend
-$env:VITE_API_URL="http://127.0.0.1:8000"
-npm run dev -- --host 127.0.0.1 --port 5173
+$env:VITE_API_URL="http://localhost:8000"
+npm run dev -- --host localhost --port 5173
 ```
 
 If `8000` is polluted, use a clean BE port such as `8020`, but keep FE on `5173` unless CORS has been adjusted.
@@ -63,7 +63,7 @@ New-Item -ItemType Directory -Force -Path .codex-run-logs | Out-Null
 Start-Process -WindowStyle Hidden -FilePath powershell.exe -WorkingDirectory Backend `
   -RedirectStandardOutput .codex-run-logs/backend.out.log `
   -RedirectStandardError .codex-run-logs/backend.err.log `
-  -ArgumentList @("-NoProfile", "-Command", "uv run uvicorn src.main:app --host 127.0.0.1 --port 8020")
+  -ArgumentList @("-NoProfile", "-Command", "uv run uvicorn src.main:app --host localhost --port 8020")
 ```
 
 Use the same pattern for Vite. Escape `$env:` correctly when building a nested PowerShell command.
@@ -90,13 +90,13 @@ Use the same pattern for Vite. Escape `$env:` correctly when building a nested P
 
 4. Backend health:
    ```powershell
-   curl.exe -i http://127.0.0.1:8000/api/v1/health
+   curl.exe -i http://localhost:8000/api/v1/health
    ```
 
 5. Verify Vite API base. Fetch the served source and confirm `VITE_API_URL`:
    ```powershell
-   (Invoke-WebRequest -Uri "http://127.0.0.1:5173/src/app/services/api.ts" -UseBasicParsing).Content |
-     Select-String -Pattern "VITE_API_URL|127.0.0.1:8000|localhost:8000"
+   (Invoke-WebRequest -Uri "http://localhost:5173/src/app/services/api.ts" -UseBasicParsing).Content |
+     Select-String -Pattern "VITE_API_URL|localhost:8000|localhost:8000"
    ```
 
 Vite only exposes `VITE_*` env vars to browser code and env changes require restarting the dev server.

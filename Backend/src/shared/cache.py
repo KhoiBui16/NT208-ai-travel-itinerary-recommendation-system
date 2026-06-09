@@ -7,10 +7,38 @@ Usage:
 """
 
 import logging
+import urllib.parse
 
 from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_cache_key(*parts: str | None) -> str:
+    """Normalize cache key parts to handle UTF-8 encoding.
+
+    Converts None to "None" and URL-encodes all parts to ensure
+    consistent cache keys regardless of Vietnamese characters.
+
+    Args:
+        *parts: Variable number of string parts to join into cache key
+
+    Returns:
+        Normalized cache key with URL-encoded Vietnamese characters
+
+    Example:
+        >>> normalize_cache_key("places", "search", None, "Hà Nội", None, 20)
+        "places:search:None:H%E1%BB%8i%20N%E1%BB%99i:None:20"
+    """
+    normalized = []
+    for part in parts:
+        if part is None:
+            normalized.append("None")
+        else:
+            # URL-encode to handle UTF-8 Vietnamese characters
+            encoded = urllib.parse.quote(str(part), safe="")
+            normalized.append(encoded)
+    return ":".join(normalized)
 
 
 class CacheClient:

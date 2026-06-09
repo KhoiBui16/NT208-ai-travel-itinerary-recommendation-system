@@ -28,8 +28,8 @@ Sửa calendar modal E2E blocker bằng cách tạo reusable test helper tự đ
 
 ### Runtime
 
-- Backend: `http://127.0.0.1:8000`
-- Frontend: `http://127.0.0.1:5173`
+- Backend: `http://localhost:8000`
+- Frontend: `http://localhost:5173`
 
 ### Commands
 

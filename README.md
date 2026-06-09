@@ -44,10 +44,11 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 8. [AI Pipeline Flow](#8-ai-pipeline-flow)
 9. [Auth & Security Flow](#9-auth--security-flow)
 10. [Trạng thái Phase C](#10-trạng-thái-phase-c)
-11. [Quick Start](#11-quick-start)
-12. [Tests & Verification](#12-tests--verification)
-13. [ETL](#13-etl)
-14. [Cấu trúc thư mục](#14-cấu-trúc-thư-mục)
+11. [Tài liệu Documentation](#11-tài-liệu-documentation)
+12. [Quick Start](#12-quick-start)
+13. [Tests & Verification](#13-tests--verification)
+14. [ETL](#14-etl)
+15. [Cấu trúc thư mục](#15-cấu-trúc-thư-mục)
 15. [Team](#15-team)
 
 ---
@@ -169,44 +170,80 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 
 ```mermaid
 graph TB
-    subgraph Browser["👤 User (Browser)"]
-        FE["React 18 + Vite 6 + TypeScript<br/>TailwindCSS + MUI + Radix UI<br/>27 pages · 8 protected routes"]
-        API_CLIENT["API Client Layer<br/>services/api.ts + auth/itinerary/places/users<br/>JWT Bearer injection · auto-refresh on 401<br/>Optimistic update · revert-on-failure"]
+    subgraph Browser["👤 Trình duyệt người dùng"]
+        FE["React Frontend<br/>Giao diện người dùng<br/>27 trang · 8 routes bảo vệ"]
+        API_CLIENT["Lớp API Client<br/>Gọi HTTP · Quản lý token<br/>Optimistic update UI"]
         FE --> API_CLIENT
     end
 
-    API_CLIENT -->|"HTTP REST<br/>JSON camelCase"| BACKEND
+    API_CLIENT -->|"Gửi API request<br/>JSON format"| BACKEND
 
-    subgraph BACKEND["FastAPI Backend (port 8000)"]
-        MW["Middleware Pipeline<br/>CORS → RequestLog → RateLimiter → ErrorHandler"]
-        ROUTER["Router Layer /api/v1/<br/>auth(6) · users(3) · itineraries(14) · places(7) · shared(1) · agent(1)"]
-        SERVICE["Service Layer<br/>AuthService · UserService · ItineraryService<br/>PlaceService · SuggestionService · ItineraryPipeline"]
-        REPO["Repository Layer<br/>UserRepo · TripRepo · PlaceRepo · TokenRepo"]
+    subgraph BACKEND["🖥️ Backend Server"]
+        MW["Middleware<br/>CORS · Logging · RateLimit · Errors"]
+        ROUTER["Router<br/>Phân tích request · Auth check<br/>Route đến handler"]
+        SERVICE["Service Layer<br/>Business Logic · Owner check<br/>AI Generate · CRUD"]
+        REPO["Repository Layer<br/>SQL queries · Database access<br/>Không có business logic"]
         MW --> ROUTER --> SERVICE --> REPO
     end
 
-    REPO -->|"async SQLAlchemy"| PG[("PostgreSQL 16<br/>15+ tables<br/>Alembic migrations")]
-    SERVICE -->|"Redis cache<br/>rate-limit"| REDIS[("Redis 7<br/>places cache TTL 30min<br/>destinations cache TTL 1h<br/>AI rate-limit keys")]
+    REPO -->|"Lưu/đọc dữ liệu"| PG[("PostgreSQL<br/>Database chính<br/>15+ bảng")]
+    SERVICE -->|"Cache · Rate limit"| REDIS[("Redis<br/>Cache · Rate limit<br/>TTL tự động")]
 
-    SERVICE -->|"Gemini API<br/>structured JSON output"| GEMINI["Google Gemini<br/>gemini-2.5-flash<br/>AI Generate only"]
+    SERVICE -->|"Gọi AI Generate"| GEMINI["Google Gemini AI<br/>Sinh lịch trình<br/>Structured JSON"]
 
-    subgraph ETL["Goong ETL (CLI runner)"]
-        GOONG_API["Goong Maps API<br/>autocomplete · place detail · geocode"]
-        TRANSFORM["Transformer<br/>normalize · deduplicate · map category"]
-        LOADER["DB Loader<br/>upsert destinations · places · hotels"]
+    subgraph ETL["🔄 ETL Pipeline"]
+        GOONG_API["Goong Maps API<br/>Nguồn dữ liệu<br/>Địa điểm Việt Nam"]
+        TRANSFORM["Transformer<br/>Chuẩn hóa · Deduplicate<br/>Map category"]
+        LOADER["DB Loader<br/>Upsert dữ liệu<br/>vào Database"]
         GOONG_API --> TRANSFORM --> LOADER
     end
 
-    LOADER -->|"upsert"| PG
-    LOADER -->|"invalidate cache"| REDIS
+    LOADER -->|"Lưu data"| PG
+    LOADER -->|"Xóa cache cũ"| REDIS
 ```
 
-**Giải thích luồng chính:**
-- **FE → BE:** Mọi request đều qua API Client Layer — tự động inject Bearer token, tự refresh khi 401, optimistic update UI trước khi API confirm.
-- **BE layers:** Router chỉ parse/route, Service chứa business logic (owner check, rate limit), Repository chỉ query DB.
-- **Redis:** Cache places/destinations (fail-open — Redis down thì query DB), rate-limit AI (fail-closed — Redis down thì block).
-- **Gemini:** Chỉ được gọi từ `ItineraryPipeline` khi user generate lịch trình, không gọi từ suggestion service.
-- **ETL:** Chạy độc lập qua CLI, không phụ thuộc vào app server.
+**Luồng chi tiết theo từng bước:**
+
+**Bước 1: Người dùng tương tác với Frontend**
+- User mở browser và truy cập ứng dụng React
+- Frontend render 27 pages với 8 protected routes
+- Các thao tác trên UI (click, submit form, v.v.) trigger actions
+
+**Bước 2: API Client Layer xử lý request**
+- Tự động inject JWT Bearer token vào mọi request
+- Tự động refresh token khi nhận 401 Unauthorized
+- Optimistic update UI ngay lập tức trước khi API confirm
+- Nếu API fail, revert UI về state trước đó
+
+**Bước 3: Backend nhận và xử lý request**
+- **Middleware Pipeline:** CORS → RequestLog → RateLimiter → ErrorHandler
+- **Router Layer:** Parse request, auth dependency injection, route đến handler phù hợp
+- **Service Layer:** 
+  - AuthService: Xử lý đăng ký/đăng nhập/refresh token
+  - ItineraryService: CRUD trip, generate AI, share/claim
+  - PlaceService: Tìm kiếm, cache places/destinations
+  - SuggestionService: Gợi ý địa điểm (DB-only, không LLM)
+- **Repository Layer:** Thực thi SQL queries, không chứa business logic
+
+**Bước 4: Tương tác với Database và Cache**
+- **PostgreSQL:** Lưu trữ persistently (users, trips, places, destinations, v.v.)
+- **Redis:** 
+  - Cache places/destinations (TTL 30min-1h, fail-open nếu down)
+  - Rate-limit AI (fail-closed nếu down - block request)
+- **Gemini AI:** Chỉ gọi khi user generate itinerary, không dùng cho suggestions
+
+**Bước 5: ETL Pipeline nạp dữ liệu (chạy độc lập)**
+- Goong Maps API cung cấp dữ liệu địa điểm
+- Transformer normalize và deduplicate dữ liệu
+- DB Loader upsert vào PostgreSQL
+- Redis cache bị invalidate sau ETL
+
+**Kiến trúc quan trọng:**
+- **FE → BE:** HTTP REST, JSON camelCase format
+- **BE → DB:** Async SQLAlchemy, non-blocking
+- **Redis:** Dual role - cache (fail-open) và rate-limit (fail-closed)
+- **AI:** Isolated - chỉ cho generate, không cho suggestions
+- **ETL:** Decoupled - chạy CLI riêng, không phụ thuộc app server
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -300,7 +337,7 @@ graph LR
     end
 
     subgraph SVC["Service Layer"]
-        S["ItineraryService(session)<br/>• owner check: trip.user_id == user.id<br/>• business validation<br/>• orchestrate repo calls"]
+        S["ItineraryService(session)<br/>• owner check: trip.user_id equals user.id<br/>• business validation<br/>• orchestrate repo calls"]
     end
 
     subgraph REPO["Repository Layer"]
@@ -478,7 +515,7 @@ sequenceDiagram
     User->>Hook: deleteActivity(activityId)
     Hook->>UI: setDays(daysWithoutActivity) ← optimistic
     Note over UI: UI cập nhật ngay lập tức
-    Hook->>API: DELETE /itineraries/{id}/activities/{actId}
+    Hook->>API: DELETE /itineraries/ID/activities/actID
     API->>BE: HTTP DELETE request
 
     alt API success
@@ -1206,109 +1243,170 @@ Guest đăng nhập / đăng ký:
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant FE as CreateTrip.tsx
-    participant BE as FastAPI Router
-    participant RL as RateLimiter (Redis)
-    participant SVC as ItineraryService
-    participant PIPE as ItineraryPipeline
-    participant REPO as TripRepository
-    participant DB as PostgreSQL
-    participant LLM as Gemini API
+    participant User as 👤 Người dùng
+    participant FE as Frontend<br/>CreateTrip Page
+    participant BE as Backend<br/>FastAPI Router
+    participant RL as Rate Limiter<br/>Redis Quota Check
+    participant SVC as Itinerary Service<br/>Business Logic
+    participant PIPE as AI Pipeline<br/>Generate Logic
+    participant REPO as Trip Repository<br/>Database Queries
+    participant DB as PostgreSQL<br/>Data Storage
+    participant LLM as Gemini AI<br/>LLM Provider
 
-    User->>FE: Điền form (destination, dates, budget, interests)
+    User->>FE: Nhập thông tin chuyến đi
+    Note over User: Điểm đến · Ngày · Ngân sách · Sở thích
     FE->>BE: POST /api/v1/itineraries/generate
-    BE->>RL: enforce_ai_limit(user_id) hoặc enforce_ai_guest_limit(ip+ua)
+    BE->>RL: Kiểm tra quota AI
 
-    alt Rate limit exceeded
+    alt Quota exceeded (vượt giới hạn)
         RL-->>BE: RateLimitException (429)
-        BE-->>FE: 429 + message hướng dẫn đăng ký
-    else Redis down
-        RL-->>BE: ServiceUnavailableException (503) — fail-closed
-        BE-->>FE: 503
-    else OK
-        RL-->>BE: pass
+        BE-->>FE: 429 Quá hạn - Đề nghị đăng ký
+    else Redis unavailable
+        RL-->>BE: ServiceUnavailable (503)
+        BE-->>FE: 503 Dịch vụ tạm thời unavailable
+    else Quota OK (trong giới hạn)
+        RL-->>BE: Pass - Cho phép tiếp tục
         BE->>SVC: generate(request, user_id)
-        SVC->>PIPE: generate(request, user_id)
+        SVC->>PIPE: Khởi động AI pipeline
 
-        PIPE->>REPO: resolve_destination_for_ai(destination)
-        Note over REPO: 1. exact match<br/>2. slug match (ha-noi)<br/>3. fuzzy ILIKE
+        PIPE->>REPO: Tìm destination trong DB
+        Note over REPO: 1. Exact match (tên chính xác)<br/>2. Slug match (ha-noi)<br/>3. Fuzzy search (gần đúng)
         REPO->>DB: SELECT destinations WHERE ...
-        DB-->>REPO: Destination row
+        DB-->>REPO: Destination data
 
-        alt Destination not found
+        alt Destination NOT FOUND
             PIPE-->>SVC: ValidationException (422)
-            SVC-->>FE: 422 "Destination data not found"
-        else Found
-            PIPE->>REPO: search_places_for_ai(dest_id, categories, limit=15)
-            REPO->>DB: SELECT places ORDER BY rating DESC
-            DB-->>REPO: list[Place]
+            SVC-->>FE: 422 Không tìm thấy destination
+        else Destination FOUND
+            PIPE->>REPO: Lấy places cho destination
+            Note over REPO: Lấy tối đa 15 places<br/>Sắp xếp theo rating DESC
+            REPO->>DB: SELECT places ORDER BY rating
+            DB-->>REPO: Danh sách places
 
-            alt Not enough places (< min_required)
+            alt Not enough places (< 6 places)
                 PIPE-->>SVC: ValidationException (422)
-                SVC-->>FE: 422 "Not enough destination places"
-            else Enough context
-                PIPE->>REPO: get_hotels_for_ai(dest_id, limit=4)
-                DB-->>REPO: list[Hotel]
+                SVC-->>FE: 422 Không đủ dữ liệu destination
+            else Enough data (>= 6 places)
+                PIPE->>REPO: Lấy hotels cho destination
+                DB-->>REPO: Danh sách hotels
 
-                loop Max 3 attempts (2 retries)
-                    PIPE->>LLM: generate_text(prompt with context)
-                    LLM-->>PIPE: raw JSON text
+                loop Retry tối đa 3 lần (nếu LLM fail)
+                    PIPE->>LLM: Gửi prompt + context
+                    Note over PIPE: Prompt chứa: destination, places, hotels,<br/>dates, budget, interests
+                    LLM-->>PIPE: Trả về JSON text
 
-                    PIPE->>PIPE: parse_json_response(raw)
-                    PIPE->>PIPE: AgentItinerary.model_validate(payload)
-                    PIPE->>PIPE: _validate_itinerary(itinerary, request)
+                    PIPE->>PIPE: Parse JSON response
+                    PIPE->>PIPE: Validate với Pydantic schema
+                    PIPE->>PIPE: Validate với business rules
 
-                    alt Validation pass
-                        Note over PIPE: Break retry loop
-                    else Validation fail
-                        Note over PIPE: Build error feedback → retry
+                    alt Validation PASS
+                        Note over PIPE: Dữ liệu hợp lệ - Break loop
+                    else Validation FAIL
+                        Note over PIPE: Thử lại với error feedback
                     end
                 end
 
-                PIPE->>REPO: create_trip + add_days + add_activities + add_accommodations
-                REPO->>DB: INSERT trips, trip_days, activities, accommodations
-                DB-->>REPO: Trip with full data
+                PIPE->>REPO: Lưu trip + days + activities + hotels
+                REPO->>DB: INSERT vào database
 
-                alt Guest user
-                    SVC->>REPO: create_claim_token(trip_id)
-                    REPO->>DB: INSERT guest_claim_tokens
+                alt Guest user (chưa đăng nhập)
+                    SVC->>REPO: Tạo claim token
                     SVC-->>FE: ItineraryResponse + claimToken
-                else Auth user
+                else Auth user (đã đăng nhập)
                     SVC-->>FE: ItineraryResponse
                 end
 
-                FE->>FE: navigate /trip-workspace?tripId={id}
+                FE->>FE: Navigate to TripWorkspace
+                Note over FE: Redirect đến /trip-workspace?tripId=ID
             end
         end
     end
 ```
 
-#### Ý nghĩa luồng
+#### Luồng chi tiết AI Generate Pipeline
 
-- Generate pipeline đi qua đầy đủ các chốt quan trọng: validate input, rate-limit Redis, resolve destination, lấy recommendation context từ DB, rồi mới gọi Gemini.
-- `422`, `429`, và `503` đều được tách rõ ở tầng service/pipeline để FE có thể hiển thị UX cụ thể thay vì lỗi mơ hồ.
-- Guest generate chỉ khác auth flow ở bước phát hành `claimToken`; core AI pipeline vẫn dùng chung.
-- `C3A` không được chạm vào luồng này ngoài việc cùng sống an toàn bên trong `TripWorkspace` sau khi generate xong.
+**Bước 1: Người dùng nhập thông tin chuyến đi**
+- Nhập destination (Hà Nội, Đà Nẵng, v.v.)
+- Chọn ngày bắt đầu và kết thúc
+- Thiết lập ngân sách cho chuyến đi
+- Chọn số người (người lớn, trẻ em)
+- Chọn sở thích (food, culture, nature, v.v.)
+
+**Bước 2: Frontend gửi request đến Backend**
+- FE call POST /api/v1/itineraries/generate
+- Gửi kèm toàn bộ thông tin người dùng vừa nhập
+- Request được định dạng JSON camelCase
+
+**Bước 3: Backend kiểm tra Rate Limit**
+- Kiểm tra quota AI trong Redis
+- **Auth user:** 5 trips/ngày, key: `rate:ai:user:{id}:{YYYYMMDD}`
+- **Guest user:** 3 trips/ngày, key: `rate:ai:guest:{hash}:{YYYYMMDD}`
+- Nếu vượt giới hạn → return 429 với message gợi ý đăng ký
+- Nếu Redis down → return 503 (fail-closed, không bypass)
+
+**Bước 4: Resolve Destination từ Database**
+- Tìm destination theo 3 cách (từ chính xác → gần đúng):
+  1. Exact match: "Hà Nội" → "Hà Nội"
+  2. Slug match: "Ha Noi" → slug "ha-noi" → "Hà Nội"
+  3. Fuzzy ILIKE: "hà nôi" → ILIKE "%hà nôi%"
+- Nếu không tìm thấy → return 422 "Destination data not found"
+
+**Bước 5: Lấy Recommendation Context**
+- Lấy tối đa 15 places từ destination, sắp xếp theo rating DESC
+- Lấy tối đa 4 hotels từ destination
+- Nếu places < 6 → return 422 "Not enough destination places"
+- Context này dùng để build prompt cho Gemini (không hallucinate)
+
+**Bước 6: Gọi Gemini AI Generate**
+- Gửi prompt chứa: destination, places, hotels, dates, budget, interests
+- Yêu cầu Gemini trả về structured JSON (schema đã định nghĩa)
+- Retry tối đa 3 lần nếu parse/validate fail
+- Mỗi lần retry có error feedback để Gemini cải thiện
+
+**Bước 7: Validate và Persist**
+- Parse JSON response từ Gemini
+- Validate với Pydantic schema (AgentItinerary)
+- Validate với business rules (số days, activities per day, v.v.)
+- Nếu validation pass → lưu vào database:
+  - INSERT trips
+  - INSERT trip_days
+  - INSERT activities
+  - INSERT accommodations
+
+**Bước 8: Xử lý Guest vs Auth User**
+- **Auth user:** Return ItineraryResponse với trip data
+- **Guest user:** Return ItineraryResponse + claimToken
+  - claimToken dùng để claim về account sau khi đăng nhập
+  - Token lưu trong sessionStorage (pendingClaim)
+
+**Bước 9: Navigate đến TripWorkspace**
+- FE redirect đến /trip-workspace?tripId={id}
+- User có thể xem/chỉnh sửa lịch trình vừa sinh
+
+**Quan trọng:**
+- Generate pipeline KHÔNG gọi Gemini cho suggestions (C.2) - chỉ cho C.1
+- Guest và Auth user dùng chung pipeline, chỉ khác ở claimToken
+- `C3A` (companion chat) không chạm vào pipeline này
+- Rate limit fail-closed: Redis down → block AI requests
 
 ### 8.2 C.2 — Suggestion Service (Mermaid)
 
 ```mermaid
 flowchart TD
-    A["GET /api/v1/agent/suggest/{activityId}?limit=5"] --> B["get_current_user() → Bearer required"]
-    B --> C["SuggestionService.suggest_alternatives(activity_id, user_id, limit)"]
-    C --> D["TripRepository.get_activity_with_trip(activity_id)"]
-    D --> E{Activity found?}
+    A["GET suggest endpoint"] --> B["get_current_user - Bearer required"]
+    B --> C["SuggestionService.suggest_alternatives"]
+    C --> D["TripRepository.get_activity_with_trip"]
+    D --> E{"Activity found?"}
     E -->|No| F["NotFoundException 404"]
-    E -->|Yes| G{trip.user_id == user.id?}
+    E -->|Yes| G{"trip.user_id equals user_id?"}
     G -->|No| H["ForbiddenException 403"]
-    G -->|Yes| I["PlaceRepository.get_destination_by_name(trip.destination)"]
-    I --> J{Destination found?}
-    J -->|No| K["Return SuggestionResponse(suggestions=[])"]
-    J -->|Yes| L["TripRepository.get_place_ids_in_trip(trip_id)"]
-    L --> M["PlaceRepository.find_alternatives(dest_id, category, exclude_ids, limit)"]
-    M --> N["SELECT places WHERE dest=? AND category=? AND id NOT IN exclude<br/>ORDER BY rating DESC, review_count DESC<br/>LIMIT limit"]
-    N --> O["Return SuggestionResponse(activityId, currentName, suggestions[])"]
+    G -->|Yes| I["PlaceRepository.get_destination_by_name"]
+    I --> J{"Destination found?"}
+    J -->|No| K["Return empty suggestions array"]
+    J -->|Yes| L["TripRepository.get_place_ids_in_trip"]
+    L --> M["PlaceRepository.find_alternatives"]
+    M --> N["Query places by dest and category<br/>exclude trip places<br/>order by rating DESC"]
+    N --> O["Return SuggestionResponse"]
 
     style F fill:#ff6b6b
     style H fill:#ff6b6b
@@ -1532,7 +1630,7 @@ sequenceDiagram
     FE->>FE: sessionStorage.set("pendingClaim", {tripId, claimToken, returnTo})
     FE->>FE: sessionStorage.set("currentTrip", mappedItinerarySnapshot)
     FE->>FE: navigate /trip-workspace?tripId={id}
-    Note over FE: Nếu có currentTrip hợp lệ thì guest xem được workspace trong cùng browser session; muốn ownership đầy đủ thì vẫn phải login/claim
+    Note over FE: Guest workspace continuity trong cùng browser session
 
     Note over Guest,DB: GUEST ĐĂNG NHẬP / ĐĂNG KÝ
     Guest->>FE: Login hoặc Register
@@ -1737,7 +1835,66 @@ POST /auth/reset-password {token, newPassword}
 
 ---
 
-## 11. Quick Start
+## 11. Tài liệu Documentation 📚
+
+> **📖 Documentation Index:** Xem [`docs/INDEX.md`](docs/INDEX.md) để xem danh sách đầy đủ **150 files documentation** với categorization và navigation guide.
+
+### Core Architecture Docs (Bắt buộc đọc)
+
+| Tài liệu | Mô tả | Khi nào đọc |
+|----------|--------|-------------|
+| [`01_overview.md`](docs/01_overview.md) | Entry point, reading order, invariant rules | **Đọc đầu tiên** |
+| [`02_architecture.md`](docs/02_architecture.md) | System architecture FE-BE-DB-Redis-AI | Understanding system design |
+| [`03_backend.md`](docs/03_backend.md) | Backend endpoints, services, repositories | Backend development |
+| [`04_frontend.md`](docs/04_frontend.md) | Frontend components, hooks, API client | Frontend development |
+| [`05_database_etl.md`](docs/05_database_etl.md) | Database ERD, Redis, ETL pipeline | Data layer understanding |
+| [`06_ai_roadmap.md`](docs/06_ai_roadmap.md) | Phase C AI architecture | AI feature planning |
+| [`07_workflow_ci.md`](docs/07_workflow_ci.md) | Branch/commit/PR format, CI/CD rules | Contributing |
+| [`08_testing_local_run.md`](docs/08_testing_local_run.md) | Local development and testing guide | Running tests |
+| [`09_execution_tracker.md`](docs/09_execution_tracker.md) | Task/branch/PR tracker | Project status |
+
+### Strategic Planning
+
+| Tài liệu | Mô tả |
+|----------|--------|
+| [`C3_C4_IMPLEMENTATION_PLAN.md`](docs/C3_C4_IMPLEMENTATION_PLAN.md) | Detailed C3/C4 implementation phases |
+| [`LOCAL_MANUAL_UAT_GUIDE.md`](docs/LOCAL_MANUAL_UAT_GUIDE.md) | PowerShell-safe manual UAT guide |
+| [`STAGING_DEPLOYMENT_GUIDE.md`](docs/STAGING_DEPLOYMENT_GUIDE.md) | Production deployment strategy |
+| [`USER_JOURNEY_UAT.md`](docs/USER_JOURNEY_UAT.md) | End-to-end user journey matrix |
+
+### Critical Reports (00060 Series)
+
+**Phase trước C3/C4 - Các reports quan trọng nhất:**
+
+| Report | Mô tả | Trạng thái |
+|--------|--------|------------|
+| [`00060b_architecture_c3_c4_readiness.md`](docs/REPORTS/00060b_architecture_c3_c4_readiness.md) | **KEY** C3/C4 go/no-go decision | ✅ Approved |
+| [`00060k_r2_full_testing_report.md`](docs/REPORTS/00060k_r2_full_testing_report.md) | Complete testing report | ✅ Complete |
+| [`00060k_r1_critical_data_fixes.md`](docs/REPORTS/00060k_r1_critical_data_fixes.md) | Bug #1, #3 fixes | ✅ Fixed |
+| [`00060i_real_user_smoke_critical_flow.md`](docs/REPORTS/00060i_real_user_smoke_critical_flow.md) | Critical user flow testing | ✅ Verified |
+
+### Issue Reports (Bugs & Plans)
+
+| Issue | Mô tả | Trạng thái |
+|-------|--------|------------|
+| [`issue_generated_accommodation_dayids_do_not_match_tripday_ids.md`](docs/REPORTS/ISSUES/issue_generated_accommodation_dayids_do_not_match_tripday_ids.md) | **Bug #1 (P0)** - Accommodation dayIds mismatch | ✅ FIXED |
+| [`issue_etl_place_image_pipeline_gap.md`](docs/REPORTS/ISSUES/issue_etl_place_image_pipeline_gap.md) | **Bug #2** - Place images empty (Goong API limitation) | ⏸️ Pending decision |
+| [`plan_00060_critical_data_fixes.md`](docs/REPORTS/ISSUES/plan_00060_critical_data_fixes.md) | **Bug #3 (P1)** - DB loader conflict update | ✅ FIXED |
+| [`explanation_option_c_admin_panel.md`](docs/REPORTS/ISSUES/explanation_option_c_admin_panel.md) | **Option C** - Admin Panel solution for Bug #2 | ✅ APPROVED |
+
+### Documentation Index
+
+📖 **[`docs/INDEX.md`](docs/INDEX.md)** - Navigation cho toàn bộ 150 .md files:
+- Core Architecture (13 files)
+- Strategic Planning (4 files)
+- Phase Reports (40+ files)
+- Numbered Series (00050-00060)
+- PR Descriptions (35+ files)
+- Issue Reports (45+ files)
+
+---
+
+## 12. Quick Start
 
 > 💡 **Local UAT guide:** Quy trình PowerShell-safe mới nhất nằm ở [`docs/LOCAL_MANUAL_UAT_GUIDE.md`](docs/LOCAL_MANUAL_UAT_GUIDE.md). User journey matrix nằm ở [`docs/USER_JOURNEY_UAT.md`](docs/USER_JOURNEY_UAT.md). Các lệnh human-facing dùng `localhost:<port>`; không ghi địa chỉ máy cá nhân vào docs/reports.
 >
@@ -1772,42 +1929,54 @@ Sau khi khởi động:
 - **API Docs (Swagger):** `http://localhost:8000/docs`
 - **Health check:** `http://localhost:8000/api/v1/health`
 
-### Cách 2 — Local Dev (không Docker)
+### Cách 2 — Local Dev (Windows PowerShell, khuyến nghị khi dev hàng ngày)
 
-**Yêu cầu:** Python 3.12+, Node.js 20+, PostgreSQL 16, Redis 7, `uv` package manager.
+**Yêu cầu:** Python 3.12+, Node.js 20+, Docker Desktop (cho PostgreSQL + Redis), `uv`, `npm`.
 
-#### Backend
+```powershell
+$ROOT = git rev-parse --show-toplevel
+Set-Location $ROOT
 
-```bash
-cd Backend
+# 1) DB + Redis
+docker compose up -d db redis
+docker compose ps
 
-# Cài dependencies
+# 2) Backend env (bắt buộc: JWT_SECRET_KEY; generate/ETL cần GEMINI_API_KEY + GOONG_API_KEY)
+Set-Location "$ROOT\Backend"
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 uv sync
-
-# Tạo .env
-cp .env.example .env
-# Chỉnh sửa DATABASE_URL, REDIS_URL, JWT_SECRET_KEY
-
-# Chạy migration
 uv run alembic upgrade head
 
-# Khởi động server
-uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+# 3) ETL — nạp địa điểm thật từ Goong (chạy lại sau khi sửa db_loader)
+uv run python -m src.etl --cities "Hà Nội" "TP. Hồ Chí Minh" "Đà Nẵng" "Hội An" "Huế" "Nha Trang" "Hạ Long" "Phú Quốc" "Sapa" "Đà Lạt"
+
+# 4) Terminal Backend
+$env:AGENT_TIMEOUT_SECONDS="120"
+uv run uvicorn src.main:app --host localhost --port 8000 --reload
+
+# 5) Terminal Frontend
+Set-Location "$ROOT\Frontend"
+npm ci
+$env:VITE_API_URL="http://localhost:8000"
+npm run dev -- --host localhost --port 5173
 ```
 
-#### Frontend
+**Sau khi chạy:**
+- Frontend: `http://localhost:5173`
+- Backend health: `http://localhost:8000/api/v1/health`
+- Swagger: `http://localhost:8000/docs`
 
-```bash
-cd Frontend
+**Lưu ý dữ liệu thật vs fallback:**
+- Places/hotels trong PostgreSQL là **nguồn thật** sau ETL Goong.
+- Goong Place Detail **không trả URL ảnh** — `places.image` có thể rỗng; FE dùng fallback có nhãn, không phải ảnh từ Goong.
+- Map tile Goong (`VITE_GOONG_MAP_KEY`) và companion chat C3 **chưa** implement.
 
-# Cài dependencies
-npm install
+#### Kiểm tra DB nhanh (sau ETL)
 
-# Tạo .env.local
-echo "VITE_API_URL=http://localhost:8000" > .env.local
-
-# Khởi động dev server
-npm run dev
+```powershell
+docker compose exec db psql -U postgres -d dulichviet -c "select d.name, count(p.id) places from destinations d left join places p on p.destination_id=d.id group by d.name order by d.name;"
+docker compose exec db psql -U postgres -d dulichviet -c "select max(id) latest_trip_id from trips;"
+docker compose exec db psql -U postgres -d dulichviet -c "select id, trip_id, day_ids from accommodations where trip_id = (select max(id) from trips);"
 ```
 
 #### Kiểm tra nhanh
@@ -1825,7 +1994,7 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 
 ---
 
-## 12. Tests & Verification
+## 13. Tests & Verification
 
 ### 12.1 Latest live UAT snapshot before C3A
 
@@ -1914,7 +2083,7 @@ npx playwright show-report
 
 ---
 
-## 13. ETL
+## 14. ETL
 
 > ETL pipeline nạp dữ liệu địa điểm từ Goong Maps API vào PostgreSQL. Đây là bước **bắt buộc** trước khi AI generate có thể hoạt động — pipeline cần ít nhất 6 places/destination để không trả 422.
 
@@ -2028,7 +2197,7 @@ docker compose exec api python -m src.etl
 
 ---
 
-## 14. Cấu trúc thư mục
+## 15. Cấu trúc thư mục
 
 ```
 NT208-ai-travel-itinerary-recommendation-system/
@@ -2090,18 +2259,16 @@ NT208-ai-travel-itinerary-recommendation-system/
 
 ---
 
-## 15. Team
+## 16. Team
 
 **NT208 — Web Programming · UIT 2023.2**
 
 | Thành viên | MSSV | Vai trò |
 |---|---|---|
-| (Thành viên 1) | — | Backend, AI Pipeline, ETL |
-| (Thành viên 2) | — | Frontend, UI/UX |
-| (Thành viên 3) | — | Backend, Database, DevOps |
-| (Thành viên 4) | — | Frontend, Testing |
-
-> Cập nhật thông tin thành viên thực tế vào bảng trên.
+| Bùi Nhật Anh Khôi | — | Leader, Backend, AI |
+| Dương Đăng Chính | — | Frontend |
+| Lê Văn Chí | — | Backend |
+| Nguyễn Hữu Chiến | — | Backend |
 
 ---
 

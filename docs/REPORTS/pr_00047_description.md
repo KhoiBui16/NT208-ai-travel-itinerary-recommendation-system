@@ -42,7 +42,7 @@ docker compose up -d db redis
 # 2. Migrate + chạy BE
 cd Backend
 uv run alembic upgrade head
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8020
+uv run uvicorn src.main:app --host localhost --port 8020
 
 # 3. Chạy tests
 uv run ruff check src tests
@@ -51,7 +51,7 @@ $env:CI="true"; uv run pytest tests/integration/ -v
 
 # 4. API smoke (cần JWT từ login trước)
 # Login → lấy access_token → tạo trip + activity → lấy activity_id
-curl.exe -H "Authorization: Bearer <token>" "http://127.0.0.1:8020/api/v1/agent/suggest/<activityId>?limit=5"
+curl.exe -H "Authorization: Bearer <token>" "http://localhost:8020/api/v1/agent/suggest/<activityId>?limit=5"
 # Kỳ vọng: 200 + suggestions[] (có data nếu đã ETL Hà Nội)
 # Không Bearer → 401
 # Activity không tồn tại → 404

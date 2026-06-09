@@ -3,6 +3,10 @@ import { Place, Day, Activity } from "../../types/trip.types";
 import { allPlaces } from "../../utils/tripConstants";
 import * as placesService from "../../services/places";
 import * as itineraryService from "../../services/itinerary";
+import {
+  findSavedPlaceByPlaceId,
+  normalizeSavedPlaces,
+} from "../../utils/savedPlaces";
 
 export const usePlacesManager = (
   days: Day[],
@@ -137,15 +141,26 @@ export const usePlacesManager = (
     // Optimistic UI update
     setPlaces((prev: Place[]) => prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p)));
 
+    const revert = () => {
+      setPlaces((prev: Place[]) =>
+        prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p)),
+      );
+    };
+
     if (place.saved) {
-      placesService.unsavePlace(id).catch(() => {
-        // Revert on failure
-        setPlaces((prev: Place[]) => prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p)));
-      });
+      placesService
+        .listSavedPlaces()
+        .then((savedList) => {
+          const match = findSavedPlaceByPlaceId(normalizeSavedPlaces(savedList), id);
+          if (!match) {
+            revert();
+            return;
+          }
+          return placesService.unsavePlace(match.savedId);
+        })
+        .catch(revert);
     } else {
-      placesService.savePlace(id).catch(() => {
-        setPlaces((prev: Place[]) => prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p)));
-      });
+      placesService.savePlace(id).catch(revert);
     }
   };
 

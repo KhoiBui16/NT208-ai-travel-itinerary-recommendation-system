@@ -16,7 +16,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { listSavedPlaces, savePlace, unsavePlace, getDestinationDetail, type PlaceResponse } from "../services/places";
 import { Place, CityData, cityData } from "../data/cities";
-
+import { resolvePlaceImageWithCategory } from "../utils/placeImage";
+import { toast } from "sonner";
 
 export default function CityDetail() {
   const { cityId } = useParams<{ cityId: string }>();
@@ -27,6 +28,8 @@ export default function CityDetail() {
   const [savedPlaceNames, setSavedPlaceNames] = useState<Set<string>>(new Set());
   const [apiPlaces, setApiPlaces] = useState<PlaceResponse[]>([]);
   const [apiCityName, setApiCityName] = useState<string | null>(null);
+  // Track whether the API responded (to distinguish "loading" from "no data")
+  const [apiLoaded, setApiLoaded] = useState(false);
 
   const city = cityId ? cityData[cityId] : null;
 
@@ -54,8 +57,10 @@ export default function CityDetail() {
       const places = (data as any).places as PlaceResponse[];
       if (dest) setApiCityName(dest.name || name);
       if (places && places.length > 0) setApiPlaces(places);
+      setApiLoaded(true);
     }).catch(() => {
       // Keep mock fallback
+      if (isMounted) setApiLoaded(true);
     });
 
     return () => { isMounted = false; };
@@ -81,8 +86,11 @@ export default function CityDetail() {
         <Header />
         <div className="mx-auto max-w-7xl px-6 py-20 text-center">
           <h1 className="mb-4 text-4xl font-bold text-gray-900">
-            Không tìm thấy thành phố
+            Thành phố không tồn tại
           </h1>
+          <p className="mb-6 text-lg text-gray-600">
+            Thành phố bạn tìm kiếm không có trong hệ thống. Vui lòng chọn thành phố khác từ danh sách.
+          </p>
           <button
             onClick={() => navigate("/cities")}
             className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-6 py-3 font-semibold text-white transition-all hover:bg-cyan-700"
@@ -121,8 +129,10 @@ export default function CityDetail() {
         const savedList = await listSavedPlaces();
         const match = savedList.find((p: any) => (p.place?.name || p.placeName || p.name) === place.name);
         if (match) await unsavePlace(match.id); // match.id is the savedId (bookmark row)
+        toast.success("Đã bỏ lưu địa điểm");
       } else {
         await savePlace(placeId);
+        toast.success("Đã lưu địa điểm");
       }
     } catch {
       // Revert on failure
@@ -133,6 +143,7 @@ export default function CityDetail() {
         setSavedPlaces(prev => prev.filter(id => id !== placeId));
         setSavedPlaceNames(prev => { const n = new Set(prev); n.delete(place.name); return n; });
       }
+      toast.error("Không thể lưu địa điểm lúc này. Vui lòng thử lại.");
     }
   };
 
@@ -344,6 +355,17 @@ export default function CityDetail() {
         </div>
 
         {/* API Places — shown when BE has data */}
+        {/* PRODUCT RULE: Do NOT suggest choosing a different city. Show this exact copy when no places. */}
+        {apiLoaded && apiPlaces.length === 0 && (
+          <div className="mt-12 rounded-xl bg-amber-50 border border-amber-200 p-6 text-center">
+            <p className="text-amber-800 font-semibold mb-2">
+              Địa điểm chưa được hỗ trợ trong giai đoạn hiện tại
+            </p>
+            <p className="text-sm text-amber-700">
+              Vui lòng liên hệ để được cập nhật thêm địa điểm
+            </p>
+          </div>
+        )}
         {apiPlaces.length > 0 && (
           <div className="mt-12">
             <h2 className="mb-6 text-3xl font-bold text-gray-900">
@@ -355,13 +377,11 @@ export default function CityDetail() {
                   className="overflow-hidden rounded-2xl border-2 border-gray-200 bg-white shadow-md transition-all hover:shadow-xl"
                 >
                   <div className="relative h-48">
-                    {place.image ? (
-                      <img src={place.image} alt={place.name} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-cyan-50">
-                        <MapPin className="h-10 w-10 text-cyan-300" />
-                      </div>
-                    )}
+                    <img
+                      src={resolvePlaceImageWithCategory(place.image, place.type)}
+                      alt={place.name}
+                      className="h-full w-full object-cover"
+                    />
                     <div className="absolute left-3 top-3">
                       <span className="inline-block rounded-full bg-cyan-500/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
                         {place.type}

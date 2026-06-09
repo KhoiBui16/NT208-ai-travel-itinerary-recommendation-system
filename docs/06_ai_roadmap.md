@@ -140,7 +140,7 @@ Ngày 2026-05-25:
 - Sau khi bật pacing default `5-5`, smoke phải trả đúng 5 activities/ngày để giữ chất lượng nhưng tránh output quá dài.
 - Browser debug 4 ngày: prompt khoảng 6.4k chars (~1.6k token), response khoảng 11.7k chars; timeout không do context window mà do latency/output length của Gemini.
 - Guest browser flow: API trả `201`, FE lưu `pendingClaim` vào `sessionStorage`, rồi route protected chuyển login; authenticated flow vào workspace và load trip từ BE.
-- FE/BE browser e2e pass 11/11 khi FE `127.0.0.1:5173` gọi BE local qua `E2E_API_URL`; CORS đã bổ sung origin `127.0.0.1:5173`.
+- FE/BE browser e2e pass 11/11 khi FE `localhost:5173` gọi BE local qua `E2E_API_URL`; CORS đã bổ sung origin `localhost:5173`.
 - Browser AI smoke sau fix: authenticated generate 1 ngày trả 201, workspace load đúng generated trip từ BE và `useTripSync` chỉ gọi `GET /itineraries/{id}` một lần.
 
 ---

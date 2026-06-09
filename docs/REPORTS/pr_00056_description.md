@@ -20,8 +20,8 @@ Fix CalendarModal/day selection bug discovered in 00055 fullstack regression, th
 
 ### Runtime
 
-- Backend: `http://127.0.0.1:8000`
-- Frontend: `http://127.0.0.1:5173`
+- Backend: `http://localhost:8000`
+- Frontend: `http://localhost:5173`
 
 ### Commands
 

@@ -35,9 +35,38 @@ function getFallbackDestinationImage(name: string): string {
   return directFallback?.image || DEFAULT_PLACE_IMAGE;
 }
 
+/**
+ * Resolves a destination image URL for display.
+ *
+ * Priority:
+ * 1. Absolute API image URL (http/https) from BE.
+ * 2. Fallback Unsplash URL from placeImage.ts.
+ *
+ * NOTE: Relative paths like `/img/destinations/...` are SKIPPED because
+ * the ETL placeholder paths don't map to actual files, causing 404 errors.
+ */
 function resolveDestinationImage(name: string, apiImage?: string | null): string {
   const trimmedImage = apiImage?.trim();
-  return trimmedImage || getFallbackDestinationImage(name);
+  if (trimmedImage) {
+    // Only use absolute URLs (http/https). Skip relative paths that would 404.
+    if (trimmedImage.startsWith("http://") || trimmedImage.startsWith("https://")) {
+      return trimmedImage;
+    }
+    // Relative path like `/img/destinations/...` - skip and use fallback
+  }
+  return getFallbackDestinationImage(name);
+}
+
+/** Convert a Vietnamese destination name to a URL-safe slug matching the cityId route param. */
+function nameToSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
 }
 
 export default function Home() {
@@ -182,7 +211,7 @@ export default function Home() {
             destinations.map((dest) => (
             <Link
               key={dest.name}
-              to="/cities"
+              to={`/cities/${nameToSlug(dest.name)}`}
               className="group relative overflow-hidden rounded-xl shadow-lg transition-all hover:-translate-y-1 hover:shadow-2xl"
             >
               <div className="relative h-64">
@@ -237,10 +266,10 @@ export default function Home() {
             <div>
               <h4 className="mb-4 text-xl font-bold">Đội ngũ phát triển</h4>
               <ul className="space-y-2 text-gray-300">
-                <li>Bùi Nhật Anh Khôi - Leader</li>
-                <li>Dương Đăng Chính - FrontEnd</li>
-                <li>Lê Văn Chí - BackEnd</li>
-                <li>Nguyễn Hữu Chiến - BackEnd</li>
+                <li>Bùi Nhật Anh Khôi — Leader, Backend, AI</li>
+                <li>Dương Đăng Chính — FrontEnd</li>
+                <li>Lê Văn Chí — Backend</li>
+                <li>Nguyễn Hữu Chiến — Backend</li>
               </ul>
             </div>
             <div>

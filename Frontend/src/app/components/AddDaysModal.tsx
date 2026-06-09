@@ -1,10 +1,23 @@
 import React, { useState } from "react";
 import { X, Plus, MapPin, Check, CalendarDays, Calendar } from "lucide-react";
-import { format, addDays, parse, startOfDay } from "date-fns";
+import { format, addDays, parse, parseISO, isValid, startOfDay } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Day, DateAllocation } from "../types/trip.types";
 import { availableDestinations } from "../utils/tripConstants";
 import { CalendarModal } from "./CalendarModal";
+
+/** Parse a date string in either ISO (YYYY-MM-DD) or dd/MM/yyyy format. */
+function safeParseDate(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  // Try ISO format first (YYYY-MM-DD or full ISO datetime)
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    const d = parseISO(dateStr);
+    return isValid(d) ? d : null;
+  }
+  // Fall back to dd/MM/yyyy format
+  const d = parse(dateStr, "dd/MM/yyyy", new Date());
+  return isValid(d) ? d : null;
+}
 
 interface AddDaysModalProps {
   isOpen: boolean;
@@ -53,10 +66,8 @@ export function AddDaysModal({ isOpen, onClose, days, onConfirm }: AddDaysModalP
   const getAllOccupiedDates = (): Date[] => {
     const occupiedDates: Date[] = [];
     days.forEach((day) => {
-      try {
-        const parsed = parse(day.date, "dd/MM/yyyy", new Date());
-        occupiedDates.push(startOfDay(parsed));
-      } catch (e) {}
+      const parsed = safeParseDate(day.date);
+      if (parsed) occupiedDates.push(startOfDay(parsed));
     });
     return occupiedDates;
   };

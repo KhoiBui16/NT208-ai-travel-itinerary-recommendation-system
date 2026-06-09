@@ -8,6 +8,7 @@ import { Suggestion, mockSuggestions } from "../data/suggestions";
 import { useAuth } from "../contexts/AuthContext";
 import { getItinerary } from "../services/itinerary";
 import { listSavedPlaces, savePlace, unsavePlace } from "../services/places";
+import { findSavedPlaceByName, normalizeSavedPlaces } from "../utils/savedPlaces";
 import {
   Plus,
   Sparkles,
@@ -150,10 +151,12 @@ export default function DailyItinerary() {
     // Load saved places from API
     if (isAuthenticated) {
       listSavedPlaces().then((data) => {
-        const savedNames = data.map((p: any) => p.placeName || p.name);
+        const savedNames = new Set(
+          normalizeSavedPlaces(data).map((p) => p.name),
+        );
         const matchedIds = mockSuggestions
-          .filter(s => savedNames.includes(s.name))
-          .map(s => s.id);
+          .filter((s) => savedNames.has(s.name))
+          .map((s) => s.id);
         setSavedSuggestions(matchedIds);
       }).catch(() => {});
     }
@@ -199,8 +202,8 @@ export default function DailyItinerary() {
     try {
       if (isAlreadySaved) {
         const savedList = await listSavedPlaces();
-        const match = savedList.find((p: any) => (p.placeName || p.name) === suggestion.name);
-        if (match) await unsavePlace(match.id);
+        const match = findSavedPlaceByName(normalizeSavedPlaces(savedList), suggestion.name);
+        if (match) await unsavePlace(match.savedId);
       } else {
         await savePlace(suggestion.id);
       }
@@ -273,28 +276,28 @@ export default function DailyItinerary() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
-                    <div className="rounded-lg bg-gray-100 p-4">
-                      <p className="mb-2 text-sm font-semibold text-gray-700">Link chia sẻ:</p>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          readOnly
-                          value="yourtrip.app/trip/abc123"
-                          className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                        />
-                        <button className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700">
-                          Copy
-                        </button>
+                    {!isAuthenticated ? (
+                      <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-center">
+                        <p className="text-sm font-semibold text-amber-800">
+                          Vui lòng đăng nhập để chia sẻ lịch trình
+                        </p>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
+                        <p className="text-sm text-gray-600">
+                          Để tạo link chia sẻ, hãy vào trang chi tiết lịch trình và sử dụng nút Chia Sẻ ở đó.
+                        </p>
+                      </div>
+                    )}
                     <div className="space-y-2">
-                      <button className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50">
-                        <Download className="h-5 w-5 text-gray-600" />
-                        <span className="font-semibold text-gray-700">Export as PDF</span>
-                      </button>
-                      <button className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50">
-                        <Link2 className="h-5 w-5 text-gray-600" />
-                        <span className="font-semibold text-gray-700">Copy Link</span>
+                      <button
+                        disabled
+                        title="Tính năng đang phát triển"
+                        className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 opacity-50 cursor-not-allowed"
+                      >
+                        <Download className="h-5 w-5 text-gray-400" />
+                        <span className="font-semibold text-gray-400">Export as PDF</span>
+                        <span className="ml-auto text-xs text-gray-400">Tính năng đang phát triển</span>
                       </button>
                     </div>
                   </div>
