@@ -1,7 +1,9 @@
 # Issue: FE Generic Error Masks Backend Error Reason
 
 ## Status
-RESOLVED_FOR_SCOPE (2026-05-29, branch fix/00051-c-fe-error-visibility)
+✅ FULLY RESOLVED by PR #87 (00062) - Extends 00051 fix with comprehensive error handling
+
+**Previous resolution:** RESOLVED_FOR_SCOPE (2026-05-29, branch fix/00051-c-fe-error-visibility)
 
 ## Evidence
 - **B3 Playwright test** (2026-05-28): `Frontend/tests/e2e/b3/flow-a-hcm-error.spec.ts`

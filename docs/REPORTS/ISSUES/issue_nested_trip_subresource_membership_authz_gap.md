@@ -1,9 +1,10 @@
 # Issue — Nested Trip Subresource Membership AuthZ Gap
 
-Status: `RESOLVED`
+Status: `✅ RESOLVED`
 Severity: `HIGH`
 Found in: `00059B — Full User Journey UAT`
 Resolved in: `00060A — Fix nested trip subresource authz gap`
+**Extended by PR #86 (00062):** Destination matching and data contract fixes ensure authZ checks work correctly for all itinerary subresources
 
 ## Summary
 
