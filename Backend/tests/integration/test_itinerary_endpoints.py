@@ -207,11 +207,23 @@ def _seed_activity_for_trip(
     *,
     activity_name: str,
 ) -> tuple[int, dict]:
+    # Get existing trip to retrieve day IDs (create_manual now seeds trip_days)
+    get_response = client.get(
+        f"/api/v1/itineraries/{trip_id}",
+        headers=_auth_header(token),
+    )
+    assert get_response.status_code == 200, get_response.text
+    existing_trip = get_response.json()
+
+    # Use the first existing day's ID if available
+    day_id = existing_trip.get("days", [{}])[0].get("id") if existing_trip.get("days") else None
+
     response = client.put(
         f"/api/v1/itineraries/{trip_id}",
         json={
             "days": [
                 {
+                    "id": day_id,  # Include day ID to update instead of create
                     "label": "Ngày 1",
                     "date": "2026-05-01",
                     "activities": [
