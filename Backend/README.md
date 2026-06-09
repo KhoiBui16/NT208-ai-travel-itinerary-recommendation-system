@@ -78,14 +78,14 @@ uv run alembic upgrade head
 $env:AGENT_TIMEOUT_SECONDS="120"
 $env:AGENT_MIN_ACTIVITIES_PER_DAY="5"
 $env:AGENT_MAX_ACTIVITIES_PER_DAY="5"
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn src.main:app --host localhost --port 8000 --reload
 ```
 
 Health and Swagger:
 
 ```powershell
-curl.exe http://127.0.0.1:8000/api/v1/health
-start http://127.0.0.1:8000/docs
+curl.exe http://localhost:8000/api/v1/health
+start http://localhost:8000/docs
 ```
 
 ## Data Pipeline

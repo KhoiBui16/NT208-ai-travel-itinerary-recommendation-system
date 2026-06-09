@@ -17,7 +17,7 @@ The fix implemented in `pipeline.py` correctly maps accommodation `day_ids` to r
 
 - **Services:** Docker Compose (PostgreSQL + Redis) - Running
 - **Backend:** uvicorn + FastAPI - Running on port 8000
-- **Health Check:** `http://127.0.0.1:8000/api/v1/health` - Healthy
+- **Health Check:** `http://localhost:8000/api/v1/health` - Healthy
 - **Test Date:** 2026-06-08
 
 ---
@@ -28,7 +28,7 @@ The fix implemented in `pipeline.py` correctly maps accommodation `day_ids` to r
 
 **API Request:**
 ```bash
-POST http://127.0.0.1:8000/api/v1/itineraries/generate
+POST http://localhost:8000/api/v1/itineraries/generate
 Content-Type: application/json
 
 {

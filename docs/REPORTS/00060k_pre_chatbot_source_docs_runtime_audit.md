@@ -36,7 +36,7 @@ No product/source code was changed in this audit pass. Only audit markdown files
 - `api` initially failed to start because the existing image did not contain `google.genai`, even though `Backend/pyproject.toml` already declares `google-genai`.
 - After `docker compose build api` and `docker compose up -d api`, the API became healthy and `/api/v1/health` returned `{"status":"healthy"}`.
 - This means the current Docker path is sensitive to stale images and is not robust enough for local verification unless the image is rebuilt.
-- `Frontend` also ran successfully on `http://127.0.0.1:5173`, but the latest audit artifact showed a PowerShell env-assignment typo while trying to inject `VITE_API_URL`. The app still worked only because `Frontend/src/app/services/api.ts` falls back to `http://localhost:8000`.
+- `Frontend` also ran successfully on `http://localhost:5173`, but the latest audit artifact showed a PowerShell env-assignment typo while trying to inject `VITE_API_URL`. The app still worked only because `Frontend/src/app/services/api.ts` falls back to `http://localhost:8000`.
 - Real integration smoke is not globally broken right now:
   - `Frontend/tests/e2e/auth.spec.ts`: `5 passed`
   - `Frontend/tests/e2e/trips.spec.ts`: `3 passed`

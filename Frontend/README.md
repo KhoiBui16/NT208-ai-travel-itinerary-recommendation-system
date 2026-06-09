@@ -16,21 +16,21 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 
 ## Local Start
 
-Terminal 1 should already run the backend on `127.0.0.1:8000`.
+Terminal 1 should already run the backend on `localhost:8000`.
 
 Terminal 2:
 
 ```powershell
 cd Frontend
 npm ci
-$env:VITE_API_URL="http://127.0.0.1:8000"
-npm run dev -- --host 127.0.0.1 --port 5173
+$env:VITE_API_URL="http://localhost:8000"
+npm run dev -- --host localhost --port 5173
 ```
 
 Open:
 
 ```text
-http://127.0.0.1:5173
+http://localhost:5173
 ```
 
 If the backend uses another port, restart Vite after changing `VITE_API_URL`; Vite only exposes `VITE_*` variables at server startup.
@@ -124,7 +124,7 @@ Playwright e2e:
 
 ```powershell
 cd Frontend
-$env:E2E_API_URL="http://127.0.0.1:8000"
+$env:E2E_API_URL="http://localhost:8000"
 npm run test:e2e
 ```
 

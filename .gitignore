@@ -40,6 +40,8 @@ test_full_results.json
 *-smoke.result.txt
 .pytest_cache/
 pytest-cache-files-*/
+test-results/
+test_trip.json
 
 # Frontend build artifacts (local only)
 Frontend/dist/
@@ -51,6 +53,7 @@ Frontend/playwright-report/
 
 # Claude local-only settings
 .claude/settings.local.json
+.claude/AGENTS.md
 
 # MVP1 legacy code (kept for reference, not tracked)
 Backend/app/

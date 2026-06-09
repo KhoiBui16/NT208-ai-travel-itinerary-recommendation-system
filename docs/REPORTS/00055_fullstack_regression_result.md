@@ -48,7 +48,7 @@ Mục tiêu: xác định bug thực tế còn lại trước C3/C4.
 | Current branch | ✅ `test/00055-c-fullstack-regression-verification` | `git status` confirms |
 | main synced | ✅ `172b04a` (PR 00052 merged) | Fast-forward from 0625ea6 |
 | DB/Redis/Backend | ✅ Running | `docker compose ps` shows all services up |
-| Backend health | ✅ `{"status":"healthy"}` | `curl http://127.0.0.1:8000/api/v1/health` |
+| Backend health | ✅ `{"status":"healthy"}` | `curl http://localhost:8000/api/v1/health` |
 | Frontend | ✅ Running on 5173 | HTTP 200 response |
 
 ---
@@ -87,7 +87,7 @@ Mục tiêu: xác định bug thực tế còn lại trước C3/C4.
 | Bug | Severity | Action | File/Issue |
 |---|---|---|---|
 | CalendarModal click timeout | MEDIUM | DEFERRED | `Frontend/src/app/components/CalendarModal.tsx` - day button clicks cause test timeout |
-| API uses localhost not 127.0.0.1 | LOW | NOTED | Requests go to `localhost:8000` not `127.0.0.1:8000` - but both work |
+| API uses localhost | LOW | NOTED | Requests go to `localhost:8000` - both work correctly |
 
 ---
 
@@ -140,7 +140,7 @@ Destination input visible: true
 ```
 
 **Critical insight:** The destinations API IS being called correctly. The earlier test failures were due to:
-1. Test expecting `127.0.0.1:8000` but requests go to `localhost:8000`
+1. Test expecting specific host format but requests go to `localhost:8000`
 2. CalendarModal blocking interactions in TC2/TC4
 
 **City count discrepancy:** Backend returns 10 cities, not 6 as documented in 00052 reports. This means the DB has been updated with 4 additional cities (Hạ Long, Phú Quốc, Sapa, Đà Lạt) since 00052.

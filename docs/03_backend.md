@@ -643,7 +643,7 @@ trip = repo.get_with_full_data(trip_id)  # Fresh query → load từ DB
 | Claim token one-time | `consumed_at` + `expires_at` + hash |
 | Password reset silent | Không tiết lộ email có tồn tại hay không |
 | Force re-login on reset | Revoke tất cả refresh tokens khi đổi password |
-| CORS origin | Allow local FE origins: `localhost:5173` và `127.0.0.1:5173` |
+| CORS origin | Allow local FE origins: `localhost:5173` |
 
 ---
 
