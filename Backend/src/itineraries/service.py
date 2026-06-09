@@ -104,12 +104,15 @@ class ItineraryService(BaseService):
 
         Enforces the per-user trip limit for authenticated users.
         Guest-created trips receive a claim token in the response.
+
+        DB-DATA-01 Fix: Automatically creates trip_days based on date range
+        to prevent 74% of trips from having no days (which breaks generate pipeline).
         """
         # Check trip count limit for authenticated users
         if user_id is not None:
             await self._check_trip_limit(user_id)
 
-        # Create the trip record with empty days/activities
+        # Create the trip record
         trip = await self._create_trip_record(
             destination=request.destination,
             trip_name=request.trip_name,
@@ -121,6 +124,24 @@ class ItineraryService(BaseService):
             interests=request.interests,
             user_id=user_id,
         )
+
+        # DB-DATA-01 Fix: Seed trip_days based on date range
+        from datetime import timedelta
+
+        start = request.start_date
+        end = request.end_date
+        day_count = (end - start).days + 1
+
+        for idx in range(day_count):
+            current_date = start + timedelta(days=idx)
+            await self.repo.add_day(
+                trip_id=trip.id,
+                day_number=idx + 1,
+                label=f"Ngày {idx + 1}",
+                date=current_date.isoformat(),
+                destination_name=request.destination,
+            )
+
         resp = await self._to_response(trip)
 
         # Issue claim token for guest-created trips
