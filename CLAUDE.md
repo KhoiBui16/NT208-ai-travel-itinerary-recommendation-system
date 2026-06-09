@@ -22,17 +22,18 @@ Neu docs va code xung dot:
 - Sau do doi chieu voi code that te
 - Neu code da lech docs, phai noi ro mismatch truoc khi sua tiep
 
-## Current repo truth (2026-05-05)
+## Current repo truth (2026-06-09)
 
 - Backend runtime hien tai la MVP2 trong `Backend/src/`
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
-- 141 BE tests (97 unit + 44 integration)
+- 191 BE tests (138 unit + 53 integration)
 - Frontend runtime hien tai nam trong `Frontend/`
-- 11 Playwright e2e tests trong `Frontend/tests/e2e/`
+- 14 Playwright e2e test files trong `Frontend/tests/e2e/`
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
 - Register page bypass OTP cho den khi BE email OTP san sang
 - `docs/` la bo tai lieu chi tiet cho user va reviewer
 - `.claude/` la lop operational memory cho Claude, phai bam theo project nay
+- **00062 fixes merged** (PR #86-90): SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding, FE error handling
 
 ## Target MVP2 decisions da chot
 

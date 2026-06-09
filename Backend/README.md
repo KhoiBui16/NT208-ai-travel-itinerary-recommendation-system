@@ -13,7 +13,7 @@ FastAPI backend for the NT208 AI travel itinerary recommendation system.
 | ETL | Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, sample hotels |
 | AI C.1 | Implemented: `POST /api/v1/itineraries/generate` builds DB recommendation context, calls Gemini, validates, retries, persists generated trip data, and enforces user/guest quota |
 | Remaining AI | C.2 suggestion service, C.3 companion chat, C.4 chat history API, C.5 analytics |
-| Verified 2026-05-26 | Ruff check/format pass, Alembic upgrade/check pass, 93 unit tests pass, 42 integration tests collect with 36 passed and 6 skipped |
+| Verified 2026-06-09 | Ruff check/format pass, Alembic upgrade/check pass, 138 unit tests pass, 53 integration tests collected; 00062 fixes merged (SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding) |
 
 ## Architecture
 
@@ -184,15 +184,15 @@ uv run pytest tests/unit/ -v --tb=short
 uv run pytest tests/integration/ -v --tb=short
 ```
 
-Expected post-PR41 local result on 2026-05-26:
+Expected post-00062 local result on 2026-06-09:
 
 | Gate | Result |
 |---|---|
 | Ruff check | Pass |
 | Ruff format check | Pass |
 | Alembic upgrade/check | Pass |
-| Unit tests | 93 passed |
-| Integration tests | 36 passed, 6 skipped |
+| Unit tests | 138 passed |
+| Integration tests | 53 collected |
 
 ## Debug Notes
 
@@ -200,11 +200,27 @@ Expected post-PR41 local result on 2026-05-26:
 |---|---|---|
 | `422` from `/generate` | Destination missing or insufficient DB context | Run Goong ETL and confirm places exist |
 | `429` from `/generate` | User/guest AI quota exhausted | Check Redis `rate:ai:*` keys |
-| `503 Gemini request timed out` | Provider latency exceeded timeout | Increase `AGENT_TIMEOUT_SECONDS` locally and inspect `ai_generate_*` logs |
+| `503 Gemini request timed out` | Provider latency exceeded timeout | Timeout is now dynamic per request size; inspect `ai_generate_*` logs |
 | `503 AI rate limiter unavailable` | Redis unavailable and fail-closed | Start Redis or fix `REDIS_URL` |
 | FE shows generic generate error | FE hides detailed BE error | Inspect network response and backend logs |
 
 Do not log provider keys, JWTs, refresh tokens, or raw claim tokens.
+
+## Recent Fixes (00062 - 2026-06-09)
+
+Four PRs were merged to fix critical data flow and UX issues:
+
+| PR | Focus | Key fixes |
+|---|---|---|
+| #86 | Data contracts | SQLAlchemy async eager loading for `extra_expenses`; case-insensitive + fuzzy destination matching; trip_days auto-seeding for manual trips |
+| #87 | FE error handling | Toast notifications for silent failures instead of generic errors |
+| #89 | AI pipeline | Dynamic timeout based on request size; reduced prompt context |
+| #90 | DB data quality | Migration 20260609_0007 to seed trip_days for existing manual trips |
+
+**Infrastructure improvements:**
+- Redis `maxmemory` configured to 128mb with `allkeys-lru` eviction policy
+- SQLAlchemy async relationship loading fixed for nested accommodations/activities
+- Destination matching now handles case variations and partial matches (e.g., "Hà Nội" matches "ha noi")
 
 ---
 

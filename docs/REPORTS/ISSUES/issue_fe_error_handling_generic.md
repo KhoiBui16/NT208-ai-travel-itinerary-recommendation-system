@@ -1,7 +1,10 @@
 # Issue: FE Error Handling Generic for Generate Flow
 
+> **Status:** ✅ RESOLVED by PR #87 (00062)
+> **Resolution:** Toast notifications now show specific error messages for rate limits (429), validation errors (422), and AI timeouts (503) instead of generic "Không thể tạo lịch trình".
+
 ## Status
-OPEN
+RESOLVED
 
 ## Evidence
 - File: `Frontend/src/app/pages/CreateTrip.tsx`

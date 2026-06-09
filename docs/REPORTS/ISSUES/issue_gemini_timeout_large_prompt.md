@@ -1,7 +1,10 @@
 # Issue: Gemini Timeout on Large Prompt
 
+> **Status:** ✅ RESOLVED by PR #89 (00062)
+> **Resolution:** Dynamic timeout based on request size (days × interests × activities). Reduced context window. Large prompts now get proportionally longer timeouts instead of fixed 60s cutoff.
+
 ## Status
-OPEN
+RESOLVED
 
 ## Evidence
 - **B2 API Matrix** (2026-05-28):

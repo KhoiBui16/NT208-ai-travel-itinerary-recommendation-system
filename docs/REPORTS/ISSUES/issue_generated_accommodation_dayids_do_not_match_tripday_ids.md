@@ -1,10 +1,12 @@
 # Issue: Generated accommodation dayIds do not match persisted TripDay IDs
 
 Date: 2026-06-07
-Updated: 2026-06-08
+Updated: 2026-06-09
 Severity: High
 Area: Backend generate pipeline, Frontend workspace accommodation rendering
-Status: **RESOLVED** in commit `a1ca485`
+Status: **✅ RESOLVED by PR #86 (00062)** - extends fix from commit `a1ca485`
+
+**Resolution:** SQLAlchemy async relationship loading fixed with eager loading for `extra_expenses`. Generated accommodation dayIds now correctly map to persisted TripDay IDs through async session configuration.
 
 ## Summary
 
