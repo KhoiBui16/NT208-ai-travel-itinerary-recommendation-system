@@ -169,7 +169,7 @@ test.describe("C3A Chat Session", () => {
     // because TripWorkspace requires auth for full access.
     // Verify that unauthenticated users cannot use chat session API directly.
     const res = await page.request.post(
-      `${apiBase}/itineraries/99999/chat-sessions`,
+      `${API_URL}/api/v1/itineraries/99999/chat-sessions`,
       {
         headers: { "Content-Type": "application/json" },
       },
