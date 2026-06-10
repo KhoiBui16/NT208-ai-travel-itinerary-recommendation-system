@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import AppSettings, get_settings
 from src.core.exceptions import ConflictException, ForbiddenException, NotFoundException
+from src.core.slugify import slugify
 from src.places.models import Destination, Place, SavedPlace
 from src.places.repository import PlaceRepository
 from src.places.schemas import (
@@ -101,9 +102,9 @@ class PlaceService(BaseService):
         # Resolve destination — try name first, then slug, then fuzzy match
         dest = await self.repo.get_destination_by_name(name)
         if not dest:
-            dest = await self.repo.get_destination_by_slug(name)
+            # Convert input to slug format so "Ha Noi" → "ha-noi" matches DB slugs
+            dest = await self.repo.get_destination_by_slug(slugify(name))
         if not dest:
-            # BUG-BE-003 fix: Add fuzzy fallback (similar to AI pipeline resolution)
             dest = await self.repo.get_destination_by_fuzzy(name)
         if not dest:
             raise NotFoundException("Destination not found")
