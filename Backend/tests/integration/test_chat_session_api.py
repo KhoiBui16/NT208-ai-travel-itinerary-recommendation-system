@@ -206,9 +206,9 @@ def test_list_chat_sessions__pagination__returns_correct_slice(client: TestClien
     data = response.json()
     assert data["total"] == 5
     assert len(data["items"]) == 2
-    # Verify we got the correct slice (sessions at index 2 and 3)
+    # Verify we got the correct slice — sessions are ORDER BY created_at DESC
     returned_ids = [item["id"] for item in data["items"]]
-    expected_ids = session_ids[2:4]
+    expected_ids = list(reversed(session_ids))[2:4]
     assert returned_ids == expected_ids
 
 
