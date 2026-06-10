@@ -12,7 +12,7 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 | Trips | Manual create/update, generated itinerary load by `tripId`, optimistic activity/accommodation/place operations |
 | AI C.1 | `CreateTrip` calls BE `POST /api/v1/itineraries/generate` and navigates to `TripWorkspace` |
 | Remaining AI UI | `FloatingAIChat`, promo bubble, contextual panels, and companion components are still mock/placeholder for C.3 |
-| Verified 2026-06-09 | Playwright e2e: 14 test files; browser smoke covered auth generate, seeded guest claim reload, rate limit, and FE error handling (00062 fixes) |
+| Verified 2026-06-10 | Playwright e2e: 14 test files; browser smoke covered auth generate, seeded guest claim reload, rate limit, FE error handling (00062 fixes), destination slugify fuzzy match (BUG-BE-003 fix PR #92) |
 
 ## Local Start
 
@@ -128,10 +128,11 @@ $env:E2E_API_URL="http://localhost:8000"
 npm run test:e2e
 ```
 
-Post-merge note from 2026-06-09:
+Post-merge note from 2026-06-10:
 
 - `npm run test:e2e`: 14 test files (expanded coverage after 00062 fixes).
 - FE error handling improved: toast notifications now show specific error messages instead of generic "Không thể tạo lịch trình" for rate limits, validation errors, and AI timeouts.
+- Destination slugify fuzzy matching (PR #92): Backend now properly matches "Ha Noi" → "ha-noi" → DB, improving destination resolution for users typing city names without accents.
 - The exact default `npm run build` failed locally because an ignored `Frontend/dist/assets` directory had Windows `EPERM` permission locks. This is local artifact state, not a TypeScript/Vite compile error, and is tracked in `docs/REPORTS/ISSUES/frontend_dist_permission_lock.md`.
 
 ## Browser Debug Checklist

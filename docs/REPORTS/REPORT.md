@@ -717,3 +717,32 @@ Không có thay đổi UI/UX, API contract, DB schema, hoặc business logic tro
 **Recommendation:**
 - ✅ **Can merge PR #85 now:** Critical bugs fixed, all tests passing
 - ⏸️ **Defer C3/C4 start:** Image strategy decision needed first
+
+## 00093 BUG-BE-003 Destination Slugify Fix
+
+| File | Nội dung |
+|---|---|
+| [BROWSER_TEST_EXECUTIVE_SUMMARY.md](BROWSER_TEST_EXECUTIVE_SUMMARY.md) | Executive summary of browser test results |
+| [BROWSER_TEST_MANUAL_RESULTS.md](BROWSER_TEST_MANUAL_RESULTS.md) | Detailed manual browser test results |
+| [BROWSER_TEST_RETEST_RESULTS.md](BROWSER_TEST_RETEST_RESULTS.md) | Retest results after fixes |
+| [BROWSER_TEST_STATUS.md](BROWSER_TEST_STATUS.md) | Current status of all browser tests |
+
+**Key findings:**
+- ✅ **BUG-BE-003 FIXED:** Extracted shared `slugify()` utility to `Backend/src/core/slugify.py`
+- ✅ **Places service updated:** Now uses `slugify()` for destination resolution ("Ha Noi" → "ha-noi" → match DB)
+- ✅ **Itineraries repository refactored:** Removed inline `_to_slug()` in favor of shared utility
+- ✅ **Browser test automation:** Added `.claude/commands/browserbase-test.md` skill
+- ✅ **MCP skills guide:** Added `docs/MCP_SKILLS_GUIDE.md`
+- ✅ **Browser test reports:** 4 comprehensive reports covering test status and results
+
+**Test results:**
+- Backend lint: ✅ PASS
+- Backend format: ✅ PASS
+- Backend unit tests: ✅ PASS (138 passed)
+- Backend integration tests: ✅ PASS (53 passed)
+- Frontend build: ✅ PASS
+- Browser tests: 6/7 PASS, 1 PARTIAL (rate limit quota)
+
+**Files changed:** 9 files (+2,292 lines, -102 lines)
+
+**Status:** ✅ MERGED in PR #92 (2026-06-10)
