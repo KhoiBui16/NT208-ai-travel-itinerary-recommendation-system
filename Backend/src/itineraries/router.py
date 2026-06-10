@@ -7,10 +7,11 @@ Router structure:
 Endpoint groups:
   1. Main CRUD           (EP 8-12): create, list, get, update, delete trips
   2. AI Generation       (EP 8):    generate itinerary via AI pipeline
-  3. Rating & Share      (EP 13-15): rate trip, create share link, claim trip
-  4. Activity CRUD       (EP 16-18): add, update, delete activities within a day
-  5. Accommodation CRUD  (EP 19-20): add, delete accommodations for a trip
-  6. Shared Access       (EP 15):    public read-only trip view via shareToken
+  3. Chat Sessions       (C3A-1):    create, list, get chat sessions for companion chat
+  4. Rating & Share      (EP 13-15): rate trip, create share link, claim trip
+  5. Activity CRUD       (EP 16-18): add, update, delete activities within a day
+  6. Accommodation CRUD  (EP 19-20): add, delete accommodations for a trip
+  7. Shared Access       (EP 15):    public read-only trip view via shareToken
 """
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -25,6 +26,8 @@ from src.core.schema import PaginatedResponse, SuccessResponse
 from src.itineraries.schemas import (
     AccommodationSchema,
     ActivitySchema,
+    ChatSessionListResponse,
+    ChatSessionResponse,
     ClaimTripRequest,
     CreateTripRequest,
     GenerateItineraryRequest,
@@ -124,6 +127,53 @@ async def list_trips(
     to keep the response fast for the TripLibrary and TripHistory pages.
     """
     return await service.list_by_user(user.id, page=page, size=size)
+
+
+# ===================================================================
+# Chat Sessions — Trip-bound companion chat session endpoints
+# ===================================================================
+
+
+@router.get(
+    "/chat-sessions/{session_id}",
+    response_model=ChatSessionResponse,
+)
+async def get_chat_session(
+    session_id: int,
+    user: User = Depends(get_current_user),
+    service: ItineraryService = Depends(get_itinerary_service),
+) -> ChatSessionResponse:
+    """Get a chat session by ID."""
+    return await service.get_chat_session(session_id, user.id)
+
+
+@router.post(
+    "/{trip_id}/chat-sessions",
+    response_model=ChatSessionResponse,
+    status_code=201,
+)
+async def create_chat_session(
+    trip_id: int,
+    user: User = Depends(get_current_user),
+    service: ItineraryService = Depends(get_itinerary_service),
+) -> ChatSessionResponse:
+    """Create a new chat session for a trip."""
+    return await service.create_chat_session(trip_id, user.id)
+
+
+@router.get(
+    "/{trip_id}/chat-sessions",
+    response_model=ChatSessionListResponse,
+)
+async def list_chat_sessions(
+    trip_id: int,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    service: ItineraryService = Depends(get_itinerary_service),
+) -> ChatSessionListResponse:
+    """List chat sessions for a trip."""
+    return await service.list_chat_sessions(trip_id, user.id, skip=skip, limit=limit)
 
 
 @router.get("/{trip_id}", response_model=ItineraryResponse)

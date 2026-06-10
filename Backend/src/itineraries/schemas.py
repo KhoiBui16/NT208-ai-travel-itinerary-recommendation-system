@@ -281,3 +281,27 @@ class ItineraryResponse(CamelCaseModel):
     # --- Timestamps ---
     created_at: datetime  # When the trip was first created
     updated_at: datetime  # Last modification timestamp (auto-save updates this)
+
+
+# ===================================================================
+# Chat Session — Trip-bound companion chat sessions
+# ===================================================================
+
+
+class ChatSessionResponse(CamelCaseModel):
+    """Single chat session response."""
+
+    id: int
+    trip_id: int
+    user_id: int | None = None
+    thread_id: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChatSessionListResponse(CamelCaseModel):
+    """Paginated list of chat sessions for a trip."""
+
+    items: list[ChatSessionResponse]
+    total: int

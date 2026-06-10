@@ -33,6 +33,8 @@ from src.itineraries.repository import TripRepository
 from src.itineraries.schemas import (
     AccommodationSchema,
     ActivitySchema,
+    ChatSessionListResponse,
+    ChatSessionResponse,
     ClaimTripRequest,
     CreateTripRequest,
     DaySchema,
@@ -877,4 +879,59 @@ class ItineraryService(BaseService):
             accommodations=[],  # Omitted for list views
             created_at=trip.created_at,
             updated_at=trip.updated_at,
+        )
+
+    # ===================================================================
+    # Chat Sessions — Trip-bound companion chat sessions
+    # ===================================================================
+
+    async def create_chat_session(self, trip_id: int, user_id: int) -> ChatSessionResponse:
+        """Create a new chat session for a trip.
+
+        Enforces trip ownership before creating.
+        Generates a unique thread_id for the session.
+        """
+        import uuid
+
+        trip = await self._verify_owner(trip_id, user_id)
+
+        session = await self.repo.create_chat_session(
+            trip_id=trip.id,
+            user_id=user_id,
+            thread_id=f"trip-{trip.id}-{uuid.uuid4().hex[:12]}",
+            status="active",
+        )
+        return self._to_chat_session_response(session)
+
+    async def list_chat_sessions(
+        self, trip_id: int, user_id: int, skip: int = 0, limit: int = 20
+    ) -> ChatSessionListResponse:
+        """List chat sessions for a trip. Enforces ownership."""
+        await self._verify_owner(trip_id, user_id)
+        sessions, total = await self.repo.list_sessions_by_trip(trip_id, skip=skip, limit=limit)
+        return ChatSessionListResponse(
+            items=[self._to_chat_session_response(s) for s in sessions],
+            total=total,
+        )
+
+    async def get_chat_session(self, session_id: int, user_id: int) -> ChatSessionResponse:
+        """Get a chat session by ID. Enforces ownership via trip."""
+        session = await self.repo.get_chat_session_by_id(session_id)
+        if not session:
+            raise NotFoundException("Chat session not found")
+
+        # Verify ownership through the trip
+        await self._verify_owner(session.trip_id, user_id)
+        return self._to_chat_session_response(session)
+
+    def _to_chat_session_response(self, session) -> ChatSessionResponse:
+        """Convert ChatSession ORM to ChatSessionResponse schema."""
+        return ChatSessionResponse(
+            id=session.id,
+            trip_id=session.trip_id,
+            user_id=session.user_id,
+            thread_id=session.thread_id,
+            status=session.status,
+            created_at=session.created_at,
+            updated_at=session.updated_at,
         )

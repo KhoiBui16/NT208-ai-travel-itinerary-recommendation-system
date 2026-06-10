@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.core.slugify import slugify
+from src.itineraries.models.chat import ChatSession
 from src.itineraries.models.extras import Accommodation, GuestClaimToken, ShareLink, TripRating
 from src.itineraries.models.trip import Activity, Trip, TripDay
 from src.places.models import Destination, Hotel, Place
@@ -445,3 +446,39 @@ class TripRepository:
             select(GuestClaimToken).where(GuestClaimToken.trip_id == trip_id)
         )
         return list(result.scalars().all())
+
+    # ===================================================================
+    # Chat Session — Session CRUD for companion chat
+    # ===================================================================
+
+    async def create_chat_session(self, **kwargs: object) -> ChatSession:
+        """Insert a new ChatSession row."""
+        session = ChatSession(**kwargs)  # type: ignore[arg-type]
+        self.session.add(session)
+        await self.session.flush()
+        await self.session.refresh(session)
+        return session
+
+    async def get_chat_session_by_id(self, session_id: int) -> ChatSession | None:
+        """Fetch a chat session by ID."""
+        result = await self.session.execute(select(ChatSession).where(ChatSession.id == session_id))
+        return result.scalar_one_or_none()
+
+    async def list_sessions_by_trip(
+        self, trip_id: int, skip: int = 0, limit: int = 20
+    ) -> tuple[list[ChatSession], int]:
+        """Return (sessions, total_count) for a trip, ordered by created_at desc."""
+        count_stmt = (
+            select(func.count()).select_from(ChatSession).where(ChatSession.trip_id == trip_id)
+        )
+        total = (await self.session.execute(count_stmt)).scalar_one()
+
+        stmt = (
+            select(ChatSession)
+            .where(ChatSession.trip_id == trip_id)
+            .order_by(ChatSession.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all()), total
