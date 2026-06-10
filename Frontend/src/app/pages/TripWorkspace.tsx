@@ -14,7 +14,7 @@ import {
   Utensils, Landmark, TreePine, Music, ShoppingBag, Trash2, X, Check,
   ChevronRight, Save, Bookmark, Home,
   Hotel as HotelIcon, Wifi, Coffee, Car, AlertCircle, Eye, DollarSign,
-  Users, Bike, Bus, Navigation, Minus, User, Edit
+  Users, Bike, Bus, Navigation, Minus, User, Edit, MessageCircle
 } from "lucide-react";
 import { format, addDays, parseISO, parse, startOfDay, isBefore, isAfter, isSameDay, differenceInDays } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -40,6 +40,7 @@ import { TripSidebar } from "../components/TripSidebar";
 import { TripBudgetSidebar } from "../components/TripBudgetSidebar";
 import { TripTimeline } from "../components/TripTimeline";
 import { TripAccommodation } from "../components/TripAccommodation";
+import { ChatPanel } from "../components/ChatPanel";
 import { EditTravelersModal } from "../components/EditTravelersModal";
 import { BudgetDetailModal } from "../components/BudgetDetailModal";
 import { AddDaysModal } from "../components/AddDaysModal";
@@ -73,6 +74,8 @@ export default function TripWorkspace() {
 
   // Tab state for Địa điểm / Nơi ở
   const [activeTab, setActiveTab] = useState<"places" | "accommodation">("places");
+  // Tab state for Budget / Chat (right panel)
+  const [rightPanelTab, setRightPanelTab] = useState<"budget" | "chat">("budget");
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(authIsAuthenticated);
   const remoteTripId = isAuthenticated ? tripId : null;
@@ -367,18 +370,68 @@ export default function TripWorkspace() {
         </div>
       </div>
       
-      {/* ── RIGHT PANEL — Budget & Expenses ────────────────────────────── */}
-        <TripBudgetSidebar 
-          selectedDay={selectedDay}
-          totalBudget={totalBudget}
-          calculateTotalTripCost={calculateTotalTripCost}
-          calculateDayCost={calculateDayCost}
-          calculateDayCostByCategory={calculateDayCostByCategory}
-          formatCurrency={formatCurrency}
-          onOpenBudgetDetail={() => setShowBudgetDetail(true)}
-          onAddDayExpense={handleAddDayExtraExpenseFromSidebar}
-          onRemoveDayExpense={handleRemoveDayExtraExpense}
-        />
+      {/* ── RIGHT PANEL — Budget / Chat ──────────────────────────────────── */}
+        <div className="w-80 flex-shrink-0 border-l border-gray-200 bg-white overflow-y-auto">
+          {/* Tab Switcher */}
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setRightPanelTab("budget")}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                rightPanelTab === "budget"
+                  ? "bg-white text-cyan-600 border-b-2 border-cyan-600"
+                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              Ngân sách
+            </button>
+            <button
+              onClick={() => setRightPanelTab("chat")}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                rightPanelTab === "chat"
+                  ? "bg-white text-cyan-600 border-b-2 border-cyan-600"
+                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              AI Chat
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {rightPanelTab === "budget" ? (
+            <TripBudgetSidebar
+              selectedDay={selectedDay}
+              totalBudget={totalBudget}
+              calculateTotalTripCost={calculateTotalTripCost}
+              calculateDayCost={calculateDayCost}
+              calculateDayCostByCategory={calculateDayCostByCategory}
+              formatCurrency={formatCurrency}
+              onOpenBudgetDetail={() => setShowBudgetDetail(true)}
+              onAddDayExpense={handleAddDayExtraExpenseFromSidebar}
+              onRemoveDayExpense={handleRemoveDayExtraExpense}
+            />
+          ) : (
+            <div className="h-[calc(100vh-8rem)]">
+              {remoteTripId ? (
+                <ChatPanel tripId={remoteTripId} isAuthenticated={isAuthenticated} />
+              ) : (
+                <div className="flex h-full items-center justify-center p-6 text-center">
+                  <div>
+                    <MessageCircle className="mx-auto h-12 w-12 text-gray-300" />
+                    <p className="mt-3 text-sm text-gray-600">
+                      Lưu lịch trình để sử dụng tính năng AI Chat
+                    </p>
+                    <button
+                      onClick={() => setShowLoginModal(true)}
+                      className="mt-4 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white transition-all hover:scale-105"
+                    >
+                      Đăng nhập / Lưu lịch trình
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       
       {/* ── ACTIVITY DETAIL MODAL ────────────────────────────────────────────── */}
