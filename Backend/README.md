@@ -12,8 +12,10 @@ FastAPI backend for the NT208 AI travel itinerary recommendation system.
 | Places | Destinations, search/detail, saved places, Redis read cache |
 | ETL | Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, sample hotels |
 | AI C.1 | Implemented: `POST /api/v1/itineraries/generate` builds DB recommendation context, calls Gemini, validates, retries, persists generated trip data, and enforces user/guest quota |
-| Remaining AI | C.2 suggestion service, C.3 companion chat, C.4 chat history API, C.5 analytics |
-| Verified 2026-06-10 | Ruff check/format pass, Alembic upgrade/check pass, 138 unit tests pass, 53 integration tests collected; 00062 fixes merged (SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding), BUG-BE-003 slugify fix merged (PR #92) |
+| AI C.2 | Implemented: `GET /api/v1/agent/suggest/{activity_id}` DB-only suggestion service |
+| AI C.3A | Implemented: Chat session REST APIs (EP-37/38/39), FE ChatPanel component, e2e tests |
+| Remaining AI | C.3B companion chat, C.4 chat history message persistence, C.5 analytics |
+| Verified 2026-06-10 | Ruff check/format pass, Alembic upgrade/check pass, 148 unit tests pass, 67 integration tests collected; 00062 fixes merged (SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding), BUG-BE-003 slugify fix merged (PR #92), C3A chat session foundation merged (PR #98-100) |
 
 ## Architecture
 
@@ -23,11 +25,12 @@ The backend is organized by domain:
 src/
 ├── main.py                  # App factory and /api/v1 routers
 ├── auth/                    # Auth, refresh tokens, profile, password reset
-├── itineraries/             # Trip CRUD, share/claim, C.1 AI generate pipeline
+├── itineraries/             # Trip CRUD, share/claim, C.1 AI generate pipeline, C.3A chat sessions
 │   ├── pipeline.py          # DB context -> Gemini -> validation -> persistence
 │   ├── router.py            # /api/v1/itineraries endpoints
 │   ├── service.py           # Domain orchestration
 │   ├── repository.py        # DB queries including recommendation context
+│   ├── chat_session.py      # Chat session CRUD service
 │   └── models/              # Trip, activity, accommodation, claim/share/chat models
 ├── places/                  # Destinations, places, hotels, saved places
 ├── geo/                     # Goong REST client infrastructure
@@ -191,8 +194,8 @@ Expected post-00062 local result on 2026-06-09:
 | Ruff check | Pass |
 | Ruff format check | Pass |
 | Alembic upgrade/check | Pass |
-| Unit tests | 138 passed |
-| Integration tests | 53 collected |
+| Unit tests | 148 passed |
+| Integration tests | 67 collected |
 
 ## Debug Notes
 

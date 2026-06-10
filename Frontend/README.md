@@ -11,8 +11,10 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 | Auth | JWT local storage, refresh-token retry on 401, protected routes, guest-to-owner claim after login/register |
 | Trips | Manual create/update, generated itinerary load by `tripId`, optimistic activity/accommodation/place operations |
 | AI C.1 | `CreateTrip` calls BE `POST /api/v1/itineraries/generate` and navigates to `TripWorkspace` |
-| Remaining AI UI | `FloatingAIChat`, promo bubble, contextual panels, and companion components are still mock/placeholder for C.3 |
-| Verified 2026-06-10 | Playwright e2e: 14 test files; browser smoke covered auth generate, seeded guest claim reload, rate limit, FE error handling (00062 fixes), destination slugify fuzzy match (BUG-BE-003 fix PR #92) |
+| AI C.2 | Activity suggestion API integrated (`GET /api/v1/agent/suggest/{activity_id}`) |
+| AI C.3A | `ChatPanel` component integrated into `TripWorkspace` with chat session REST APIs |
+| Remaining AI UI | `FloatingAIChat`, promo bubble, contextual panels, and companion components are still mock/placeholder for C.3B |
+| Verified 2026-06-10 | Playwright e2e: 19 test files; browser smoke covered auth generate, seeded guest claim reload, rate limit, FE error handling (00062 fixes), destination slugify fuzzy match (BUG-BE-003 fix PR #92), chat session CRUD (C3A PR #98-100) |
 
 ## Local Start
 
@@ -45,6 +47,7 @@ src/app/services/
 ├── auth.ts         # login/register/logout/refresh/forgot/reset
 ├── itinerary.ts    # CRUD, generate, share, claim, rating
 ├── places.ts       # destinations, search, saved places
+├── chat.ts         # chat session CRUD (C3A)
 └── users.ts        # profile and password
 ```
 
@@ -130,9 +133,10 @@ npm run test:e2e
 
 Post-merge note from 2026-06-10:
 
-- `npm run test:e2e`: 14 test files (expanded coverage after 00062 fixes).
+- `npm run test:e2e`: 19 test files (expanded coverage after 00062 fixes + C3A chat session tests).
 - FE error handling improved: toast notifications now show specific error messages instead of generic "Không thể tạo lịch trình" for rate limits, validation errors, and AI timeouts.
 - Destination slugify fuzzy matching (PR #92): Backend now properly matches "Ha Noi" → "ha-noi" → DB, improving destination resolution for users typing city names without accents.
+- C3A chat session foundation (PR #98-100): ChatPanel component integrated into TripWorkspace, chat session REST APIs (EP-37/38/39), e2e tests for chat session CRUD.
 - The exact default `npm run build` failed locally because an ignored `Frontend/dist/assets` directory had Windows `EPERM` permission locks. This is local artifact state, not a TypeScript/Vite compile error, and is tracked in `docs/REPORTS/ISSUES/frontend_dist_permission_lock.md`.
 
 ## Browser Debug Checklist
