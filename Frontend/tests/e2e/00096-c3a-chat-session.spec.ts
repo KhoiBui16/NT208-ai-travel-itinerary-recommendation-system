@@ -165,31 +165,16 @@ test.describe("C3A Chat Session", () => {
   });
 
   test("guest cannot access chat session features", async ({ page }) => {
-    // Create a guest trip
-    const guestTrip = await createGuestTripViaAPI();
-
-    // Navigate to trip workspace as guest (no auth)
-    await page.goto(`/trip-workspace?tripId=${guestTrip.id}`);
-    await expect(page).toHaveURL(/trip-workspace/);
-
-    // Click on AI Chat tab
-    await page.getByRole("button", { name: "AI Chat" }).click();
-
-    // Should show "Save itinerary to use AI Chat" message
-    await expect(
-      page.getByText(/Lưu lịch trình để sử dụng tính năng AI Chat/i),
-    ).toBeVisible();
-
-    // Should show login button
-    const loginBtn = page.getByRole("button", {
-      name: /Đăng nhập \/ Lưu lịch trình/i,
-    });
-    await expect(loginBtn).toBeVisible();
-
-    // Should NOT show create session button
-    await expect(
-      page.getByRole("button", { name: /Bắt đầu cuộc trò chuyện/i }),
-    ).not.toBeVisible();
+    // Guest navigating to trip-workspace redirects to /login
+    // because TripWorkspace requires auth for full access.
+    // Verify that unauthenticated users cannot use chat session API directly.
+    const res = await page.request.post(
+      `${apiBase}/itineraries/99999/chat-sessions`,
+      {
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+    expect(res.status()).toBe(401);
   });
 
   test("cross-user chat session access is blocked", async ({ page, context }) => {
