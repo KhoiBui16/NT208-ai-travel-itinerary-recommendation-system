@@ -26,19 +26,20 @@ Neu docs va code xung dot:
 
 - Backend runtime hien tai la MVP2 trong `Backend/src/`
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
-- 191 BE tests (138 unit + 53 integration)
+- 215 BE tests (148 unit + 67 integration)
 - Frontend runtime hien tai nam trong `Frontend/`
-- 14 Playwright e2e test files trong `Frontend/tests/e2e/`
+- 19 Playwright e2e test files trong `Frontend/tests/e2e/`
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
 - Register page bypass OTP cho den khi BE email OTP san sang
 - `docs/` la bo tai lieu chi tiet cho user va reviewer
 - `.claude/` la lop operational memory cho Claude, phai bam theo project nay
 - **00062 fixes merged** (PR #86-90): SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding, FE error handling
 - **00093 slugify fix merged** (PR #92): Shared `core/slugify.py`, places service fuzzy matching, itineraries refactor, browser test automation
+- **00094 C3A chat session merged** (PR #98-100): Chat session REST APIs, FE ChatPanel component, e2e tests
 
 ## Target MVP2 decisions da chot
 
-- MVP2 core co `35` endpoints; `EP-34 /agent/analytics` la optional/MVP2+
+- MVP2 core co `39` endpoints (EP-0 đến EP-39); `EP-34 /agent/analytics` la optional/MVP2+
 - Public JSON contract theo FE va dung `camelCase`
 - `GET /api/v1/itineraries/{id}` la owner-only
 - Public share chi doc qua `GET /api/v1/shared/{shareToken}`
@@ -46,7 +47,7 @@ Neu docs va code xung dot:
 - `POST /api/v1/itineraries/generate` di direct `ItineraryPipeline`, khong qua Supervisor
 - Companion chat tra `requiresConfirmation` + `proposedOperations`, khong tu persist DB
 - `SuggestionService` la DB-only service, khong goi LLM
-- Chat history projection dung `chat_sessions` + `chat_messages`
+- Chat history projection dung `chat_sessions` + `chat_messages` (C3A merged: REST APIs foundation ready)
 - AI rate limit khong duoc fail-open im lang khi Redis down
 
 ## Read order truoc khi code
