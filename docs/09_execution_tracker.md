@@ -38,6 +38,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00051   | C     | `fix/00051-c-fe-error-visibility`              | FE error visibility on create-trip (destination selector backend-backed, unsupported city blocking)             | merged       | 15 FE e2e pass, destination suggestions from backend, unsupported city blocked pre-submit                                                          | #54     |
 | 00056   | C     | `fix/00056-c-calendar-generate-flow-fix`       | Calendar modal + generate flow fixes, 00057 readiness contract sync                                          | ready_for_pr | 00057 test pending, 00056 test 9.3s pass, all e2e 15 PASS/3 SKIP                                                                                  | pending |
 | 00057   | C     | `fix/00057-c-destination-readiness-contract`  | Backend destination readiness contract (placesCount, hotelsCount, isGenerateReady, readinessStatus) + FE advisory UX | ready_for_pr | FE build pass, 00057 test verifies warning visible + submit allowed, 00056 test passes                                                          | pending |
+| 00093   | B3    | `fix/00093-b3-destination-slugify-bug`        | Extract slugify() to shared core module, fix "Ha Noi" → "ha-noi" → DB match in places service, itineraries repository refactor, Browserbase automation skill, MCP skills guide | merged       | 138 unit + 53 integration BE tests pass; 14 e2e test files; full browser test reports (6/7 PASS, 1 PARTIAL)                                                            | #92     |
 
 ## Scope Task 00047 (C.2)
 
@@ -226,7 +227,24 @@ Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycl
 - Local browser smoke 2026-05-26: auth UI generate pass (`POST /generate=201`, trip 143, 5 activities), seeded guest claim after login reload pass (`POST /claim=200`, `GET /itineraries/144=200`).
 - Guest AI generate manual smoke bị Gemini `ResourceExhausted`; track ở `docs/REPORTS/ISSUES/gemini_resource_exhausted_manual_smoke.md`.
 
-## FE-BE Integration Status (2026-05-04)
+## FE-BE Integration Status (2026-06-10)
+
+Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
+
+Tóm tắt: 35 BE endpoints (EP-0 đến EP-32 + EP-30 suggest), 138 BE unit tests + 53 BE integration tests, 14 FE e2e tests, 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28), Playwright e2e setup (PR #31), AI C.1 generate (PR #42), AI C.2 suggest EP-30 (PR #49), 00062 fixes merged (PR #86-90), BUG-BE-003 destination slugify fix (PR #92).
+
+## Scope Task 00093 (BUG-BE-003 - Destination Slugify Fix)
+
+- Tạo shared `Backend/src/core/slugify.py` — Vietnamese slugify utility hỗ trợ tiếng Việt, regex pattern chuẩn
+- Places service: dùng `slugify()` cho destination resolution ("Ha Noi" → "ha-noi" → match DB)
+- Itineraries repository: refactor từ inline `_to_slug()` sang dùng shared `slugify()`
+- Browser test automation: thêm `.claude/commands/browserbase-test.md` skill
+- MCP skills guide: thêm `docs/MCP_SKILLS_GUIDE.md`
+- Browser test reports: thêm 4 report files trong `docs/REPORTS/` (executive summary, manual results, retest results, status)
+- Local verification: 138 unit + 53 integration pass; FE build pass
+- Browser test results: 6/7 PASS, 1 PARTIAL (rate limit quota)
+
+## Phase C Plan (2026-06-10)
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 

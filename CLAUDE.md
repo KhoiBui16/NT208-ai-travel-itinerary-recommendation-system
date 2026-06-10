@@ -22,7 +22,7 @@ Neu docs va code xung dot:
 - Sau do doi chieu voi code that te
 - Neu code da lech docs, phai noi ro mismatch truoc khi sua tiep
 
-## Current repo truth (2026-06-09)
+## Current repo truth (2026-06-10)
 
 - Backend runtime hien tai la MVP2 trong `Backend/src/`
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
@@ -34,6 +34,7 @@ Neu docs va code xung dot:
 - `docs/` la bo tai lieu chi tiet cho user va reviewer
 - `.claude/` la lop operational memory cho Claude, phai bam theo project nay
 - **00062 fixes merged** (PR #86-90): SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding, FE error handling
+- **00093 slugify fix merged** (PR #92): Shared `core/slugify.py`, places service fuzzy matching, itineraries refactor, browser test automation
 
 ## Target MVP2 decisions da chot
 
@@ -164,6 +165,7 @@ Rules:
 | `.claude/commands/lint-fix.md`         | Lint/format theo dual-mode, khong hardcode template |
 | `.claude/commands/commit.md`           | Tao final commit message dung branch/commit policy  |
 | `.claude/commands/pr.md`               | Tao PR dung title/body template cua repo            |
+| `.claude/commands/browserbase-test.md` | Browserbase browser automation test skill           |
 | `.claude/skills/code-review/SKILL.md`  | Review theo invariant cua project nay               |
 | `.claude/skills/db-migration/SKILL.md` | Migration/schema rules theo MVP2                    |
 | `.claude/agents/security-auditor.md`   | Audit secret, auth, token, SQL, AI guardrails       |

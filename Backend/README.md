@@ -13,7 +13,7 @@ FastAPI backend for the NT208 AI travel itinerary recommendation system.
 | ETL | Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, sample hotels |
 | AI C.1 | Implemented: `POST /api/v1/itineraries/generate` builds DB recommendation context, calls Gemini, validates, retries, persists generated trip data, and enforces user/guest quota |
 | Remaining AI | C.2 suggestion service, C.3 companion chat, C.4 chat history API, C.5 analytics |
-| Verified 2026-06-09 | Ruff check/format pass, Alembic upgrade/check pass, 138 unit tests pass, 53 integration tests collected; 00062 fixes merged (SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding) |
+| Verified 2026-06-10 | Ruff check/format pass, Alembic upgrade/check pass, 138 unit tests pass, 53 integration tests collected; 00062 fixes merged (SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding), BUG-BE-003 slugify fix merged (PR #92) |
 
 ## Architecture
 
@@ -216,6 +216,14 @@ Four PRs were merged to fix critical data flow and UX issues:
 | #87 | FE error handling | Toast notifications for silent failures instead of generic errors |
 | #89 | AI pipeline | Dynamic timeout based on request size; reduced prompt context |
 | #90 | DB data quality | Migration 20260609_0007 to seed trip_days for existing manual trips |
+
+## Recent Fixes (BUG-BE-003 - 2026-06-10)
+
+One PR merged to fix destination slugify fuzzy matching:
+
+| PR | Focus | Key fixes |
+|---|---|---|
+| #92 | Destination slugify | Extracted `slugify()` to `core/slugify.py`; places service now uses slugify for "Ha Noi" → "ha-noi" → DB match; itineraries repository refactored to use shared slugify; added Browserbase automation skill and MCP skills guide |
 
 **Infrastructure improvements:**
 - Redis `maxmemory` configured to 128mb with `allkeys-lru` eviction policy
