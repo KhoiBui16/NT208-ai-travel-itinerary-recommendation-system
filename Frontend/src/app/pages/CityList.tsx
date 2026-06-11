@@ -15,10 +15,20 @@ interface DisplayCity {
   rating: number;
 }
 
+function toDestinationSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/đ/g, "d")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 /** Map API destinations to the display shape CityList expects. */
 function apiToCity(d: DestinationResponse): DisplayCity {
   return {
-    id: String(d.id),
+    id: toDestinationSlug(d.name),
     name: d.name,
     region: "",          // API doesn't have region; UI can derive later
     image: d.image || "",

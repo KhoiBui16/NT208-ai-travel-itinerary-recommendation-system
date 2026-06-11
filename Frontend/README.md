@@ -11,10 +11,10 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 | Auth | JWT local storage, refresh-token retry on 401, protected routes, guest-to-owner claim after login/register |
 | Trips | Manual create/update, generated itinerary load by `tripId`, optimistic activity/accommodation/place operations |
 | AI C.1 | `CreateTrip` calls BE `POST /api/v1/itineraries/generate` and navigates to `TripWorkspace` |
-| AI C.2 | Activity suggestion API integrated (`GET /api/v1/agent/suggest/{activity_id}`) |
+| AI C.2 | Suggestion backend ready (`GET /api/v1/agent/suggest/{activity_id}`), nhưng FE suggestion surfaces vẫn dùng mock data |
 | AI C.3A | `ChatPanel` component integrated into `TripWorkspace` with chat session REST APIs |
 | Remaining AI UI | `FloatingAIChat`, promo bubble, contextual panels, and companion components are still mock/placeholder for C.3B |
-| Verified 2026-06-10 | Playwright e2e: 19 test files; browser smoke covered auth generate, seeded guest claim reload, rate limit, FE error handling (00062 fixes), destination slugify fuzzy match (BUG-BE-003 fix PR #92), chat session CRUD (C3A PR #98-100) |
+| Verified 2026-06-11 | Playwright e2e: 33 test cases / 15 spec files; latest full local result 30 passed, 3 skipped; browser verification covered auth, city browse/detail smoke, guest claim reload, rate limit UX, FE error handling (00062 fixes), destination slugify fuzzy match (BUG-BE-003 fix PR #92), trip CRUD, and C3A chat session CRUD |
 
 ## Local Start
 
@@ -71,22 +71,22 @@ CreateTrip
 -> BE returns trip id + claimToken
 -> FE stores { tripId, claimToken } in sessionStorage key "pendingClaim"
 -> FE navigates to /trip-workspace?tripId=...
--> ProtectedRoute redirects to /login
+-> ProtectedRoute cho guest đi tiếp nếu `currentTrip` / `pendingClaim` khớp tripId
 -> login/register calls POST /api/v1/itineraries/{tripId}/claim
 -> BE transfers trip ownership to the authenticated user
 ```
 
-Observed 2026-05-26:
+Observed through 2026-06-11:
 
 - `pendingClaim` survives reload within the same browser tab because it is stored in `sessionStorage`.
 - After reloading `/login`, the claim still succeeds after login.
-- The React Router `location.state.from` target is lost on login-page reload, so the user may land on `/` after claim and then must open the trip from library/history or direct URL. This is tracked in `docs/REPORTS/ISSUES/guest_login_reload_redirect_target_lost.md`.
+- `AuthContext` now persists a workspace `returnTo` target inside `pendingClaim`, and `Login.tsx` prefers `claimResult?.returnTo || from`, so guest claim can land back on the trip workspace after login.
 
 ## Trip Workspace Data Flow
 
 ```text
 /trip-workspace?tripId=123
--> ProtectedRoute requires auth
+-> ProtectedRoute allows auth user OR guest same-session workspace restore
 -> useTripSync() calls getItinerary(123)
 -> maps ItineraryResponse days/activities/accommodations into FE state
 -> sessionStorage "currentTrip" is only a quick-restore fallback
@@ -131,9 +131,9 @@ $env:E2E_API_URL="http://localhost:8000"
 npm run test:e2e
 ```
 
-Post-merge note from 2026-06-10:
+Post-verify note from 2026-06-11:
 
-- `npm run test:e2e`: 19 test files (expanded coverage after 00062 fixes + C3A chat session tests).
+- `npm run test:e2e`: 33 test cases across 15 spec files; latest full local run `30 passed, 3 skipped` (legacy `b3` flows remain skipped).
 - FE error handling improved: toast notifications now show specific error messages instead of generic "Không thể tạo lịch trình" for rate limits, validation errors, and AI timeouts.
 - Destination slugify fuzzy matching (PR #92): Backend now properly matches "Ha Noi" → "ha-noi" → DB, improving destination resolution for users typing city names without accents.
 - C3A chat session foundation (PR #98-100): ChatPanel component integrated into TripWorkspace, chat session REST APIs (EP-37/38/39), e2e tests for chat session CRUD.

@@ -18,10 +18,10 @@ File này mô tả **kiến trúc AI dài hạn cho Phase C** — generate pipel
 - `POST /api/v1/itineraries/generate` đã chạy **C.1 direct pipeline**: build recommendation context từ DB, gọi Gemini JSON, validate, persist trip/day/activity/accommodation.
 - `GET /api/v1/agent/suggest/{activity_id}` (EP-30) đã implement **C.2 SuggestionService** DB-only — merged PR #49. Xem `docs/REPORTS/phase_c2_suggestion_service.md`.
 - Destination slug matching đã được cải thiện: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" (không dấu) → slug "ha-noi" → match DB.
-- Chat/companion UI ở FE là **mock/demo**, không nối API thật.
-- DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn), nhưng chưa có API.
-- Chưa có session/message API, chưa có `companion_service.py`, chưa có `chat_service.py`, analytics chưa bật.
-- `00060B` / `00060C` chốt current gate là `GO_WITH_LIMITATIONS`: chỉ `C3A` được phép bắt đầu; `C3B` và `C4` chưa được direct start.
+- Chat/companion UI ở FE đang ở trạng thái lai: `ChatPanel` đã nối C3A session APIs thật trong `TripWorkspace`, còn `FloatingAIChat` và các panel companion khác vẫn là mock/demo.
+- DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn) và C3A đã có session CRUD foundation.
+- Đã có session CRUD API owner-only cho `chat_sessions`; chưa có message send/history API, chưa có `companion_service.py`, analytics chưa bật.
+- Sau `PR #98-100`, `C3A` đã merge; `C3B` là next gate, còn `C4` vẫn chưa nên direct start.
 - C.1 không phải multi-agent; provider/tool-calling để dành cho giai đoạn sau `C3A`.
 
 ---
@@ -347,7 +347,7 @@ DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn qua Alembic),
 | File                                      | Mục đích                  | Layer      |
 | ----------------------------------------- | ------------------------- | ---------- |
 | `src/itineraries/router.py` (mở rộng)     | Chat history endpoints    | Router     |
-| `src/itineraries/chat_service.py`         | Chat session/message CRUD | Service    |
+| `src/itineraries/service.py`              | Chat session foundation hiện tại | Service    |
 | `src/itineraries/repository.py` (mở rộng) | Chat DB queries           | Repository |
 
 ---
@@ -425,7 +425,7 @@ Nếu bật Text-to-SQL analytics (EP-34), **bắt buộc** có các guardrails:
 | `src/itineraries/pipeline.py`             | LLM orchestration cho generate        | Service    |
 | `src/itineraries/companion_service.py`    | Message handling, tool-calling cho chat | Service (planned) |
 | `src/places/suggestion_service.py`        | Gợi ý DB-only (không LLM)             | Service    |
-| `src/itineraries/chat_service.py`         | Quản lý chat session/message          | Service (planned) |
+| `src/itineraries/service.py`              | Quản lý trip + chat session foundation | Service |
 | `src/itineraries/router.py` (mở rộng)     | Session/message/apply-patch endpoints | Router     |
 | `src/itineraries/schemas.py` (mở rộng)    | AI generate response schema           | Schema     |
 | `src/itineraries/repository.py` (mở rộng) | Chat DB queries                       | Repository |

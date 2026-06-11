@@ -14,9 +14,17 @@ import {
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
-import { listSavedPlaces, savePlace, unsavePlace, getDestinationDetail, type PlaceResponse } from "../services/places";
+import {
+  listSavedPlaces,
+  savePlace,
+  unsavePlace,
+  getDestinationDetail,
+  type DestinationResponse,
+  type PlaceResponse,
+} from "../services/places";
 import { Place, CityData, cityData } from "../data/cities";
 import { resolvePlaceImageWithCategory } from "../utils/placeImage";
+import { getDestinationFallbackImage } from "../utils/placeImage";
 import { toast } from "sonner";
 
 export default function CityDetail() {
@@ -26,8 +34,8 @@ export default function CityDetail() {
   const [savedPlaces, setSavedPlaces] = useState<number[]>([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [savedPlaceNames, setSavedPlaceNames] = useState<Set<string>>(new Set());
+  const [apiDestination, setApiDestination] = useState<DestinationResponse | null>(null);
   const [apiPlaces, setApiPlaces] = useState<PlaceResponse[]>([]);
-  const [apiCityName, setApiCityName] = useState<string | null>(null);
   // Track whether the API responded (to distinguish "loading" from "no data")
   const [apiLoaded, setApiLoaded] = useState(false);
 
@@ -49,13 +57,13 @@ export default function CityDetail() {
     };
 
     const name = slugToName[cityId];
-    if (!name) return;
+    const lookupKey = name || cityId;
 
-    getDestinationDetail(name).then((data) => {
+    getDestinationDetail(lookupKey).then((data) => {
       if (!isMounted) return;
-      const dest = (data as any).destination;
+      const dest = (data as any).destination as DestinationResponse | undefined;
       const places = (data as any).places as PlaceResponse[];
-      if (dest) setApiCityName(dest.name || name);
+      if (dest) setApiDestination(dest);
       if (places && places.length > 0) setApiPlaces(places);
       setApiLoaded(true);
     }).catch(() => {
@@ -66,21 +74,58 @@ export default function CityDetail() {
     return () => { isMounted = false; };
   }, [cityId]);
 
+  const displayCity: CityData | null =
+    city ||
+    (apiDestination
+      ? {
+          id: cityId || apiDestination.name,
+          name: apiDestination.name,
+          region: "Việt Nam",
+          image: getDestinationFallbackImage(apiDestination.name),
+          bannerImage: getDestinationFallbackImage(apiDestination.name),
+          description:
+            apiDestination.readinessReason ||
+            "Điểm đến này hiện được hiển thị từ dữ liệu backend đang có sẵn.",
+          overview:
+            apiDestination.readinessReason ||
+            `${apiDestination.name} đã có trong danh sách điểm đến của hệ thống. Nội dung chi tiết mở rộng sẽ tiếp tục được bổ sung khi dữ liệu phong phú hơn.`,
+          bestTimeToVisit: "Đang cập nhật",
+          averageTemperature: "Đang cập nhật",
+          popularPlaces: [],
+        }
+      : null);
+
+  const displayPlaceCount =
+    displayCity?.popularPlaces.length || apiPlaces.length || apiDestination?.placesCount || 0;
+
   // Sync bookmark state from BE API on mount
   useEffect(() => {
-    if (!city || !isAuthenticated) return;
+    if (!displayCity || !isAuthenticated || displayCity.popularPlaces.length === 0) return;
     listSavedPlaces().then((data) => {
       // Correct BE shape: { id: savedId, place: { id: placeId, name, ... } }
       const names = new Set(data.map((p: any) => p.place?.name || p.placeName || p.name).filter(Boolean));
       setSavedPlaceNames(names);
-      const matchedIds = city.popularPlaces
+      const matchedIds = displayCity.popularPlaces
         .filter(p => names.has(p.name))
         .map(p => p.id);
       setSavedPlaces(matchedIds);
     }).catch(() => {});
-  }, [city, isAuthenticated]);
+  }, [displayCity, isAuthenticated]);
 
-  if (!city) {
+  if (!displayCity) {
+    if (!apiLoaded) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-orange-50">
+          <Header />
+          <div className="flex items-center justify-center py-40">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-cyan-200 border-t-cyan-600" />
+              <p className="text-gray-500">Đang tải chi tiết điểm đến...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-orange-50">
         <Header />
@@ -109,7 +154,7 @@ export default function CityDetail() {
       return;
     }
 
-    const place = city?.popularPlaces.find(p => p.id === placeId);
+    const place = displayCity?.popularPlaces.find(p => p.id === placeId);
     if (!place) return;
 
     const isAlreadySaved = savedPlaceNames.has(place.name);
@@ -154,8 +199,8 @@ export default function CityDetail() {
       {/* Hero Banner */}
       <div className="relative h-96 overflow-hidden">
         <img
-          src={city.bannerImage}
-          alt={city.name}
+          src={displayCity.bannerImage}
+          alt={displayCity.name}
           className="h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
@@ -175,14 +220,14 @@ export default function CityDetail() {
             <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-cyan-500/90 px-4 py-2 backdrop-blur-sm">
               <MapPin className="h-4 w-4 text-white" />
               <span className="text-sm font-semibold text-white">
-                {city.region}
+                {displayCity.region}
               </span>
             </div>
             <h1 className="mb-3 text-6xl font-bold text-white drop-shadow-lg">
-              {city.name}
+              {displayCity.name}
             </h1>
             <p className="max-w-3xl text-xl text-white/90 drop-shadow">
-              {city.description}
+              {displayCity.description}
             </p>
           </div>
         </div>
@@ -195,7 +240,7 @@ export default function CityDetail() {
             Giới thiệu tổng quan
           </h2>
           <p className="mb-6 text-lg leading-relaxed text-gray-700">
-            {city.overview}
+            {displayCity.overview}
           </p>
 
           {/* Quick Info */}
@@ -206,7 +251,7 @@ export default function CityDetail() {
                 <p className="text-sm font-semibold text-gray-600">
                   Thời gian tốt nhất
                 </p>
-                <p className="font-bold text-gray-900">{city.bestTimeToVisit}</p>
+                <p className="font-bold text-gray-900">{displayCity.bestTimeToVisit}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-xl bg-orange-50 p-4">
@@ -216,7 +261,7 @@ export default function CityDetail() {
                   Nhiệt độ trung bình
                 </p>
                 <p className="font-bold text-gray-900">
-                  {city.averageTemperature}
+                  {displayCity.averageTemperature}
                 </p>
               </div>
             </div>
@@ -227,7 +272,7 @@ export default function CityDetail() {
                   Địa điểm nổi tiếng
                 </p>
                 <p className="font-bold text-gray-900">
-                  {city.popularPlaces.length} địa điểm
+                  {displayPlaceCount} địa điểm
                 </p>
               </div>
             </div>
@@ -235,18 +280,19 @@ export default function CityDetail() {
         </div>
 
         {/* Popular Places */}
-        <div>
+        {displayCity.popularPlaces.length > 0 && (
+          <div>
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-3xl font-bold text-gray-900">
               Địa điểm nổi tiếng
             </h2>
             <p className="text-gray-600">
-              {city.popularPlaces.length} địa điểm
+              {displayCity.popularPlaces.length} địa điểm
             </p>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {city.popularPlaces.map((place) => {
+            {displayCity.popularPlaces.map((place) => {
               const isSaved = savedPlaces.includes(place.id);
 
               return (
@@ -335,12 +381,13 @@ export default function CityDetail() {
               );
             })}
           </div>
-        </div>
+          </div>
+        )}
 
         {/* CTA Section */}
         <div className="mt-12 rounded-3xl bg-gradient-to-r from-cyan-500 to-cyan-600 p-10 text-center text-white">
           <h3 className="mb-4 text-3xl font-bold">
-            Sẵn sàng khám phá {apiCityName || city.name}?
+            Sẵn sàng khám phá {apiDestination?.name || displayCity.name}?
           </h3>
           <p className="mb-6 text-lg text-cyan-100">
             Tạo lịch trình du lịch của bạn ngay hôm nay

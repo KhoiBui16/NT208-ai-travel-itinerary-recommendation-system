@@ -41,7 +41,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00094   | C     | `feat/00094-c-c3a-chat-session-apis`         | C3A Backend chat session REST APIs (3 endpoints), ownership enforcement, 10 unit + 14 integration tests | merged       | 148 unit + 67 integration BE tests pass; 14 e2e test files                                                                                                 | #98     |
 | 00095   | C     | `feat/00095-c-c3a-fe-chat-panel`             | C3A Frontend ChatPanel component, chat.types.ts, services/chat.ts, TripWorkspace integration | merged       | FE build pass; 14 e2e test files                                                                                                                             | #99     |
 | 00096   | C     | `chore/00096-c-c3a-chat-e2e-tests`          | C3A E2E tests for chat session CRUD (5 Playwright test cases)                                           | merged       | 5 e2e tests pass; BE 148 unit + 67 integration pass; FE build pass                                                                                           | #100    |
-| 00097   | D     | `docs/00094-b3-sync-c3a-docs`                | Post-merge C3A docs sync — update tracker, READMEs, report index                                           | in_progress  |                                                                                                                                                              | pending |
+| 00097   | D     | `fix/00097-d-post-c3a-docs-sync`             | Post-merge C3A docs sync + browser verification alignment + city detail route fix                           | ready_for_pr | BE lint/format + Alembic pass; BE unit 148 pass; BE integration 40 pass / 27 skip; FE build pass; Playwright 30 pass / 3 skip; `/cities -> /cities/buon-ma-thuot` smoke pass; active docs + reports synced | pending |
 
 ## Scope Task 00047 (C.2)
 
@@ -230,11 +230,11 @@ Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycl
 - Local browser smoke 2026-05-26: auth UI generate pass (`POST /generate=201`, trip 143, 5 activities), seeded guest claim after login reload pass (`POST /claim=200`, `GET /itineraries/144=200`).
 - Guest AI generate manual smoke bị Gemini `ResourceExhausted`; track ở `docs/REPORTS/ISSUES/gemini_resource_exhausted_manual_smoke.md`.
 
-## FE-BE Integration Status (2026-06-10)
+## FE-BE Integration Status (2026-06-11)
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
-Tóm tắt: 39 BE endpoints (EP-0 đến EP-32 + EP-30 suggest + 3 chat session EP-37/38/39), 148 BE unit tests + 67 BE integration tests, 19 FE e2e tests, 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ dùng fallback. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28), Playwright e2e setup (PR #31), AI C.1 generate (PR #42), AI C.2 suggest EP-30 (PR #49), 00062 fixes merged (PR #86-90), BUG-BE-003 destination slugify fix (PR #92), C3A chat session foundation (PR #98-100).
+Tóm tắt: active backend contract hiện đã mở rộng đến EP-37/38/39 cho C3A chat sessions, BE test inventory là 148 unit + 67 integration (local full run hiện tại: 40 pass / 27 skip), FE Playwright suite là 33 test cases / 15 spec files với latest full run `30 pass / 3 skip`, 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ còn ở các fallback/promo surfaces. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28), Playwright e2e setup (PR #31), AI C.1 generate (PR #42), AI C.2 suggest EP-30 (PR #49), 00062 fixes merged (PR #86-90), BUG-BE-003 destination slugify fix (PR #92), C3A chat session foundation (PR #98-100).
 
 ## Scope Task 00093 (BUG-BE-003 - Destination Slugify Fix)
 
@@ -262,7 +262,7 @@ Thứ tự ưu tiên:
 1. Generate pipeline (`itinerary_pipeline.py`) — core value
 2. SuggestionService (`suggestion_service.py`) — DB-only, dễ implement
 3. Companion chat (`companion_service.py` + `agent.py`) — phức tạp nhất
-4. Chat history (`chat_service.py` + `chat.py`) — cần khi companion hoạt động
+4. Chat history (message/history layer sau `service.py` + `chat.py`) — cần khi companion hoạt động
 5. Analytics EP-34 — optional
 
 ## Scope Task 00048 (D — docs/system-test)

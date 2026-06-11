@@ -398,7 +398,7 @@ Không cần "sáng tạo" nội dung mới, chỉ lọc và xếp hạng.
 |---|---|---|
 | `src/itineraries/companion_service.py` | Message handling + provider abstraction cho chat | Service (planned) |
 | `src/places/suggestion_service.py` | Gợi ý DB-only (không LLM) | Service |
-| `src/itineraries/chat_service.py` | Quản lý chat session/message | Service (planned) |
+| `src/itineraries/service.py` | Quản lý trip orchestration + chat session foundation hiện tại | Service |
 | `src/itineraries/router.py` (mở rộng) | Session/message/apply-patch endpoints | Router |
 | `src/itineraries/repository.py` (mở rộng) | Chat DB queries | Repository |
 

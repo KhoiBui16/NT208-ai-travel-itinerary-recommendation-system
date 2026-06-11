@@ -772,3 +772,27 @@ Không có thay đổi UI/UX, API contract, DB schema, hoặc business logic tro
 **Files changed:** 12 files (3 BE source, 2 BE test, 4 FE source, 2 FE test, 1 docs)
 
 **Status:** ✅ MERGED in PR #98-100 (2026-06-10)
+
+## 00097 Post-C3A Docs Sync + Browser Verification
+
+| File | Nội dung |
+|---|---|
+| [00097_post_c3a_docs_sync_and_browser_validation.md](00097_post_c3a_docs_sync_and_browser_validation.md) | 2026-06-11: Sync active docs/READMEs/.claude với current source truth sau C3A, rerun full local verification, fix city browse/detail route contract và brittle e2e selectors/assertions |
+
+**Key findings:**
+- ✅ Active docs sync completed across `README.md`, `Backend/README.md`, `Frontend/README.md`, `docs/`, `docs/REPORTS/`, `CLAUDE.md`, `.claude/context/`, `.claude/commands/`, `.claude/agents/`
+- ✅ Browser verification rerun against live FE+BE stack per `docs/BROWSER_TEST_PLAN.md` intent: Playwright `30 passed / 3 skipped`, plus `/cities -> /cities/buon-ma-thuot` smoke PASS after route fix
+- ✅ Runtime fix landed: `CityList` now routes API destinations by slug, and `CityDetail` can render API-backed destinations outside the old hardcoded mock set
+- ✅ Test hardening landed: trip generate selector no longer depends on placeholder copy; C3A session-count assertion no longer hard-codes exact text
+
+**Test results:**
+- Backend lint: ✅ PASS
+- Backend format: ✅ PASS
+- Alembic upgrade/check: ✅ PASS
+- Backend unit tests: ✅ PASS (148 passed)
+- Backend integration tests: ✅ PASS (40 passed, 27 skipped)
+- Frontend build: ✅ PASS
+- Playwright full suite: ✅ PASS (30 passed, 3 skipped)
+- Browser smoke `/cities -> /cities/buon-ma-thuot`: ✅ PASS
+
+**Status:** ✅ READY FOR PR

@@ -59,23 +59,24 @@ MVP1
 → 00060B chốt GO_WITH_LIMITATIONS trước khi vào chat/history
 ```
 
-### Current C3/C4 gate after 00060B / 00060C sync
+### Current C3/C4 gate after C3A merge
 
 | Hạng mục | Current truth |
 |---|---|
-| Overall readiness | `GO_WITH_LIMITATIONS` |
-| Can start `C3A — Chat Session Foundation` | `YES` |
-| Can start `C3B` directly | `NO` |
-| Can start `C4` directly | `NO` |
-| `FloatingAIChat.tsx` | Vẫn là mock local-state |
-| `chat_sessions` / `chat_messages` | Đã có trong source/migration |
-| Chat REST API | Chưa có |
-| Real Gemini call trong `C3A` | Không có |
+| Overall readiness | `FOUNDATION_READY_NEXT_PHASE_PENDING` |
+| `C3A — Chat Session Foundation` | Đã merge (`PR #98-100`) |
+| `C3B` | Chưa bắt đầu; là next safe phase |
+| `C4` | Chưa bắt đầu; vẫn phụ thuộc `C3B` |
+| `FloatingAIChat.tsx` | Vẫn là mock local-state / promo UI |
+| `ChatPanel` | Đã gắn vào `TripWorkspace`, owner-only, trip-scoped |
+| `chat_sessions` / `chat_messages` | Đã có trong source/migration và session foundation |
+| Chat REST API | Đã có session CRUD APIs; message/history APIs chưa có |
+| Real Gemini call trong chat | Chưa có |
 | Chat quota riêng | Để `C3B` giải quyết |
 
 Điểm cần nhớ:
 
-- `C3A` chỉ dựng session foundation owner-only, trip-scoped trong `TripWorkspace`.
+- `C3A` đã dựng xong session foundation owner-only, trip-scoped trong `TripWorkspace`.
 - `C3B` mới xử lý message generation, provider abstraction, quota chat, và error UX riêng cho chat.
 - `C4` mới xử lý persisted history và session/history UX.
 
@@ -126,7 +127,7 @@ MVP1
 - `useActivityManager`/`useAccommodation`/`usePlacesManager` — optimistic CRUD + revert.
 - `CreateTrip` nối `generateItinerary` API, navigate TripWorkspace với tripId.
 - `ErrorBoundary` bọc toàn app.
-- Playwright e2e tests: 11 test cases cho auth flow, trip CRUD, public pages.
+- Playwright e2e hiện có 33 test cases / 15 spec files, bao phủ auth flow, trip CRUD, public pages, guest claim, destination readiness, rate-limit UX, và C3A chat session CRUD.
 - **Tất cả trang chính đã nối BE API**; mock chỉ làm fallback khi BE không có data.
 
 ### Docs/Ops
@@ -195,4 +196,4 @@ MVP1
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. `00060B` và `00060C` chốt rằng source hiện tại đã đủ để bắt đầu `C3A — Chat Session Foundation`, nhưng chưa đủ để nhảy thẳng vào `C3B` hoặc `C4`.
+Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. `C3A — Chat Session Foundation` đã merge; current focus bây giờ là giữ docs/browser verification đồng bộ trước khi bước tiếp sang `C3B`, còn `C4` vẫn chưa nên tách làm phase độc lập.
