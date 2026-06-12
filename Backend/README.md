@@ -15,7 +15,7 @@ FastAPI backend for the NT208 AI travel itinerary recommendation system.
 | AI C.2 | Implemented: `GET /api/v1/agent/suggest/{activity_id}` DB-only suggestion service |
 | AI C.3A | Implemented: Chat session REST APIs (EP-37/38/39), FE ChatPanel component, e2e tests |
 | Remaining AI | C.3B companion chat, C.4 chat history message persistence, C.5 analytics |
-| Verified 2026-06-10 | Ruff check/format pass, Alembic upgrade/check pass, 148 unit tests pass, 67 integration tests collected; 00062 fixes merged (SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding), BUG-BE-003 slugify fix merged (PR #92), C3A chat session foundation merged (PR #98-100) |
+| Verified 2026-06-11 | Ruff check/format pass, Alembic upgrade/check pass, 148 unit tests pass; integration suite 40 passed / 27 skipped (67 collected); 00062 fixes merged (SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding), BUG-BE-003 slugify fix merged (PR #92), C3A chat session foundation merged (PR #98-100) |
 
 ## Architecture
 
@@ -30,7 +30,7 @@ src/
 │   ├── router.py            # /api/v1/itineraries endpoints
 │   ├── service.py           # Domain orchestration
 │   ├── repository.py        # DB queries including recommendation context
-│   ├── chat_session.py      # Chat session CRUD service
+│   ├── service.py           # Trip CRUD + guest claim + C3A chat session orchestration
 │   └── models/              # Trip, activity, accommodation, claim/share/chat models
 ├── places/                  # Destinations, places, hotels, saved places
 ├── geo/                     # Goong REST client infrastructure

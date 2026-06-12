@@ -8,16 +8,121 @@ import {
   DollarSign,
   Users,
   Calendar,
-  Heart,
   Bookmark,
+  BedDouble,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
-import { listSavedPlaces, savePlace, unsavePlace, getDestinationDetail, type PlaceResponse } from "../services/places";
+import {
+  listSavedPlaces,
+  savePlace,
+  unsavePlace,
+  getDestinationDetail,
+  type DestinationResponse,
+  type HotelResponse,
+  type PlaceResponse,
+} from "../services/places";
 import { Place, CityData, cityData } from "../data/cities";
-import { resolvePlaceImageWithCategory } from "../utils/placeImage";
+import {
+  resolvePlaceImage,
+  resolvePlaceImageWithCategory,
+  getDestinationFallbackImage,
+} from "../utils/placeImage";
 import { toast } from "sonner";
+
+const PLACE_CATEGORY_LABELS: Record<string, string> = {
+  food: "Ẩm thực",
+  attraction: "Điểm tham quan",
+  nature: "Thiên nhiên",
+  entertainment: "Giải trí",
+  shopping: "Mua sắm",
+};
+
+const PLACE_META_FALLBACKS: Record<
+  string,
+  { openingHours: string; priceRange: string; visitDuration: string }
+> = {
+  food: {
+    openingHours: "Tùy địa điểm",
+    priceRange: "Tùy món",
+    visitDuration: "1-1.5 giờ",
+  },
+  attraction: {
+    openingHours: "Đang cập nhật",
+    priceRange: "Tùy điểm đến",
+    visitDuration: "1-2 giờ",
+  },
+  nature: {
+    openingHours: "Ưu tiên ban ngày",
+    priceRange: "Thường miễn phí hoặc vé tại chỗ",
+    visitDuration: "2-3 giờ",
+  },
+  entertainment: {
+    openingHours: "Đang cập nhật",
+    priceRange: "Theo dịch vụ",
+    visitDuration: "2-4 giờ",
+  },
+  shopping: {
+    openingHours: "Đang cập nhật",
+    priceRange: "Theo nhu cầu",
+    visitDuration: "1-3 giờ",
+  },
+};
+
+function formatPlaceCategory(type: string): string {
+  return PLACE_CATEGORY_LABELS[type] ?? type;
+}
+
+function resolveDestinationImage(name: string, apiImage?: string | null): string {
+  const trimmedImage = apiImage?.trim();
+  if (trimmedImage) {
+    if (
+      trimmedImage.startsWith("http://") ||
+      trimmedImage.startsWith("https://")
+    ) {
+      return trimmedImage;
+    }
+  }
+
+  return getDestinationFallbackImage(name);
+}
+
+function toDisplayPlace(place: PlaceResponse): Place {
+  const fallbackMeta = PLACE_META_FALLBACKS[place.type] ?? {
+    openingHours: "Đang cập nhật",
+    priceRange: "Đang cập nhật",
+    visitDuration: "Linh hoạt",
+  };
+
+  return {
+    id: place.id,
+    name: place.name,
+    image: resolvePlaceImageWithCategory(place.image, place.type),
+    rating: place.rating ?? 0,
+    reviewCount: place.reviewCount ?? 0,
+    category: formatPlaceCategory(place.type),
+    description:
+      place.description ||
+      "Địa điểm này đã có trong cơ sở dữ liệu của hệ thống và sẵn sàng cho việc lên lịch trình.",
+    openingHours: fallbackMeta.openingHours,
+    priceRange: place.price ?? fallbackMeta.priceRange,
+    visitDuration: fallbackMeta.visitDuration,
+    address: place.location ?? undefined,
+  };
+}
+
+function getReadinessLabel(
+  readinessStatus?: DestinationResponse["readinessStatus"],
+): string {
+  if (readinessStatus === "ready") return "Sẵn sàng";
+  if (readinessStatus === "partial") return "Có thể sử dụng";
+  return "Dữ liệu còn thưa";
+}
+
+function formatHotelPrice(price: number): string {
+  return `${price.toLocaleString("vi-VN")}đ/đêm`;
+}
 
 export default function CityDetail() {
   const { cityId } = useParams<{ cityId: string }>();
@@ -26,8 +131,9 @@ export default function CityDetail() {
   const [savedPlaces, setSavedPlaces] = useState<number[]>([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [savedPlaceNames, setSavedPlaceNames] = useState<Set<string>>(new Set());
+  const [apiDestination, setApiDestination] = useState<DestinationResponse | null>(null);
   const [apiPlaces, setApiPlaces] = useState<PlaceResponse[]>([]);
-  const [apiCityName, setApiCityName] = useState<string | null>(null);
+  const [apiHotels, setApiHotels] = useState<HotelResponse[]>([]);
   // Track whether the API responded (to distinguish "loading" from "no data")
   const [apiLoaded, setApiLoaded] = useState(false);
 
@@ -38,49 +144,93 @@ export default function CityDetail() {
     if (!cityId) return;
     let isMounted = true;
 
-    // Derive API destination name from slug: "ha-noi" -> "Hà Nội"
-    const slugToName: Record<string, string> = {
-      "ha-noi": "Hà Nội", "ho-chi-minh": "Hồ Chí Minh", "da-nang": "Đà Nẵng",
-      "hoi-an": "Hội An", "hue": "Huế", "nha-trang": "Nha Trang",
-      "da-lat": "Đà Lạt", "ha-long": "Hạ Long", "sapa": "Sapa",
-      "phu-quoc": "Phú Quốc", "vinh-ha-long": "Vịnh Hạ Long",
-      "ninh-binh": "Ninh Bình", "quang-ninh": "Quảng Ninh",
-      "can-tho": "Cần Thơ", "vung-tau": "Vũng Tàu", "hai-phong": "Hải Phòng",
-    };
+    setApiLoaded(false);
+    setApiDestination(null);
+    setApiPlaces([]);
+    setApiHotels([]);
 
-    const name = slugToName[cityId];
-    if (!name) return;
-
-    getDestinationDetail(name).then((data) => {
-      if (!isMounted) return;
-      const dest = (data as any).destination;
-      const places = (data as any).places as PlaceResponse[];
-      if (dest) setApiCityName(dest.name || name);
-      if (places && places.length > 0) setApiPlaces(places);
-      setApiLoaded(true);
-    }).catch(() => {
-      // Keep mock fallback
-      if (isMounted) setApiLoaded(true);
-    });
+    getDestinationDetail(cityId)
+      .then((data) => {
+        if (!isMounted) return;
+        setApiDestination(data.destination ?? null);
+        setApiPlaces(data.places ?? []);
+        setApiHotels(data.hotels ?? []);
+        setApiLoaded(true);
+      })
+      .catch(() => {
+        // Keep mock fallback
+        if (isMounted) setApiLoaded(true);
+      });
 
     return () => { isMounted = false; };
   }, [cityId]);
 
+  const mappedApiPlaces = apiPlaces.map(toDisplayPlace);
+  const hasApiDetail = !!apiDestination;
+  const displayPlaces = hasApiDetail
+    ? mappedApiPlaces
+    : city?.popularPlaces.length
+      ? city.popularPlaces
+      : [];
+  const apiPlaceCount = apiDestination?.placesCount ?? apiPlaces.length;
+  const apiHotelCount = apiDestination?.hotelsCount ?? apiHotels.length;
+
+  const displayCity: CityData | null =
+    (apiDestination
+      ? {
+          id: city?.id || cityId || apiDestination.name,
+          name: apiDestination.name,
+          region: city?.region || "Việt Nam",
+          image: resolveDestinationImage(apiDestination.name, apiDestination.image),
+          bannerImage: resolveDestinationImage(apiDestination.name, apiDestination.image),
+          description:
+            apiDestination.readinessReason ||
+            city?.description ||
+            `${apiDestination.name} hiện có ${apiPlaceCount} địa điểm và ${apiHotelCount} khách sạn trong hệ thống.`,
+          overview: apiDestination.readinessReason
+            ? `${apiDestination.readinessReason} Trang này ưu tiên hiển thị dữ liệu backend hiện có để bạn đánh giá đúng độ phủ dữ liệu trước khi tạo lịch trình.`
+            : city?.overview ||
+              `${apiDestination.name} hiện có ${apiPlaceCount} địa điểm và ${apiHotelCount} khách sạn tham khảo trong cơ sở dữ liệu. Trang này đang hiển thị trực tiếp dữ liệu backend thay vì mock pack cố định.`,
+          bestTimeToVisit: city?.bestTimeToVisit || "Đang cập nhật từ dữ liệu thực tế",
+          averageTemperature:
+            city?.averageTemperature ||
+            (apiHotelCount
+              ? `${apiHotelCount} khách sạn tham khảo`
+              : "Chưa có dữ liệu khí hậu"),
+          popularPlaces: displayPlaces,
+        }
+      : city);
+
+  const displayPlaceCount = hasApiDetail ? apiPlaceCount : displayPlaces.length;
+
   // Sync bookmark state from BE API on mount
   useEffect(() => {
-    if (!city || !isAuthenticated) return;
+    if (!displayCity || !isAuthenticated || displayPlaces.length === 0) return;
     listSavedPlaces().then((data) => {
       // Correct BE shape: { id: savedId, place: { id: placeId, name, ... } }
       const names = new Set(data.map((p: any) => p.place?.name || p.placeName || p.name).filter(Boolean));
       setSavedPlaceNames(names);
-      const matchedIds = city.popularPlaces
+      const matchedIds = displayPlaces
         .filter(p => names.has(p.name))
         .map(p => p.id);
       setSavedPlaces(matchedIds);
     }).catch(() => {});
-  }, [city, isAuthenticated]);
+  }, [displayCity, displayPlaces, isAuthenticated]);
 
-  if (!city) {
+  if (!displayCity) {
+    if (!apiLoaded) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-orange-50">
+          <Header />
+          <div className="flex items-center justify-center py-40">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-cyan-200 border-t-cyan-600" />
+              <p className="text-gray-500">Đang tải chi tiết điểm đến...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-orange-50">
         <Header />
@@ -109,7 +259,7 @@ export default function CityDetail() {
       return;
     }
 
-    const place = city?.popularPlaces.find(p => p.id === placeId);
+    const place = displayPlaces.find(p => p.id === placeId);
     if (!place) return;
 
     const isAlreadySaved = savedPlaceNames.has(place.name);
@@ -154,8 +304,8 @@ export default function CityDetail() {
       {/* Hero Banner */}
       <div className="relative h-96 overflow-hidden">
         <img
-          src={city.bannerImage}
-          alt={city.name}
+          src={displayCity.bannerImage}
+          alt={displayCity.name}
           className="h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
@@ -175,14 +325,14 @@ export default function CityDetail() {
             <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-cyan-500/90 px-4 py-2 backdrop-blur-sm">
               <MapPin className="h-4 w-4 text-white" />
               <span className="text-sm font-semibold text-white">
-                {city.region}
+                {displayCity.region}
               </span>
             </div>
             <h1 className="mb-3 text-6xl font-bold text-white drop-shadow-lg">
-              {city.name}
+              {displayCity.name}
             </h1>
             <p className="max-w-3xl text-xl text-white/90 drop-shadow">
-              {city.description}
+              {displayCity.description}
             </p>
           </div>
         </div>
@@ -195,58 +345,106 @@ export default function CityDetail() {
             Giới thiệu tổng quan
           </h2>
           <p className="mb-6 text-lg leading-relaxed text-gray-700">
-            {city.overview}
+            {displayCity.overview}
           </p>
 
           {/* Quick Info */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="flex items-center gap-3 rounded-xl bg-cyan-50 p-4">
-              <Calendar className="h-8 w-8 text-cyan-600" />
-              <div>
-                <p className="text-sm font-semibold text-gray-600">
-                  Thời gian tốt nhất
-                </p>
-                <p className="font-bold text-gray-900">{city.bestTimeToVisit}</p>
+          {hasApiDetail ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="flex items-center gap-3 rounded-xl bg-cyan-50 p-4">
+                <Calendar className="h-8 w-8 text-cyan-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">
+                    Thời gian tốt nhất
+                  </p>
+                  <p className="font-bold text-gray-900">
+                    {displayCity.bestTimeToVisit}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl bg-orange-50 p-4">
+                <Clock className="h-8 w-8 text-orange-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">
+                    Nhiệt độ trung bình
+                  </p>
+                  <p className="font-bold text-gray-900">
+                    {displayCity.averageTemperature}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl bg-cyan-50 p-4">
+                <MapPin className="h-8 w-8 text-cyan-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">
+                    Địa điểm hiện có
+                  </p>
+                  <p className="font-bold text-gray-900">{displayPlaceCount} địa điểm</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl bg-purple-50 p-4">
+                <Calendar className="h-8 w-8 text-purple-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">
+                    Trạng thái dữ liệu
+                  </p>
+                  <p className="font-bold text-gray-900">
+                    {getReadinessLabel(apiDestination?.readinessStatus)}
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-xl bg-orange-50 p-4">
-              <Clock className="h-8 w-8 text-orange-600" />
-              <div>
-                <p className="text-sm font-semibold text-gray-600">
-                  Nhiệt độ trung bình
-                </p>
-                <p className="font-bold text-gray-900">
-                  {city.averageTemperature}
-                </p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="flex items-center gap-3 rounded-xl bg-cyan-50 p-4">
+                <Calendar className="h-8 w-8 text-cyan-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">
+                    Thời gian tốt nhất
+                  </p>
+                  <p className="font-bold text-gray-900">{displayCity.bestTimeToVisit}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl bg-orange-50 p-4">
+                <Clock className="h-8 w-8 text-orange-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">
+                    Nhiệt độ trung bình
+                  </p>
+                  <p className="font-bold text-gray-900">
+                    {displayCity.averageTemperature}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl bg-purple-50 p-4">
+                <MapPin className="h-8 w-8 text-purple-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">
+                    Địa điểm nổi tiếng
+                  </p>
+                  <p className="font-bold text-gray-900">
+                    {displayPlaceCount} địa điểm
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-xl bg-purple-50 p-4">
-              <MapPin className="h-8 w-8 text-purple-600" />
-              <div>
-                <p className="text-sm font-semibold text-gray-600">
-                  Địa điểm nổi tiếng
-                </p>
-                <p className="font-bold text-gray-900">
-                  {city.popularPlaces.length} địa điểm
-                </p>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Popular Places */}
-        <div>
+        {displayPlaces.length > 0 && (
+          <div>
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-3xl font-bold text-gray-900">
-              Địa điểm nổi tiếng
+              {hasApiDetail ? "Địa điểm nổi bật từ dữ liệu hiện có" : "Địa điểm nổi tiếng"}
             </h2>
             <p className="text-gray-600">
-              {city.popularPlaces.length} địa điểm
+              {displayPlaceCount} địa điểm
             </p>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {city.popularPlaces.map((place) => {
+            {displayPlaces.map((place) => {
               const isSaved = savedPlaces.includes(place.id);
 
               return (
@@ -290,11 +488,17 @@ export default function CityDetail() {
                         {place.name}
                       </h3>
                       <div className="flex items-center gap-2 text-white/90">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-semibold">{place.rating}</span>
-                        <span className="text-sm">
-                          ({place.reviewCount.toLocaleString()} đánh giá)
-                        </span>
+                        {place.rating > 0 ? (
+                          <>
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="font-semibold">{place.rating}</span>
+                            <span className="text-sm">
+                              ({place.reviewCount.toLocaleString()} đánh giá)
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-sm font-semibold">Chưa có đánh giá</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -335,12 +539,102 @@ export default function CityDetail() {
               );
             })}
           </div>
-        </div>
+          </div>
+        )}
+
+        {apiHotels.length > 0 && (
+          <div className="mt-12">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-3xl font-bold text-gray-900">
+                Khách sạn tham khảo
+              </h2>
+              <p className="text-gray-600">{apiHotelCount} khách sạn</p>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              {apiHotels.map((hotel) => (
+                <div
+                  key={hotel.id}
+                  className="overflow-hidden rounded-2xl border-2 border-gray-200 bg-white shadow-md transition-all hover:shadow-xl"
+                >
+                  <div className="relative h-56">
+                    <img
+                      src={resolvePlaceImage(hotel.image)}
+                      alt={hotel.name}
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+                    <div className="absolute left-4 top-4">
+                      <span className="inline-block rounded-full bg-cyan-500/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                        Khách sạn
+                      </span>
+                    </div>
+
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                      <h3 className="mb-1 text-2xl font-bold text-white drop-shadow-lg">
+                        {hotel.name}
+                      </h3>
+                      <div className="flex items-center gap-2 text-white/90">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span className="font-semibold">{hotel.rating}</span>
+                        <span className="text-sm">
+                          ({hotel.reviewCount.toLocaleString()} đánh giá)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-5">
+                    <p className="mb-4 text-gray-700">{hotel.description}</p>
+
+                    <div className="mb-4 flex items-center gap-3 text-sm text-gray-600">
+                      <MapPin className="h-5 w-5 text-gray-400" />
+                      <span>{hotel.location}</span>
+                    </div>
+
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {hotel.amenities.length > 0 ? (
+                        hotel.amenities.slice(0, 4).map((amenity) => (
+                          <span
+                            key={`${hotel.id}-${amenity}`}
+                            className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700"
+                          >
+                            {amenity}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                          Tiện nghi đang cập nhật
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-xl bg-cyan-50 p-4">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-600">Giá tham khảo</p>
+                        <p className="font-bold text-cyan-700">
+                          {formatHotelPrice(hotel.price)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => navigate("/create-trip")}
+                        className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-cyan-700"
+                      >
+                        Dùng cho lịch trình
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* CTA Section */}
         <div className="mt-12 rounded-3xl bg-gradient-to-r from-cyan-500 to-cyan-600 p-10 text-center text-white">
           <h3 className="mb-4 text-3xl font-bold">
-            Sẵn sàng khám phá {apiCityName || city.name}?
+            Sẵn sàng khám phá {apiDestination?.name || displayCity.name}?
           </h3>
           <p className="mb-6 text-lg text-cyan-100">
             Tạo lịch trình du lịch của bạn ngay hôm nay
@@ -356,7 +650,7 @@ export default function CityDetail() {
 
         {/* API Places — shown when BE has data */}
         {/* PRODUCT RULE: Do NOT suggest choosing a different city. Show this exact copy when no places. */}
-        {apiLoaded && apiPlaces.length === 0 && (
+        {apiLoaded && hasApiDetail && displayPlaces.length === 0 && apiHotelCount === 0 && (
           <div className="mt-12 rounded-xl bg-amber-50 border border-amber-200 p-6 text-center">
             <p className="text-amber-800 font-semibold mb-2">
               Địa điểm chưa được hỗ trợ trong giai đoạn hiện tại
@@ -366,51 +660,14 @@ export default function CityDetail() {
             </p>
           </div>
         )}
-        {apiPlaces.length > 0 && (
-          <div className="mt-12">
-            <h2 className="mb-6 text-3xl font-bold text-gray-900">
-              Địa điểm từ cơ sở dữ liệu
-            </h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {apiPlaces.map((place) => (                <div
-                  key={place.id}
-                  className="overflow-hidden rounded-2xl border-2 border-gray-200 bg-white shadow-md transition-all hover:shadow-xl"
-                >
-                  <div className="relative h-48">
-                    <img
-                      src={resolvePlaceImageWithCategory(place.image, place.type)}
-                      alt={place.name}
-                      className="h-full w-full object-cover"
-                    />
-                    <div className="absolute left-3 top-3">
-                      <span className="inline-block rounded-full bg-cyan-500/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                        {place.type}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="mb-1 text-lg font-bold text-gray-900">{place.name}</h3>
-                    {place.location && (
-                      <p className="mb-2 text-sm text-gray-500">{place.location}</p>
-                    )}
-                    {place.description && (
-                      <p className="text-sm text-gray-700 line-clamp-2">{place.description}</p>
-                    )}
-                    <div className="mt-2 flex items-center gap-2">
-                      {place.rating != null && (
-                        <>
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm font-semibold">{place.rating}</span>
-                        </>
-                      )}
-                      {place.price && (
-                        <span className="text-sm text-gray-500">{place.price}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {apiLoaded && hasApiDetail && displayPlaces.length === 0 && apiHotelCount > 0 && (
+          <div className="mt-12 rounded-xl border border-cyan-200 bg-cyan-50 p-6 text-center">
+            <p className="mb-2 font-semibold text-cyan-800">
+              Điểm đến này đã có dữ liệu khách sạn nhưng chưa có địa điểm tham quan trong hệ thống
+            </p>
+            <p className="text-sm text-cyan-700">
+              Bạn vẫn có thể xem khách sạn tham khảo và tiếp tục kiểm tra mức sẵn sàng dữ liệu trước khi tạo lịch trình.
+            </p>
           </div>
         )}
       </div>

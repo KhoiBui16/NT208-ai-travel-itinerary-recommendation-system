@@ -10,15 +10,15 @@
 | C.1 | Generate | merged | `feat/00041-c-generate-pipeline` | #42 | `POST /itineraries/generate` | `GEMINI_API_KEY`, `AGENT_*` |
 | C.1b | Guest claim reload | merged | `fix/00045-c-restage-c1-guest-flow` | #45 | — | — |
 | C.2 | Suggestion | merged | `feat/00047-c-suggestion-service` | #49 | `GET /agent/suggest/{id}` | none (DB only) |
-| C.3A | Chat session foundation | next | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `POST/GET /itineraries/{tripId}/chat-sessions` | none |
-| C.3B | Companion chat API | blocked_by_C3A | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `POST /itineraries/chat-sessions/{sessionId}/messages` | `GEMINI_API_KEY` (later smoke only) |
-| C.3C | Chat UX hardening | blocked_by_C3B | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | FE UX + future apply-patch contract | none |
-| C.4 | Chat history persistence | blocked_by_C3B | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `GET /itineraries/{tripId}/chat-sessions`, `GET /chat-sessions/{id}/messages` | none |
+| C.3A | Chat session foundation | merged | `feat/00094-c-c3a-chat-session-apis` + `feat/00095-c-c3a-fe-chat-panel` + `chore/00096-c-c3a-chat-e2e-tests` | #98-100 | `POST/GET /itineraries/{tripId}/chat-sessions` | none |
+| C.3B | Companion chat API | todo | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `POST /itineraries/chat-sessions/{sessionId}/messages` | `GEMINI_API_KEY` (later smoke only) |
+| C.3C | Chat UX hardening | todo | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | FE UX + future apply-patch contract | none |
+| C.4 | Chat history persistence | todo | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `GET /itineraries/{tripId}/chat-sessions`, `GET /chat-sessions/{id}/messages` | none |
 | C.5 | Analytics | optional | `feat/00053-c5-analytics-optional` | — | `POST /agent/analytics` | `ENABLE_ANALYTICS`, `ANALYTICS_DATABASE_URL` |
 
 **Status:** `todo` | `wip` | `review_ready` | `merged`
 
-> **Current gate after `00060B` / `00060C`:** chỉ `C3A` được phép bắt đầu. Các checklist `C.3` / `C.4` cũ bên dưới là snapshot thiết kế lịch sử; current truth cho chat/history nằm ở `docs/ARCHITECTURE_C3_C4_READINESS.md` và `docs/C3_C4_IMPLEMENTATION_PLAN.md`.
+> **Current gate after `00097`:** `C3A` đã merge và browser/docs sync đang được re-verify. `C3B` là next safe phase; `C4` vẫn không nên tách làm việc độc lập trước khi có message flow của `C3B`.
 
 ---
 

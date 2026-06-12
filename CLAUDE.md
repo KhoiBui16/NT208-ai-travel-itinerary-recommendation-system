@@ -22,13 +22,13 @@ Neu docs va code xung dot:
 - Sau do doi chieu voi code that te
 - Neu code da lech docs, phai noi ro mismatch truoc khi sua tiep
 
-## Current repo truth (2026-06-10)
+## Current repo truth (2026-06-11)
 
 - Backend runtime hien tai la MVP2 trong `Backend/src/`
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
 - 215 BE tests (148 unit + 67 integration)
 - Frontend runtime hien tai nam trong `Frontend/`
-- 19 Playwright e2e test files trong `Frontend/tests/e2e/`
+- Playwright suite hiện bao phủ 15 spec files / 33 test cases trong `Frontend/tests/e2e/`
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
 - Register page bypass OTP cho den khi BE email OTP san sang
 - `docs/` la bo tai lieu chi tiet cho user va reviewer
@@ -239,4 +239,4 @@ Output cua audit: `docs/REPORTS/generate_pipeline_readiness.md`, `docs/REPORTS/r
 - Places/Cache: `.claude/context/04_places_cache.md`
 - AI: `.claude/context/05_ai_services.md`
 - Workflow/CI: `.claude/context/06_ops_workflow_ci.md`
-- Docs chi tiet: `docs/README.md`
+- Docs chi tiet: `docs/01_overview.md`

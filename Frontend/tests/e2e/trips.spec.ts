@@ -59,8 +59,8 @@ test.describe("Trip CRUD", () => {
   }) => {
     await page.goto("/create-trip");
 
-    // Fill destination — actual placeholder is "VD: Hà Nội, Đà Nẵng, Phú Quốc..."
-    await page.getByPlaceholder(/Hà Nội|Phú Quốc/i).fill("Da Nang");
+    // Destination placeholder is dynamic because it depends on loaded backend cities.
+    await page.getByRole("textbox").first().fill("Da Nang");
 
     // Select dates (click calendar button)
     await page.getByText(/chọn ngày/i).click();

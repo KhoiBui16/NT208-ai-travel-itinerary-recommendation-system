@@ -71,47 +71,45 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 | **Places** | Destination data quality advisory — limited-data cities (e.g., Đà Lạt) show non-blocking warning, remain submittable | ✅ Done |
 | **AI C.1** | Sinh lịch trình tự động bằng Gemini AI | ✅ Done |
 | **AI C.2** | Gợi ý địa điểm thay thế (DB-only, không LLM) | ✅ Done |
-| **AI C.3A** | Chat session foundation owner-only, trip-scoped | ⏭️ Next |
-| **AI C.3B** | Companion chat + patch-confirm flow | ⏸️ Planned after C3A |
+| **AI C.3A** | Chat session foundation owner-only, trip-scoped | ✅ Done |
+| **AI C.3B** | Companion chat + patch-confirm flow | ⏸️ Next after docs/browser sync |
 | **AI C.4** | Lịch sử chat | ⏸️ Planned after C3B |
 | **AI C.5** | Analytics Text-to-SQL (optional) | 🔄 Optional |
 | **ETL** | Goong-first ETL nạp dữ liệu địa điểm | ✅ Done |
 
 ---
 
-## 1.1 Trạng thái hiện tại trước khi vào C3/C4
+## 1.1 Trạng thái hiện tại sau khi C3A đã merge
 
-`00060B`, `00060C`, `00060D`, `00060G`, và `00060H` đã chốt current truth như sau:
+`00060B`, `00060C`, `00060D`, `00060G`, `00060H`, và `00094-00096` đã chốt current truth như sau:
 
 | Hạng mục | Trạng thái |
 |---|---|
-| Readiness tổng thể trước C3/C4 | `GO_WITH_LIMITATIONS` |
-| Có thể bắt đầu `C3A — Chat Session Foundation` | `YES` |
-| Có thể nhảy thẳng vào `C3B — Companion Chat API` | `NO` |
-| Có thể nhảy thẳng vào `C4 — Chat History` | `NO` |
-| `FloatingAIChat.tsx` hiện tại | Mock UI, chưa trip-aware, chưa gọi API thật |
-| `chat_sessions` / `chat_messages` | Đã có trong source/migration |
-| Chat session/message API | Chưa có |
-| Real AI call trong `C3A` | Không có |
-| Chat quota tách khỏi generate quota | Chưa làm, để `C3B` |
-| Real Gemini generate smoke trước `C3A` | Đã verify controlled live UAT (`201`, auth user, workspace render) |
-| `FloatingAIChat.tsx` runtime hiện tại | Vẫn là mock UI, nhưng context đã derive từ trip hiện tại; không còn hardcoded `Hà Nội` trước `C3A` |
-| Browser `429` submit path trước `C3A` | Đã verify bằng Playwright route-mocked regression, không gọi Gemini thật |
-| Guest AI workspace trong cùng browser session | Đã ổn định bằng `sessionStorage.currentTrip` + `pendingClaim`; chưa đăng nhập vẫn xem được trip vừa generate |
+| Readiness tổng thể sau C3A | `FOUNDATION_READY_NEXT_PHASE_PENDING` |
+| `C3A — Chat Session Foundation` | Đã merge (`PR #98-100`) |
+| `C3B — Companion Chat API` | Chưa bắt đầu; là next gate sau docs/browser sync |
+| `C4 — Chat History` | Chưa bắt đầu; vẫn phụ thuộc `C3B` |
+| `FloatingAIChat.tsx` hiện tại | Vẫn là mock promo UI, chưa phải companion chat thật |
+| `ChatPanel` trong `TripWorkspace` | Đã trip-aware, owner-only, gọi chat session REST APIs thật |
+| `chat_sessions` / `chat_messages` | Đã có schema/migration và session foundation |
+| Chat session/message API | Đã có session CRUD (`POST/GET /itineraries/{tripId}/chat-sessions`, `GET /itineraries/chat-sessions/{sessionId}`); message send/history APIs chưa có |
+| Real AI call trong chat | Chưa có; để `C3B` |
+| Chat quota tách khỏi generate quota | Chưa làm; để `C3B` |
+| Guest AI workspace trong cùng browser session | Đã ổn định bằng `sessionStorage.currentTrip` + `pendingClaim`; guest xem được trip vừa generate nhưng chưa chat trước khi claim |
 | Generated activity images sau reload | Đã ưu tiên `Place.image` khi `place_id` hợp lệ, FE có fallback khi image rỗng/hỏng |
 | Gemini SDK backend | Đã migrate sang `google-genai`; timeout vẫn trả `503 AI_PROVIDER_TIMEOUT` |
 
 **Ý nghĩa thực tế:**
 
-- `C3A` chỉ dựng session foundation owner-only, trip-scoped trong `TripWorkspace`.
+- `C3A` đã chốt session foundation owner-only, trip-scoped trong `TripWorkspace`.
 - `C3A` không gọi Gemini thật, không gửi message thật, và không apply patch vào itinerary.
-- `C3B` mới xử lý message generation, provider abstraction, chat quota, và chat error UX.
-- `C4` mới xử lý persisted history, reload session, và session/history UX.
-- `FloatingAIChat` vẫn là mock UI và chưa có session API; `00060D-FIX` chỉ sửa context bug trước `C3A`.
-- Browser `429` submit-path đã có regression test trước `C3A`, nhưng chat quota riêng vẫn chưa tồn tại.
+- `C3B` sẽ xử lý message generation, provider abstraction, `requiresConfirmation` / `proposedOperations`, chat quota, và chat error UX.
+- `C4` sẽ xử lý persisted message history, reload session, và session/history UX.
+- `FloatingAIChat` vẫn chỉ là lớp promo/mock; luồng chat thật hiện nằm ở `ChatPanel`.
+- Browser `429` submit-path của generate đã có regression test; chat quota riêng vẫn chưa tồn tại.
 - Guest chưa đăng nhập vẫn có thể generate và xem trip vừa tạo trong chính browser session hiện tại; đăng nhập mới cần để nhận ownership dài hạn, share, và edit/save server-side đầy đủ.
 - Generate hiện vẫn là sync HTTP flow; tăng timeout chỉ giúp local/staging dễ smoke hơn, còn "eventually complete" cần background job/polling ở phase tương lai.
-- Chat quota riêng, real provider smoke, và stale patch handling không block `C3A`; chúng thuộc `C3B/C3C` trở đi.
+- Chat quota riêng, real provider smoke cho companion, và stale patch handling không block `C3A`; chúng thuộc `C3B/C3C` trở đi.
 
 ---
 
@@ -879,7 +877,7 @@ erDiagram
 - `share_links` dùng cho public shared view. `trip_id FK "unique"` nghĩa là link gắn với một trip và đang bị ràng buộc unique theo thiết kế hiện tại; Mermaid dùng comment `"unique"` để tránh lỗi render khi một field vừa là FK vừa có unique constraint.
 - `guest_claim_tokens` hỗ trợ guest claim flow. Token thật không lưu plaintext mà chỉ lưu dạng hash để giảm rủi ro lộ token.
 - `trip_ratings` lưu đánh giá sau chuyến đi. `trip_id FK "unique"` biểu diễn quan hệ một đánh giá cho một trip theo ràng buộc hiện tại.
-- `chat_sessions` và `chat_messages` đã có trong schema để làm nền cho Phase `C3/C4`, nhưng API chat thật vẫn chưa được implement trước `C3A`.
+- `chat_sessions` và `chat_messages` đã có trong schema để làm nền cho Phase `C3/C4`; sau `PR #98-100`, session CRUD foundation (`POST/GET chat-sessions`) đã có, còn message send/history APIs vẫn để `C3B/C4`.
 
 **Quy ước ký hiệu:**
 
@@ -1460,16 +1458,16 @@ WHY DB-only: Gợi ý địa điểm chỉ cần filter + sort data có sẵn.
              Không cần "sáng tạo" nội dung mới.
 ```
 
-### 8.5 C.3A — Chat Session Foundation (Next gate)
+### 8.5 C.3A — Chat Session Foundation (Merged)
 
 ```
-FE (FloatingAIChat.tsx)
-  → thay mock bằng ChatPanel session-aware trong TripWorkspace
+FE (TripWorkspace + ChatPanel)
+  → ChatPanel session-aware mounted trong TripWorkspace
   → POST /api/v1/itineraries/{tripId}/chat-sessions
   → GET  /api/v1/itineraries/{tripId}/chat-sessions
   → GET  /api/v1/itineraries/chat-sessions/{sessionId}
 
-Chat session foundation
+C3A shipped
   1. Verify owner hiện tại của trip
   2. Guest chưa claim → không tạo session
   3. Shared viewer → không tạo/đọc session
@@ -1484,7 +1482,7 @@ KEY:
 
 > Note: Detailed C.1/C.2 flow is already documented in sections **8.3** và **8.4** ở trên. Phần dưới đây chỉ tập trung vào future boundary của companion chat sau khi `C3A` hoàn tất.
 
-> Runtime note (`00060D-FIX`): `TripWorkspace` hiện đã derive `selectedCities` từ current trip/days nên floating chat không còn hardcoded `Hà Nội` trên trip `Huế`. Tuy vậy, nó vẫn chỉ là mock UI và `C3A` vẫn phải thay hoặc wrap nó bằng panel session-aware.
+> Runtime note (`00060D-FIX`): `TripWorkspace` hiện đã derive `selectedCities` từ current trip/days nên floating chat không còn hardcoded `Hà Nội` trên trip `Huế`. Sau `C3A`, chat thật đang đi qua `ChatPanel`; `FloatingAIChat` vẫn chỉ là mock/promo UI.
 
 ### 8.6 C.3B/C.3C — Future Companion Chat + Patch-Confirm (sau C3A)
 
@@ -1802,12 +1800,12 @@ POST /auth/reset-password {token, newPassword}
 |---|---|---|---|
 | **C.1** | AI Generate Itinerary (Gemini direct pipeline) | `merged` | ✅ Done |
 | **C.2** | Suggestion Service (DB-only, EP-30) | `merged` | ✅ Done |
-| **C.3A** | Chat Session Foundation (owner-only, trip-scoped, no real AI call) | `next` | ✅ Allowed after `00060B` / `00060C` |
-| **C.3B** | Companion Chat API + provider abstraction + chat quota | `after C3A` | ⏸️ Not direct start |
+| **C.3A** | Chat Session Foundation (owner-only, trip-scoped, no real AI call) | `merged` | ✅ Done (`PR #98-100`) |
+| **C.3B** | Companion Chat API + provider abstraction + chat quota | `next` | ⏸️ Chưa bắt đầu |
 | **C.4** | Chat history persistence + session UX | `after C3B` | ⏸️ Not direct start |
 | **C.5** | Analytics Text-to-SQL (optional) | `future optional` | 🔄 Optional |
 
-**Latest runtime snapshot before `C3A`:**
+**Latest runtime snapshot after `C3A`:**
 
 - `00060D-R` đã verify một lần generate Gemini thật thành công cho auth user (`201`, ~31s), workspace render đúng, và trip vẫn mở lại được sau refresh.
 - `00060D-R` đã re-check edit persistence bằng browser trên activity thật sau reload.
@@ -1815,6 +1813,7 @@ POST /auth/reset-password {token, newPassword}
 - `00060D-FIX` đã bỏ hardcoded `Hà Nội` của `FloatingAIChat` bằng cách derive context từ trip hiện tại.
 - `00060D-FIX` đã verify browser-level submit-path `429` UX bằng Playwright route-mocked regression mà không tiêu Gemini quota.
 - `00060H` đã chốt guest generate flow: FE lưu `currentTrip` + `pendingClaim`, nên guest có thể mở `TripWorkspace` trong cùng browser session mà không bị ép login ngay.
+- `00097` đã re-run full Playwright suite sau C3A docs sync: **30 passed, 3 skipped**; C3A chat session CRUD, auth, trip CRUD, và guest claim flows đều xanh.
 - `00060H` đã sửa generated activity image persistence: activity có `place_id` hợp lệ sẽ ưu tiên `Place.image`, còn FE vẫn có fallback image khi dữ liệu rỗng hoặc URL hỏng.
 - `00060H` đã migrate backend Gemini client sang `google-genai`; timeout `503` vẫn được classify rõ là `AI_PROVIDER_TIMEOUT`.
 - `00060H` cũng chốt rõ rằng sync generate chưa thể hứa "eventually complete"; muốn đảm bảo hoàn tất khi provider chậm cần background job/polling ở phase tương lai.
@@ -1830,7 +1829,7 @@ POST /auth/reset-password {token, newPassword}
 | `src/agent/schemas/itinerary_schemas.py` | LLM output schema | Shared AI infra | ✅ C.1 |
 | `src/places/suggestion_service.py` | Gợi ý DB-only (không LLM) | Service | ✅ C.2 |
 | `src/itineraries/models/chat.py` | `ChatSession`, `ChatMessage` schema đã có sẵn | Model | ✅ Schema ready |
-| `src/itineraries/chat_service.py` | Quản lý chat session/message | Service | 🔄 Planned for `C3A/C4` |
+| `src/itineraries/service.py` | Trip orchestration + chat session foundation hiện tại | Service | ✅ `C3A` |
 | `src/itineraries/companion_service.py` | Message handling + provider abstraction + patch contract | Service | 🔄 Planned for `C3B/C3C` |
 
 ---
@@ -1996,7 +1995,7 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 
 ## 13. Tests & Verification
 
-### 12.1 Latest live UAT snapshot before C3A
+### 12.1 Latest live UAT snapshot after C3A
 
 - `00060D-R` real Gemini smoke: **PASS** (`201`, auth user, workspace render)
 - `00060D-R` trip edit persistence re-check: **PASS**
@@ -2008,6 +2007,7 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 - `00060G` Home destination image fallback and AI provider-timeout submit-path UX regressions: **PASS**
 - `00060H` guest generate → same-browser `TripWorkspace` continuity via `currentTrip` / `pendingClaim`: **PASS**
 - `00060H` generated activity image persistence + UI fallback after reload: **PASS**
+- `00097` full Playwright suite after docs sync + selector stabilization: **PASS** (`30 passed`, `3 skipped`)
 
 ### Backend Tests
 
@@ -2052,19 +2052,20 @@ npx playwright test --ui
 npx playwright show-report
 ```
 
-**Kết quả hiện tại:** 28 Playwright tests total; latest full local result: **17 passed, 11 skipped**.
+**Kết quả hiện tại:** 33 Playwright tests total; latest full local result: **30 passed, 3 skipped**.
 
 | Suite | Số test | Mô tả |
 |---|---|---|
 | Calendar + destination readiness | 2 | Calendar helper/date range, partial destination advisory |
 | Rate-limit UX | 5 | 429 response structure, CreateTrip shell, submit-path 429 regression |
-| Auth flow | 5 skipped locally | Register, login, protected route redirect, guest claim after login/register |
-| Trip CRUD | 3 skipped locally | Create trip, view list, delete trip |
+| Auth flow | 5 | Register, login, protected route redirect, guest claim after login/register/reload |
+| Trip CRUD | 3 | Create trip, view list, delete trip |
 | Public pages | 5 | Home, login, register, forgot-password, 404 |
 | Floating chat pre-C3A context | 1 | Non-Hà Nội trip no longer shows hardcoded `Hà Nội` |
 | Home destination image fallback | 1 | Empty/null/broken API images fall back to stable destination/default images |
 | AI timeout UX | 1 | 503 `AI_PROVIDER_TIMEOUT` submit path stays on CreateTrip and shows actionable copy |
 | Guest workspace boundary | 2 | Guest generate giữ được `currentTrip` + `pendingClaim`; auth generate vẫn ưu tiên API state thay vì session fallback |
+| C3A chat session CRUD | 5 | Owner-only create/list/get/reload; guest/cross-user blocked |
 | Legacy B3 flows | 3 skipped | Historical fullstack observation flows kept skipped in current suite |
 
 ### CI/CD — GitHub Actions
@@ -2236,7 +2237,7 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   │   ├── types/                 # trip.types.ts (FE-BE contract)
 │   │   │   └── utils/
 │   │   └── styles/
-│   ├── tests/e2e/                     # 26 Playwright tests total (latest local full suite: 15 passed, 11 skipped)
+│   ├── tests/e2e/                     # 33 Playwright tests / 15 spec files (latest full suite: 30 passed, 3 skipped)
 │   ├── playwright.config.ts
 │   ├── package.json
 │   └── vite.config.ts

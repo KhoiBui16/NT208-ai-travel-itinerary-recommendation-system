@@ -7,6 +7,25 @@
 
 ---
 
+## Snapshot đã verify (2026-06-12)
+
+Kế hoạch này vẫn là source test-plan, nhưng current live verification gần nhất đã xác nhận:
+
+- `TC01` auth register/login: PASS
+- `TC02` destinations list + slug navigation: PASS
+- `TC04` AI generate trip ngắn: PASS trên stack thật FE -> BE -> DB -> Redis
+- `TC10` city detail: PASS cho cả sparse cities (`Buôn Ma Thuột`, `Cần Thơ`) và ready cities (`Hà Nội`, `Đà Nẵng`, `TP. Hồ Chí Minh`)
+- `TC12` share + shared read-only view: PASS
+- `TC13` guest claim after login: PASS
+- `C3A` chat session foundation: PASS
+
+Lưu ý phase:
+
+- Kết quả trên đủ để xem `00097` là nhánh hardening/verification mergeable.
+- `C3B` vẫn chưa được implement trong repo hiện tại; sau khi merge `00097` mới nên mở nhánh feature riêng cho message/apply-patch flow.
+
+---
+
 ## Chuẩn Bị Trước Khi Test
 
 ### Bước 1: Đảm bảo Backend đang chạy

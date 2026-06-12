@@ -194,7 +194,7 @@ Giải thích ngắn:
 |---|---|
 | Chat session REST | `Backend/src/itineraries/router.py` |
 | Companion business logic | `Backend/src/itineraries/companion_service.py` |
-| Chat persistence service | `Backend/src/itineraries/chat_service.py` |
+| Chat persistence service | `Backend/src/itineraries/service.py` hiện giữ session foundation; `companion_service.py` hoặc layer riêng sẽ nhận phần message/history khi sang C3B/C4 |
 | Shared AI infra | `Backend/src/agent/llm.py`, prompts, schemas |
 | Patch apply logic | `Backend/src/itineraries/service.py` or dedicated companion patch service, but still under `itineraries/` |
 
@@ -367,10 +367,10 @@ FE chat nên hiển thị:
 
 `C3B` và `C4` chưa nên nhảy thẳng vào vì:
 
-- session/message API ownership chưa được dựng
+- message send/history API ownership chưa được dựng
 - chat quota riêng chưa chốt
 - patch-confirm/stale handling mới chỉ là design issue
-- FE chat hiện vẫn là mock, chưa bám `tripId` và dữ liệu thật
+- FE companion thật mới dừng ở `ChatPanel` session CRUD; message UX và companion flow vẫn chưa bám dữ liệu thật
 
 ## Drift and follow-up notes
 

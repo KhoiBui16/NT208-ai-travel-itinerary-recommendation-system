@@ -22,6 +22,7 @@ from src.core.slugify import slugify
 from src.places.models import Destination, Place, SavedPlace
 from src.places.repository import PlaceRepository
 from src.places.schemas import (
+    DestinationDetailResponse,
     DestinationResponse,
     HotelResponse,
     PlaceResponse,
@@ -39,7 +40,7 @@ class PlaceService(BaseService):
 
     Uses composition with CacheClient for Redis caching. Cache keys:
     - "destinations:all:v2"              → Destination list with data quality
-    - "destinations:detail:{name}"       → City detail (dest + places + hotels)
+    - "destinations:detail:v2:{name}"    → City detail (dest + places + hotels)
     - "places:search:{query}:{city}:..." → Search results
     """
 
@@ -84,7 +85,7 @@ class PlaceService(BaseService):
         )
         return items
 
-    async def get_destination_detail(self, name: str) -> dict:
+    async def get_destination_detail(self, name: str) -> DestinationDetailResponse:
         """Get detailed info for a destination including places and hotels.
 
         Resolution: tries exact name match first, then slug match.
@@ -92,12 +93,12 @@ class PlaceService(BaseService):
 
         Cache TTL: destination_cache_ttl_seconds from settings.
         """
-        cache_key = f"destinations:detail:{name}"
+        cache_key = normalize_cache_key("destinations", "detail", "v2", name)
 
         # Try cache first
         cached = await self.cache.get(cache_key)
         if cached is not None:
-            return json.loads(cached)
+            return DestinationDetailResponse.model_validate_json(cached)
 
         # Resolve destination — try name first, then slug, then fuzzy match
         dest = await self.repo.get_destination_by_name(name)
@@ -113,16 +114,22 @@ class PlaceService(BaseService):
         places = await self.repo.get_by_destination(dest.id)
         hotels = await self.repo.get_hotels_by_destination(dest.id)
 
-        # Build composite response
-        result = {
-            "destination": self._to_destination_response(dest).model_dump(),
-            "places": [self._to_place_response(p).model_dump() for p in places],
-            "hotels": [self._to_hotel_response(h, dest).model_dump() for h in hotels],
-        }
+        # Build composite response with live counts so detail matches the actual payload.
+        result = DestinationDetailResponse(
+            destination=self._to_destination_response(
+                dest,
+                places_count=len(places),
+                hotels_count=len(hotels),
+            ),
+            places=[self._to_place_response(p) for p in places],
+            hotels=[self._to_hotel_response(h, dest) for h in hotels],
+        )
 
         # Store in cache
         await self.cache.set(
-            cache_key, json.dumps(result), self.settings.destination_cache_ttl_seconds
+            cache_key,
+            result.model_dump_json(by_alias=True),
+            self.settings.destination_cache_ttl_seconds,
         )
         return result
 
@@ -216,12 +223,20 @@ class PlaceService(BaseService):
     # Private helpers — ORM-to-schema conversion
     # ===================================================================
 
-    def _to_destination_response(self, dest: Destination) -> DestinationResponse:
-        """Convert a Destination ORM to a basic response (no counts)."""
-        return DestinationResponse(
-            id=dest.id,
-            name=dest.name,
+    def _to_destination_response(
+        self,
+        dest: Destination,
+        *,
+        places_count: int | None = None,
+        hotels_count: int = 0,
+    ) -> DestinationResponse:
+        """Convert a Destination ORM to a response with optional live counts."""
+        return self._build_destination_response(
+            dest_id=dest.id,
+            dest_name=dest.name,
             image=dest.image,
+            places_count=dest.places_count if places_count is None else places_count,
+            hotels_count=hotels_count,
         )
 
     def _to_destination_response_with_counts(self, dest_data: dict) -> DestinationResponse:
@@ -235,10 +250,24 @@ class PlaceService(BaseService):
         All API-listed destinations have isGenerateReady=True. Backend may
         still return 422 if context is truly insufficient at generation time.
         """
-        places_count = dest_data.get("places_count", 0)
-        hotels_count = dest_data.get("hotels_count", 0)
-        dest_name = dest_data.get("name", "điểm đến")
+        return self._build_destination_response(
+            dest_id=dest_data["id"],
+            dest_name=dest_data["name"],
+            image=dest_data["image"],
+            places_count=dest_data.get("places_count", 0),
+            hotels_count=dest_data.get("hotels_count", 0),
+        )
 
+    def _build_destination_response(
+        self,
+        *,
+        dest_id: int,
+        dest_name: str,
+        image: str,
+        places_count: int,
+        hotels_count: int,
+    ) -> DestinationResponse:
+        """Create a destination response with consistent readiness metadata."""
         # Determine data quality status and advisory message
         if places_count >= 30:
             status = "ready"
@@ -257,9 +286,9 @@ class PlaceService(BaseService):
             )
 
         return DestinationResponse(
-            id=dest_data["id"],
-            name=dest_data["name"],
-            image=dest_data["image"],
+            id=dest_id,
+            name=dest_name,
+            image=image,
             placesCount=places_count,
             hotelsCount=hotels_count,
             isGenerateReady=True,  # All API-listed destinations allowed to attempt generate
