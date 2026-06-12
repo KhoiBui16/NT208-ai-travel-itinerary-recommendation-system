@@ -8,7 +8,7 @@ from src.core.exceptions import ConflictException, ForbiddenException, NotFoundE
 from src.itineraries.models import (
     Activity,  # noqa: F401 - Required for SQLAlchemy to resolve Place.activities relationship
 )
-from src.places.models import Destination, Place, SavedPlace
+from src.places.models import Destination, Hotel, Place, SavedPlace
 from src.places.service import PlaceService
 
 
@@ -88,6 +88,21 @@ def _make_saved(saved_id: int = 1, user_id: int = 1, place_id: int = 1) -> Saved
     return saved
 
 
+def _make_hotel(hotel_id: int = 1, dest_id: int = 1, name: str = "Khách sạn Hà Nội") -> Hotel:
+    return Hotel(
+        id=hotel_id,
+        destination_id=dest_id,
+        name=name,
+        rating=4.6,
+        review_count=321,
+        price_per_night=1200000,
+        image="/img/hotel.jpg",
+        location="Quận Hoàn Kiếm",
+        amenities="Wifi,Pool",
+        description="A comfortable city hotel",
+    )
+
+
 # --- get_destinations ---
 
 
@@ -129,10 +144,13 @@ async def test_get_destination_detail__found_by_name(
     dest = _make_destination()
     mock_repo.get_destination_by_name.return_value = dest
     mock_repo.get_by_destination.return_value = [_make_place()]
-    mock_repo.get_hotels_by_destination.return_value = []
+    mock_repo.get_hotels_by_destination.return_value = [_make_hotel()]
 
     result = await service.get_destination_detail("Hà Nội")
-    assert result["destination"]["name"] == "Hà Nội"
+    assert result.destination.name == "Hà Nội"
+    assert result.destination.placesCount == 1
+    assert result.destination.hotelsCount == 1
+    assert len(result.hotels) == 1
 
 
 async def test_get_destination_detail__fallback_to_slug(
@@ -146,7 +164,7 @@ async def test_get_destination_detail__fallback_to_slug(
     mock_repo.get_hotels_by_destination.return_value = []
 
     result = await service.get_destination_detail("ha-noi")
-    assert result["destination"]["name"] == "Hà Nội"
+    assert result.destination.name == "Hà Nội"
 
 
 async def test_get_destination_detail__not_found(

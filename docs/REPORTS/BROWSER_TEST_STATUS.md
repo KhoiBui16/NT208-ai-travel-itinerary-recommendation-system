@@ -9,7 +9,7 @@
 
 ## One-Line Summary
 
-🟡 **GO WITH LIMITATIONS** - Core browser flows for Phase `C3A` are working, old auth/browser blockers are no longer reproduced, but non-mock `CityDetail` is still only partially complete.
+🟢 **C3A BROWSER BASELINE IS STABLE** - Core browser flows, multi-city `CityDetail`, real AI generate, share/claim, and chat-session foundation all pass on the live local stack. `C3B` itself is still not implemented yet.
 
 ---
 
@@ -19,12 +19,15 @@
 |---|---|---|---|
 | TC01 register flow | `browse` | ✅ PASS | Real UI submit redirects to `/`; `accessToken` + `refreshToken` stored |
 | TC02 destinations list | `browse` | ✅ PASS | `/cities` loads and routes now use slug URLs |
-| TC10 city detail via slug | `browse` + API/DB | ⚠️ PASS WITH LIMITATION | `/cities/buon-ma-thuot` renders; no longer falls back to list/404 |
+| TC04 AI generate short trip | real browser + API/DB/Redis | ✅ PASS | Guest flow reached `/trip-workspace?tripId=513`; DB has `2` days / `10` activities / `1` accommodation; Redis rate key observed |
+| TC10 city detail via slug | real browser + API/DB | ✅ PASS | Sparse cities show hotel-only state; rich cities render API places + hotels with true counts |
 | TC12 share trip modal | `browse` | ✅ PASS | Share URL generated from workspace |
 | TC12 shared read-only view | `browse` | ✅ PASS | Public shared page loads and does not show owner chat/workspace controls |
 | TC13 guest claim after login | `browse` | ✅ PASS | Redirects to `trip-workspace?tripId=503`; `pendingClaim` cleared |
 | C3A chat session create | `browse` | ✅ PASS | Empty state -> create session -> active session visible |
 | C3A chat session persists after reload | `browse` | ✅ PASS | Same session still visible after reload |
+| C3A chat-session E2E | Playwright | ✅ PASS | `00096-c3a-chat-session.spec.ts` -> `5 passed` |
+| CityDetail API-first E2E | Playwright | ✅ PASS | `00097-city-detail-api-detail.spec.ts` -> `2 passed` |
 | Full frontend E2E regression | Playwright | ✅ PASS | `30 passed, 3 skipped` on 2026-06-12 |
 
 ---
@@ -57,24 +60,43 @@ But the UI still explicitly says:
 
 So this is **chat session foundation only**, not companion messaging / patch-confirm flow yet.
 
-### 3. `CityDetail` is improved but not fully rich for non-mock destinations
+### 3. `CityDetail` is now API-first and count-consistent
 
-`Buôn Ma Thuột` now behaves much better than before:
+The old limitation is no longer current.
 
-- `/cities` links to `/cities/buon-ma-thuot`
-- opening that route renders a detail page instead of breaking
-- backend/API destination lookup works
+Backend:
 
-However there is still a real limitation:
+- `GET /api/v1/places/destinations/{slug}` now returns a composite payload with `destination`, `places[]`, and `hotels[]`
+- detail `placesCount` / `hotelsCount` now align with the returned arrays
 
-- UI shows the generic fallback copy for non-mock destinations
-- UI does not surface hotel data for this case
-- API inconsistency exists:
-  - list endpoint: `Buôn Ma Thuột -> hotelsCount = 1`
-  - detail endpoint: `destination.hotelsCount = 0`
-  - detail payload still returns `hotels[0] = "Mường Thanh Luxury Buôn Ma Thuột"`
+Real browser verification:
 
-This means the route/render regression is fixed, but the non-mock detail experience is **not fully complete yet**.
+- sparse destinations such as `Buôn Ma Thuột` and `Cần Thơ` render hotel-backed detail instead of 404/generic-only fallback
+- ready destinations such as `Hà Nội`, `Đà Nẵng`, and `TP. Hồ Chí Minh` now render API-backed place + hotel sections even though they also exist in the old mock pack
+- observed counts in the browser now match backend truth:
+  - `Buôn Ma Thuột`: `0` places / `1` hotel
+  - `Cần Thơ`: `0` places / `1` hotel
+  - `Hà Nội`: `74` places / `3` hotels
+  - `Đà Nẵng`: `72` places / `2` hotels
+  - `TP. Hồ Chí Minh`: `75` places / `2` hotels
+
+The remaining limitation is **data coverage**, not route/render correctness: many cities are still sparse in the DB, so the UI truthfully shows hotel-only/sparse readiness states.
+
+### 4. The AI generate path is proven on the real stack
+
+The live guest generate flow was re-verified in a real browser against:
+
+- Frontend `http://localhost:5173`
+- Backend `http://localhost:8000`
+- Postgres in Docker
+- Redis in Docker
+
+Observed outcome:
+
+- browser navigated to `trip-workspace?tripId=513`
+- generated workspace rendered `Hà Nội Food Adventure`
+- DB cross-check for trip `513` showed `2` trip days, `10` activities, `1` accommodation
+- Redis contained a local AI quota key after the run
 
 ---
 
@@ -95,8 +117,9 @@ Key evidence files under `docs/REPORTS/BROWSERBASE_TEST_EVIDENCE/`:
 Supporting truth checks:
 
 - DB verified destination slug `buon-ma-thuot` exists
-- DB verified at least `1` hotel row for destination `Buôn Ma Thuột`
-- API verified detail payload returns `1` hotel entry
+- DB verified sparse and ready cities with matching place/hotel counts
+- DB verified trip `513` persisted after real AI generate
+- Redis verified local AI rate-limit key creation after generate
 
 ---
 
@@ -137,28 +160,32 @@ Skipped specs remained the exploratory `b3/*` cases.
 
 - browser/doc sync for current `C3A` truth
 - slug-route stabilization
+- CityDetail API-first/detail-count fix
+- real browser + AI generate evidence refresh
 - evidence-backed status update
 
 ### Do not overclaim
 
 Do **not** describe this PR as:
 
-- fully finishing non-mock `CityDetail`
 - shipping `C3B` companion chat
 - shipping full message send / patch-confirm chat UX
+- making sparse-city ETL/data coverage complete
 
 ### Follow-up after merge
 
-1. Fix `CityDetail` richness for non-mock destinations so returned hotels/places are actually surfaced.
-2. Fix destination detail count mismatch (`list.hotelsCount` vs `detail.destination.hotelsCount`).
-3. Keep `C3B` work separate from this docs/browser sync branch.
+1. Improve destination data coverage so sparse cities have real places instead of hotel-only detail.
+2. Keep `C3B` work separate from this docs/browser sync branch.
+3. Add chat-message/apply-patch verification only on the dedicated `C3B` branch, because current repo truth is still session-foundation only.
 
 ---
 
 ## Final Verdict
 
-**Current branch status:** `GOOD_WITH_LIMITATIONS`
+**Current branch status:** `MERGEABLE_FOR_00097`
 
 - Browser-critical flows for `C3A` are stable enough.
-- CI-facing E2E regression is green.
-- Remaining issue is real, but it is a **completeness gap**, not a route/auth/chat-session blocker.
+- The CityDetail route/render/count bug is fixed on the live stack.
+- Real AI generate has been verified through FE -> BE -> DB -> Redis.
+- This branch is a valid pre-C3B stabilization checkpoint.
+- `C3B` is still **not implemented yet**, so the correct next step is: merge `00097`, then open a dedicated `C3B` feature branch.

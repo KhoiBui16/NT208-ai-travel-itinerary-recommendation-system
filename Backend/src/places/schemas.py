@@ -57,6 +57,14 @@ class DestinationResponse(CamelCaseModel):
     readinessReason: str | None = None  # Human-readable warning message
 
 
+class DestinationDetailResponse(CamelCaseModel):
+    """Composite destination detail payload for city detail pages."""
+
+    destination: DestinationResponse
+    places: list["PlaceResponse"] = Field(default_factory=list)
+    hotels: list["HotelResponse"] = Field(default_factory=list)
+
+
 class PlaceResponse(CamelCaseModel):
     """Place response for search results and detail views.
 

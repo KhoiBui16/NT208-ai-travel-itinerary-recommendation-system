@@ -43,6 +43,25 @@ export interface DestinationResponse {
   readinessReason: string | null; // Human-readable warning (Vietnamese)
 }
 
+export interface HotelResponse {
+  id: number;
+  name: string;
+  rating: number;
+  reviewCount: number;
+  price: number;
+  image: string;
+  location: string;
+  city: string;
+  amenities: string[];
+  description: string;
+}
+
+export interface DestinationDetailResponse {
+  destination: DestinationResponse;
+  places: PlaceResponse[];
+  hotels: HotelResponse[];
+}
+
 /**
  * Place response for search results and detail views.
  *
@@ -102,8 +121,10 @@ export async function listDestinations(): Promise<DestinationResponse[]> {
  */
 export async function getDestinationDetail(
   name: string,
-): Promise<Record<string, unknown>> {
-  return api.get(`/api/v1/places/destinations/${encodeURIComponent(name)}`);
+): Promise<DestinationDetailResponse> {
+  return api.get<DestinationDetailResponse>(
+    `/api/v1/places/destinations/${encodeURIComponent(name)}`,
+  );
 }
 
 // ===================================================================

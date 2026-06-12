@@ -3,22 +3,23 @@
 **Plan Reference:** `docs/BROWSER_TEST_PLAN.md`  
 **Browser Tool:** Browserbase `browse` CLI `0.8.3`  
 **Mode:** local managed browser, headless  
-**Support Verification:** Playwright full suite + API/DB spot checks
+**Support Verification:** Playwright targeted regressions + API/DB/Redis spot checks
 
 ---
 
 ## Scope Of This Pass
 
-This rerun focused on flows that matter most for current `C3A` truth and for the recent destination slug/detail fixes:
+This rerun focused on flows that matter most for current `C3A` truth and for the recent destination slug/detail + API-first fixes:
 
 1. Auth register in real UI
 2. Destinations list -> slug route navigation
-3. Non-mock destination detail render
+3. Multi-city destination detail render across sparse and ready cities
 4. Share trip -> shared read-only page
 5. Guest claim after login
 6. C3A chat session create + reload persistence
+7. Real AI generate guest flow through FE -> BE -> DB -> Redis
 
-This pass also re-ran the full frontend E2E suite to confirm the browser findings are not isolated manual-only results.
+This pass also reran targeted Playwright regressions for chat sessions and API-backed `CityDetail`.
 
 ---
 
@@ -38,6 +39,8 @@ This pass also re-ran the full frontend E2E suite to confirm the browser finding
 - runtime: `browse 0.8.3`
 - mode: `managed-local, headless`
 - daemon: no blocking prerequisite issue
+
+The repo-local Browserbase workflow is therefore usable as-is. The `agent-browser` CLI from the Vercel skill set was **not** installed locally; browser evidence in this report comes from `browse` plus Playwright.
 
 ### Frontend API base
 
@@ -97,23 +100,23 @@ Confirmed URL:
 http://localhost:5173/cities/buon-ma-thuot
 ```
 
-### 3. Non-mock `CityDetail`
+### 3. Multi-city `CityDetail`
 
-**Status:** ⚠️ PASS WITH LIMITATION
+**Status:** ✅ PASS
 
-What improved:
+What was verified in a real browser:
 
-- route no longer breaks for non-mock destination
-- page renders a real detail shell for `Buôn Ma Thuột`
+- `/cities/buon-ma-thuot` renders a sparse hotel-backed page, not 404/generic-only fallback
+- `/cities/can-tho` renders the same sparse hotel-only pattern
+- `/cities/ha-noi` renders API-backed place + hotel sections with `74` places and `3` hotels
+- `/cities/da-nang` renders API-backed place + hotel sections with `72` places and `2` hotels
+- `/cities/tp-ho-chi-minh` renders API-backed place + hotel sections with `75` places and `2` hotels
 
-What the UI currently shows:
+Meaning:
 
-- `Điểm đến này hiện được hiển thị từ dữ liệu backend đang có sẵn.`
-- generic overview copy
-- no rich place list
-- no hotel section rendered for this destination
-
-This means the route/render regression is fixed, but the rich-data experience is still incomplete.
+- non-mock destinations now render real backend detail
+- mock-pack destinations no longer hide backend truth when API detail exists
+- the remaining issue for sparse cities is data coverage, not `CityDetail` rendering
 
 ### 4. Share flow
 
@@ -192,89 +195,85 @@ Interpretation:
 - `C3A` foundation is real and stable.
 - `C3B` messaging / patch-confirm is still not implemented, and the UI explicitly says so.
 
+### 7. Real AI generate guest flow
+
+**Status:** ✅ PASS
+
+What was verified:
+
+- opened `/create-trip` in a real browser
+- filled destination + date range + traveler preferences
+- submitted `Tạo Lịch Trình Với AI`
+- browser navigated to `/trip-workspace?tripId=513`
+- generated workspace rendered a real itinerary (`Hà Nội Food Adventure`)
+
+Cross-check outcome:
+
+- DB: trip `513` exists with `2` trip days, `10` activities, `1` accommodation
+- Redis: local AI quota key existed after generate
+
+Interpretation:
+
+- FE -> BE -> Gemini -> DB persist -> workspace load is working on the live stack
+- AI generate is no longer just a docs claim or API-only smoke
+
 ---
 
 ## API And DB Cross-Checks
 
-### Database truth for `Buôn Ma Thuột`
+### Destination truth across sparse and ready cities
 
-Direct DB checks confirmed:
+DB + API checks now align for the sampled cities:
 
-- destination slug `buon-ma-thuot` exists
-- destination is active
-- at least one hotel row exists for that destination
+| City | Browser result | DB/API truth |
+|---|---|---|
+| `Buôn Ma Thuột` | sparse hotel-only detail | `0` places / `1` hotel |
+| `Cần Thơ` | sparse hotel-only detail | `0` places / `1` hotel |
+| `Hà Nội` | rich API detail | `74` places / `3` hotels |
+| `Đà Nẵng` | rich API detail | `72` places / `2` hotels |
+| `TP. Hồ Chí Minh` | rich API detail | `75` places / `2` hotels |
 
-Example hotel found:
+### AI generate truth
+
+DB checks for the browser-generated trip:
 
 ```text
-Mường Thanh Luxury Buôn Ma Thuột
+trip_id = 513
+destination = Hà Nội
+trip_days = 2
+activities = 10
+accommodations = 1
+guest_claim_tokens = 1
 ```
 
-### API truth for `Buôn Ma Thuột`
+Redis check after the run:
 
-`GET /api/v1/places/destinations/buon-ma-thuot` returned:
-
-```json
-{
-  "destination": "Buôn Ma Thuột",
-  "placesCount": 0,
-  "hotelsCount": 0,
-  "placesReturned": 0,
-  "hotelsReturned": 1,
-  "firstHotel": "Mường Thanh Luxury Buôn Ma Thuột"
-}
+```text
+rate:ai:guest:dd09278b64d71375:20260612
 ```
-
-And the list endpoint returned:
-
-```json
-{
-  "name": "Buôn Ma Thuột",
-  "listPlacesCount": 0,
-  "listHotelsCount": 1,
-  "detailHotelsCount": 0
-}
-```
-
-### Meaning
-
-There is a real inconsistency today:
-
-- destination list says `hotelsCount = 1`
-- destination detail payload says `destination.hotelsCount = 0`
-- detail payload still returns `1` hotel object
-
-So the route issue is solved, but there is still a detail-data consistency gap.
 
 ---
 
 ## Playwright Regression Companion Result
 
-Command run:
+Commands run:
 
 ```powershell
 Set-Location "<repo-root>\\Frontend"
-npx playwright test --reporter=list
+npx playwright test tests\\e2e\\00096-c3a-chat-session.spec.ts --reporter=list
+npx playwright test tests\\e2e\\00097-city-detail-api-detail.spec.ts --reporter=list
 ```
 
 Result:
 
-- `30 passed`
-- `3 skipped`
-- finished in about `44s`
+- `00096-c3a-chat-session.spec.ts`: `5 passed`
+- `00097-city-detail-api-detail.spec.ts`: `2 passed`
 
 Important green areas from the suite:
 
-- auth register/login
-- protected route redirect
-- guest pending claim
-- guest workspace boundary
 - C3A chat session create/list/cross-user/persist
-- public pages
-- trip CRUD smoke
-- destination readiness path
-
-Skipped items were only the exploratory `b3/*` cases.
+- `CityDetail` API-backed non-mock render
+- `CityDetail` API-first behavior even for old mock-pack cities
 
 ---
 
@@ -287,11 +286,13 @@ Skipped items were only the exploratory `b3/*` cases.
 3. Share flow works in real browser flow.
 4. C3A chat session foundation works in real browser flow.
 5. Destination list now routes with slugs correctly.
+6. `CityDetail` now surfaces API-backed places/hotels and no longer has the old detail count mismatch.
+7. Real AI generate is proven on the live stack.
 
 ### Remaining limitation
 
-1. Non-mock `CityDetail` still renders mostly as a generic fallback page and does not surface returned hotel data.
-2. Detail endpoint count metadata is inconsistent for `Buôn Ma Thuột`.
+1. `C3B` messaging / patch-confirm is still not implemented.
+2. Many destinations remain sparse in DB coverage, so hotel-only pages are expected for those cities.
 
 ### Tooling note
 
@@ -310,19 +311,21 @@ Use this only if the PR is described as:
 - browser/doc sync
 - evidence refresh for current `C3A`
 - destination slug/detail stabilization
+- CityDetail API-first/detail-count hardening
+- real AI generate evidence refresh
 
 ### Do not claim in merge description
 
 Do not claim that this PR:
 
-- fully completes non-mock destination detail richness
 - implements C3B companion messaging
 - implements patch-confirm companion workflow
+- completes sparse-city ETL coverage
 
 ### Follow-up ticket after merge
 
-1. Render returned hotels/places in `CityDetail` for API-only destinations.
-2. Fix `hotelsCount` mismatch between destination list and destination detail payload.
+1. Improve ETL/data coverage for sparse cities such as `Buôn Ma Thuột` and `Cần Thơ`.
+2. Keep message send / apply-patch / chat quota work inside the dedicated `C3B` branch.
 
 ---
 
@@ -333,4 +336,6 @@ Browserbase verification is now strong enough to support the current PR, and it 
 - core browser flows are green
 - `C3A` is genuinely active
 - old blocker narrative is outdated
-- one meaningful completeness issue remains and should be tracked honestly
+- `CityDetail` API-first rendering is fixed on the live stack
+- real AI generate is confirmed through FE -> BE -> DB -> Redis
+- `C3B` is still the next phase, not something this branch already ships

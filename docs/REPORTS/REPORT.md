@@ -777,22 +777,20 @@ Không có thay đổi UI/UX, API contract, DB schema, hoặc business logic tro
 
 | File | Nội dung |
 |---|---|
-| [00097_post_c3a_docs_sync_and_browser_validation.md](00097_post_c3a_docs_sync_and_browser_validation.md) | 2026-06-11: Sync active docs/READMEs/.claude với current source truth sau C3A, rerun full local verification, fix city browse/detail route contract và brittle e2e selectors/assertions |
+| [00097_post_c3a_docs_sync_and_browser_validation.md](00097_post_c3a_docs_sync_and_browser_validation.md) | 2026-06-12: Sync active docs/READMEs/.claude với current source truth sau C3A, fix `CityDetail` theo hướng API-first/count-consistent, rerun browser verification thật và xác nhận AI generate trên stack local |
 
 **Key findings:**
 - ✅ Active docs sync completed across `README.md`, `Backend/README.md`, `Frontend/README.md`, `docs/`, `docs/REPORTS/`, `CLAUDE.md`, `.claude/context/`, `.claude/commands/`, `.claude/agents/`
-- ✅ Browser verification rerun against live FE+BE stack per `docs/BROWSER_TEST_PLAN.md` intent: Playwright `30 passed / 3 skipped`, plus `/cities -> /cities/buon-ma-thuot` smoke PASS after route fix
-- ✅ Runtime fix landed: `CityList` now routes API destinations by slug, and `CityDetail` can render API-backed destinations outside the old hardcoded mock set
-- ✅ Test hardening landed: trip generate selector no longer depends on placeholder copy; C3A session-count assertion no longer hard-codes exact text
+- ✅ Browser verification rerun against live FE+BE stack per `docs/BROWSER_TEST_PLAN.md` intent: multi-city `CityDetail` PASS, real AI generate PASS, share/claim PASS, C3A chat-session PASS
+- ✅ Runtime fix landed: `CityList` routes API destinations by slug and `CityDetail` now prefers backend detail for both non-mock và mock-pack cities when API data exists
+- ✅ Backend detail payload is now count-consistent (`placesCount` / `hotelsCount` align with returned arrays)
+- ✅ Test hardening landed: trip generate selector no longer depends on placeholder copy; C3A session-count assertion no longer hard-codes exact text; `00097` regression spec now locks API-first `CityDetail`
 
 **Test results:**
-- Backend lint: ✅ PASS
-- Backend format: ✅ PASS
-- Alembic upgrade/check: ✅ PASS
-- Backend unit tests: ✅ PASS (148 passed)
-- Backend integration tests: ✅ PASS (40 passed, 27 skipped)
 - Frontend build: ✅ PASS
-- Playwright full suite: ✅ PASS (30 passed, 3 skipped)
-- Browser smoke `/cities -> /cities/buon-ma-thuot`: ✅ PASS
+- Playwright `00096-c3a-chat-session.spec.ts`: ✅ PASS (5 passed)
+- Playwright `00097-city-detail-api-detail.spec.ts`: ✅ PASS (2 passed)
+- Real browser multi-city `CityDetail`: ✅ PASS
+- Real browser AI generate + DB/Redis cross-check: ✅ PASS
 
 **Status:** ✅ READY FOR PR

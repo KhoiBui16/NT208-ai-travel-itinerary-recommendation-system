@@ -18,6 +18,7 @@ from src.auth.models import User
 from src.core.database import get_db
 from src.core.dependencies import get_redis
 from src.places.schemas import (
+    DestinationDetailResponse,
     DestinationResponse,
     PlaceResponse,
     SavedPlaceRequest,
@@ -61,11 +62,11 @@ async def list_destinations(
     return await service.get_destinations()
 
 
-@router.get("/destinations/{name}")
+@router.get("/destinations/{name}", response_model=DestinationDetailResponse)
 async def get_destination_detail(
     name: str,
     service: PlaceService = Depends(get_place_service),
-) -> dict:
+) -> DestinationDetailResponse:
     """Get detailed info for a destination including its places and hotels.
 
     Looks up by name first, then by slug if name doesn't match.
