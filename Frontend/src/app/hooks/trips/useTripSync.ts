@@ -128,7 +128,7 @@ export const useTripSync = (
           return;
         } catch (error) {
           console.error("Error loading trip from API:", error);
-          toast.warning("Không thể tải dữ liệu từ server. Đang dùng dữ liệu đã lưu.", {
+          toast.warning("Không thể tải dữ liệu từ server. Đang dùng bản nháp tạm trên trình duyệt này.", {
             position: "top-right",
             duration: 3000,
           });
@@ -243,6 +243,7 @@ export const useTripSync = (
         await updateItinerary(currentTripIdRef.current, {
           tripName: tripName || "Lịch trình mới",
           budget: totalBudget,
+          travelerInfo: travelers,
           days: days.map((d, idx) => ({
             id: d.id,
             label: d.label,
@@ -287,6 +288,8 @@ export const useTripSync = (
           startDate: toISODate(days[0]?.date) || new Date().toISOString().split("T")[0],
           endDate: toISODate(days[days.length - 1]?.date) || new Date().toISOString().split("T")[0],
           budget: totalBudget,
+          adultsCount: travelers.adults,
+          childrenCount: travelers.children,
         });
         setCurrentTripId(resp.id);
 
@@ -297,6 +300,7 @@ export const useTripSync = (
 
         // Now update with the full days data
         await updateItinerary(resp.id, {
+          travelerInfo: travelers,
           days: days.map((d, idx) => ({
             id: d.id,
             label: d.label,
@@ -339,7 +343,7 @@ export const useTripSync = (
       toast.success("Đã lưu lịch trình thành công", { position: "top-right" });
     } catch (error) {
       console.error("Error saving itinerary:", error);
-      toast.error("Không thể lưu lịch trình lên server. Vui lòng thử lại sau.", {
+      toast.error("Không thể lưu lịch trình lên server. Bản nháp hiện chỉ được giữ tạm trên trình duyệt này.", {
         position: "top-right",
         duration: 5000,
       });

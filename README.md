@@ -72,7 +72,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 | **AI C.1** | Sinh lịch trình tự động bằng Gemini AI | ✅ Done |
 | **AI C.2** | Gợi ý địa điểm thay thế (DB-only, không LLM) | ✅ Done |
 | **AI C.3A** | Chat session foundation owner-only, trip-scoped | ✅ Done |
-| **AI C.3B** | Companion chat + patch-confirm flow | ⏸️ Next after docs/browser sync |
+| **AI C.3B** | Companion chat + patch-confirm flow | ⏸️ Next after pre-C3B hardening merge |
 | **AI C.4** | Lịch sử chat | ⏸️ Planned after C3B |
 | **AI C.5** | Analytics Text-to-SQL (optional) | 🔄 Optional |
 | **ETL** | Goong-first ETL nạp dữ liệu địa điểm | ✅ Done |
@@ -87,7 +87,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 |---|---|
 | Readiness tổng thể sau C3A | `FOUNDATION_READY_NEXT_PHASE_PENDING` |
 | `C3A — Chat Session Foundation` | Đã merge (`PR #98-100`) |
-| `C3B — Companion Chat API` | Chưa bắt đầu; là next gate sau docs/browser sync |
+| `C3B — Companion Chat API` | Chưa bắt đầu; nhánh `00098` là checkpoint hardening cuối trước khi tách phase này |
 | `C4 — Chat History` | Chưa bắt đầu; vẫn phụ thuộc `C3B` |
 | `FloatingAIChat.tsx` hiện tại | Vẫn là mock promo UI, chưa phải companion chat thật |
 | `ChatPanel` trong `TripWorkspace` | Đã trip-aware, owner-only, gọi chat session REST APIs thật |
@@ -1813,7 +1813,7 @@ POST /auth/reset-password {token, newPassword}
 - `00060D-FIX` đã bỏ hardcoded `Hà Nội` của `FloatingAIChat` bằng cách derive context từ trip hiện tại.
 - `00060D-FIX` đã verify browser-level submit-path `429` UX bằng Playwright route-mocked regression mà không tiêu Gemini quota.
 - `00060H` đã chốt guest generate flow: FE lưu `currentTrip` + `pendingClaim`, nên guest có thể mở `TripWorkspace` trong cùng browser session mà không bị ép login ngay.
-- `00097` đã re-run full Playwright suite sau C3A docs sync: **30 passed, 3 skipped**; C3A chat session CRUD, auth, trip CRUD, và guest claim flows đều xanh.
+- `00098` đã re-run full Playwright suite trước khi mở `C3B`: **32 passed, 3 skipped** trên `35` test cases / `16` spec files; thêm hardening cho login submit, TripHistory/TripLibrary duration truth, itinerary detail render, và delete-activity contract.
 - `00060H` đã sửa generated activity image persistence: activity có `place_id` hợp lệ sẽ ưu tiên `Place.image`, còn FE vẫn có fallback image khi dữ liệu rỗng hoặc URL hỏng.
 - `00060H` đã migrate backend Gemini client sang `google-genai`; timeout `503` vẫn được classify rõ là `AI_PROVIDER_TIMEOUT`.
 - `00060H` cũng chốt rõ rằng sync generate chưa thể hứa "eventually complete"; muốn đảm bảo hoàn tất khi provider chậm cần background job/polling ở phase tương lai.
@@ -2007,7 +2007,7 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 - `00060G` Home destination image fallback and AI provider-timeout submit-path UX regressions: **PASS**
 - `00060H` guest generate → same-browser `TripWorkspace` continuity via `currentTrip` / `pendingClaim`: **PASS**
 - `00060H` generated activity image persistence + UI fallback after reload: **PASS**
-- `00097` full Playwright suite after docs sync + selector stabilization: **PASS** (`30 passed`, `3 skipped`)
+- `00098` full Playwright suite before `C3B`: **PASS** (`32 passed`, `3 skipped`)
 
 ### Backend Tests
 
@@ -2052,7 +2052,7 @@ npx playwright test --ui
 npx playwright show-report
 ```
 
-**Kết quả hiện tại:** 33 Playwright tests total; latest full local result: **30 passed, 3 skipped**.
+**Kết quả hiện tại:** 35 Playwright tests total; latest full local result: **32 passed, 3 skipped**.
 
 | Suite | Số test | Mô tả |
 |---|---|---|
@@ -2237,7 +2237,7 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   │   ├── types/                 # trip.types.ts (FE-BE contract)
 │   │   │   └── utils/
 │   │   └── styles/
-│   ├── tests/e2e/                     # 33 Playwright tests / 15 spec files (latest full suite: 30 passed, 3 skipped)
+│   ├── tests/e2e/                     # 35 Playwright tests / 16 spec files (latest full suite: 32 passed, 3 skipped)
 │   ├── playwright.config.ts
 │   ├── package.json
 │   └── vite.config.ts

@@ -211,6 +211,7 @@ export async function updateItinerary(
   data: {
     tripName?: string;
     budget?: number;
+    travelerInfo?: TravelerInfo;
     days?: DayItem[];
     accommodations?: AccommodationItem[];
   },

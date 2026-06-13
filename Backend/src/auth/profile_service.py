@@ -15,23 +15,16 @@ logger = get_logger(__name__)
 
 
 class UserService:
-    """Handle profile read, update, and password change.
-
-    Args:
-        user_repo: UserRepository for user table writes.
-    """
+    """Xử lý các thao tác hồ sơ cá nhân và đổi mật khẩu của người dùng."""
 
     def __init__(self, user_repo: UserRepository) -> None:
         self.user_repo = user_repo
 
     async def get_profile(self, user: User) -> UserResponse:
-        """Return the public profile for the authenticated user.
+        """Trả về hồ sơ công khai của user đã được xác thực.
 
-        Tính năng: Xem hồ sơ cá nhân (EP-5)
-        - Nhận User ORM object đã được xác thực từ dependency get_current_user
-        - Chuyển đổi sang UserResponse schema (loại bỏ các field nhạy cảm như hashed_password)
-        - Không query thêm database vì user object đã được load sẵn bởi get_current_user
-        - Trả về thông tin public: id, email, name, phone, interests, is_active, timestamps
+        Hàm này không query lại database vì `user` đã được dependency auth
+        nạp sẵn từ access token.
         """
         return UserResponse.model_validate(user)
 
@@ -42,23 +35,10 @@ class UserService:
         phone: str | None = None,
         interests: list[str] | None = None,
     ) -> UserResponse:
-        """Partially update the user's profile fields.
+        """Cập nhật từng phần hồ sơ cá nhân của user.
 
-        Tính năng: Cập nhật thông tin hồ sơ (EP-6)
-        - Cho phép cập nhật từng phần (PATCH-style) dù endpoint dùng PUT:
-          chỉ field nào được truyền (không None) mới được ghi đè
-        - Kiểm tra user tồn tại trước khi update (double-check sau get_current_user)
-        - Xây dựng dict updates động: chỉ chứa field thực sự thay đổi
-        - Nếu không có field nào thay đổi (updates rỗng): bỏ qua query UPDATE,
-          trả về user hiện tại mà không tốn thêm round-trip database
-        - Ghi log khi profile được cập nhật thành công (audit trail)
-        - Trả về UserResponse mới nhất sau khi cập nhật
-
-        Args:
-            user_id: ID của user cần cập nhật (lấy từ JWT token).
-            name: Tên mới, None = giữ nguyên.
-            phone: Số điện thoại mới, None = giữ nguyên.
-            interests: Danh sách sở thích mới, None = giữ nguyên.
+        Chỉ những field khác `None` mới được ghi xuống database. Nếu payload
+        không tạo ra thay đổi nào thì service trả lại trạng thái hiện tại.
         """
         user = await self.user_repo.get_by_id(user_id)
         if user is None:
@@ -84,21 +64,10 @@ class UserService:
         current_password: str,
         new_password: str,
     ) -> None:
-        """Change the user's password after verifying the current one.
+        """Đổi mật khẩu sau khi xác minh đúng mật khẩu hiện tại.
 
-        Tính năng: Đổi mật khẩu (EP-7)
-        - Yêu cầu xác thực mật khẩu hiện tại trước khi cho phép đổi
-          (ngăn chặn chiếm tài khoản khi session bị đánh cắp)
-        - verify_password: so sánh plain-text với bcrypt hash đã lưu trong DB
-        - hash_password: tạo bcrypt hash mới cho mật khẩu mới
-        - Không trả về UserResponse vì client không cần reload sau đổi mật khẩu
-        - Ghi log sự kiện đổi mật khẩu để phục vụ audit trail bảo mật
-        - Không tự động revoke các refresh token hiện có (không force logout)
-
-        Args:
-            user_id: ID của user đang thực hiện đổi mật khẩu.
-            current_password: Mật khẩu hiện tại (plain-text) để xác minh.
-            new_password: Mật khẩu mới (plain-text) sẽ được hash trước khi lưu.
+        Service chỉ cập nhật hash mật khẩu và ghi log audit. Việc revoke các
+        refresh token cũ không được tự động thực hiện trong flow này.
         """
         user = await self.user_repo.get_by_id(user_id)
         if user is None:

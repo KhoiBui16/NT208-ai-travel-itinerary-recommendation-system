@@ -18,7 +18,7 @@
 
 **Status:** `todo` | `wip` | `review_ready` | `merged`
 
-> **Current gate after `00097`:** `C3A` đã merge và browser/docs sync đang được re-verify. `C3B` là next safe phase; `C4` vẫn không nên tách làm việc độc lập trước khi có message flow của `C3B`.
+> **Current gate after `00098`:** `C3A` đã merge, `00097` docs/browser sync đã vào `main`, và `00098` là checkpoint hardening cuối đang chờ PR. `C3B` là next safe phase sau khi merge `00098`; `C4` vẫn không nên tách làm việc độc lập trước khi có message flow của `C3B`.
 
 ---
 

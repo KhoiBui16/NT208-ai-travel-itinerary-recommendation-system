@@ -104,8 +104,9 @@ test.describe("00060D-FIX pre-C3A floating chat context", () => {
       });
     });
 
-    // Navigate to TripWorkspace
-    await page.goto("/trip-workspace?tripId=777", { waitUntil: "networkidle" });
+    // TripWorkspace now issues background requests, so waiting for networkidle is flaky.
+    // Navigate once the document is ready, then wait on a stable UI marker below.
+    await page.goto("/trip-workspace?tripId=777", { waitUntil: "domcontentloaded" });
 
     // Verify trip loaded - heading should contain "Huế"
     await expect(

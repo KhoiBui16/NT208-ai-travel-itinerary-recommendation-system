@@ -4,6 +4,10 @@ import { Plus, MapPin, Calendar, DollarSign, Heart, Sparkles } from "lucide-reac
 import { useState, useEffect } from "react";
 import * as itineraryService from "../services/itinerary";
 import type { ItineraryResponse } from "../services/itinerary";
+import {
+  computeTripDurationDays,
+  computeTripTimelineStatus,
+} from "../utils/tripSummary";
 
 export default function TripLibrary() {
   const [trips, setTrips] = useState<ItineraryResponse[]>([]);
@@ -15,6 +19,11 @@ export default function TripLibrary() {
       setTrips([]);
     });
   }, []);
+
+  const totalTripDays = trips.reduce(
+    (sum, trip) => sum + computeTripDurationDays(trip.startDate, trip.endDate),
+    0,
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-orange-50">
@@ -43,12 +52,10 @@ export default function TripLibrary() {
 
           <div className="rounded-xl bg-white p-6 shadow-lg border border-gray-200">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-600">Địa điểm đã lưu</span>
+              <span className="text-sm font-semibold text-gray-600">Tổng số ngày</span>
               <Heart className="h-5 w-5 text-orange-600" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">
-              {trips.reduce((sum, trip) => sum + (trip.days?.length ?? 0), 0)}
-            </p>
+            <p className="text-3xl font-bold text-gray-900">{totalTripDays}</p>
           </div>
 
           <div className="rounded-xl bg-white p-6 shadow-lg border border-gray-200">
@@ -90,6 +97,34 @@ export default function TripLibrary() {
                 to={`/trip-workspace?tripId=${trip.id}`}
                 className="group overflow-hidden rounded-2xl bg-white shadow-lg transition-all hover:shadow-2xl hover:-translate-y-1 border border-gray-200"
               >
+                {/*
+                  List API chỉ trả summary, nên mọi số ngày/trạng thái ở đây phải
+                  suy ra từ timeline thay vì `trip.days`.
+                */}
+                {(() => {
+                  const durationDays = computeTripDurationDays(
+                    trip.startDate,
+                    trip.endDate,
+                  );
+                  const timelineStatus = computeTripTimelineStatus(
+                    trip.startDate,
+                    trip.endDate,
+                  );
+                  const statusClasses =
+                    timelineStatus === "upcoming"
+                      ? "bg-orange-500 text-white"
+                      : timelineStatus === "planning"
+                        ? "bg-purple-500 text-white"
+                        : "bg-green-500 text-white";
+                  const statusLabel =
+                    timelineStatus === "upcoming"
+                      ? "Sắp tới"
+                      : timelineStatus === "planning"
+                        ? "Đang diễn ra / lên kế hoạch"
+                        : "Đã hoàn thành";
+
+                  return (
+                    <>
                 {/* Cover Image */}
                 <div className="relative h-48 overflow-hidden">
                   <img
@@ -101,14 +136,8 @@ export default function TripLibrary() {
                   
                   {/* Status Badge */}
                   <div className="absolute top-4 right-4">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${
-                        trip.days?.length
-                          ? "bg-green-500 text-white"
-                          : "bg-yellow-500 text-gray-900"
-                      }`}
-                    >
-                      {trip.days?.length ? "Đã lên kế hoạch" : "Nháp"}
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClasses}`}>
+                      {statusLabel}
                     </span>
                   </div>
 
@@ -139,7 +168,7 @@ export default function TripLibrary() {
                     <div className="rounded-lg bg-cyan-50 p-3 border border-cyan-100">
                       <p className="text-xs text-cyan-700 mb-1">Số ngày</p>
                       <p className="text-lg font-bold text-cyan-900">
-                        {trip.days?.length ?? 0} ngày
+                        {durationDays} ngày
                       </p>
                     </div>
                     <div className="rounded-lg bg-orange-50 p-3 border border-orange-100">
@@ -154,10 +183,13 @@ export default function TripLibrary() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Heart className="h-4 w-4" />
-                      <span>{trip.days?.reduce((sum, d) => sum + (d.activities?.length ?? 0), 0) ?? 0} hoạt động</span>
+                      <span>Danh sách hoạt động tải khi mở chi tiết</span>
                     </div>
                   </div>
                 </div>
+                    </>
+                  );
+                })()}
               </Link>
             ))}
           </div>

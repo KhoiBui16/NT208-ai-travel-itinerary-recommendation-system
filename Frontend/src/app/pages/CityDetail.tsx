@@ -22,12 +22,12 @@ import {
   type DestinationResponse,
   type HotelResponse,
   type PlaceResponse,
+  type SavedPlaceResponse,
 } from "../services/places";
-import { Place, CityData, cityData } from "../data/cities";
 import {
   resolvePlaceImage,
   resolvePlaceImageWithCategory,
-  getDestinationFallbackImage,
+  DEFAULT_PLACE_IMAGE,
 } from "../utils/placeImage";
 import { toast } from "sonner";
 
@@ -39,35 +39,35 @@ const PLACE_CATEGORY_LABELS: Record<string, string> = {
   shopping: "Mua sắm",
 };
 
-const PLACE_META_FALLBACKS: Record<
-  string,
-  { openingHours: string; priceRange: string; visitDuration: string }
-> = {
-  food: {
-    openingHours: "Tùy địa điểm",
-    priceRange: "Tùy món",
-    visitDuration: "1-1.5 giờ",
-  },
-  attraction: {
-    openingHours: "Đang cập nhật",
-    priceRange: "Tùy điểm đến",
-    visitDuration: "1-2 giờ",
-  },
-  nature: {
-    openingHours: "Ưu tiên ban ngày",
-    priceRange: "Thường miễn phí hoặc vé tại chỗ",
-    visitDuration: "2-3 giờ",
-  },
-  entertainment: {
-    openingHours: "Đang cập nhật",
-    priceRange: "Theo dịch vụ",
-    visitDuration: "2-4 giờ",
-  },
-  shopping: {
-    openingHours: "Đang cập nhật",
-    priceRange: "Theo nhu cầu",
-    visitDuration: "1-3 giờ",
-  },
+interface DisplayPlaceCard {
+  id: number;
+  name: string;
+  image: string;
+  rating: number;
+  reviewCount: number;
+  category: string;
+  description: string;
+  openingHours: string;
+  priceRange: string;
+  visitDuration: string;
+  address?: string;
+}
+
+interface DisplayCityView {
+  name: string;
+  region: string;
+  image: string;
+  bannerImage: string;
+  description: string;
+  overview: string;
+  bestTimeToVisit: string;
+  averageTemperature: string;
+}
+
+const DEFAULT_PLACE_META = {
+  openingHours: "Đang cập nhật từ dữ liệu hệ thống",
+  priceRange: "Đang cập nhật từ dữ liệu hệ thống",
+  visitDuration: "Cần kiểm tra thực tế trước khi lên lịch trình chi tiết",
 };
 
 function formatPlaceCategory(type: string): string {
@@ -85,16 +85,10 @@ function resolveDestinationImage(name: string, apiImage?: string | null): string
     }
   }
 
-  return getDestinationFallbackImage(name);
+  return DEFAULT_PLACE_IMAGE;
 }
 
-function toDisplayPlace(place: PlaceResponse): Place {
-  const fallbackMeta = PLACE_META_FALLBACKS[place.type] ?? {
-    openingHours: "Đang cập nhật",
-    priceRange: "Đang cập nhật",
-    visitDuration: "Linh hoạt",
-  };
-
+function toDisplayPlace(place: PlaceResponse): DisplayPlaceCard {
   return {
     id: place.id,
     name: place.name,
@@ -104,10 +98,10 @@ function toDisplayPlace(place: PlaceResponse): Place {
     category: formatPlaceCategory(place.type),
     description:
       place.description ||
-      "Địa điểm này đã có trong cơ sở dữ liệu của hệ thống và sẵn sàng cho việc lên lịch trình.",
-    openingHours: fallbackMeta.openingHours,
-    priceRange: place.price ?? fallbackMeta.priceRange,
-    visitDuration: fallbackMeta.visitDuration,
+      "Địa điểm đã được đồng bộ vào hệ thống. Mô tả chi tiết sẽ được bổ sung khi dữ liệu nguồn đầy đủ hơn.",
+    openingHours: DEFAULT_PLACE_META.openingHours,
+    priceRange: place.price ?? DEFAULT_PLACE_META.priceRange,
+    visitDuration: DEFAULT_PLACE_META.visitDuration,
     address: place.location ?? undefined,
   };
 }
@@ -137,9 +131,7 @@ export default function CityDetail() {
   // Track whether the API responded (to distinguish "loading" from "no data")
   const [apiLoaded, setApiLoaded] = useState(false);
 
-  const city = cityId ? cityData[cityId] : null;
-
-  // Try loading from API, fall back to mock
+  // Luôn ưu tiên dữ liệu API thật để tránh browser test "pass giả" nhờ mock pack.
   useEffect(() => {
     if (!cityId) return;
     let isMounted = true;
@@ -158,7 +150,6 @@ export default function CityDetail() {
         setApiLoaded(true);
       })
       .catch(() => {
-        // Keep mock fallback
         if (isMounted) setApiLoaded(true);
       });
 
@@ -167,39 +158,29 @@ export default function CityDetail() {
 
   const mappedApiPlaces = apiPlaces.map(toDisplayPlace);
   const hasApiDetail = !!apiDestination;
-  const displayPlaces = hasApiDetail
-    ? mappedApiPlaces
-    : city?.popularPlaces.length
-      ? city.popularPlaces
-      : [];
+  const displayPlaces = mappedApiPlaces;
   const apiPlaceCount = apiDestination?.placesCount ?? apiPlaces.length;
   const apiHotelCount = apiDestination?.hotelsCount ?? apiHotels.length;
 
-  const displayCity: CityData | null =
+  const displayCity: DisplayCityView | null =
     (apiDestination
       ? {
-          id: city?.id || cityId || apiDestination.name,
           name: apiDestination.name,
-          region: city?.region || "Việt Nam",
+          region: "Việt Nam",
           image: resolveDestinationImage(apiDestination.name, apiDestination.image),
           bannerImage: resolveDestinationImage(apiDestination.name, apiDestination.image),
           description:
             apiDestination.readinessReason ||
-            city?.description ||
             `${apiDestination.name} hiện có ${apiPlaceCount} địa điểm và ${apiHotelCount} khách sạn trong hệ thống.`,
           overview: apiDestination.readinessReason
             ? `${apiDestination.readinessReason} Trang này ưu tiên hiển thị dữ liệu backend hiện có để bạn đánh giá đúng độ phủ dữ liệu trước khi tạo lịch trình.`
-            : city?.overview ||
-              `${apiDestination.name} hiện có ${apiPlaceCount} địa điểm và ${apiHotelCount} khách sạn tham khảo trong cơ sở dữ liệu. Trang này đang hiển thị trực tiếp dữ liệu backend thay vì mock pack cố định.`,
-          bestTimeToVisit: city?.bestTimeToVisit || "Đang cập nhật từ dữ liệu thực tế",
-          averageTemperature:
-            city?.averageTemperature ||
-            (apiHotelCount
-              ? `${apiHotelCount} khách sạn tham khảo`
-              : "Chưa có dữ liệu khí hậu"),
-          popularPlaces: displayPlaces,
+            : `${apiDestination.name} hiện có ${apiPlaceCount} địa điểm và ${apiHotelCount} khách sạn tham khảo trong cơ sở dữ liệu. Trang này đang hiển thị trực tiếp dữ liệu backend thay vì mock pack cố định.`,
+          bestTimeToVisit: "Đang cập nhật từ dữ liệu hệ thống",
+          averageTemperature: apiHotelCount
+            ? `${apiHotelCount} khách sạn tham khảo`
+            : "Đang cập nhật từ dữ liệu hệ thống",
         }
-      : city);
+      : null);
 
   const displayPlaceCount = hasApiDetail ? apiPlaceCount : displayPlaces.length;
 
@@ -207,12 +188,15 @@ export default function CityDetail() {
   useEffect(() => {
     if (!displayCity || !isAuthenticated || displayPlaces.length === 0) return;
     listSavedPlaces().then((data) => {
-      // Correct BE shape: { id: savedId, place: { id: placeId, name, ... } }
-      const names = new Set(data.map((p: any) => p.place?.name || p.placeName || p.name).filter(Boolean));
+      const names = new Set(
+        data
+          .map((savedPlace: SavedPlaceResponse) => savedPlace.place?.name)
+          .filter((name): name is string => Boolean(name)),
+      );
       setSavedPlaceNames(names);
       const matchedIds = displayPlaces
-        .filter(p => names.has(p.name))
-        .map(p => p.id);
+        .filter((place) => names.has(place.name))
+        .map((place) => place.id);
       setSavedPlaces(matchedIds);
     }).catch(() => {});
   }, [displayCity, displayPlaces, isAuthenticated]);
@@ -236,10 +220,10 @@ export default function CityDetail() {
         <Header />
         <div className="mx-auto max-w-7xl px-6 py-20 text-center">
           <h1 className="mb-4 text-4xl font-bold text-gray-900">
-            Thành phố không tồn tại
+            Điểm đến chưa sẵn sàng
           </h1>
           <p className="mb-6 text-lg text-gray-600">
-            Thành phố bạn tìm kiếm không có trong hệ thống. Vui lòng chọn thành phố khác từ danh sách.
+            Điểm đến bạn mở hiện chưa có dữ liệu khả dụng trong hệ thống hoặc slug chưa khớp với backend.
           </p>
           <button
             onClick={() => navigate("/cities")}
@@ -275,10 +259,9 @@ export default function CityDetail() {
 
     try {
       if (isAlreadySaved) {
-        // Find saved place ID to unsave — use correct BE shape: { id: savedId, place: { name } }
         const savedList = await listSavedPlaces();
-        const match = savedList.find((p: any) => (p.place?.name || p.placeName || p.name) === place.name);
-        if (match) await unsavePlace(match.id); // match.id is the savedId (bookmark row)
+        const match = savedList.find((savedPlace) => savedPlace.place?.name === place.name);
+        if (match) await unsavePlace(match.id);
         toast.success("Đã bỏ lưu địa điểm");
       } else {
         await savePlace(placeId);
@@ -436,7 +419,7 @@ export default function CityDetail() {
           <div>
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-3xl font-bold text-gray-900">
-              {hasApiDetail ? "Địa điểm nổi bật từ dữ liệu hiện có" : "Địa điểm nổi tiếng"}
+              Địa điểm nổi bật từ dữ liệu hiện có
             </h2>
             <p className="text-gray-600">
               {displayPlaceCount} địa điểm

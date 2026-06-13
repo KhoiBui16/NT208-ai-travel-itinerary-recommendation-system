@@ -419,9 +419,6 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
             description: viewingPlaceInfo.description,
             address: cities.find(c => c.id === viewingPlaceInfo.cityId)?.name || '',
             rating: viewingPlaceInfo.rating,
-            reviewCount: 1234, 
-            estimatedCost: '100,000₫', 
-            openingHours: '08:00 - 22:00', 
           }}
           onClose={() => setViewingPlaceInfo(null)}
         />

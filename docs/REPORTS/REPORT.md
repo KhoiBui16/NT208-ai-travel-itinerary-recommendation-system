@@ -794,3 +794,25 @@ Không có thay đổi UI/UX, API contract, DB schema, hoặc business logic tro
 - Real browser AI generate + DB/Redis cross-check: ✅ PASS
 
 **Status:** ✅ READY FOR PR
+
+## 00098 Pre-C3B Hardening And PR Readiness
+
+| File | Nội dung |
+|---|---|
+| [00098_pre_c3b_hardening_and_pr_readiness.md](00098_pre_c3b_hardening_and_pr_readiness.md) | 2026-06-13: Khóa các drift còn sót trước `C3B` gồm destination slug truth, non-mock `CityDetail`, TripHistory/TripLibrary duration truth, itinerary delete-activity contract, và sync docs active |
+| [pr_00098_description.md](pr_00098_description.md) | PR body template cho nhánh `00098` |
+
+**Key findings:**
+- ✅ Destination list/detail hiện bám backend slug + backend detail payload thay vì runtime mock/local fallback.
+- ✅ TripHistory và TripLibrary không còn hiển thị sai `0 ngày` khi list API chưa hydrate `days[]`.
+- ✅ `ItineraryView` delete activity gọi đúng BE contract theo `activityId`, không còn rewrite cả payload bằng fake ids.
+- ✅ Browser smoke trên stack thật xác nhận login submit, trip history/library, và itinerary detail render với dữ liệu DB thật.
+- ✅ Full Playwright regression đã tăng lên `35` test cases / `16` spec files và local latest run là `32 passed`, `3 skipped`.
+
+**Test results:**
+- Frontend build: ✅ PASS
+- Targeted backend tests: ✅ PASS (`36 passed`, `1 skipped`)
+- Full Playwright regression: ✅ PASS (`32 passed`, `3 skipped`)
+- Live browser smoke on FE/BE/DB/Redis: ✅ PASS
+
+**Status:** ✅ READY FOR PR
