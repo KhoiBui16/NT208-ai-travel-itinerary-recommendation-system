@@ -77,6 +77,7 @@ MVP1
 Điểm cần nhớ:
 
 - `C3A` đã dựng xong session foundation owner-only, trip-scoped trong `TripWorkspace`.
+- `00098` là checkpoint hardening trước `C3B`: bỏ route/mock drift còn sót, chốt lại browser flows, và khóa các contract FE-BE đang dùng thật.
 - `C3B` mới xử lý message generation, provider abstraction, quota chat, và error UX riêng cho chat.
 - `C4` mới xử lý persisted history và session/history UX.
 
@@ -111,7 +112,7 @@ MVP1
 - Places/cache: destinations, destination detail, place search/detail, saved places, Redis read cache fail-open.
 - ETL D1/C.0: Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, `hotels.yaml`, `scraped_sources`.
 - AI C.1 generate pipeline: DB recommendation context, Gemini JSON output, Pydantic validation, retry, guest/user AI rate limit.
-- Tests current merged source: 125 unit tests + 51 integration tests + 22 FE e2e tests; latest local browser/UAT evidence still records 19 passed, 3 skipped on the FE suite while `00060A` raised backend coverage.
+- Tests current merged source: 148 unit tests + 67 integration tests collected ở backend; Playwright suite hiện là 35 test cases / 16 spec files với latest full local run `32 passed, 3 skipped`.
 - AI C.2 SuggestionService (EP-30): DB-only suggest alternatives, owner-check, no LLM.
 - Destination slug matching: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" → "ha-noi" → match DB.
 
@@ -127,7 +128,7 @@ MVP1
 - `useActivityManager`/`useAccommodation`/`usePlacesManager` — optimistic CRUD + revert.
 - `CreateTrip` nối `generateItinerary` API, navigate TripWorkspace với tripId.
 - `ErrorBoundary` bọc toàn app.
-- Playwright e2e hiện có 33 test cases / 15 spec files, bao phủ auth flow, trip CRUD, public pages, guest claim, destination readiness, rate-limit UX, và C3A chat session CRUD.
+- Playwright e2e hiện có 35 test cases / 16 spec files, bao phủ auth flow, trip CRUD, public pages, guest claim, destination readiness, rate-limit UX, CityDetail API-first regression, pre-C3B hardening flows, và C3A chat session CRUD.
 - **Tất cả trang chính đã nối BE API**; mock chỉ làm fallback khi BE không có data.
 
 ### Docs/Ops

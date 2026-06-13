@@ -21,8 +21,8 @@ Kế hoạch này vẫn là source test-plan, nhưng current live verification g
 
 Lưu ý phase:
 
-- Kết quả trên đủ để xem `00097` là nhánh hardening/verification mergeable.
-- `C3B` vẫn chưa được implement trong repo hiện tại; sau khi merge `00097` mới nên mở nhánh feature riêng cho message/apply-patch flow.
+- Kết quả trên đủ để xem `00098` là nhánh pre-`C3B` hardening mergeable.
+- `C3B` vẫn chưa được implement trong repo hiện tại; sau khi merge `00098` mới nên mở nhánh feature riêng cho message/apply-patch flow.
 
 ---
 

@@ -65,8 +65,8 @@ export const useAccommodation = (days: Day[], selectedDayId: number, tripId: num
         bookingType: bookingType,
         duration: bookingDuration,
         name: selectedHotel.name,
-        pricePerNight: selectedHotel.pricePerNight,
-        totalPrice: selectedHotel.pricePerNight * bookingDuration,
+        pricePerNight: selectedHotel.price,
+        totalPrice: selectedHotel.price * bookingDuration,
       }).catch(() => {
         // Revert on failure — remove the accommodation
         setAccommodations((prev) => {

@@ -28,7 +28,7 @@ Neu docs va code xung dot:
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
 - 215 BE tests (148 unit + 67 integration)
 - Frontend runtime hien tai nam trong `Frontend/`
-- Playwright suite hiện bao phủ 15 spec files / 33 test cases trong `Frontend/tests/e2e/`
+- Playwright suite hiện bao phủ 16 spec files / 35 test cases trong `Frontend/tests/e2e/`
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
 - Register page bypass OTP cho den khi BE email OTP san sang
 - `docs/` la bo tai lieu chi tiet cho user va reviewer

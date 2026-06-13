@@ -5,6 +5,8 @@
 **Mode:** local managed browser, headless  
 **Support Verification:** Playwright targeted regressions + API/DB/Redis spot checks
 
+> **2026-06-13 addendum:** Nhánh `00098` không cần rerun Browserbase riêng vì các flow browser nền đã xanh từ pass này. Follow-up hardening được verify thêm bằng live local browser smoke + full Playwright regression và được tổng hợp tại `BROWSER_TEST_STATUS.md` và `00098_pre_c3b_hardening_and_pr_readiness.md`.
+
 ---
 
 ## Scope Of This Pass
@@ -268,6 +270,7 @@ Result:
 
 - `00096-c3a-chat-session.spec.ts`: `5 passed`
 - `00097-city-detail-api-detail.spec.ts`: `2 passed`
+- follow-up `00098` full-suite rerun on 2026-06-13: `32 passed`, `3 skipped` across `35` tests / `16` spec files
 
 Important green areas from the suite:
 
@@ -312,6 +315,7 @@ Use this only if the PR is described as:
 - evidence refresh for current `C3A`
 - destination slug/detail stabilization
 - CityDetail API-first/detail-count hardening
+- pre-`C3B` workspace hardening from `00098`
 - real AI generate evidence refresh
 
 ### Do not claim in merge description

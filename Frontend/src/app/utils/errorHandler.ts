@@ -76,7 +76,7 @@ export function getGenerateErrorMessage(error: unknown, context?: GenerateErrorC
       detailLower.includes("destination not found") ||
       (detailLower.includes("not found") && detailLower.includes("destination"))
     ) {
-      return `Thành phố "${destName}" chưa có dữ liệu trong hệ thống. Vui lòng chọn một thành phố có trong danh sách gợi ý.`;
+      return `Điểm đến "${destName}" hiện chưa có dữ liệu trong hệ thống. Bạn có thể quay lại danh sách để kiểm tra slug hoặc chờ ETL cập nhật thêm dữ liệu.`;
     }
 
     // Not enough places
@@ -85,7 +85,7 @@ export function getGenerateErrorMessage(error: unknown, context?: GenerateErrorC
       detailLower.includes("not enough places") ||
       (detailLower.includes("places") && (detailLower.includes("not enough") || detailLower.includes("insufficient")))
     ) {
-      return `Thành phố "${destName}" chưa có đủ địa điểm để tạo lịch trình. Vui lòng chọn thành phố khác hoặc thử lại sau khi dữ liệu được cập nhật.`;
+      return `Điểm đến "${destName}" hiện chưa có đủ địa điểm để tạo lịch trình. Bạn có thể thử lại sau khi dữ liệu được cập nhật thêm.`;
     }
 
     // Other validation errors - use backend message if user-safe

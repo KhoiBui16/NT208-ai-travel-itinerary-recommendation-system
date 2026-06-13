@@ -71,7 +71,17 @@ class PlaceService(BaseService):
         # Try cache first
         cached = await self.cache.get("destinations:all:v2")
         if cached is not None:
-            return [DestinationResponse(**d) for d in json.loads(cached)]
+            cached_items = json.loads(cached)
+            return [
+                DestinationResponse(
+                    **{
+                        **destination_data,
+                        "slug": destination_data.get("slug")
+                        or slugify(destination_data.get("name", "")),
+                    }
+                )
+                for destination_data in cached_items
+            ]
 
         # Cache miss — query DB with aggregate counts
         destinations = await self.repo.get_destinations_with_counts()
@@ -98,7 +108,12 @@ class PlaceService(BaseService):
         # Try cache first
         cached = await self.cache.get(cache_key)
         if cached is not None:
-            return DestinationDetailResponse.model_validate_json(cached)
+            payload = json.loads(cached)
+            destination_payload = payload.get("destination") or {}
+            if "slug" not in destination_payload:
+                destination_payload["slug"] = slugify(destination_payload.get("name", ""))
+            payload["destination"] = destination_payload
+            return DestinationDetailResponse.model_validate(payload)
 
         # Resolve destination — try name first, then slug, then fuzzy match
         dest = await self.repo.get_destination_by_name(name)
@@ -234,6 +249,7 @@ class PlaceService(BaseService):
         return self._build_destination_response(
             dest_id=dest.id,
             dest_name=dest.name,
+            dest_slug=dest.slug,
             image=dest.image,
             places_count=dest.places_count if places_count is None else places_count,
             hotels_count=hotels_count,
@@ -253,6 +269,7 @@ class PlaceService(BaseService):
         return self._build_destination_response(
             dest_id=dest_data["id"],
             dest_name=dest_data["name"],
+            dest_slug=dest_data["slug"],
             image=dest_data["image"],
             places_count=dest_data.get("places_count", 0),
             hotels_count=dest_data.get("hotels_count", 0),
@@ -263,6 +280,7 @@ class PlaceService(BaseService):
         *,
         dest_id: int,
         dest_name: str,
+        dest_slug: str,
         image: str,
         places_count: int,
         hotels_count: int,
@@ -288,6 +306,7 @@ class PlaceService(BaseService):
         return DestinationResponse(
             id=dest_id,
             name=dest_name,
+            slug=dest_slug,
             image=image,
             placesCount=places_count,
             hotelsCount=hotels_count,

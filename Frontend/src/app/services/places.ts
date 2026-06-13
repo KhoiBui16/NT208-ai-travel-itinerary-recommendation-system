@@ -27,6 +27,7 @@ export interface DestinationResponse {
   // --- Identity ---
   id: number;
   name: string; // City/destination display name
+  slug: string; // URL-safe slug from backend, used for FE routing
   country: string; // Default: "Vietnam" (always present — BE defaults to "Vietnam")
 
   // --- Media ---

@@ -151,7 +151,7 @@ npm run build           # Production build phải pass
 npm run test:e2e        # Playwright e2e tests (cần BE chạy trên localhost:8000)
 ```
 
-FE build phải pass (production bundle). Playwright e2e tests hiện có 22 tests total; UAT 00059B ghi nhận 19 passed, 3 skipped. Yêu cầu BE server chạy trước khi chạy e2e.
+FE build phải pass (production bundle). Playwright e2e tests hiện có 35 test cases trong 16 spec files; latest full local run ghi nhận `32 passed, 3 skipped`. Yêu cầu BE server chạy trước khi chạy e2e.
 
 ### 00057 Manual Verification — Destination Data Quality Advisory
 

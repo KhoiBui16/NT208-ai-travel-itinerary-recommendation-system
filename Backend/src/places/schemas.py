@@ -41,6 +41,7 @@ class DestinationResponse(CamelCaseModel):
     # --- Identity ---
     id: int
     name: str  # City/destination display name
+    slug: str  # URL-safe slug used by FE routes and API lookups
     country: str = "Vietnam"  # Default country for this app
 
     # --- Media ---

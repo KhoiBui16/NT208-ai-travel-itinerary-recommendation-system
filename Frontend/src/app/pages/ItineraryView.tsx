@@ -18,7 +18,15 @@ import {
   Plus,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { getItinerary, updateItinerary, deleteItinerary as deleteItineraryApi, rateItinerary as rateItineraryApi, shareItinerary, ItineraryResponse } from "../services/itinerary";
+import {
+  deleteActivity,
+  getItinerary,
+  updateItinerary,
+  deleteItinerary as deleteItineraryApi,
+  rateItinerary as rateItineraryApi,
+  shareItinerary,
+  ItineraryResponse,
+} from "../services/itinerary";
 import { formatCurrency } from "../utils/itinerary";
 import { toast } from "sonner";
 
@@ -136,6 +144,7 @@ export default function ItineraryView() {
 
   const handleDelete = async (dayIndex: number, activityId: string) => {
     if (!itinerary || !id) return;
+    const numericActivityId = Number(activityId);
 
     const newDays = itinerary.days.map((day, idx) => {
       if (idx === dayIndex) {
@@ -150,22 +159,14 @@ export default function ItineraryView() {
     const newItinerary = { ...itinerary, days: newDays };
     setItinerary(newItinerary);
 
+    if (!Number.isFinite(numericActivityId) || numericActivityId <= 0) {
+      toast.error("Không thể xác định hoạt động để xóa.");
+      setItinerary(itinerary);
+      return;
+    }
+
     try {
-      await updateItinerary(Number(id), {
-        days: newDays.map((d, idx) => ({
-          id: idx + 1,
-          label: `Ngày ${idx + 1}`,
-          date: d.date,
-          activities: d.activities.map((a) => ({
-            time: a.time,
-            name: a.title,
-            description: a.description,
-            location: a.location,
-            type: "attraction",
-            image: a.image,
-          })),
-        })),
-      });
+      await deleteActivity(Number(id), numericActivityId);
     } catch {
       toast.error("Xóa hoạt động thất bại.");
       setItinerary(itinerary);

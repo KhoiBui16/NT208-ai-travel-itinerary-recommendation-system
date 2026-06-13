@@ -535,34 +535,18 @@ Tất cả trang chính đã nối BE API. Mock chỉ dùng fallback.
 - **Timeout**: 30 giây, retries: 2 trên CI
 - **WebServer**: Tự động start `npm run dev` nếu chưa chạy
 
-### Test suites (24 tests total; latest local UAT: 21 passed, 3 skipped)
+### Test suites (35 tests total; latest full local run: 32 passed, 3 skipped)
 
-**Auth flow (5 tests):**
+Current suite coverage:
 
-| Test | Flow | Mô tả |
-|---|---|---|
-| register → success → redirect home | UI form | Điền form, submit, redirect `/` |
-| login → success → redirect home | API + UI | Register qua API, login qua UI |
-| protected route → redirect login → login → show page | UI navigation | `/trip-library` chưa auth → `/login` → login → access granted |
-| guest claim after login | API + UI | Guest trip được claim sau login và quay lại workspace |
-| guest claim after register | API + UI | Guest trip được claim sau register và quay lại workspace |
-
-**Trip CRUD (3 tests):**
-
-| Test | Flow | Mô tả |
-|---|---|---|
-| create trip → navigate to workspace | API + UI | Tạo trip qua API, navigate workspace |
-| view trip list in TripLibrary | API + UI | Tạo trip, mở TripLibrary, verify card |
-| delete trip from TripHistory | API + UI | Tạo trip, mở ItineraryView, xóa |
-
-**Calendar + rate-limit + public pages + legacy flows:**
-
-| Suite | Count | Mô tả |
-|---|---|---|
-| Calendar + destination readiness | 2 | Helper date-range selection và partial destination advisory |
-| Rate-limit UX shell | 4 | 429 response shape, CreateTrip button/load shell |
-| Public pages | 5 | Home, login, register, forgot-password, 404 |
-| Legacy B3 flows | 3 skipped | Historical observational flows vẫn để skip trong suite hiện tại |
+- Auth flow: register, login, protected redirect, guest claim after login/register.
+- Trip CRUD + workspace truth: create, list, delete, workspace boundary, TripHistory/TripLibrary rendering.
+- Calendar + destination readiness: date-range interaction và limited-data advisory.
+- Rate-limit / timeout / UI shell: 429 contract, timeout UX, submit/loading shell.
+- Public pages: home, login, register, forgot-password, 404.
+- C3A chat session CRUD: create/list/detail/persist/cross-user ownership behavior.
+- CityDetail API-first regression: non-mock city và mock-pack city đều phải render backend truth khi API detail có sẵn.
+- Legacy `b3/*` observation flows: `3 skipped`.
 
 ### Test helpers
 

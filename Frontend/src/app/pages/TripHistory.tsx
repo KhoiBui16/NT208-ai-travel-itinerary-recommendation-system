@@ -5,21 +5,10 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { listItineraries, updateItinerary, deleteItinerary } from "../services/itinerary";
 import { getDestinationFallbackImage } from "../utils/placeImage";
-
-/** Compute trip status based on today vs start/end dates. */
-function computeStatus(
-  startDate?: string,
-  endDate?: string,
-): "upcoming" | "completed" | "planning" {
-  if (!startDate || !endDate) return "planning";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  if (end < today) return "completed";
-  if (start <= today && today <= end) return "planning"; // in progress
-  return "upcoming";
-}
+import {
+  computeTripDurationDays,
+  computeTripTimelineStatus,
+} from "../utils/tripSummary";
 
 interface SavedTrip {
   id: string;
@@ -62,9 +51,9 @@ export default function TripHistory() {
         cities: [trip.destination],
         startDate: trip.startDate,
         endDate: trip.endDate,
-        days: trip.days?.length || 0,
+        days: computeTripDurationDays(trip.startDate, trip.endDate),
         estimatedCost: trip.budget || 0,
-        status: computeStatus(trip.startDate, trip.endDate),
+        status: computeTripTimelineStatus(trip.startDate, trip.endDate),
         coverImage: trip.coverImage || getDestinationFallbackImage(trip.destination),
         tripData: trip,
       }));

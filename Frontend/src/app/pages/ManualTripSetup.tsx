@@ -24,15 +24,28 @@ import {
   ChevronLeft,
 } from "lucide-react";
 
-import { Destination, destinations as mockDestinations } from "../data/destinations";
+import type { Destination } from "../data/destinations";
 import { listDestinations } from "../services/places";
+import { DEFAULT_PLACE_IMAGE } from "../utils/placeImage";
+
+function resolveDestinationImage(image?: string | null): string {
+  const trimmedImage = image?.trim();
+  if (
+    trimmedImage &&
+    (trimmedImage.startsWith("http://") || trimmedImage.startsWith("https://"))
+  ) {
+    return trimmedImage;
+  }
+  return DEFAULT_PLACE_IMAGE;
+}
 
 export default function ManualTripSetup() {
   const navigate = useNavigate();
   const { isAuthenticated: isLoggedIn } = useAuth();
   const { setDestinations: setWizardDestinations } = useTripWizard();
   const [searchQuery, setSearchQuery] = useState("");
-  const [destinations, setDestinations] = useState<Destination[]>(mockDestinations);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [loadMessage, setLoadMessage] = useState<string | null>(null);
   const [savedDestinations, setSavedDestinations] = useState<number[]>([]);
   const [selectedDests, setSelectedDests] = useState<number[]>([]);
   const [viewingDest, setViewingDest] = useState<Destination | null>(null);
@@ -48,20 +61,24 @@ export default function ManualTripSetup() {
         const apiDests = await listDestinations();
         if (!isMounted) return;
         if (apiDests.length > 0) {
-          // Map API destinations to local Destination shape for UI compatibility
           const mapped: Destination[] = apiDests.map((d, idx) => ({
             id: d.id || idx + 1,
             name: d.name,
             country: d.country || "",
-            image: d.image || "",
-            description: d.country || "",
+            image: resolveDestinationImage(d.image),
+            description: d.readinessReason || d.country || "",
             rating: d.rating || 0,
             places: [],
           }));
           setDestinations(mapped);
+        } else {
+          setDestinations([]);
+          setLoadMessage("Chưa có dữ liệu điểm đến trong hệ thống. Hãy chạy ETL để nạp dữ liệu thật trước khi tạo chuyến đi thủ công.");
         }
       } catch {
-        // Keep mockDestinations fallback
+        if (!isMounted) return;
+        setDestinations([]);
+        setLoadMessage("Không thể tải điểm đến từ API. Hãy kiểm tra backend, database và ETL.");
       }
     }
 
@@ -282,6 +299,12 @@ export default function ManualTripSetup() {
           </div>
         )}
 
+        {loadMessage && (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+            {loadMessage}
+          </div>
+        )}
+
         {/* Search */}
         <div className="mb-6 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -410,7 +433,11 @@ export default function ManualTripSetup() {
         {filtered.length === 0 && (
           <div className="py-20 text-center">
             <MapPin className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-            <p className="text-gray-500">Không tìm thấy điểm đến phù hợp</p>
+            <p className="text-gray-500">
+              {destinations.length === 0
+                ? "Chưa có điểm đến khả dụng từ API"
+                : "Không tìm thấy điểm đến phù hợp"}
+            </p>
           </div>
         )}
       </div>

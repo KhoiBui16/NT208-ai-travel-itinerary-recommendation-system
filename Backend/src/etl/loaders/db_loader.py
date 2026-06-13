@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # to register string-based relationships such as Place.activities -> Activity.
 import src.auth.models  # noqa: F401
 import src.itineraries.models  # noqa: F401
+from src.core.slugify import slugify
 from src.places.models import Destination, Hotel, Place, ScrapedSource
 
 logger = logging.getLogger(__name__)
@@ -273,98 +274,5 @@ async def invalidate_cache(redis: Redis | None) -> None:
 
 
 def _to_slug(name: str) -> str:
-    """Convert Vietnamese city name to URL-safe slug.
-
-    Uses a comprehensive replacement table covering all Vietnamese diacritics
-    including composed characters (e.g. ộ, ắ, ề) so that slugs are consistent
-    across ETL runs and API-side slug matching.
-
-    Args:
-        name: City name in Vietnamese.
-
-    Returns:
-        URL-safe slug string. Example: "Hà Nội" → "ha-noi".
-    """
-    import re
-
-    slug = name.lower().strip()
-    replacements = {
-        "đ": "d",
-        "ă": "a",
-        "â": "a",
-        "ê": "e",
-        "ô": "o",
-        "ơ": "o",
-        "ư": "u",
-        # a variants
-        "à": "a",
-        "á": "a",
-        "ả": "a",
-        "ã": "a",
-        "ạ": "a",
-        "ắ": "a",
-        "ặ": "a",
-        "ằ": "a",
-        "ẳ": "a",
-        "ẵ": "a",
-        "ấ": "a",
-        "ầ": "a",
-        "ẩ": "a",
-        "ẫ": "a",
-        "ậ": "a",
-        # e variants
-        "è": "e",
-        "é": "e",
-        "ẻ": "e",
-        "ẽ": "e",
-        "ẹ": "e",
-        "ế": "e",
-        "ề": "e",
-        "ể": "e",
-        "ễ": "e",
-        "ệ": "e",
-        # i variants
-        "ì": "i",
-        "í": "i",
-        "ỉ": "i",
-        "ĩ": "i",
-        "ị": "i",
-        # o variants
-        "ò": "o",
-        "ó": "o",
-        "ỏ": "o",
-        "õ": "o",
-        "ọ": "o",
-        "ố": "o",
-        "ồ": "o",
-        "ổ": "o",
-        "ỗ": "o",
-        "ộ": "o",
-        "ớ": "o",
-        "ờ": "o",
-        "ở": "o",
-        "ỡ": "o",
-        "ợ": "o",
-        # u variants
-        "ù": "u",
-        "ú": "u",
-        "ủ": "u",
-        "ũ": "u",
-        "ụ": "u",
-        "ứ": "u",
-        "ừ": "u",
-        "ử": "u",
-        "ữ": "u",
-        "ự": "u",
-        # y variants
-        "ỳ": "y",
-        "ý": "y",
-        "ỷ": "y",
-        "ỹ": "y",
-        "ỵ": "y",
-    }
-    for vn_char, ascii_char in replacements.items():
-        slug = slug.replace(vn_char, ascii_char)
-    slug = re.sub(r"[^a-z0-9]+", "-", slug)
-    slug = slug.strip("-")
-    return slug
+    """Dùng chung quy tắc slug với runtime backend để tránh lệch ETL/API."""
+    return slugify(name)

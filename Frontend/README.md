@@ -14,7 +14,7 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 | AI C.2 | Suggestion backend ready (`GET /api/v1/agent/suggest/{activity_id}`), nhưng FE suggestion surfaces vẫn dùng mock data |
 | AI C.3A | `ChatPanel` component integrated into `TripWorkspace` with chat session REST APIs |
 | Remaining AI UI | `FloatingAIChat`, promo bubble, contextual panels, and companion components are still mock/placeholder for C.3B |
-| Verified 2026-06-11 | Playwright e2e: 33 test cases / 15 spec files; latest full local result 30 passed, 3 skipped; browser verification covered auth, city browse/detail smoke, guest claim reload, rate limit UX, FE error handling (00062 fixes), destination slugify fuzzy match (BUG-BE-003 fix PR #92), trip CRUD, and C3A chat session CRUD |
+| Verified 2026-06-13 | Playwright e2e: 35 test cases / 16 spec files; latest full local result 32 passed, 3 skipped; browser verification covered auth, city browse/detail smoke, guest claim reload, rate limit UX, TripHistory/TripLibrary duration truth, CityDetail API-first rendering, itinerary delete-activity contract, trip CRUD, and C3A chat session CRUD |
 
 ## Local Start
 
@@ -133,7 +133,7 @@ npm run test:e2e
 
 Post-verify note from 2026-06-11:
 
-- `npm run test:e2e`: 33 test cases across 15 spec files; latest full local run `30 passed, 3 skipped` (legacy `b3` flows remain skipped).
+- `npm run test:e2e`: 35 test cases across 16 spec files; latest full local run `32 passed, 3 skipped` (legacy `b3` flows remain skipped).
 - FE error handling improved: toast notifications now show specific error messages instead of generic "Không thể tạo lịch trình" for rate limits, validation errors, and AI timeouts.
 - Destination slugify fuzzy matching (PR #92): Backend now properly matches "Ha Noi" → "ha-noi" → DB, improving destination resolution for users typing city names without accents.
 - C3A chat session foundation (PR #98-100): ChatPanel component integrated into TripWorkspace, chat session REST APIs (EP-37/38/39), e2e tests for chat session CRUD.

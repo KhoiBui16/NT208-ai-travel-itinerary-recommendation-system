@@ -1,76 +1,38 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Header } from "../components/Header";
-import { destinations as mockDestinations, features, heroFeatures } from "../data/homeData";
+import { features, heroFeatures } from "../data/homeData";
 import { listDestinations, type DestinationResponse } from "../services/places";
 import { applyPlaceImageFallback, DEFAULT_PLACE_IMAGE } from "../utils/placeImage";
 import { Sparkles, MapPin, Plane, ArrowRight } from "lucide-react";
 
 interface DisplayDest {
+  slug: string;
   name: string;
   image: string;
   description: string;
 }
 
-const destinationImageAliases: Record<string, string> = {
-  "Hạ Long": "Vịnh Hạ Long",
-  "Ha Long": "Vịnh Hạ Long",
-  "TP. Hồ Chí Minh": "TP. Hồ Chí Minh",
-  "Hồ Chí Minh": "TP. Hồ Chí Minh",
-  "Ho Chi Minh": "TP. Hồ Chí Minh",
-};
-
-function normalizeDestinationName(name: string): string {
-  return name.trim();
-}
-
-function getFallbackDestinationImage(name: string): string {
-  const normalizedName = normalizeDestinationName(name);
-  const aliasName = destinationImageAliases[normalizedName] ?? normalizedName;
-
-  const directFallback = mockDestinations.find(
-    (dest) => normalizeDestinationName(dest.name) === aliasName,
-  );
-
-  return directFallback?.image || DEFAULT_PLACE_IMAGE;
-}
-
 /**
  * Resolves a destination image URL for display.
  *
- * Priority:
- * 1. Absolute API image URL (http/https) from BE.
- * 2. Fallback Unsplash URL from placeImage.ts.
- *
- * NOTE: Relative paths like `/img/destinations/...` are SKIPPED because
- * the ETL placeholder paths don't map to actual files, causing 404 errors.
+ * Chỉ tin ảnh tuyệt đối `http/https` từ backend. Nếu backend đang trả
+ * placeholder tương đối hoặc chuỗi rỗng thì dùng ảnh mặc định để tránh
+ * che mất tình trạng dữ liệu thật bằng mock pack.
  */
-function resolveDestinationImage(name: string, apiImage?: string | null): string {
+function resolveDestinationImage(apiImage?: string | null): string {
   const trimmedImage = apiImage?.trim();
   if (trimmedImage) {
-    // Only use absolute URLs (http/https). Skip relative paths that would 404.
     if (trimmedImage.startsWith("http://") || trimmedImage.startsWith("https://")) {
       return trimmedImage;
     }
-    // Relative path like `/img/destinations/...` - skip and use fallback
   }
-  return getFallbackDestinationImage(name);
-}
-
-/** Convert a Vietnamese destination name to a URL-safe slug matching the cityId route param. */
-function nameToSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
+  return DEFAULT_PLACE_IMAGE;
 }
 
 export default function Home() {
-  const [destinations, setDestinations] = useState<DisplayDest[]>(mockDestinations);
+  const [destinations, setDestinations] = useState<DisplayDest[]>([]);
+  const [loadMessage, setLoadMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -82,14 +44,20 @@ export default function Home() {
         if (apiDests.length > 0) {
           setDestinations(
             apiDests.map((d: DestinationResponse) => ({
+              slug: d.slug,
               name: d.name,
-              image: resolveDestinationImage(d.name, d.image),
-              description: d.country || "",
+              image: resolveDestinationImage(d.image),
+              description: d.readinessReason || d.country || "",
             })),
           );
+        } else {
+          setDestinations([]);
+          setLoadMessage("Chưa có dữ liệu điểm đến trong hệ thống. Hãy chạy ETL để nạp dữ liệu thật.");
         }
       } catch {
-        // Keep mock fallback
+        if (!isMounted) return;
+        setDestinations([]);
+        setLoadMessage("Không thể tải điểm đến từ API. Hãy kiểm tra backend, database và ETL.");
       }
     }
 
@@ -205,13 +173,13 @@ export default function Home() {
           {destinations.length === 0 ? (
             <div className="col-span-3 rounded-xl bg-yellow-50 border border-yellow-200 px-6 py-10 text-center text-yellow-800">
               <p className="text-lg font-semibold">Chưa có dữ liệu điểm đến.</p>
-              <p className="mt-1 text-sm">Hãy chạy ETL để tải dữ liệu.</p>
+              <p className="mt-1 text-sm">{loadMessage || "Hãy chạy ETL để tải dữ liệu."}</p>
             </div>
           ) : (
             destinations.map((dest) => (
             <Link
-              key={dest.name}
-              to={`/cities/${nameToSlug(dest.name)}`}
+              key={dest.slug}
+              to={`/cities/${dest.slug}`}
               className="group relative overflow-hidden rounded-xl shadow-lg transition-all hover:-translate-y-1 hover:shadow-2xl"
             >
               <div className="relative h-64">
