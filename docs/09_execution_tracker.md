@@ -276,3 +276,35 @@ Thứ tự ưu tiên:
 - Phát hiện security gap: guest rate limit dùng IP+UA fingerprint — đổi UA bypass được limit.
 - Accommodation POST: cần kiểm tra thêm (response trả rỗng trong một số test).
 - Không thay đổi UI/UX, không thay đổi API contract.
+
+## Scope Task 00099 (C3B companion chat message flow)
+
+- Tạo local branch `feat/00099-c-c3b-companion-chat` để nối tiếp sau khi `main` đã nhận các nhánh hardening trước đó.
+- Backend:
+  - thêm `Backend/src/itineraries/companion_service.py` để điều phối provider call, ownership check, `requiresConfirmation`, `proposedOperations`, và persist `chat_messages`
+  - mở `POST/GET /api/v1/itineraries/chat-sessions/{sessionId}/messages`
+  - tách auth-user chat quota riêng `rate:ai:chat:user:{user_id}:{YYYYMMDD}`
+  - giữ invariant: companion chat trip-bound, REST-only, chưa tự apply patch vào itinerary
+- Frontend:
+  - `ChatPanel` load session thật, load history thật, gửi message thật, render assistant contract
+  - thêm `chatErrorHandler.ts` để map lỗi chat theo UX tiếng Việt
+  - cập nhật Playwright C3A spec cũ cho current UI và thêm C3B panel UI spec
+- ETL:
+  - thêm `Backend/src/etl/scheduler.py` làm loop wrapper tối thiểu cho ETL CLI hiện có
+  - local smoke: dry-run scheduler pass và ETL thật đã bù `Hải Phòng`, `Ninh Bình`
+- Local verification 2026-06-14:
+  - `uv run ruff check src tests` → pass
+  - `uv run alembic upgrade head` / `uv run alembic check` → pass
+  - `uv run pytest tests/unit/test_companion_service.py tests/unit/test_chat_session_service.py tests/unit/test_rate_limiter.py tests/unit/test_config.py -q` → `27 passed`
+  - `uv run pytest tests/integration/test_chat_session_api.py tests/integration/test_companion_chat_api.py -q` → `5 passed, 14 skipped`
+  - `npm run build -- --outDir .build-tmp\\c3b-chat-verify` → pass
+  - `npx playwright test tests/e2e/00096-c3a-chat-session.spec.ts tests/e2e/00099-c3b-chat-panel-ui.spec.ts --reporter=list` → `6 passed`
+  - `browse` CLI smoke trên FE `127.0.0.1:5173` + BE `127.0.0.1:8000` + Docker DB/Redis gốc:
+    - open `trip-workspace?tripId=589`
+    - mở panel `AI Chat`
+    - gửi message thật
+    - history API xác nhận `2` messages persisted (`user`, `assistant`)
+- Gap còn lại sau 00099:
+  - chưa có `apply-patch` confirm endpoint
+  - `FloatingAIChat` vẫn là promo/mock UI
+  - ETL scheduler mới ở mức manual loop, chưa wire hẳn vào Docker/service schedule

@@ -23,15 +23,19 @@ from src.core.database import get_db
 from src.core.dependencies import get_rate_limiter
 from src.core.rate_limiter import RateLimiter
 from src.core.schema import PaginatedResponse, SuccessResponse
+from src.itineraries.companion_service import CompanionService
 from src.itineraries.schemas import (
     AccommodationSchema,
     ActivitySchema,
+    ChatMessageListResponse,
+    ChatMessageRequest,
     ChatSessionListResponse,
     ChatSessionResponse,
     ClaimTripRequest,
     CreateTripRequest,
     GenerateItineraryRequest,
     ItineraryResponse,
+    SendChatMessageResponse,
     ShareResponse,
     UpdateTripRequest,
 )
@@ -52,6 +56,19 @@ def get_itinerary_service(session: AsyncSession = Depends(get_db)) -> ItineraryS
     database session provided by the `get_db` dependency.
     """
     return ItineraryService(session=session)
+
+
+def get_companion_service(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+) -> CompanionService:
+    """Dependency factory cho `CompanionService`.
+
+    Test integration có thể override provider bằng cách gán
+    `app.state.companion_provider` trước khi gọi API.
+    """
+    provider = getattr(request.app.state, "companion_provider", None)
+    return CompanionService(session=session, provider=provider)
 
 
 # ===================================================================
@@ -145,6 +162,43 @@ async def get_chat_session(
 ) -> ChatSessionResponse:
     """Get a chat session by ID."""
     return await service.get_chat_session(session_id, user.id)
+
+
+@router.post(
+    "/chat-sessions/{session_id}/messages",
+    response_model=SendChatMessageResponse,
+    status_code=201,
+)
+async def send_chat_message(
+    session_id: int,
+    body: ChatMessageRequest,
+    response: Response,
+    user: User = Depends(get_current_user),
+    service: CompanionService = Depends(get_companion_service),
+    rate_limiter: RateLimiter = Depends(get_rate_limiter),
+) -> SendChatMessageResponse:
+    """Gửi một message vào companion chat của session hiện tại."""
+    await rate_limiter.enforce_chat_limit(user.id)
+    rate_info = await rate_limiter.get_chat_remaining(user.id)
+    response.headers["X-RateLimit-Limit"] = str(rate_info.limit)
+    response.headers["X-RateLimit-Remaining"] = str(rate_info.remaining)
+    response.headers["X-RateLimit-Reset"] = rate_info.reset_at.isoformat()
+    return await service.send_message(session_id, user.id, body)
+
+
+@router.get(
+    "/chat-sessions/{session_id}/messages",
+    response_model=ChatMessageListResponse,
+)
+async def list_chat_messages(
+    session_id: int,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    user: User = Depends(get_current_user),
+    service: CompanionService = Depends(get_companion_service),
+) -> ChatMessageListResponse:
+    """Đọc persisted message history của một chat session."""
+    return await service.list_messages(session_id, user.id, skip=skip, limit=limit)
 
 
 @router.post(

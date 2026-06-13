@@ -57,3 +57,35 @@ export interface ChatMessage {
   requiresConfirmation: boolean; // Whether user must confirm before applying changes
   createdAt: string; // ISO datetime string
 }
+
+/**
+ * Paginated message history response for one chat session.
+ */
+export interface ChatMessageListResponse {
+  items: ChatMessage[]; // Ordered message history slice
+  total: number; // Total messages in the session
+  skip: number; // Number of skipped items
+  limit: number; // Requested page size
+}
+
+/**
+ * Request payload for sending a new user message.
+ */
+export interface SendChatMessageRequest {
+  content: string; // Raw user input text
+}
+
+/**
+ * Structured C3B response returned after sending a message.
+ *
+ * Backend persists both the user message and the assistant reply, then returns
+ * the assistant summary fields at the top level for easier FE rendering.
+ */
+export interface SendChatMessageResponse {
+  sessionId: number; // Current session ID
+  userMessage: ChatMessage; // Persisted user message row
+  assistantMessage: ChatMessage; // Persisted assistant reply row
+  message: string; // Assistant reply text (top-level shortcut)
+  requiresConfirmation: boolean; // Whether proposed operations need user confirm
+  proposedOperations: Record<string, unknown>[]; // Suggested itinerary changes
+}

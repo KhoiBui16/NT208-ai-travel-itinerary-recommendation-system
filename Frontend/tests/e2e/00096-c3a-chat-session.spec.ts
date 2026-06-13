@@ -117,13 +117,15 @@ test.describe("C3A Chat Session", () => {
 
     // Should show session header with session ID
     await expect(page.getByText(/Companion Chat/i)).toBeVisible();
-    await expect(page.getByText(/Phiên:/i)).toBeVisible();
+    await expect(page.getByText(/Session #/i)).toBeVisible();
 
     // Should show status badge
     await expect(page.getByText(/active/i)).toBeVisible();
 
-    // Should show thread ID placeholder
-    await expect(page.getByText(/Thread ID:/i)).toBeVisible();
+    // C3B panel should now expose the real composer instead of the old placeholder
+    await expect(
+      page.getByPlaceholder(/Hỏi về lịch trình hiện tại hoặc đề xuất thay đổi/i),
+    ).toBeVisible();
   });
 
   test("authenticated user can see chat sessions list for their trip", async ({
@@ -158,7 +160,7 @@ test.describe("C3A Chat Session", () => {
 
     // Should show active session state (not empty)
     await expect(page.getByText(/Companion Chat/i)).toBeVisible();
-    await expect(page.getByText(/Phiên:/i)).toBeVisible();
+    await expect(page.getByText(/Session #/i)).toBeVisible();
 
     // Should show a non-zero session count without hard-coding exact copy.
     const sessionCountLabel = page.getByText(/\d+\s+phiên/i);
@@ -215,10 +217,10 @@ test.describe("C3A Chat Session", () => {
     await page.waitForTimeout(2000);
 
     // Should show error state (403 Forbidden)
-    await expect(page.getByText(/Lỗi/i)).toBeVisible();
+    await expect(page.getByText(/Không thể tải AI Chat/i)).toBeVisible();
 
     // Should NOT show User A's session
-    await expect(page.getByText(/Phiên:/i)).not.toBeVisible();
+    await expect(page.getByText(/Session #/i)).not.toBeVisible();
   });
 
   test("chat session persists after page reload", async ({ page }) => {
@@ -245,7 +247,7 @@ test.describe("C3A Chat Session", () => {
     await page.waitForTimeout(2000);
 
     // Verify session is visible
-    await expect(page.getByText(/Phiên:/i)).toBeVisible();
+    await expect(page.getByText(/Session #/i)).toBeVisible();
 
     // Reload page
     await page.reload();
@@ -257,7 +259,7 @@ test.describe("C3A Chat Session", () => {
     await page.waitForTimeout(2000);
 
     // Session should still be visible
-    await expect(page.getByText(/Phiên:/i)).toBeVisible();
+    await expect(page.getByText(/Session #/i)).toBeVisible();
     await expect(page.getByText(/active/i)).toBeVisible();
   });
 });

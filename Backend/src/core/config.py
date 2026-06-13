@@ -91,6 +91,7 @@ def yaml_config_settings() -> dict[str, Any]:
         "agent_min_activities_per_day": flattened.get("ai_min_activities_per_day"),
         "agent_max_activities_per_day": flattened.get("ai_max_activities_per_day"),
         "rate_limit_ai_free": flattened.get("ai_calls_per_day"),
+        "rate_limit_ai_chat_user": flattened.get("ai_chat_calls_per_day"),
         "ai_rate_limit_fail_mode": flattened.get("ai_rate_limit_fail_mode"),
         "companion_requires_confirmation": flattened.get("ai_companion_requires_confirmation"),
         "enable_analytics": flattened.get("ai_enable_analytics"),
@@ -163,6 +164,11 @@ class AppSettings(BaseSettings):
         validation_alias=AliasChoices("AGENT_MAX_ACTIVITIES_PER_DAY", "AI_MAX_ACTIVITIES_PER_DAY"),
     )
     rate_limit_ai_free: int = 3
+    rate_limit_ai_chat_user: int = Field(
+        default=20,
+        ge=1,
+        validation_alias=AliasChoices("RATE_LIMIT_AI_CHAT_USER", "AI_CHAT_CALLS_PER_DAY"),
+    )
     rate_limit_api: int = 100
     ai_rate_limit_fail_mode: str = "closed"
     companion_requires_confirmation: bool = True

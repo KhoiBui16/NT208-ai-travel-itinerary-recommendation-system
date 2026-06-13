@@ -11,14 +11,14 @@
 | C.1b | Guest claim reload | merged | `fix/00045-c-restage-c1-guest-flow` | #45 | — | — |
 | C.2 | Suggestion | merged | `feat/00047-c-suggestion-service` | #49 | `GET /agent/suggest/{id}` | none (DB only) |
 | C.3A | Chat session foundation | merged | `feat/00094-c-c3a-chat-session-apis` + `feat/00095-c-c3a-fe-chat-panel` + `chore/00096-c-c3a-chat-e2e-tests` | #98-100 | `POST/GET /itineraries/{tripId}/chat-sessions` | none |
-| C.3B | Companion chat API | todo | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `POST /itineraries/chat-sessions/{sessionId}/messages` | `GEMINI_API_KEY` (later smoke only) |
+| C.3B | Companion chat API | wip | `feat/00099-c-c3b-companion-chat` + `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `POST /itineraries/chat-sessions/{sessionId}/messages` | `GEMINI_API_KEY` |
 | C.3C | Chat UX hardening | todo | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | FE UX + future apply-patch contract | none |
-| C.4 | Chat history persistence | todo | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `GET /itineraries/{tripId}/chat-sessions`, `GET /chat-sessions/{id}/messages` | none |
+| C.4 | Chat history persistence | wip | `feat/00099-c-c3b-companion-chat` + `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `GET /itineraries/{tripId}/chat-sessions`, `GET /chat-sessions/{id}/messages` | none |
 | C.5 | Analytics | optional | `feat/00053-c5-analytics-optional` | — | `POST /agent/analytics` | `ENABLE_ANALYTICS`, `ANALYTICS_DATABASE_URL` |
 
 **Status:** `todo` | `wip` | `review_ready` | `merged`
 
-> **Current gate after `00098`:** `C3A` đã merge, `00097` docs/browser sync đã vào `main`, và `00098` là checkpoint hardening cuối đang chờ PR. `C3B` là next safe phase sau khi merge `00098`; `C4` vẫn không nên tách làm việc độc lập trước khi có message flow của `C3B`.
+> **Current gate on local branch `00099`:** message flow của `C3B` và persisted history read-path của `C4` đã có trên source local; phần còn lại trước khi xem companion hoàn chỉnh là `apply-patch`, chat UX hardening, và doc/PR sync.
 
 ---
 

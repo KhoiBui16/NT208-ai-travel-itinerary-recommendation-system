@@ -12,9 +12,10 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 | Trips | Manual create/update, generated itinerary load by `tripId`, optimistic activity/accommodation/place operations |
 | AI C.1 | `CreateTrip` calls BE `POST /api/v1/itineraries/generate` and navigates to `TripWorkspace` |
 | AI C.2 | Suggestion backend ready (`GET /api/v1/agent/suggest/{activity_id}`), nhưng FE suggestion surfaces vẫn dùng mock data |
-| AI C.3A | `ChatPanel` component integrated into `TripWorkspace` with chat session REST APIs |
-| Remaining AI UI | `FloatingAIChat`, promo bubble, contextual panels, and companion components are still mock/placeholder for C.3B |
-| Verified 2026-06-13 | Playwright e2e: 35 test cases / 16 spec files; latest full local result 32 passed, 3 skipped; browser verification covered auth, city browse/detail smoke, guest claim reload, rate limit UX, TripHistory/TripLibrary duration truth, CityDetail API-first rendering, itinerary delete-activity contract, trip CRUD, and C3A chat session CRUD |
+| AI C.3A | `ChatPanel` integrated into `TripWorkspace` with chat session REST APIs |
+| AI C.3B | `ChatPanel` now loads history thật, gửi message thật, render `requiresConfirmation` + `proposedOperations`, và dùng chat-specific error handling |
+| Remaining AI UI | `FloatingAIChat`, promo bubble, contextual panels, and apply-patch confirmation UX are still mock/placeholder |
+| Verified 2026-06-14 | Production build pass; targeted Playwright chat specs `6/6` pass; browse smoke verified real ChatPanel message send/history persistence against backend on `localhost:8000` |
 
 ## Local Start
 
@@ -47,7 +48,7 @@ src/app/services/
 ├── auth.ts         # login/register/logout/refresh/forgot/reset
 ├── itinerary.ts    # CRUD, generate, share, claim, rating
 ├── places.ts       # destinations, search, saved places
-├── chat.ts         # chat session CRUD (C3A)
+├── chat.ts         # chat session CRUD + message/history APIs
 └── users.ts        # profile and password
 ```
 
@@ -131,12 +132,13 @@ $env:E2E_API_URL="http://localhost:8000"
 npm run test:e2e
 ```
 
-Post-verify note from 2026-06-11:
+Post-verify note from 2026-06-14:
 
 - `npm run test:e2e`: 35 test cases across 16 spec files; latest full local run `32 passed, 3 skipped` (legacy `b3` flows remain skipped).
 - FE error handling improved: toast notifications now show specific error messages instead of generic "Không thể tạo lịch trình" for rate limits, validation errors, and AI timeouts.
 - Destination slugify fuzzy matching (PR #92): Backend now properly matches "Ha Noi" → "ha-noi" → DB, improving destination resolution for users typing city names without accents.
 - C3A chat session foundation (PR #98-100): ChatPanel component integrated into TripWorkspace, chat session REST APIs (EP-37/38/39), e2e tests for chat session CRUD.
+- C3B message flow (local branch `00099`): `ChatPanel` now creates/loads session thật, fetches persisted history, sends companion messages through BE, and renders assistant `proposedOperations` contract.
 - The exact default `npm run build` failed locally because an ignored `Frontend/dist/assets` directory had Windows `EPERM` permission locks. This is local artifact state, not a TypeScript/Vite compile error, and is tracked in `docs/REPORTS/ISSUES/frontend_dist_permission_lock.md`.
 
 ## Browser Debug Checklist
