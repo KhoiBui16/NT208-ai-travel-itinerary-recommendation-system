@@ -1,6 +1,6 @@
-# Browser Test Status - 2026-06-13
+# Browser Test Status - 2026-06-19
 
-**Last Updated:** 2026-06-13
+**Last Updated:** 2026-06-19
 **Plan Source:** `docs/BROWSER_TEST_PLAN.md`  
 **Primary Browser Tool:** Browserbase `browse` CLI `0.8.3`  
 **Support Regression:** `npx playwright test --reporter=list` + live local browser smoke
@@ -9,7 +9,18 @@
 
 ## One-Line Summary
 
-🟢 **PRE-C3B BROWSER BASELINE IS STABLE** - `C3A` browser baseline vẫn xanh, `CityDetail` vẫn API-first/count-consistent, và `00098` đã khóa thêm các drift ở login submit, trip duration/status, và itinerary detail flow trước khi tách `C3B`.
+🟢 **C3B MESSAGE FLOW IS LIVE ON CURRENT SOURCE, BUT APPLY-PATCH IS STILL PENDING** - browser baseline vẫn xanh, `CityDetail` vẫn API-first, `ChatPanel` đã gửi/đọc message thật, và current local stack đã verify FE -> BE -> DB -> Redis cho cả generate lẫn companion chat.
+
+## 2026-06-19 addendum
+
+Current source đã vượt qua mốc pre-`C3B` được mô tả ở các đoạn lịch sử bên dưới:
+
+- full Playwright suite: `33 passed`, `3 skipped` trên `36` tests / `17` spec files
+- real AI generate: PASS (`201`)
+- real companion chat send/history: PASS (`201` / `200`)
+- ETL scheduler `--once`: PASS, `Buôn Ma Thuột` hiện đã có `69` places
+
+Các phần lịch sử bên dưới vẫn được giữ lại để truy vết, nhưng không còn là current truth cho nhánh `00100`.
 
 ---
 

@@ -1,28 +1,30 @@
-# Kế Hoạch Test Browser Thật — Trước Phase C3/C4
+# Kế Hoạch Test Browser Thật — C3B Hardening Và Fullstack Verification
 
 **Ngày tạo:** 2026-06-09  
-**Mục tiêu:** Kiểm tra toàn bộ tính năng hiện tại của ứng dụng trước khi bắt đầu Phase C3/C4  
+**Mục tiêu:** Kiểm tra toàn bộ tính năng hiện tại của ứng dụng và khóa current truth sau khi C3B message flow đã có trên source  
 **Thời gian dự kiến:** 45-60 phút  
 **Người test:** Non-technical user (không cần biết code)
 
 ---
 
-## Snapshot đã verify (2026-06-12)
+## Snapshot đã verify (2026-06-19)
 
 Kế hoạch này vẫn là source test-plan, nhưng current live verification gần nhất đã xác nhận:
 
 - `TC01` auth register/login: PASS
 - `TC02` destinations list + slug navigation: PASS
 - `TC04` AI generate trip ngắn: PASS trên stack thật FE -> BE -> DB -> Redis
-- `TC10` city detail: PASS cho cả sparse cities (`Buôn Ma Thuột`, `Cần Thơ`) và ready cities (`Hà Nội`, `Đà Nẵng`, `TP. Hồ Chí Minh`)
+- `TC10` city detail: PASS cho cả sparse cities (`Cần Thơ`) và city đã được bù ETL (`Buôn Ma Thuột`), cùng với ready cities (`Hà Nội`, `Đà Nẵng`, `TP. Hồ Chí Minh`)
 - `TC12` share + shared read-only view: PASS
 - `TC13` guest claim after login: PASS
 - `C3A` chat session foundation: PASS
+- `C3B` chat message send/history contract: PASS trên stack thật FE -> BE -> DB -> Redis
+- Full Playwright regression: `33 passed`, `3 skipped` trên `36` tests / `17` spec files
 
 Lưu ý phase:
 
-- Kết quả trên đủ để xem `00098` là nhánh pre-`C3B` hardening mergeable.
-- `C3B` vẫn chưa được implement trong repo hiện tại; sau khi merge `00098` mới nên mở nhánh feature riêng cho message/apply-patch flow.
+- `C3B` message flow đã có trên current source; đây không còn là pre-`C3B` baseline.
+- Phần còn lại trước khi xem companion hoàn chỉnh là `apply-patch`, `FloatingAIChat` cleanup/wiring, scheduler wiring, và docs/PR sync.
 
 ---
 
@@ -36,11 +38,12 @@ Lưu ý phase:
 2. Truy cập: http://localhost:8000/docs
 3. **Kết quả mong đợi:** Hiển thị trang Swagger UI với danh sách API endpoints
 4. **Nếu thất bại:**
-   - Mở terminal tại thư mục `<repo-root>`
+   - Mở PowerShell tại thư mục `<repo-root>`
    - Chạy lệnh:
-   ```bash
-   cd Backend
-   docker compose up -d
+   ```powershell
+   docker compose up -d db redis
+   Set-Location .\Backend
+   uv run uvicorn src.main:app --host localhost --port 8000
    ```
    - Đợi khoảng 10-15 giây rồi thử lại
 

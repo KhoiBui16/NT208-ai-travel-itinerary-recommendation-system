@@ -59,27 +59,27 @@ MVP1
 → 00060B chốt GO_WITH_LIMITATIONS trước khi vào chat/history
 ```
 
-### Current C3/C4 gate after C3A merge
+### Current C3/C4 gate after local hardening `00100`
 
 | Hạng mục | Current truth |
 |---|---|
-| Overall readiness | `FOUNDATION_READY_NEXT_PHASE_PENDING` |
+| Overall readiness | `C3B_MESSAGE_FLOW_READY_APPLY_PATCH_PENDING` |
 | `C3A — Chat Session Foundation` | Đã merge (`PR #98-100`) |
-| `C3B` | Chưa bắt đầu; là next safe phase |
-| `C4` | Chưa bắt đầu; vẫn phụ thuộc `C3B` |
+| `C3B` | Đã có message flow, owner-check, real AI call, chat quota riêng, persisted `chat_messages` |
+| `C4` | Đã có persisted history read-path; history-management UX vẫn pending |
 | `FloatingAIChat.tsx` | Vẫn là mock local-state / promo UI |
-| `ChatPanel` | Đã gắn vào `TripWorkspace`, owner-only, trip-scoped |
+| `ChatPanel` | Đã gắn vào `TripWorkspace`, owner-only, trip-scoped, load history thật, send message thật |
 | `chat_sessions` / `chat_messages` | Đã có trong source/migration và session foundation |
-| Chat REST API | Đã có session CRUD APIs; message/history APIs chưa có |
-| Real Gemini call trong chat | Chưa có |
-| Chat quota riêng | Để `C3B` giải quyết |
+| Chat REST API | Đã có session CRUD + `POST/GET /itineraries/chat-sessions/{sessionId}/messages` |
+| Real Gemini call trong chat | Đã có |
+| Chat quota riêng | Đã có `rate:ai:chat:user:{user_id}:{YYYYMMDD}` |
 
 Điểm cần nhớ:
 
 - `C3A` đã dựng xong session foundation owner-only, trip-scoped trong `TripWorkspace`.
-- `00098` là checkpoint hardening trước `C3B`: bỏ route/mock drift còn sót, chốt lại browser flows, và khóa các contract FE-BE đang dùng thật.
-- `C3B` mới xử lý message generation, provider abstraction, quota chat, và error UX riêng cho chat.
-- `C4` mới xử lý persisted history và session/history UX.
+- `00100` là hardening pass sau khi message flow đã có: fix ETL scheduler smoke, cập nhật browser/docs theo current truth, và khóa lại evidence FE-BE-DB-Redis thật.
+- `C3B` đã xử lý message generation, provider abstraction, chat quota, và chat error UX riêng.
+- `C4` hiện ở trạng thái partial: persisted history read-path đã có nhưng chưa có history-management UX hoàn chỉnh.
 
 ---
 
@@ -112,7 +112,7 @@ MVP1
 - Places/cache: destinations, destination detail, place search/detail, saved places, Redis read cache fail-open.
 - ETL D1/C.0: Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, `hotels.yaml`, `scraped_sources`.
 - AI C.1 generate pipeline: DB recommendation context, Gemini JSON output, Pydantic validation, retry, guest/user AI rate limit.
-- Tests current merged source: 148 unit tests + 67 integration tests collected ở backend; Playwright suite hiện là 35 test cases / 16 spec files với latest full local run `32 passed, 3 skipped`.
+- Tests current local source: backend full suite đạt `199 passed, 30 skipped, 1 warning`; Playwright suite hiện là `36` test cases / `17` spec files với latest full local run `33 passed, 3 skipped`.
 - AI C.2 SuggestionService (EP-30): DB-only suggest alternatives, owner-check, no LLM.
 - Destination slug matching: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" → "ha-noi" → match DB.
 
@@ -128,7 +128,7 @@ MVP1
 - `useActivityManager`/`useAccommodation`/`usePlacesManager` — optimistic CRUD + revert.
 - `CreateTrip` nối `generateItinerary` API, navigate TripWorkspace với tripId.
 - `ErrorBoundary` bọc toàn app.
-- Playwright e2e hiện có 35 test cases / 16 spec files, bao phủ auth flow, trip CRUD, public pages, guest claim, destination readiness, rate-limit UX, CityDetail API-first regression, pre-C3B hardening flows, và C3A chat session CRUD.
+- Playwright e2e hiện có `36` test cases / `17` spec files, bao phủ auth flow, trip CRUD, public pages, guest claim, destination readiness, rate-limit UX, CityDetail API-first regression, C3A chat session CRUD, và C3B ChatPanel message/history contract.
 - **Tất cả trang chính đã nối BE API**; mock chỉ làm fallback khi BE không có data.
 
 ### Docs/Ops
@@ -146,7 +146,7 @@ MVP1
 
 - C.1 đã có direct generate pipeline local-ready, nhưng cần PR/CI review và thêm monitoring trước production.
 - C.2 SuggestionService (EP-30) đã implement và merged trên `feat/00047` → PR #49.
-- Chưa có C.3 AI companion chat, patch-confirm flow, chat history API.
+- Chưa có `apply-patch` confirm endpoint, chưa có history-management UX đầy đủ, và `FloatingAIChat` vẫn là promo/mock UI.
 - Analytics EP-34 chưa bật và chưa có SQL guardrails.
 
 ### ETL/Data
@@ -197,4 +197,4 @@ MVP1
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. `C3A — Chat Session Foundation` đã merge; current focus bây giờ là giữ docs/browser verification đồng bộ trước khi bước tiếp sang `C3B`, còn `C4` vẫn chưa nên tách làm phase độc lập.
+Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. `C3B` hiện đã có message flow thật trên current source, còn phần cần chốt tiếp trước khi xem phase companion là ổn định gồm `apply-patch`, history-management UX, scheduler wiring, và sync docs/PR/CI đầy đủ.

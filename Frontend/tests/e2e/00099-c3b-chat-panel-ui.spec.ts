@@ -45,14 +45,23 @@ async function createTripViaAPI(accessToken: string) {
 }
 
 async function createChatSessionViaAPI(accessToken: string, tripId: number) {
-  const res = await fetch(`${API_URL}/api/v1/itineraries/${tripId}/chat-sessions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-  if (!res.ok) throw new Error(`Create chat session failed: ${res.status}`);
-  return res.json() as Promise<{ id: number; status: string }>;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(`${API_URL}/api/v1/itineraries/${tripId}/chat-sessions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    if (res.ok) {
+      return res.json() as Promise<{ id: number; status: string }>;
+    }
+    if (res.status !== 404 || attempt === 3) {
+      throw new Error(`Create chat session failed: ${res.status}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error("Create chat session failed after retries");
 }
 
 test.beforeAll(async () => {

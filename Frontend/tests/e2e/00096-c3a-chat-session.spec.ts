@@ -76,6 +76,27 @@ async function createGuestTripViaAPI() {
   return res.json() as Promise<{ id: number; claimToken: string }>;
 }
 
+/** Create a chat session via API with a short retry for transient trip 404s. */
+async function createChatSessionViaAPI(accessToken: string, tripId: number) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(`${API_URL}/api/v1/itineraries/${tripId}/chat-sessions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    if (res.ok) {
+      return res.json() as Promise<{ id: number }>;
+    }
+    if (res.status !== 404 || attempt === 3) {
+      throw new Error(`Create chat session failed: ${res.status}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error("Create chat session failed after retries");
+}
+
 test.describe("C3A Chat Session", () => {
   test("authenticated user can create chat session for own trip", async ({
     page,
@@ -140,12 +161,7 @@ test.describe("C3A Chat Session", () => {
 
     // Create multiple chat sessions via API
     for (let i = 0; i < 3; i++) {
-      await fetch(`${API_URL}/api/v1/itineraries/${trip.id}/chat-sessions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${tokens.accessToken}`,
-        },
-      });
+      await createChatSessionViaAPI(tokens.accessToken, trip.id);
     }
 
     // Navigate to trip workspace
@@ -183,23 +199,14 @@ test.describe("C3A Chat Session", () => {
     expect(res.status()).toBe(401);
   });
 
-  test("cross-user chat session access is blocked", async ({ page, context }) => {
+  test("cross-user chat session access is blocked", async ({ page }) => {
     // Create User A and their trip + session
     const emailA = `e2e_chat_user_a_${Date.now()}@test.com`;
     const tokensA = await apiRegister(emailA, "password123", "User A");
     const tripA = await createTripViaAPI(tokensA.accessToken);
 
     // Create a chat session for User A's trip
-    const sessionRes = await fetch(
-      `${API_URL}/api/v1/itineraries/${tripA.id}/chat-sessions`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${tokensA.accessToken}`,
-        },
-      },
-    );
-    const sessionA = (await sessionRes.json()) as { id: number };
+    const sessionA = await createChatSessionViaAPI(tokensA.accessToken, tripA.id);
 
     // Create User B
     const emailB = `e2e_chat_user_b_${Date.now()}@test.com`;
@@ -218,6 +225,9 @@ test.describe("C3A Chat Session", () => {
 
     // Should show error state (403 Forbidden)
     await expect(page.getByText(/Không thể tải AI Chat/i)).toBeVisible();
+    await expect(
+      page.getByText(/Bạn không có quyền dùng phiên chat này/i),
+    ).toBeVisible();
 
     // Should NOT show User A's session
     await expect(page.getByText(/Session #/i)).not.toBeVisible();

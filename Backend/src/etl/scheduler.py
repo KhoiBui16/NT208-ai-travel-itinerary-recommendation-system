@@ -78,23 +78,31 @@ async def run_scheduler(
 
     if run_immediately:
         cycle += 1
-        logger.info("etl_scheduler_cycle_started", cycle=cycle, immediate=True)
+        logger.info(
+            "etl_scheduler_cycle_started cycle=%s immediate=%s",
+            cycle,
+            True,
+        )
         try:
             await run_etl(cities=cities, dry_run=dry_run, hotels_only=hotels_only)
-            logger.info("etl_scheduler_cycle_completed", cycle=cycle)
+            logger.info("etl_scheduler_cycle_completed cycle=%s", cycle)
         except Exception:
-            logger.exception("etl_scheduler_cycle_failed", cycle=cycle)
+            logger.exception("etl_scheduler_cycle_failed cycle=%s", cycle)
 
     while True:
-        logger.info("etl_scheduler_sleeping", interval_seconds=interval)
+        logger.info("etl_scheduler_sleeping interval_seconds=%s", interval)
         await asyncio.sleep(interval)
         cycle += 1
-        logger.info("etl_scheduler_cycle_started", cycle=cycle, immediate=False)
+        logger.info(
+            "etl_scheduler_cycle_started cycle=%s immediate=%s",
+            cycle,
+            False,
+        )
         try:
             await run_etl(cities=cities, dry_run=dry_run, hotels_only=hotels_only)
-            logger.info("etl_scheduler_cycle_completed", cycle=cycle)
+            logger.info("etl_scheduler_cycle_completed cycle=%s", cycle)
         except Exception:
-            logger.exception("etl_scheduler_cycle_failed", cycle=cycle)
+            logger.exception("etl_scheduler_cycle_failed cycle=%s", cycle)
 
 
 def main() -> None:

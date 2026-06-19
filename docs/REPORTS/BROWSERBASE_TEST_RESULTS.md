@@ -6,6 +6,14 @@
 **Support Verification:** Playwright targeted regressions + API/DB/Redis spot checks
 
 > **2026-06-13 addendum:** Nhánh `00098` không cần rerun Browserbase riêng vì các flow browser nền đã xanh từ pass này. Follow-up hardening được verify thêm bằng live local browser smoke + full Playwright regression và được tổng hợp tại `BROWSER_TEST_STATUS.md` và `00098_pre_c3b_hardening_and_pr_readiness.md`.
+>
+> **2026-06-19 addendum:** File này hiện là baseline lịch sử của giai đoạn `C3A`/pre-`C3B`. Current source trên nhánh `00100` đã vượt baseline này với các evidence mới:
+> - full Playwright suite `33 passed`, `3 skipped` trên `36` tests / `17` spec files
+> - real AI generate PASS
+> - real companion chat send/history PASS
+> - ETL scheduler once PASS, `Buôn Ma Thuột` đã có `69` places
+>
+> Current truth nên đọc cùng `docs/REPORTS/BROWSER_TEST_STATUS.md`, `docs/09_execution_tracker.md`, và `README.md`.
 
 ---
 

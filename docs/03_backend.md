@@ -665,9 +665,9 @@ EmailService
 
 ## 11. Backend còn thiếu
 
-- `C3A — Chat Session Foundation`: session create/list/get owner-only, trip-scoped, không gọi AI thật.
-- `C3B — Companion Chat API`: message send, provider abstraction, quota chat riêng, patch-confirm contract.
-- `C4 — Chat History`: persisted message/session history sau khi `C3A/C3B` đã có foundation.
+- `C3B` current source đã có message send, provider abstraction, chat quota riêng, và persisted history read-path.
+- `C3C` còn thiếu `apply-patch` confirm endpoint, proposed-operations enrichment, và UX hardening sâu hơn.
+- `C4` còn thiếu history-management UX, lifecycle policy rõ hơn cho session/message, và follow-up browser flows đa tab/dài phiên.
 - Analytics optional EP-34 với SQL guardrails (C.5, optional).
 
-> **Current gate:** sau `00060B` / `00060C`, repo chỉ sẵn sàng để bắt đầu `C3A`. Không nên nhảy thẳng vào `C3B` hoặc `C4`.
+> **Current gate:** repo đã qua local verification cho `C3B` message flow trên nhánh `00100`; phần còn lại trước khi xem companion hoàn chỉnh là `apply-patch`, doc/PR sync, và scheduler/service wiring.

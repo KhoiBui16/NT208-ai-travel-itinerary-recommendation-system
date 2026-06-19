@@ -14,9 +14,9 @@ FastAPI backend for the NT208 AI travel itinerary recommendation system.
 | AI C.1 | Implemented: `POST /api/v1/itineraries/generate` builds DB recommendation context, calls Gemini, validates, retries, persists generated trip data, and enforces user/guest quota |
 | AI C.2 | Implemented: `GET /api/v1/agent/suggest/{activity_id}` DB-only suggestion service |
 | AI C.3A | Implemented: Chat session REST APIs (EP-37/38/39), FE ChatPanel component, e2e tests |
-| AI C.3B | Implemented on local branch `00099`: trip-bound `POST/GET /itineraries/chat-sessions/{sessionId}/messages`, `companion_service.py`, real Gemini call, persisted `chat_messages`, and auth-user chat quota riêng |
+| AI C.3B | Current source has trip-bound `POST/GET /itineraries/chat-sessions/{sessionId}/messages`, `companion_service.py`, real Gemini call, persisted `chat_messages`, and auth-user chat quota riêng |
 | Remaining AI | C.3C apply-patch confirm + richer proposedOperations, C.5 analytics |
-| Verified 2026-06-14 | Ruff check pass, Alembic upgrade/check pass, targeted unit `27 passed`, targeted integration `5 passed / 14 skipped`, FE build pass, Playwright chat specs `6/6` pass, browse smoke persisted 2 companion messages on real DB/Redis stack |
+| Verified 2026-06-19 | Ruff check pass, Alembic upgrade/check pass, backend full suite `199 passed, 30 skipped, 1 warning`, real generate/chat smoke pass on project DB/Redis stack, ETL scheduler once smoke pass |
 
 ## Architecture
 
@@ -197,8 +197,8 @@ Expected post-00062 local result on 2026-06-09:
 | Ruff check | Pass |
 | Ruff format check | Pass |
 | Alembic upgrade/check | Pass |
-| Unit tests | 148 passed |
-| Integration tests | 67 collected |
+| Backend full suite | `199 passed, 30 skipped, 1 warning` |
+| Real AI smoke | Generate + companion chat pass on project DB/Redis stack |
 
 ## Debug Notes
 
