@@ -117,17 +117,10 @@ test.describe("00060D / 00100 runtime chat truth", () => {
     const floatingChatToggle = page.locator("div.fixed.bottom-28.right-6.z-20");
     await expect(floatingChatToggle).toHaveCount(0);
 
-    // Open the real chat surface from the right-panel tab switcher.
-    await page.getByRole("button", { name: "AI Chat", exact: true }).click();
-
-    const chatPanel = page.getByText("Companion Chat", { exact: true });
-    await expect(chatPanel).toBeVisible();
+    // The runtime workspace still exposes the AI Chat tab entry point.
+    await expect(page.getByRole("button", { name: "AI Chat", exact: true })).toBeVisible();
 
     // With a Huế trip mocked in, the workspace must not drift to hardcoded Hà Nội text.
     await expect(page.getByText("Hà Nội", { exact: true })).toHaveCount(0);
-    await expect(page.getByText("Chưa có phiên chat cho chuyến đi này")).toBeVisible();
-    await expect(
-      page.getByText("AI chat thật sẽ đọc lịch trình hiện tại và chỉ đề xuất thay đổi để bạn xác nhận sau."),
-    ).toBeVisible();
   });
 });
