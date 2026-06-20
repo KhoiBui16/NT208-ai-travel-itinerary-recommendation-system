@@ -72,7 +72,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 | **AI C.1** | Sinh lịch trình tự động bằng Gemini AI | ✅ Done |
 | **AI C.2** | Gợi ý địa điểm thay thế (DB-only, không LLM) | ✅ Done |
 | **AI C.3A** | Chat session foundation owner-only, trip-scoped | ✅ Done |
-| **AI C.3B** | Companion chat message flow, real provider call, quota riêng | ✅ Partial |
+| **AI C.3B** | Companion chat message flow, real provider call, quota riêng | ✅ Review-ready |
 | **AI C.4** | Lịch sử chat persisted + reload theo session | ✅ Partial |
 | **AI C.5** | Analytics Text-to-SQL (optional) | 🔄 Optional |
 | **ETL** | Goong-first ETL nạp dữ liệu địa điểm | ✅ Done |
@@ -85,21 +85,21 @@ Current truth trên local branch `feat/00100-c-c3b-chat-hardening`:
 
 | Hạng mục | Trạng thái |
 |---|---|
-| Readiness tổng thể sau hardening `00100` | `C3B_MESSAGE_FLOW_READY_APPLY_PATCH_PENDING` |
+| Readiness tổng thể sau hardening `00100` | `C3B_RUNTIME_READY_C3C_PATCH_PENDING` |
 | `C3A — Chat Session Foundation` | Đã merge (`PR #98-100`) |
 | `C3B — Companion Chat API` | Đã có message send thật, real AI call, owner-check, chat quota riêng, persisted `chat_messages` |
 | `C4 — Chat History` | Đã có persisted history read-path qua `GET /itineraries/chat-sessions/{sessionId}/messages`; phần quản lý history nâng cao vẫn pending |
-| `FloatingAIChat.tsx` hiện tại | Vẫn là mock promo UI, chưa phải companion chat thật |
+| `FloatingAIChat.tsx` hiện tại | Component legacy/mock còn nằm trên source nhưng đã không còn được mount ở `TripWorkspace` và `DailyItinerary` |
 | `ChatPanel` trong `TripWorkspace` | Đã create/load session, load history, send message thật, render `requiresConfirmation` + `proposedOperations` |
 | `chat_sessions` / `chat_messages` | Đã có schema/migration và đang được persist thật ở runtime |
 | Chat session/message API | Đã có session CRUD + `POST/GET /itineraries/chat-sessions/{sessionId}/messages` |
 | Real AI call trong chat | Đã có qua `Backend/src/itineraries/companion_service.py` |
 | Chat quota tách khỏi generate quota | Đã có `rate:ai:chat:user:{user_id}:{YYYYMMDD}` |
-| Apply-patch confirm vào itinerary | Chưa có; vẫn là pending lớn nhất sau C3B |
+| Apply-patch confirm vào itinerary | Chưa có; đây là follow-up chính của `C3C` |
 | Guest AI workspace trong cùng browser session | Đã ổn định bằng `sessionStorage.currentTrip` + `pendingClaim`; guest xem được trip vừa generate nhưng chưa chat trước khi claim |
 | Generated activity images sau reload | Đã ưu tiên `Place.image` khi `place_id` hợp lệ, FE có fallback khi image rỗng/hỏng |
 | Gemini SDK backend | Đã migrate sang `google-genai`; timeout vẫn trả `503 AI_PROVIDER_TIMEOUT` |
-| ETL scheduler local smoke | Đã có `Backend/src/etl/scheduler.py`; local smoke `--once` đã nạp lại `Buôn Ma Thuột` từ `0` lên `69` places |
+| ETL scheduler local smoke | Đã có `Backend/src/etl/scheduler.py`; local/manual smoke `--once` pass nhưng chưa wire vào compose/CI schedule |
 
 **Ý nghĩa thực tế:**
 
@@ -108,7 +108,8 @@ Current truth trên local branch `feat/00100-c-c3b-chat-hardening`:
   `requiresConfirmation` / `proposedOperations`, chat quota riêng, và FE error UX riêng cho chat.
 - `C4` không còn là “chưa bắt đầu”: persisted message history và reload session đã có,
   nhưng delete/history-management UX và các policy bổ sung vẫn còn phía sau.
-- `FloatingAIChat` vẫn chỉ là lớp promo/mock; luồng chat thật hiện nằm ở `ChatPanel`.
+- Các mock AI surface chủ động trong runtime đã được gỡ khỏi `TripWorkspace` và `DailyItinerary`;
+  luồng chat thật hiện nằm ở `ChatPanel`.
 - Browser `429` submit-path của generate đã có regression test; chat quota riêng cho auth user đã được verify trên current source.
 - Guest chưa đăng nhập vẫn có thể generate và xem trip vừa tạo trong chính browser session hiện tại; đăng nhập mới cần để nhận ownership dài hạn, share, và edit/save server-side đầy đủ.
 - Generate hiện vẫn là sync HTTP flow; tăng timeout chỉ giúp local/staging dễ smoke hơn, còn "eventually complete" cần background job/polling ở phase tương lai.
@@ -502,7 +503,7 @@ graph TD
 - `AuthProvider` chịu trách nhiệm giữ JWT state, load profile, và chạy `executePendingClaim()` sau login/register.
 - Các page chính đi qua hook layer (`useTripSync`, `useActivityManager`, `useAccommodation`, `usePlacesManager`) thay vì gọi API trực tiếp trong JSX.
 - `services/api.ts` là lớp bọc chung cho Bearer injection, auto-refresh 401, và parse metadata như `Retry-After` / `X-RateLimit-*`.
-- `FloatingAIChat` hiện vẫn chỉ là mock UI; điểm đúng quan trọng là context đã derive từ trip hiện tại thay vì hardcoded `Hà Nội`.
+- `FloatingAIChat` là legacy mock UI còn nằm trên source; điểm đúng hiện tại là context đã derive từ trip hiện tại thay vì hardcoded `Hà Nội`, và component này không còn được mount trên runtime chính.
 
 ### 4.4 Optimistic Update Pattern (FE)
 
@@ -1239,7 +1240,7 @@ Guest đăng nhập / đăng ký:
 
 ## 8. AI Pipeline Flow
 
-> Toàn bộ AI trong hệ thống đi qua 2 luồng chính: **C.1 Generate** (sinh lịch trình từ đầu bằng Gemini) và **C.2 Suggest** (gợi ý thay thế từ DB, không LLM). C.3 Companion Chat chưa implement.
+> Toàn bộ AI trong hệ thống hiện đi qua 3 luồng chính: **C.1 Generate** (sinh lịch trình từ đầu bằng Gemini), **C.2 Suggest** (gợi ý thay thế từ DB, không LLM), và **C.3B Companion Chat message flow** (trip-bound, owner-only, persisted history). `C3C` apply-patch confirm vẫn chưa implement.
 
 ### 8.1 C.1 — Generate Itinerary (Mermaid)
 
@@ -1486,7 +1487,7 @@ KEY:
 
 > Note: Detailed C.1/C.2 flow is already documented in sections **8.3** và **8.4** ở trên. Phần dưới đây chỉ tập trung vào future boundary của companion chat sau khi `C3A` hoàn tất.
 
-> Runtime note (`00060D-FIX`): `TripWorkspace` hiện đã derive `selectedCities` từ current trip/days nên floating chat không còn hardcoded `Hà Nội` trên trip `Huế`. Sau `C3A`, chat thật đang đi qua `ChatPanel`; `FloatingAIChat` vẫn chỉ là mock/promo UI.
+> Runtime note (`00060D-FIX` + `00100`): `TripWorkspace` hiện đã derive `selectedCities` từ current trip/days nên floating chat không còn hardcoded `Hà Nội` trên trip `Huế`. Sau `C3A/C3B`, chat thật đang đi qua `ChatPanel`; `FloatingAIChat` chỉ còn là legacy mock/promo component trên source và không còn mount ở route runtime chính.
 
 ### 8.6 C.3B/C.3C — Current Companion Chat Contract + Patch-Confirm Pending
 
@@ -1978,7 +1979,7 @@ npm run dev -- --host localhost --port 5173
 **Lưu ý dữ liệu thật vs fallback:**
 - Places/hotels trong PostgreSQL là **nguồn thật** sau ETL Goong.
 - Goong Place Detail **không trả URL ảnh** — `places.image` có thể rỗng; FE dùng fallback có nhãn, không phải ảnh từ Goong.
-- Map tile Goong (`VITE_GOONG_MAP_KEY`) và companion chat C3 **chưa** implement.
+- Map tile Goong (`VITE_GOONG_MAP_KEY`) vẫn chưa được dùng ở FE runtime; companion chat thật hiện đi qua `ChatPanel`, còn `C3C` apply-patch confirm vẫn pending.
 
 #### Kiểm tra DB nhanh (sau ETL)
 
@@ -2005,7 +2006,7 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 
 ## 13. Tests & Verification
 
-### 12.1 Latest live UAT snapshot after C3A
+### 12.1 Latest live UAT snapshot after C3B hardening
 
 - `00060D-R` real Gemini smoke: **PASS** (`201`, auth user, workspace render)
 - `00060D-R` trip edit persistence re-check: **PASS**
@@ -2018,6 +2019,9 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 - `00060H` guest generate → same-browser `TripWorkspace` continuity via `currentTrip` / `pendingClaim`: **PASS**
 - `00060H` generated activity image persistence + UI fallback after reload: **PASS**
 - Current full Playwright suite on `00100`: **PASS** (`33 passed`, `3 skipped`)
+- `2026-06-20` live Chrome smoke: **PASS** cho `/`, `/cities/ha-noi`, `/cities/chau-doc`, `/trip-workspace?tripId=712`
+- `2026-06-20` real chat persistence: **PASS** (`chat_sessions.id=206`, `chat_messages` persisted `4` rows)
+- `2026-06-20` bounded ETL re-check for `Châu Đốc`: **PASS_WITH_DATA_GAP** (run thật xong nhưng `places_count` vẫn `0`)
 
 ### Backend Tests
 
@@ -2276,10 +2280,10 @@ NT208-ai-travel-itinerary-recommendation-system/
 
 | Thành viên | MSSV | Vai trò | Đóng góp |
 |---|---|---|---|
-| Bùi Nhật Anh Khôi | — | Leader, Backend, AI | 20% |
-| Dương Đăng Chính | — | Frontend | 20% |
-| Lê Văn Chí | — | Backend | 20% |
-| Nguyễn Hữu Chiến | — | Backend | 20% |
+| Bùi Nhật Anh Khôi | — | Leader, Backend, AI | 25% |
+| Dương Đăng Chính | — | Frontend | 25% |
+| Lê Văn Chí | — | Backend | 25% |
+| Nguyễn Hữu Chiến | — | Backend | 25% |
 
 ## 17. Video / Demo / Public Links
 

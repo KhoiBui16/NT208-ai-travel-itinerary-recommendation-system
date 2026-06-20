@@ -14,6 +14,12 @@
 > - ETL scheduler once PASS, `Buôn Ma Thuột` đã có `69` places
 >
 > Current truth nên đọc cùng `docs/REPORTS/BROWSER_TEST_STATUS.md`, `docs/09_execution_tracker.md`, và `README.md`.
+>
+> **2026-06-20 addendum:** current runtime tiếp tục được verify thêm bằng local Chrome smoke trên stack thật:
+> - `TripWorkspace` và `DailyItinerary` không còn mount `FloatingAIChat` / promo mock surfaces
+> - `/cities/ha-noi` và `/cities/chau-doc` render đúng rich/sparse truth từ backend
+> - `chat_sessions.id=206` persisted cùng `4` `chat_messages`
+> - live provider prompt chỉnh itinerary vẫn trả clarification-first (`requiresConfirmation=false`), nên proposal-confirm path chưa có evidence end-to-end
 
 ---
 

@@ -18,10 +18,11 @@ File này mô tả **kiến trúc AI dài hạn cho Phase C** — generate pipel
 - `POST /api/v1/itineraries/generate` đã chạy **C.1 direct pipeline**: build recommendation context từ DB, gọi Gemini JSON, validate, persist trip/day/activity/accommodation.
 - `GET /api/v1/agent/suggest/{activity_id}` (EP-30) đã implement **C.2 SuggestionService** DB-only — merged PR #49. Xem `docs/REPORTS/phase_c2_suggestion_service.md`.
 - Destination slug matching đã được cải thiện: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" (không dấu) → slug "ha-noi" → match DB.
-- Chat/companion UI ở FE đang ở trạng thái lai: `ChatPanel` đã nối C3A session APIs thật trong `TripWorkspace`, còn `FloatingAIChat` và các panel companion khác vẫn là mock/demo.
+- Chat/companion UI ở FE hiện dùng `ChatPanel` làm runtime surface thật trong `TripWorkspace`; `FloatingAIChat` và các panel companion cũ vẫn còn trên source như legacy demo components nhưng không còn được mount trên route runtime chính.
 - DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn) và C3A đã có session CRUD foundation.
-- Đã có session CRUD API owner-only cho `chat_sessions`; chưa có message send/history API, chưa có `companion_service.py`, analytics chưa bật.
-- Sau `PR #98-100`, `C3A` đã merge; `C3B` là next gate, còn `C4` vẫn chưa nên direct start.
+- Đã có owner-only session CRUD API, message send/history API, `companion_service.py`, và chat quota riêng cho auth user.
+- Live smoke 2026-06-20 xác nhận message flow/persistence là thật; provider ở các prompt thử nghiệm gần nhất vẫn trả lời theo hướng clarification-first, nên `requiresConfirmation/proposedOperations` chưa được chứng minh end-to-end bằng live mutation path.
+- Sau `PR #98-100`, `C3A` đã merge; current local branch `00100` đang chốt `C3B` message-flow runtime truth, còn `C3C` apply-patch và `C4` history-management UX vẫn là follow-up.
 - C.1 không phải multi-agent; provider/tool-calling để dành cho giai đoạn sau `C3A`.
 
 ---
@@ -147,7 +148,7 @@ Ngày 2026-05-25:
 
 ## 3. Companion Chat — Patch-Confirm Flow
 
-> **Lưu ý:** Phần này là future target architecture cho `C3B/C3C`, không phải current API surface. `C3A` chỉ dựng session foundation owner-only, trip-scoped; không gọi Gemini thật, không gửi message thật, và không apply-patch.
+> **Lưu ý:** Phần dưới đây mô tả target architecture cho `C3C`/apply-patch và phần companion editing đầy đủ. Current source `00100` đã có owner-only session + message APIs, real Gemini call, persisted history read-path, và chat quota riêng; phần còn thiếu là confirm-mutation path vào itinerary.
 
 ### 3.1 Kiến trúc tổng thể
 
@@ -155,8 +156,8 @@ Ngày 2026-05-25:
 ┌─────────────────────────────────────────────────────────────┐
 │              COMPANION CHAT FLOW                              │
 │                                                              │
-│  FE (FloatingAIChat.tsx)                                     │
-│  → POST /api/v1/agent/chat { message, tripId }              │
+│  FE (ChatPanel + future confirm UI)                          │
+│  → POST /api/v1/itineraries/chat-sessions/{sessionId}/messages │
 │                                                              │
 │  ┌─ CompanionService.chat() ──────────────────────────────┐ │
 │  │  1. Classify intent                                     │ │
@@ -197,7 +198,7 @@ Ngày 2026-05-25:
 │  FE hiển thị proposed changes + confirm button               │
 │                                                              │
 │  → User confirm                                              │
-│  → POST /api/v1/agent/apply-patch                            │
+│  → POST /api/v1/itineraries/{tripId}/apply-patch             │
 │    { operations: proposedOperations }                         │
 │                                                              │
 │  ┌─ CompanionService.apply_patch() ───────────────────────┐ │

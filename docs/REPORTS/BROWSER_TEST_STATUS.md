@@ -1,6 +1,6 @@
-# Browser Test Status - 2026-06-19
+# Browser Test Status - 2026-06-20
 
-**Last Updated:** 2026-06-19
+**Last Updated:** 2026-06-20
 **Plan Source:** `docs/BROWSER_TEST_PLAN.md`  
 **Primary Browser Tool:** Browserbase `browse` CLI `0.8.3`  
 **Support Regression:** `npx playwright test --reporter=list` + live local browser smoke
@@ -9,7 +9,34 @@
 
 ## One-Line Summary
 
-🟢 **C3B MESSAGE FLOW IS LIVE ON CURRENT SOURCE, BUT APPLY-PATCH IS STILL PENDING** - browser baseline vẫn xanh, `CityDetail` vẫn API-first, `ChatPanel` đã gửi/đọc message thật, và current local stack đã verify FE -> BE -> DB -> Redis cho cả generate lẫn companion chat.
+🟢 **C3B MESSAGE FLOW ĐÃ XANH TRÊN RUNTIME THẬT; C3C APPLY-PATCH VÀ DATA ENRICHMENT VẪN LÀ FOLLOW-UP** - `ChatPanel` đã gửi/đọc message thật, các mock AI surface chủ động đã bị gỡ khỏi runtime chính, còn city sparse/confirm-mutation path vẫn cần chốt tiếp.
+
+---
+
+## 2026-06-20 runtime follow-up
+
+### Local browser method actually used
+
+- `agent-browser` CLI từ bộ Vercel skill không có sẵn trong PATH local.
+- Default local `npx playwright test` không được rerun ở pass này vì máy thiếu bundled `chrome-headless-shell`.
+- Browser smoke current pass được thực hiện bằng local Chrome thật + Playwright script tự điều phối Vite/BE đang chạy.
+
+### Routes and flows re-verified
+
+| Flow | URL / scope | Status | Notes |
+|---|---|---|---|
+| Home page | `/` | ✅ PASS | FE render thật từ Vite |
+| Rich city detail | `/cities/ha-noi` | ✅ PASS | API places + hotels render đúng |
+| Sparse city detail | `/cities/chau-doc` | ✅ PASS | Không 404; truth là `0` places + `1` hotel |
+| Owner workspace chat open | `/trip-workspace?tripId=712` | ✅ PASS | Không còn floating mock overlay; `ChatPanel` là surface chat thật |
+| Chat persistence after reload | session `206` | ✅ PASS | Reload xong vẫn fetch lại `4` messages thật |
+| Proposal-oriented live chat prompt | trip `737`, session `226` | ⚠️ PARTIAL | Provider trả clarification-first, `requiresConfirmation=false`, `proposedOperations=[]` |
+
+### What this means
+
+- Message flow và persistence là **real** trên stack FE -> BE -> Postgres -> Redis.
+- UI render path cho `requiresConfirmation/proposedOperations` vẫn tồn tại trong source/test, nhưng live provider smoke ngày `2026-06-20` chưa tạo được một proposal-confirm response để chứng minh end-to-end mutation path.
+- Điều này khớp với current follow-up scope: `apply-patch` và companion editing hoàn chỉnh vẫn chưa xong.
 
 ## 2026-06-19 addendum
 
@@ -125,6 +152,17 @@ Additional 00098 local smoke evidence:
 - `.codex-run-logs/00098-trip-library.png`
 - `.codex-run-logs/00098-itinerary-521.png`
 - `.codex-run-logs/playwright-00098.json`
+
+Additional 00100 local Chrome smoke evidence (local-only, not committed):
+
+- `.codex-run-logs/00100-home-after-fix.png`
+- `.codex-run-logs/00100-city-ha-noi-after-fix.png`
+- `.codex-run-logs/00100-city-chau-doc-after-fix.png`
+- `.codex-run-logs/00100-workspace-before-chat.png`
+- `.codex-run-logs/00100-workspace-chat-initial.png`
+- `.codex-run-logs/00100-workspace-chat-after-summary.png`
+- `.codex-run-logs/00100-workspace-chat-after-proposal.png`
+- `.codex-run-logs/00100-workspace-chat-after-reload.png`
 
 ---
 

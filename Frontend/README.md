@@ -14,8 +14,8 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 | AI C.2 | Suggestion backend ready (`GET /api/v1/agent/suggest/{activity_id}`), nhưng FE suggestion surfaces vẫn dùng mock data |
 | AI C.3A | `ChatPanel` integrated into `TripWorkspace` with chat session REST APIs |
 | AI C.3B | `ChatPanel` now loads history thật, gửi message thật, render `requiresConfirmation` + `proposedOperations`, và dùng chat-specific error handling |
-| Remaining AI UI | `FloatingAIChat`, promo bubble, contextual panels, and apply-patch confirmation UX are still mock/placeholder |
-| Verified 2026-06-19 | Production build pass; full Playwright suite `33 passed, 3 skipped`; live smoke verified real ChatPanel message send/history persistence against backend on `localhost:8000` |
+| Remaining AI UI | `FloatingAIChat`, promo bubble, and contextual panels vẫn còn trên source như legacy demo components nhưng đã không còn mount trên runtime chính; apply-patch confirmation UX vẫn pending |
+| Verified 2026-06-20 | Production build pass qua `npm run build -- --outDir .build-tmp\\verify`; live Chrome smoke verified real ChatPanel session/history persistence against backend on `localhost:8000`; latest recorded full Playwright suite vẫn là `33 passed, 3 skipped` |
 
 ## Local Start
 
@@ -138,8 +138,9 @@ Post-verify note from 2026-06-19:
 - FE error handling improved: toast notifications now show specific error messages instead of generic "Không thể tạo lịch trình" for rate limits, validation errors, and AI timeouts.
 - Destination slugify fuzzy matching (PR #92): Backend now properly matches "Ha Noi" → "ha-noi" → DB, improving destination resolution for users typing city names without accents.
 - C3A chat session foundation (PR #98-100): ChatPanel component integrated into TripWorkspace, chat session REST APIs (EP-37/38/39), e2e tests for chat session CRUD.
-- C3B message flow (current source): `ChatPanel` creates/loads session thật, fetches persisted history, sends companion messages through BE, and renders assistant `proposedOperations` contract.
-- The exact default `npm run build` failed locally because an ignored `Frontend/dist/assets` directory had Windows `EPERM` permission locks. This is local artifact state, not a TypeScript/Vite compile error, and is tracked in `docs/REPORTS/ISSUES/frontend_dist_permission_lock.md`.
+- C3B message flow (current source): `ChatPanel` creates/loads session thật, fetches persisted history, sends companion messages through BE, and can render the assistant `proposedOperations` contract when the provider returns it.
+- Active runtime drift đã được dọn ở `00100`: `TripWorkspace` và `DailyItinerary` không còn mount `FloatingAIChat` / promo mock surfaces.
+- Local note: latest verified build used `--outDir .build-tmp\\verify`. Nếu chạy default `npm run build` và `dist` bị process khác khóa trên Windows thì có thể vẫn gặp `EPERM`; đây là local artifact state, không phải compile failure của source.
 
 ## Browser Debug Checklist
 

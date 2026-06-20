@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
-import { FloatingAIChat } from "../components/FloatingAIChat";
 import { SavedSuggestions, SavedSuggestion } from "../components/SavedSuggestions";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { PlaceSelectionModal } from "../components/PlaceSelectionModal";
@@ -46,7 +45,6 @@ import { BudgetDetailModal } from "../components/BudgetDetailModal";
 import { AddDaysModal } from "../components/AddDaysModal";
 import { AddPlaceModal } from "../components/AddPlaceModal";
 import { useTripCost } from "../hooks/useTripCost";
-import { AIPromoBubble } from "../components/AIPromoBubble";
 import { TopActionBar } from "../components/TopActionBar";
 import { useActivityManager } from "../hooks/trips/useActivityManager";
 import { useAccommodation } from "../hooks/trips/useAccommodation";
@@ -89,11 +87,6 @@ export default function TripWorkspace() {
   const [showPlaceSelectionModal, setShowPlaceSelectionModal] = useState(false);
   const [selectedDayForPlaces, setSelectedDayForPlaces] = useState<number | null>(null);
   
-  // AI bubble speech states
-  const [showAIBubbleSpeech, setShowAIBubbleSpeech] = useState(false);
-  const [hasClosedBubbleSpeech, setHasClosedBubbleSpeech] = useState(false);
-  const [hasOpenedChat, setHasOpenedChat] = useState(false);
-
   // Add to itinerary modal (from place panel)
   const [addPlaceModal, setAddPlaceModal] = useState<{ place: Place } | null>(null);
 
@@ -111,20 +104,6 @@ export default function TripWorkspace() {
   // ── 2-Step "Add Days" Flow States ────────────────────────────────────────
   const [showAddDaysModal, setShowAddDaysModal] = useState(false);
   const selectedDay = days.find((d) => d.id === selectedDayId)!;
-  const chatSelectedCities = useMemo(() => {
-    const fromDays = days
-      .map((day) => day.destinationName?.trim())
-      .filter((name): name is string => Boolean(name));
-
-    const uniqueCities = Array.from(new Set(fromDays));
-    if (uniqueCities.length > 0) return uniqueCities;
-
-    const selectedDayDestination = selectedDay?.destinationName?.trim();
-    if (selectedDayDestination) return [selectedDayDestination];
-
-    return [];
-  }, [days, selectedDay?.destinationName]);
-  
   const {
     accommodations, setAccommodations, showHotelSelection, setShowHotelSelection,
     selectedHotel, setSelectedHotel, showDaySelection, setShowDaySelection,
@@ -500,25 +479,6 @@ export default function TripWorkspace() {
         onClose={() => setShowEditTravelersModal(false)}
         travelers={travelers}
         setTravelers={setTravelers}
-      />
-
-      {/* AI Bubble Speech */}
-      <AIPromoBubble
-      show={showAIBubbleSpeech}
-      onClose={() => {
-        setShowAIBubbleSpeech(false);
-        setHasClosedBubbleSpeech(true);
-        sessionStorage.setItem('hasClosedAIBubbleSpeech', 'true');
-        }}
-      />
-      
-      <FloatingAIChat 
-        selectedCities={chatSelectedCities}
-        onOpen={() => {
-          setHasOpenedChat(true);
-          sessionStorage.setItem('hasOpenedAIChat', 'true');
-          setShowAIBubbleSpeech(false);
-        }}
       />
 
       <LoginRequiredModal

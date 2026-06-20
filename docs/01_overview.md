@@ -63,11 +63,11 @@ MVP1
 
 | Hạng mục | Current truth |
 |---|---|
-| Overall readiness | `C3B_MESSAGE_FLOW_READY_APPLY_PATCH_PENDING` |
+| Overall readiness | `C3B_RUNTIME_READY_C3C_PATCH_PENDING` |
 | `C3A — Chat Session Foundation` | Đã merge (`PR #98-100`) |
 | `C3B` | Đã có message flow, owner-check, real AI call, chat quota riêng, persisted `chat_messages` |
 | `C4` | Đã có persisted history read-path; history-management UX vẫn pending |
-| `FloatingAIChat.tsx` | Vẫn là mock local-state / promo UI |
+| `FloatingAIChat.tsx` | Legacy mock component còn nằm trên source nhưng không còn mount ở các route runtime chính |
 | `ChatPanel` | Đã gắn vào `TripWorkspace`, owner-only, trip-scoped, load history thật, send message thật |
 | `chat_sessions` / `chat_messages` | Đã có trong source/migration và session foundation |
 | Chat REST API | Đã có session CRUD + `POST/GET /itineraries/chat-sessions/{sessionId}/messages` |
@@ -146,7 +146,7 @@ MVP1
 
 - C.1 đã có direct generate pipeline local-ready, nhưng cần PR/CI review và thêm monitoring trước production.
 - C.2 SuggestionService (EP-30) đã implement và merged trên `feat/00047` → PR #49.
-- Chưa có `apply-patch` confirm endpoint, chưa có history-management UX đầy đủ, và `FloatingAIChat` vẫn là promo/mock UI.
+- Chưa có `apply-patch` confirm endpoint, chưa có history-management UX đầy đủ, và data readiness cho các city thưa dữ liệu vẫn còn không đồng đều.
 - Analytics EP-34 chưa bật và chưa có SQL guardrails.
 
 ### ETL/Data
@@ -197,4 +197,4 @@ MVP1
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. `C3B` hiện đã có message flow thật trên current source, còn phần cần chốt tiếp trước khi xem phase companion là ổn định gồm `apply-patch`, history-management UX, scheduler wiring, và sync docs/PR/CI đầy đủ.
+Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. `C3B` hiện đã có message flow thật trên current source, các mock AI surface chủ động đã được gỡ khỏi runtime chính, và phần còn lại trước khi xem companion editing là hoàn chỉnh nằm ở `C3C`/follow-up: `apply-patch`, history-management UX sâu hơn, scheduler wiring, và data enrichment cho sparse cities.

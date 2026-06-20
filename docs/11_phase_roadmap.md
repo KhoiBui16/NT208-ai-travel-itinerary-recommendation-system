@@ -18,7 +18,7 @@
 
 **Status:** `todo` | `wip` | `review_ready` | `merged`
 
-> **Current gate on local branch `00100`:** message flow của `C3B` và persisted history read-path của `C4` đã có trên source local; phần còn lại trước khi xem companion hoàn chỉnh là `apply-patch`, chat UX hardening, scheduler wiring, và doc/PR sync.
+> **Current gate on local branch `00100`:** message flow của `C3B` và persisted history read-path của `C4` đã có trên source local; active runtime mock drift đã được gỡ khỏi `TripWorkspace`/`DailyItinerary`. Phần còn lại trước khi xem companion editing là hoàn chỉnh nằm ở `C3C`/follow-up: `apply-patch`, chat UX hardening, scheduler wiring, và data enrichment cho sparse cities.
 
 ---
 
@@ -77,14 +77,14 @@
 - [x] Owner-check và chat quota riêng cho auth user
 - [x] Chat history lưu vào `chat_sessions` / `chat_messages`
 - [x] Unit + integration tests + Playwright + live smoke pass cục bộ
-- [ ] `apply-patch` confirm endpoint + DB update sau confirm
-- [ ] FE `FloatingAIChat` wire hoặc loại bỏ promo/mock drift
+- [x] Active runtime mock drift đã được gỡ; `TripWorkspace` và `DailyItinerary` không còn mount `FloatingAIChat` / promo surfaces
+- [ ] `C3C` follow-up: `apply-patch` confirm endpoint + DB update sau confirm
 
 ### Verification log
 
 | Date | Branch | BE unit | BE int | FE e2e | API/Browser smoke |
 |------|--------|---------|--------|--------|-------------------|
-| 2026-06-19 | `feat/00100-c-c3b-chat-hardening` | `199 passed, 30 skipped, 1 warning` | included above | `33 passed, 3 skipped` | real generate PASS; real chat PASS; ETL scheduler once PASS |
+| 2026-06-20 | `feat/00100-c-c3b-chat-hardening` | `199 passed, 30 skipped, 1 warning` | included above | latest recorded full suite `33 passed, 3 skipped`; 2026-06-20 build pass | real generate PASS; real chat persistence PASS; SQL+Redis cross-check PASS; bounded ETL `Châu Đốc` confirmed remaining data gap |
 
 ### Env checklist (PR review)
 
