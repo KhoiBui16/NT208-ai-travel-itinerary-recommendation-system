@@ -43,6 +43,7 @@ Tracker này thay thế `plan/17_execution_tracker.md` sau khi dọn repo. Mỗi
 | 00096   | C     | `chore/00096-c-c3a-chat-e2e-tests`          | C3A E2E tests for chat session CRUD (5 Playwright test cases)                                           | merged       | 5 e2e tests pass; BE 148 unit + 67 integration pass; FE build pass                                                                                           | #100    |
 | 00097   | D     | `fix/00097-d-post-c3a-docs-sync`             | Post-merge C3A docs sync + browser verification alignment + CityDetail API-first/detail-count fix          | merged       | FE build pass; `00096` Playwright `5 passed`; `00097` Playwright `2 passed`; multi-city browser detail PASS (`Buôn Ma Thuột`, `Cần Thơ`, `Hà Nội`, `Đà Nẵng`, `TP.HCM`); real AI generate PASS with DB+Redis cross-check; active docs + reports synced | #102    |
 | 00098   | D     | `fix/00098-d-code-clarity-hardening`         | Pre-C3B hardening: destination slug truth, CityDetail API-first follow-up, trip duration/status truth, delete-activity contract, docs sync | ready_for_pr | BE targeted tests `36 passed, 1 skipped`; FE build pass; full Playwright `32 passed, 3 skipped`; live browser smoke PASS cho login submit, TripHistory/TripLibrary duration truth, itinerary detail render với activity thật | pending |
+| 00100   | C     | `feat/00100-c-c3b-chat-hardening`            | C3B hardening pass: runtime mock cleanup, fullstack verification refresh, docs/browser sync, README/public submission notes | review_ready | Backend full suite `199 passed, 30 skipped, 1 warning`; FE build pass; latest full Playwright recorded `33 passed, 3 skipped`; real AI generate PASS; real AI chat persistence PASS; SQL + Redis cross-check pass; bounded ETL `Châu Đốc` run proved remaining data gap | pending |
 
 ## Scope Task 00047 (C.2)
 
@@ -235,7 +236,7 @@ Fix 4 critical BE bugs có chung root pattern: SQLAlchemy async session lifecycl
 
 Tất cả trang chính đã nối BE API. Xem chi tiết tại `docs/04_frontend.md`.
 
-Tóm tắt: active backend contract hiện đã mở rộng đến EP-37/38/39 cho C3A chat sessions, BE test inventory là 148 unit + 67 integration, FE Playwright suite là 35 test cases / 16 spec files với latest full run `32 pass / 3 skip`, 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ còn ở các fallback/promo surfaces. 4 critical async session bugs đã fix (PR #24), FE-BE contract gaps fix (PR #27), Register OTP bypass (PR #28), Playwright e2e setup (PR #31), AI C.1 generate (PR #42), AI C.2 suggest EP-30 (PR #49), 00062 fixes merged (PR #86-90), BUG-BE-003 destination slugify fix (PR #92), C3A chat session foundation (PR #98-100), post-C3A docs/browser sync merged (PR #102), và `00098` là checkpoint hardening cuối trước khi tách phase `C3B`.
+Tóm tắt: active backend contract hiện đã mở rộng từ C3A session CRUD sang C3B companion message flow và C4 history read-path; backend local suite gần nhất đạt `199 passed, 30 skipped, 1 warning`, FE Playwright suite là `36` test cases / `17` spec files với latest full run `33 pass / 3 skip`, 8 protected routes, API client layer + optimistic CRUD + revert-on-failure, mock chỉ còn ở các fallback/promo surfaces. Các nhánh nền trước đó đã merge cho generate/suggest/C3A, `00098` khóa pre-C3B hardening, còn `00100` đang chốt evidence thật cho chat + ETL scheduler + docs sync trước PR.
 
 ## Scope Task 00093 (BUG-BE-003 - Destination Slugify Fix)
 
@@ -276,3 +277,79 @@ Thứ tự ưu tiên:
 - Phát hiện security gap: guest rate limit dùng IP+UA fingerprint — đổi UA bypass được limit.
 - Accommodation POST: cần kiểm tra thêm (response trả rỗng trong một số test).
 - Không thay đổi UI/UX, không thay đổi API contract.
+
+## Scope Task 00099 (C3B companion chat message flow)
+
+- Tạo local branch `feat/00099-c-c3b-companion-chat` để nối tiếp sau khi `main` đã nhận các nhánh hardening trước đó.
+- Backend:
+  - thêm `Backend/src/itineraries/companion_service.py` để điều phối provider call, ownership check, `requiresConfirmation`, `proposedOperations`, và persist `chat_messages`
+  - mở `POST/GET /api/v1/itineraries/chat-sessions/{sessionId}/messages`
+  - tách auth-user chat quota riêng `rate:ai:chat:user:{user_id}:{YYYYMMDD}`
+  - giữ invariant: companion chat trip-bound, REST-only, chưa tự apply patch vào itinerary
+- Frontend:
+  - `ChatPanel` load session thật, load history thật, gửi message thật, render assistant contract
+  - thêm `chatErrorHandler.ts` để map lỗi chat theo UX tiếng Việt
+  - cập nhật Playwright C3A spec cũ cho current UI và thêm C3B panel UI spec
+- ETL:
+  - thêm `Backend/src/etl/scheduler.py` làm loop wrapper tối thiểu cho ETL CLI hiện có
+  - local smoke: dry-run scheduler pass và ETL thật đã bù `Hải Phòng`, `Ninh Bình`
+- Local verification 2026-06-14:
+  - `uv run ruff check src tests` → pass
+  - `uv run alembic upgrade head` / `uv run alembic check` → pass
+  - `uv run pytest tests/unit/test_companion_service.py tests/unit/test_chat_session_service.py tests/unit/test_rate_limiter.py tests/unit/test_config.py -q` → `27 passed`
+  - `uv run pytest tests/integration/test_chat_session_api.py tests/integration/test_companion_chat_api.py -q` → `5 passed, 14 skipped`
+  - `npm run build -- --outDir .build-tmp\\c3b-chat-verify` → pass
+  - `npx playwright test tests/e2e/00096-c3a-chat-session.spec.ts tests/e2e/00099-c3b-chat-panel-ui.spec.ts --reporter=list` → `6 passed`
+  - `browse` CLI smoke trên FE `127.0.0.1:5173` + BE `127.0.0.1:8000` + Docker DB/Redis gốc:
+    - open `trip-workspace?tripId=589`
+    - mở panel `AI Chat`
+    - gửi message thật
+    - history API xác nhận `2` messages persisted (`user`, `assistant`)
+- Gap còn lại sau 00099:
+  - chưa có `apply-patch` confirm endpoint
+  - tại thời điểm chốt `00099`, `FloatingAIChat` vẫn còn là promo/mock UI trên runtime
+  - ETL scheduler mới ở mức manual loop, chưa wire hẳn vào Docker/service schedule
+
+## Scope Task 00100 (C3B hardening + ETL scheduler smoke + docs sync)
+
+- Giữ nguyên repo hiện tại, dùng đúng Docker stack `nt208-ai-travel-itinerary-recommendation-system` với DB/Redis thật.
+- Hardening ETL scheduler:
+  - fix logging path trong `Backend/src/etl/scheduler.py` để loop không vỡ vì `Logger._log()` nhận keyword args không hợp lệ
+  - thêm `Backend/tests/unit/test_etl_scheduler.py`
+- Fullstack verification refresh:
+  - backend full suite pass trên project DB/Redis thật
+  - full Playwright suite pass với current source
+  - real Gemini generate PASS
+  - real companion chat PASS với `chat_messages` persist trong DB
+  - ETL scheduler `--once` PASS và đã bù dữ liệu `Buôn Ma Thuột`
+- Docs/README sync:
+  - cập nhật current truth cho `README.md`, `Backend/README.md`, `Frontend/README.md`
+  - cập nhật `docs/01`, `03`, `08`, `11`, browser plan/status/results
+  - thêm contribution `25%` mỗi thành viên, public-link placeholders, và câu thần chú cuối `README.md`
+- Local verification 2026-06-19:
+  - `uv run ruff check src tests` → pass
+  - `uv run alembic upgrade head` / `uv run alembic check` → pass
+  - `uv run pytest tests/unit tests/integration -v --tb=short` → `199 passed, 30 skipped, 1 warning`
+  - `npm run build -- --outDir .build-tmp\\verify` → pass
+  - `npx playwright test tests/e2e --reporter=list` → `33 passed, 3 skipped`
+  - real API smoke:
+    - `POST /api/v1/itineraries/generate` → `201`
+    - `POST /api/v1/itineraries/chat-sessions/{sessionId}/messages` → `201`
+    - `GET /api/v1/itineraries/chat-sessions/{sessionId}/messages` → `200`
+  - ETL smoke:
+    - `uv run python -m src.etl.scheduler --once --cities "Buôn Ma Thuột"` → `69` places loaded for `Buôn Ma Thuột`
+- Live verification refresh 2026-06-20:
+  - browser smoke bằng local Chrome trên `/`, `/cities/ha-noi`, `/cities/chau-doc`, `/trip-workspace?tripId=712` → PASS
+  - SQL cross-check:
+    - `trips.id=712` (owner workspace smoke) persisted thật
+    - `trips.id=735` (guest generate smoke) persisted thật
+    - `chat_sessions.id=206` + `chat_messages` `4` rows persisted thật
+  - Redis cross-check:
+    - có quota keys `rate:ai:guest:*` và `rate:ai:chat:user:*`
+  - bounded ETL real run:
+    - `uv run python -m src.etl --cities "Châu Đốc"` hoàn tất nhưng `places_count` vẫn `0`, xác nhận data gap còn mở
+- Gap còn lại sau 00100:
+  - chưa có `apply-patch` confirm endpoint
+  - scheduler chưa wire vào compose service/CI schedule
+  - destination readiness vẫn bị overstate ở một số city sparse (`isGenerateReady` true dù `places_count=0`)
+  - live provider smoke hiện trả lời theo hướng clarification-first; proposed-operation confirm path chưa được chứng minh end-to-end

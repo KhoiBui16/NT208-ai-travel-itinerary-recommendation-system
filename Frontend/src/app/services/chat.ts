@@ -10,7 +10,13 @@
  */
 
 import { api } from "./api";
-import type { ChatSession, ChatSessionListResponse } from "../types/chat.types";
+import type {
+  ChatMessageListResponse,
+  ChatSession,
+  ChatSessionListResponse,
+  SendChatMessageRequest,
+  SendChatMessageResponse,
+} from "../types/chat.types";
 
 // ===================================================================
 // Chat Session API — Trip-bound companion chat operations
@@ -50,4 +56,36 @@ export async function listChatSessions(
  */
 export async function getChatSession(sessionId: number): Promise<ChatSession> {
   return api.get<ChatSession>(`/api/v1/itineraries/chat-sessions/${sessionId}`);
+}
+
+/**
+ * Load persisted message history for a specific chat session.
+ *
+ * Messages are returned in chronological order so the FE can render
+ * the conversation naturally without re-sorting.
+ */
+export async function listChatMessages(
+  sessionId: number,
+  skip = 0,
+  limit = 50,
+): Promise<ChatMessageListResponse> {
+  return api.get<ChatMessageListResponse>(
+    `/api/v1/itineraries/chat-sessions/${sessionId}/messages?skip=${skip}&limit=${limit}`,
+  );
+}
+
+/**
+ * Send a new user message to the companion chat API.
+ *
+ * Backend will persist both user + assistant messages and return the
+ * structured assistant reply together with the persisted rows.
+ */
+export async function sendChatMessage(
+  sessionId: number,
+  payload: SendChatMessageRequest,
+): Promise<SendChatMessageResponse> {
+  return api.post<SendChatMessageResponse>(
+    `/api/v1/itineraries/chat-sessions/${sessionId}/messages`,
+    payload,
+  );
 }

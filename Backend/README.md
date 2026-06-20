@@ -14,8 +14,9 @@ FastAPI backend for the NT208 AI travel itinerary recommendation system.
 | AI C.1 | Implemented: `POST /api/v1/itineraries/generate` builds DB recommendation context, calls Gemini, validates, retries, persists generated trip data, and enforces user/guest quota |
 | AI C.2 | Implemented: `GET /api/v1/agent/suggest/{activity_id}` DB-only suggestion service |
 | AI C.3A | Implemented: Chat session REST APIs (EP-37/38/39), FE ChatPanel component, e2e tests |
-| Remaining AI | C.3B companion chat, C.4 chat history message persistence, C.5 analytics |
-| Verified 2026-06-11 | Ruff check/format pass, Alembic upgrade/check pass, 148 unit tests pass; integration suite 40 passed / 27 skipped (67 collected); 00062 fixes merged (SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding), BUG-BE-003 slugify fix merged (PR #92), C3A chat session foundation merged (PR #98-100) |
+| AI C.3B | Current source has trip-bound `POST/GET /itineraries/chat-sessions/{sessionId}/messages`, `companion_service.py`, real Gemini call, persisted `chat_messages`, and auth-user chat quota riêng |
+| Remaining AI | C.3C apply-patch confirm + richer proposedOperations, C.5 analytics |
+| Verified 2026-06-19 | Ruff check pass, Alembic upgrade/check pass, backend full suite `199 passed, 30 skipped, 1 warning`, real generate/chat smoke pass on project DB/Redis stack, ETL scheduler once smoke pass |
 
 ## Architecture
 
@@ -25,12 +26,12 @@ The backend is organized by domain:
 src/
 ├── main.py                  # App factory and /api/v1 routers
 ├── auth/                    # Auth, refresh tokens, profile, password reset
-├── itineraries/             # Trip CRUD, share/claim, C.1 AI generate pipeline, C.3A chat sessions
+├── itineraries/             # Trip CRUD, share/claim, C.1 AI generate pipeline, C.3A/C.3B chat
 │   ├── pipeline.py          # DB context -> Gemini -> validation -> persistence
+│   ├── companion_service.py # Trip-bound companion message flow + provider abstraction
 │   ├── router.py            # /api/v1/itineraries endpoints
-│   ├── service.py           # Domain orchestration
 │   ├── repository.py        # DB queries including recommendation context
-│   ├── service.py           # Trip CRUD + guest claim + C3A chat session orchestration
+│   ├── service.py           # Trip CRUD + guest claim + chat session orchestration
 │   └── models/              # Trip, activity, accommodation, claim/share/chat models
 ├── places/                  # Destinations, places, hotels, saved places
 ├── geo/                     # Goong REST client infrastructure
@@ -59,6 +60,7 @@ Copy-Item .env.example .env
 | `AGENT_TIMEOUT_SECONDS` | Optional, default 30 | Local smoke can use 60 or 120 if provider latency is high |
 | `AGENT_MIN_ACTIVITIES_PER_DAY` | Optional, default 5 | Minimum C.1 activities per day |
 | `AGENT_MAX_ACTIVITIES_PER_DAY` | Optional, default 5 | Maximum C.1 activities per day |
+| `RATE_LIMIT_AI_CHAT_USER` | Optional, default from config | Daily auth-user quota for companion chat |
 | `ENABLE_ANALYTICS` | Optional, default false | Keep disabled until C.5 guardrails exist |
 
 Never commit `Backend/.env`.
@@ -166,10 +168,11 @@ Guest behavior:
 
 AI quota:
 
-| Actor | Redis key |
-|---|---|
-| Auth user | `rate:ai:user:{user_id}:{YYYYMMDD}` |
-| Guest | `rate:ai:guest:{hash(ip + user-agent)}:{YYYYMMDD}` |
+| Scope | Actor | Redis key |
+|---|---|---|
+| Generate | Auth user | `rate:ai:user:{user_id}:{YYYYMMDD}` |
+| Generate | Guest | `rate:ai:guest:{hash(ip + user-agent)}:{YYYYMMDD}` |
+| Companion chat | Auth user | `rate:ai:chat:user:{user_id}:{YYYYMMDD}` |
 
 Redis fail mode is closed by default, so AI endpoints return 503 if quota tracking is unavailable.
 
@@ -194,8 +197,8 @@ Expected post-00062 local result on 2026-06-09:
 | Ruff check | Pass |
 | Ruff format check | Pass |
 | Alembic upgrade/check | Pass |
-| Unit tests | 148 passed |
-| Integration tests | 67 collected |
+| Backend full suite | `199 passed, 30 skipped, 1 warning` |
+| Real AI smoke | Generate + companion chat pass on project DB/Redis stack |
 
 ## Debug Notes
 
@@ -203,7 +206,9 @@ Expected post-00062 local result on 2026-06-09:
 |---|---|---|
 | `422` from `/generate` | Destination missing or insufficient DB context | Run Goong ETL and confirm places exist |
 | `429` from `/generate` | User/guest AI quota exhausted | Check Redis `rate:ai:*` keys |
+| `429` from `/chat-sessions/{id}/messages` | Auth user chat quota exhausted | Check Redis `rate:ai:chat:user:*` keys |
 | `503 Gemini request timed out` | Provider latency exceeded timeout | Timeout is now dynamic per request size; inspect `ai_generate_*` logs |
+| `503 AI companion...` | Chat provider invalid response or Redis fail-closed | Inspect `companion_chat_*` logs and Redis health |
 | `503 AI rate limiter unavailable` | Redis unavailable and fail-closed | Start Redis or fix `REDIS_URL` |
 | FE shows generic generate error | FE hides detailed BE error | Inspect network response and backend logs |
 

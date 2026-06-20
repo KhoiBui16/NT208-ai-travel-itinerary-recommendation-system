@@ -11,14 +11,14 @@
 | C.1b | Guest claim reload | merged | `fix/00045-c-restage-c1-guest-flow` | #45 | — | — |
 | C.2 | Suggestion | merged | `feat/00047-c-suggestion-service` | #49 | `GET /agent/suggest/{id}` | none (DB only) |
 | C.3A | Chat session foundation | merged | `feat/00094-c-c3a-chat-session-apis` + `feat/00095-c-c3a-fe-chat-panel` + `chore/00096-c-c3a-chat-e2e-tests` | #98-100 | `POST/GET /itineraries/{tripId}/chat-sessions` | none |
-| C.3B | Companion chat API | todo | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `POST /itineraries/chat-sessions/{sessionId}/messages` | `GEMINI_API_KEY` (later smoke only) |
+| C.3B | Companion chat API | review_ready | `feat/00100-c-c3b-chat-hardening` + `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `POST /itineraries/chat-sessions/{sessionId}/messages` | `GEMINI_API_KEY` |
 | C.3C | Chat UX hardening | todo | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | FE UX + future apply-patch contract | none |
-| C.4 | Chat history persistence | todo | `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `GET /itineraries/{tripId}/chat-sessions`, `GET /chat-sessions/{id}/messages` | none |
+| C.4 | Chat history persistence | wip | `feat/00100-c-c3b-chat-hardening` + `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `GET /itineraries/{tripId}/chat-sessions`, `GET /chat-sessions/{id}/messages` | none |
 | C.5 | Analytics | optional | `feat/00053-c5-analytics-optional` | — | `POST /agent/analytics` | `ENABLE_ANALYTICS`, `ANALYTICS_DATABASE_URL` |
 
 **Status:** `todo` | `wip` | `review_ready` | `merged`
 
-> **Current gate after `00098`:** `C3A` đã merge, `00097` docs/browser sync đã vào `main`, và `00098` là checkpoint hardening cuối đang chờ PR. `C3B` là next safe phase sau khi merge `00098`; `C4` vẫn không nên tách làm việc độc lập trước khi có message flow của `C3B`.
+> **Current gate on local branch `00100`:** message flow của `C3B` và persisted history read-path của `C4` đã có trên source local; active runtime mock drift đã được gỡ khỏi `TripWorkspace`/`DailyItinerary`. Phần còn lại trước khi xem companion editing là hoàn chỉnh nằm ở `C3C`/follow-up: `apply-patch`, chat UX hardening, scheduler wiring, và data enrichment cho sparse cities.
 
 ---
 
@@ -72,27 +72,30 @@
 
 ## C.3 — Definition of Done
 
-- [ ] CompanionService + LangGraph graph + 6 tools
-- [ ] POST /agent/chat + POST /agent/apply-patch mounted
-- [ ] Owner-check trên mọi tool và apply-patch
-- [ ] Chat history lưu vào chat_sessions/chat_messages
-- [ ] Unit + integration tests pass
-- [ ] docs/03, docs/06, docs/09, docs/10 updated
-- [ ] FE FloatingAIChat wire (tách PR nếu cần)
+- [x] `companion_service.py` nằm trong `src/itineraries/`
+- [x] `POST/GET /itineraries/chat-sessions/{sessionId}/messages` mounted
+- [x] Owner-check và chat quota riêng cho auth user
+- [x] Chat history lưu vào `chat_sessions` / `chat_messages`
+- [x] Unit + integration tests + Playwright + live smoke pass cục bộ
+- [x] Active runtime mock drift đã được gỡ; `TripWorkspace` và `DailyItinerary` không còn mount `FloatingAIChat` / promo surfaces
+- [ ] `C3C` follow-up: `apply-patch` confirm endpoint + DB update sau confirm
 
 ### Verification log
 
 | Date | Branch | BE unit | BE int | FE e2e | API/Browser smoke |
 |------|--------|---------|--------|--------|-------------------|
-| | | | | | |
+| 2026-06-20 | `feat/00100-c-c3b-chat-hardening` | `199 passed, 30 skipped, 1 warning` | included above | latest recorded full suite `33 passed, 3 skipped`; 2026-06-20 build pass | real generate PASS; real chat persistence PASS; SQL+Redis cross-check PASS; bounded ETL `Châu Đốc` confirmed remaining data gap |
 
 ### Env checklist (PR review)
 
 | Key | Required for smoke? | In `.env.example`? |
 |-----|---------------------|-------------------|
+| `DATABASE_URL` | **yes** | yes |
+| `REDIS_URL` | **yes** | yes |
 | `JWT_SECRET_KEY` | yes | yes |
 | `GEMINI_API_KEY` | **yes** | yes |
-| `GOONG_API_KEY` | optional (search_nearby tool) | yes |
+| `GOONG_API_KEY` | optional for normal FE/BE smoke, **yes** for ETL/data enrichment | yes |
+| `VITE_API_URL` | **yes** for FE local run | yes |
 
 ---
 

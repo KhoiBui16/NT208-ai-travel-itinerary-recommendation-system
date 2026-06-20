@@ -30,6 +30,9 @@ TransportType = Literal["walk", "bike", "bus", "taxi"]
 # Expense categories for extra costs tracked at activity or day level
 ExpenseCategory = Literal["food", "attraction", "entertainment", "transportation", "shopping"]
 
+# Chat actor role used by persisted message history
+ChatRole = Literal["user", "assistant", "system"]
+
 
 # ===================================================================
 # Primitive / leaf-level schemas (no nested dependencies)
@@ -305,3 +308,60 @@ class ChatSessionListResponse(CamelCaseModel):
 
     items: list[ChatSessionResponse]
     total: int
+    skip: int = Field(default=0, ge=0)
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class ChatMessageRequest(CamelCaseModel):
+    """Payload user gửi vào companion chat của một session.
+
+    Message luôn là input text thuần. Mọi thay đổi itinerary nếu có sẽ được
+    trả về dưới dạng `proposedOperations` ở response chứ chưa chạm DB.
+    """
+
+    content: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("content")
+    @classmethod
+    def validate_content_not_blank(cls, value: str) -> str:
+        """Chặn message chỉ chứa khoảng trắng để tránh tạo history rỗng."""
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("content must not be blank")
+        return normalized
+
+
+class ChatMessageResponse(CamelCaseModel):
+    """Một message đã persist trong `chat_messages`."""
+
+    id: int
+    session_id: int
+    role: ChatRole
+    content: str
+    proposed_operations: list[dict[str, object]] = Field(default_factory=list)
+    requires_confirmation: bool = False
+    created_at: datetime
+
+
+class ChatMessageListResponse(CamelCaseModel):
+    """Danh sách message history của một session."""
+
+    items: list[ChatMessageResponse]
+    total: int
+    skip: int = Field(default=0, ge=0)
+    limit: int = Field(default=50, ge=1, le=200)
+
+
+class SendChatMessageResponse(CamelCaseModel):
+    """Kết quả send message trong C3B.
+
+    Response giữ cả structured fields top-level để FE render nhanh, đồng thời
+    trả về hai message rows đã persist để đồng bộ state/history chính xác.
+    """
+
+    session_id: int
+    user_message: ChatMessageResponse
+    assistant_message: ChatMessageResponse
+    message: str
+    requires_confirmation: bool = False
+    proposed_operations: list[dict[str, object]] = Field(default_factory=list)

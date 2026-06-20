@@ -36,9 +36,9 @@ Frontend/
 │   │   │   ├── PlaceSelectionModal.tsx # Choose place for activity
 │   │   │   ├── CalendarModal.tsx  # Date picker
 │   │   │   ├── BudgetTracker.tsx  # Budget progress
-│   │   │   ├── FloatingAIChat.tsx # AI companion chat (mock)
-│   │   │   ├── AIPromoBubble.tsx  # AI promo (mock)
-│   │   │   ├── ContextualSuggestionsPanel.tsx # Suggestions (mock)
+│   │   │   ├── FloatingAIChat.tsx # Legacy mock companion surface (không còn mount ở runtime chính)
+│   │   │   ├── AIPromoBubble.tsx  # Legacy promo bubble (không còn mount ở TripWorkspace)
+│   │   │   ├── ContextualSuggestionsPanel.tsx # Suggestions demo panel (mock/inactive)
 │   │   │   ├── SavedSuggestions.tsx
 │   │   │   └── SimpleFooter.tsx
 │   │   ├── contexts/
@@ -72,7 +72,7 @@ Frontend/
 │   │       └── tripConstants.ts   # Trip constants
 │   ├── styles/                     # Tailwind + global CSS
 │   └── imports/                    # Shared imports
-├── tests/e2e/                      # 24 Playwright tests total
+├── tests/e2e/                      # 36 test cases / 17 spec files (latest full recorded run: 33 passed, 3 skipped)
 │   ├── auth.spec.ts
 │   ├── trips.spec.ts
 │   ├── public.spec.ts
@@ -572,10 +572,10 @@ Job `frontend-e2e` trong `frontend-ci.yml`:
 
 ## 11. Known Gaps
 
-- FloatingAIChat vẫn là mock local-state; bug hardcoded `Hà Nội` đã được fix pre-C3A bằng cách derive context từ trip hiện tại, nhưng panel vẫn chưa session-aware/API-backed.
+- `FloatingAIChat` / `AIPromoBubble` vẫn còn trên source như legacy components, nhưng `TripWorkspace` và `DailyItinerary` không còn mount chúng; active runtime chat surface là `ChatPanel`.
 - CreateTrip đã gọi BE generate API thật; chất lượng lịch trình phụ thuộc Goong ETL data + Gemini key.
-- E2E hiện chưa cover sâu: trip workspace drag-and-drop, accommodation CRUD, và future chat/session UX.
-- CityList chủ yếu dùng mock data (BE cần nhiều destinations hơn).
+- E2E hiện chưa cover sâu: trip workspace drag-and-drop, accommodation CRUD, proposal-confirm path của companion chat, và history-management UX.
+- City browse/detail hiện đã API-backed; gap còn lại là sparse-city data richness, image quality, và một số destination image path cũ như `ha-n-i.jpg`.
 - Visual regression testing chưa có.
 
 ---

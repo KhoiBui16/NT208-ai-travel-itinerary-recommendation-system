@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.core.slugify import slugify
-from src.itineraries.models.chat import ChatSession
+from src.itineraries.models.chat import ChatMessage, ChatSession
 from src.itineraries.models.extras import Accommodation, GuestClaimToken, ShareLink, TripRating
 from src.itineraries.models.trip import Activity, Trip, TripDay
 from src.places.models import Destination, Hotel, Place
@@ -464,10 +464,20 @@ class TripRepository:
         result = await self.session.execute(select(ChatSession).where(ChatSession.id == session_id))
         return result.scalar_one_or_none()
 
+    async def touch_chat_session(self, session: ChatSession) -> ChatSession:
+        """Cập nhật `updated_at` của session sau khi có message mới.
+
+        Mục tiêu là để danh sách session phản ánh đúng cuộc trò chuyện gần nhất
+        thay vì chỉ thời điểm tạo session.
+        """
+        await self.session.flush()
+        await self.session.refresh(session)
+        return session
+
     async def list_sessions_by_trip(
         self, trip_id: int, skip: int = 0, limit: int = 20
     ) -> tuple[list[ChatSession], int]:
-        """Return (sessions, total_count) for a trip, ordered by created_at desc."""
+        """Return (sessions, total_count) for a trip, ordered by newest activity first."""
         count_stmt = (
             select(func.count()).select_from(ChatSession).where(ChatSession.trip_id == trip_id)
         )
@@ -476,7 +486,33 @@ class TripRepository:
         stmt = (
             select(ChatSession)
             .where(ChatSession.trip_id == trip_id)
-            .order_by(ChatSession.created_at.desc())
+            .order_by(ChatSession.updated_at.desc(), ChatSession.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all()), total
+
+    async def create_chat_message(self, **kwargs: object) -> ChatMessage:
+        """Insert một message mới vào lịch sử chat của session."""
+        message = ChatMessage(**kwargs)  # type: ignore[arg-type]
+        self.session.add(message)
+        await self.session.flush()
+        await self.session.refresh(message)
+        return message
+
+    async def list_messages_by_session(
+        self, session_id: int, skip: int = 0, limit: int = 50
+    ) -> tuple[list[ChatMessage], int]:
+        """Trả về message history theo thứ tự tăng dần thời gian tạo."""
+        count_stmt = select(func.count()).select_from(ChatMessage)
+        count_stmt = count_stmt.where(ChatMessage.session_id == session_id)
+        total = (await self.session.execute(count_stmt)).scalar_one()
+
+        stmt = (
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
             .offset(skip)
             .limit(limit)
         )

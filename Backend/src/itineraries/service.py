@@ -912,6 +912,8 @@ class ItineraryService(BaseService):
         return ChatSessionListResponse(
             items=[self._to_chat_session_response(s) for s in sessions],
             total=total,
+            skip=skip,
+            limit=limit,
         )
 
     async def get_chat_session(self, session_id: int, user_id: int) -> ChatSessionResponse:

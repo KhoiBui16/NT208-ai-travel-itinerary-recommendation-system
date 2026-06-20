@@ -151,7 +151,38 @@ npm run build           # Production build phải pass
 npm run test:e2e        # Playwright e2e tests (cần BE chạy trên localhost:8000)
 ```
 
-FE build phải pass (production bundle). Playwright e2e tests hiện có 35 test cases trong 16 spec files; latest full local run ghi nhận `32 passed, 3 skipped`. Yêu cầu BE server chạy trước khi chạy e2e.
+FE build phải pass (production bundle). Playwright e2e tests hiện có `36` test cases trong `17` spec files; latest full local run ghi nhận `33 passed, 3 skipped`. Yêu cầu BE server chạy trước khi chạy e2e.
+
+### Current evidence snapshot (2026-06-19)
+
+```powershell
+Set-Location "<repo-root>\\Backend"
+uv run pytest tests/unit tests/integration -v --tb=short
+```
+
+Kết quả full local suite gần nhất:
+
+- `199 passed`
+- `30 skipped`
+- `1 warning`
+
+Companion chat smoke đã verify trên stack thật FE -> BE -> DB -> Redis:
+
+- `POST /api/v1/itineraries/generate` → `201`
+- `POST /api/v1/itineraries/chat-sessions/{sessionId}/messages` → `201`
+- `GET /api/v1/itineraries/chat-sessions/{sessionId}/messages` → `200`
+
+ETL scheduler smoke đã verify trên DB thật của project:
+
+```powershell
+Set-Location "<repo-root>\\Backend"
+uv run python -m src.etl.scheduler --once --cities "Buôn Ma Thuột"
+```
+
+Kết quả mẫu:
+
+- `Buôn Ma Thuột`: từ `0 places` lên `69 places`
+- Scheduler hiện chạy local/manual loop; chưa được wire vào compose service hoặc CI schedule
 
 ### 00057 Manual Verification — Destination Data Quality Advisory
 

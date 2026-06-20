@@ -6,6 +6,20 @@
 **Support Verification:** Playwright targeted regressions + API/DB/Redis spot checks
 
 > **2026-06-13 addendum:** Nhánh `00098` không cần rerun Browserbase riêng vì các flow browser nền đã xanh từ pass này. Follow-up hardening được verify thêm bằng live local browser smoke + full Playwright regression và được tổng hợp tại `BROWSER_TEST_STATUS.md` và `00098_pre_c3b_hardening_and_pr_readiness.md`.
+>
+> **2026-06-19 addendum:** File này hiện là baseline lịch sử của giai đoạn `C3A`/pre-`C3B`. Current source trên nhánh `00100` đã vượt baseline này với các evidence mới:
+> - full Playwright suite `33 passed`, `3 skipped` trên `36` tests / `17` spec files
+> - real AI generate PASS
+> - real companion chat send/history PASS
+> - ETL scheduler once PASS, `Buôn Ma Thuột` đã có `69` places
+>
+> Current truth nên đọc cùng `docs/REPORTS/BROWSER_TEST_STATUS.md`, `docs/09_execution_tracker.md`, và `README.md`.
+>
+> **2026-06-20 addendum:** current runtime tiếp tục được verify thêm bằng local Chrome smoke trên stack thật:
+> - `TripWorkspace` và `DailyItinerary` không còn mount `FloatingAIChat` / promo mock surfaces
+> - `/cities/ha-noi` và `/cities/chau-doc` render đúng rich/sparse truth từ backend
+> - `chat_sessions.id=206` persisted cùng `4` `chat_messages`
+> - live provider prompt chỉnh itinerary vẫn trả clarification-first (`requiresConfirmation=false`), nên proposal-confirm path chưa có evidence end-to-end
 
 ---
 

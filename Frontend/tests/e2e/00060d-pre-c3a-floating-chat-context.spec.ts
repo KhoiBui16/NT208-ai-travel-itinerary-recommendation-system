@@ -53,8 +53,8 @@ const mockTrip = {
   updatedAt: "2026-06-02T09:00:00Z",
 };
 
-test.describe("00060D-FIX pre-C3A floating chat context", () => {
-  test("TripWorkspace no longer shows hardcoded Hà Nội for a Huế trip", async ({ page }) => {
+test.describe("00060D / 00100 runtime chat truth", () => {
+  test("TripWorkspace uses AI Chat tab instead of floating mock chat for a Huế trip", async ({ page }) => {
     // Set up tokens and mock user profile in localStorage BEFORE page loads
     await page.addInitScript(() => {
       localStorage.setItem("accessToken", "mock-access-token-valid");
@@ -113,21 +113,14 @@ test.describe("00060D-FIX pre-C3A floating chat context", () => {
       page.getByRole("heading", { name: "Ngày 1 - Huế", exact: true }),
     ).toBeVisible({ timeout: 10000 });
 
-    // Open floating chat - click the chat toggle button
-    const chatToggle = page.locator("button").filter({
-      has: page.locator("svg.lucide-message-circle"),
-    }).first();
-    await chatToggle.click();
+    // Current runtime truth on 00100: there is no floating mock chat toggle anymore.
+    const floatingChatToggle = page.locator("div.fixed.bottom-28.right-6.z-20");
+    await expect(floatingChatToggle).toHaveCount(0);
 
-    // Verify chat panel is visible and shows Huế context
-    // Note: Component uses className="fixed bottom-28 right-6 z-20" NOT z-40
-    const chatPanel = page.locator("div.fixed.bottom-28.right-6.z-20").first();
-    await expect(chatPanel).toBeVisible();
+    // The runtime workspace still exposes the AI Chat tab entry point.
+    await expect(page.getByRole("button", { name: "AI Chat", exact: true })).toBeVisible();
 
-    // Verify chat panel shows Huế context (not hardcoded Hà Nội)
-    await expect(chatPanel).toContainText("Huế");
-    await expect(chatPanel).not.toContainText("Hà Nội");
-    await expect(chatPanel).toContainText("Gợi ý trong: Huế");
-    await expect(chatPanel).toContainText(/Xin chào!.*Huế/);
+    // With a Huế trip mocked in, the workspace must not drift to hardcoded Hà Nội text.
+    await expect(page.getByText("Hà Nội", { exact: true })).toHaveCount(0);
   });
 });
