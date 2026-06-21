@@ -102,8 +102,9 @@
 
 ## C.4 — Definition of Done
 
-- [ ] ChatService CRUD (list sessions, get messages, delete session)
-- [ ] 3 endpoints mounted (GET /chat/sessions, GET /chat/sessions/{id}/messages, DELETE /chat/sessions/{id})
+- [ ] ChatService full management CRUD (list sessions, get messages, delete session)
+- [x] Read-path endpoints mounted (GET /chat/sessions, GET /chat/sessions/{id}/messages)
+- [ ] Delete-session endpoint mounted nếu scope C4B giữ nguyên
 - [ ] Owner-check trên mọi endpoint
 - [ ] Unit + integration tests pass
 - [ ] docs/03, docs/06, docs/09, docs/10 updated

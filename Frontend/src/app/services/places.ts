@@ -20,8 +20,9 @@ import { api } from "./api";
  * Destination response for city listing pages.
  *
  * Includes data quality metadata (readiness info) that is displayed
- * as advisory warnings. Note: `isGenerateReady` is always true for
- * all API-listed destinations.
+ * as advisory warnings. `isGenerateReady` is a coarse backend signal
+ * based on current place coverage, not a guarantee that every trip
+ * duration will pass generate validation.
  */
 export interface DestinationResponse {
   // --- Identity ---

@@ -33,9 +33,10 @@ class DestinationResponse(CamelCaseModel):
     """Destination response for city listing and detail pages.
 
     Includes data quality metadata (readiness info) that the FE can
-    display as advisory warnings. Note: `isGenerateReady` is always True
-    for all API-listed destinations — backend handles 422 if data is
-    truly insufficient at generation time.
+    display as advisory warnings. `isGenerateReady` is a coarse signal
+    based on live place coverage for the shortest supported AI trip,
+    not a guarantee that every destination will satisfy every trip
+    duration. Backend generate still performs the final validation.
     """
 
     # --- Identity ---
@@ -53,7 +54,7 @@ class DestinationResponse(CamelCaseModel):
     hotelsCount: int = 0  # Number of hotels in this destination
 
     # --- Data quality metadata (advisory, not a submit gate) ---
-    isGenerateReady: bool = False  # Whether AI generation has enough data
+    isGenerateReady: bool = False  # Coarse generate readiness based on live place coverage
     readinessStatus: str = "not_ready"  # "ready" | "partial" | "sparse"
     readinessReason: str | None = None  # Human-readable warning message
 

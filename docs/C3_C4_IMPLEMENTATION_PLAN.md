@@ -1,6 +1,8 @@
 # C3/C4 Implementation Plan
 
-Ngày cập nhật: 2026-06-03
+Ngày cập nhật: 2026-06-21
+
+> Ghi chú current truth: đây là plan lịch sử đã được cập nhật tối thiểu để không lệch source. Sau `00101`, C3A/C3B/C3C core đã có runtime thật; phần còn lại tập trung vào C4 session-management UX, patch-specific rate limit, ETL scheduler wiring và data enrichment.
 
 ## Current truth before planning
 
@@ -293,7 +295,7 @@ Làm history dễ quản lý và giữ an toàn ownership.
 | C3A | YES | Source đã có schema chat và trip ownership đủ tin cậy sau 00060A |
 | C3B | NO | Cần session foundation + quota policy rõ trước |
 | C3C | YES | Current source đã có patch-confirm core; follow-up còn lại là hardening |
-| C4A | NO | Phụ thuộc session/message foundation trước |
+| C4A | PARTIAL | Current source đã có history list/get read-path; phần còn lại là pagination/perf và session UX |
 | C4B | NO | Phụ thuộc history API trước |
 
 ## Future real-user validation gate

@@ -351,7 +351,7 @@ Thứ tự ưu tiên:
 - Gap còn lại sau 00100:
   - chưa có `apply-patch` confirm endpoint
   - scheduler chưa wire vào compose service/CI schedule
-  - destination readiness vẫn bị overstate ở một số city sparse (`isGenerateReady` true dù `places_count=0`)
+  - destination readiness từng bị overstate ở một số city sparse (`isGenerateReady` true dù `places_count=0`) — đã được fix tiếp trong `00101`
   - live provider smoke hiện trả lời theo hướng clarification-first; proposed-operation confirm path chưa được chứng minh end-to-end
 
 ## Scope Task 00101 (C3C apply-patch confirm + browser/API/DB truth)
@@ -375,6 +375,10 @@ Thứ tự ưu tiên:
     - cancel: assistant `83` -> `cancelled`, không tạo activity mới cho day 1
     - stale: assistant `85` -> `stale`, `409` returned, không mutate itinerary
     - real AI smoke: assistant `99` trả summary itinerary thật với `201`
+  - destination truth hardening tiếp theo trên cùng branch:
+    - `Châu Đốc` API list hiện trả `placesCount=0`, `isGenerateReady=false`, `readinessStatus='sparse'`
+    - `Hà Nội` API list/detail hiện trả image slug chuẩn `/img/destinations/ha-noi.jpg`
+    - cache destinations bump sang `v3` để không giữ lại readiness/image semantics cũ trong Redis
 - Gap còn lại sau 00101:
   - scheduler vẫn chưa wire vào compose service/CI schedule
   - patch-specific rate limit chưa có riêng

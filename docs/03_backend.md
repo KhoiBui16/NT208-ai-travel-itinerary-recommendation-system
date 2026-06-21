@@ -182,7 +182,7 @@ Backend/
   // Data quality fields (00057+)
   placesCount: number;      // Số điểm đến tại thành phố này
   hotelsCount: number;      // Số khách sạn tại thành phố này
-  isGenerateReady: boolean; // Luôn true cho các city trong API response
+  isGenerateReady: boolean; // Coarse signal theo live place coverage tối thiểu
   readinessStatus: "ready" | "partial" | "sparse";
   readinessReason: string | null;  // Thông báo advisory (không block submit)
 }
@@ -195,7 +195,7 @@ Backend/
 
 **Product principle**: City đã nằm trong backend destinations API phải cho phép user chọn và submit bình thường. `readinessReason` chỉ là warning advisory, không phải hard gate.
 
-**Cache key**: `destinations:all:v2` (TTL 1h)
+**Cache key**: `destinations:all:v3` (TTL 1h)
 
 ### EP-30: `GET /api/v1/agent/suggest/{activity_id}` (C.2)
 

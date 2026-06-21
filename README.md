@@ -539,7 +539,7 @@ sequenceDiagram
 
 - FE ưu tiên cập nhật UI trước để thao tác sửa activity/accommodation mượt hơn cho người dùng.
 - Hook luôn giữ `prevState` để có thể rollback nếu BE trả lỗi hoặc timeout.
-- Quy tắc này chỉ áp dụng cho CRUD đã có thật trong workspace; nó không thay thế confirm flow cho future `apply-patch` ở chat.
+- Quy tắc này chỉ áp dụng cho CRUD đã có thật trong workspace; các thay đổi do companion chat đề xuất vẫn phải đi qua `apply-patch` confirm riêng.
 - Vì vậy `C3A` có thể gắn panel chat vào `TripWorkspace` mà không cần thay đổi cơ chế optimistic update hiện tại.
 
 ### 4.6 Backend — Cấu trúc file theo domain
@@ -1512,7 +1512,7 @@ CompanionService.chat()
 
 FE hiển thị proposed changes
   → current source chưa tự apply DB
-  → future apply-patch endpoint mới là bước persist itinerary sau confirm
+  → current source dùng `POST /api/v1/itineraries/{tripId}/apply-patch` để persist itinerary sau confirm
 
 KEY: Chat KHÔNG TỰ PERSIST DB trước khi user confirm.
      Quota chat đã tách khỏi generate quota ở current source.
@@ -1807,8 +1807,9 @@ POST /auth/reset-password {token, newPassword}
 | **C.1** | AI Generate Itinerary (Gemini direct pipeline) | `merged` | ✅ Done |
 | **C.2** | Suggestion Service (DB-only, EP-30) | `merged` | ✅ Done |
 | **C.3A** | Chat Session Foundation (owner-only, trip-scoped, no real AI call) | `merged` | ✅ Done (`PR #98-100`) |
-| **C.3B** | Companion Chat API + provider abstraction + chat quota | `local_verified_on_00100` | 🔄 Đã có source + local verification, còn thiếu PR/apply-patch |
-| **C.4** | Chat history persistence + session UX | `partial_on_00100` | 🔄 Persisted history read-path đã có; history management UX còn pending |
+| **C.3B** | Companion Chat API + provider abstraction + chat quota | `merged` | ✅ Done (`PR #104`) |
+| **C.3C** | Apply-patch confirm + stale handling + workspace companion UX | `pr_00101_open` | ✅ Review-ready (`PR #105`) |
+| **C.4** | Chat history persistence + session UX | `partial_on_00101` | 🔄 Persisted history read-path đã có; delete/history-management UX còn pending |
 | **C.5** | Analytics Text-to-SQL (optional) | `future optional` | 🔄 Optional |
 
 **Latest runtime snapshot after hardening `00100`:**
@@ -1980,7 +1981,7 @@ npm run dev -- --host localhost --port 5173
 **Lưu ý dữ liệu thật vs fallback:**
 - Places/hotels trong PostgreSQL là **nguồn thật** sau ETL Goong.
 - Goong Place Detail **không trả URL ảnh** — `places.image` có thể rỗng; FE dùng fallback có nhãn, không phải ảnh từ Goong.
-- Map tile Goong (`VITE_GOONG_MAP_KEY`) vẫn chưa được dùng ở FE runtime; companion chat thật hiện đi qua `ChatPanel`, còn `C3C` apply-patch confirm vẫn pending.
+- Map tile Goong (`VITE_GOONG_MAP_KEY`) vẫn chưa được dùng ở FE runtime; companion chat thật hiện đi qua `ChatPanel`, còn follow-up chính sau `00101` là patch-specific rate limit, ETL scheduler wiring và data enrichment cho city sparse.
 
 #### Kiểm tra DB nhanh (sau ETL)
 

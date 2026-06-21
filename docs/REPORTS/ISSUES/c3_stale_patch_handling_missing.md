@@ -3,7 +3,7 @@
 **Date**: 2026-05-28
 **Branch**: `docs/00050-c-c3-design-readiness-audit`
 **Priority**: HIGH
-**Status**: OPEN
+**Status**: RESOLVED IN `00101` / FOLLOW-UP FOR HARDENING ONLY
 **Related**: `docs/REPORTS/phase_c3_design_readiness.md`
 
 ## Problem
@@ -47,10 +47,13 @@ Hoặc:
 # Server validate và reject nếu không match
 ```
 
-## Does not block
+## Current disposition
 
-C3 implementation có thể bắt đầu mà không có stale handling, nhưng production sẽ có race condition risk.
+Current source đã có stale detection cơ bản và persist `confirmationStatus='stale'` thật. Issue này không còn là blocker “thiếu stale handling”; follow-up còn lại chỉ là optimistic-locking sâu hơn, policy/rate-limit và UX polish nếu muốn tránh race condition tinh hơn.
 
-## No action in this audit branch
+## Follow-up scope only
 
-This is an audit-only branch. Fix sẽ được implement trong feature branch riêng.
+Nếu cần làm sâu hơn, hãy mở issue riêng cho:
+- trip/day version field hoặc ETag strategy
+- patch-specific rate limit
+- UX refresh/resolve flow khi user gặp `409`

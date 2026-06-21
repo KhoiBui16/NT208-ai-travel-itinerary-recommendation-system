@@ -12,6 +12,10 @@ Current source has:
 - FE confirm/cancel UI inside `ChatPanel`
 - persisted `confirmation_status`, `trip_snapshot_updated_at`, `resolved_at`
 - browser/API/DB evidence for `apply`, `cancel`, and `stale`
+- destination API truth hardening bổ sung:
+  - sparse city không còn overstate `isGenerateReady`
+  - local destination cover path được normalize theo slug chuẩn
+  - cache key bump sang `destinations:all:v3` / `detail:v3` để tránh Redis giữ semantics cũ
 
 Remaining follow-up after this pass:
 
