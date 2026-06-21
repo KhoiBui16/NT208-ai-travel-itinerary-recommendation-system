@@ -48,6 +48,10 @@ export function getChatErrorMessage(error: unknown): string {
     return "Không tìm thấy phiên chat. Hãy tạo phiên mới và thử lại.";
   }
 
+  if (error.status === 409) {
+    return "Đề xuất này không còn áp dụng được vì lịch trình đã thay đổi. Hãy làm mới chat và yêu cầu AI đề xuất lại.";
+  }
+
   if (error.status === 422) {
     return "Tin nhắn chưa hợp lệ. Vui lòng kiểm tra nội dung rồi gửi lại.";
   }

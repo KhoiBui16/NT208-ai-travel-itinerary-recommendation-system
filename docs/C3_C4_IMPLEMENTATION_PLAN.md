@@ -17,7 +17,7 @@ Ngày cập nhật: 2026-06-03
 - `00060H` đã cho phép guest giữ `currentTrip` + `pendingClaim` trong `sessionStorage` để xem workspace cùng browser session trước khi claim, nhưng owner chat rule vẫn chưa đổi.
 - `00060H` đã sửa generated activity images theo `Place.image` khi `place_id` hợp lệ, nên workspace context ổn định hơn cho chat foundation.
 - `chat_sessions` và `chat_messages` đã tồn tại trong source/migration.
-- Chưa có chat REST API, chưa có `CompanionService`, chưa có history API thật.
+- Current source đã có chat REST API, `CompanionService`, history API thật, và `apply-patch` confirm path cơ bản.
 - Guest phải claim trip trước khi chat.
 - Sync generate hiện vẫn là blocking HTTP request; nếu muốn "eventually complete even when slow" thì phải có background job/polling ở phase tương lai, không giải quyết trong `C3A/C3B` hiện tại.
 
@@ -38,7 +38,7 @@ Ngày cập nhật: 2026-06-03
 |---|---|---|---|---|---|---|
 | C3A | Chat session foundation an toàn, chưa gọi AI thật | Session APIs + ownership-safe session load/create | ChatPanel placeholder thật trong `TripWorkspace` | owner-only session tests | guest policy/quota policy phải rõ | Tạo/list/get session được cho own trip |
 | C3B | Gửi message với trip context và save chat messages | Message API + fake/mock provider + persistence | Chat input/send/loading/error | context/ownership/quota tests | quota chung với generate, provider timeout | User gửi message và nhận reply từ fake provider |
-| C3C | Làm chat usable trong workspace | retry/double-send/UX safeguards | scroll/loading/retry/friendly copy | UX/regression tests | stale patch, concurrent edits | Chat dùng ổn trong workspace |
+| C3C | Làm chat usable trong workspace | apply/cancel/stale confirm path + retry/double-send/UX safeguards | scroll/loading/retry/friendly copy | UX/regression tests | patch rate-limit, history UX, concurrent edits | Chat dùng ổn trong workspace và proposal được resolve đúng |
 | C4A | Persist và reload history | message list API + pagination | mở lại session cũ và giữ history | cross-user/history tests | session growth/performance | reload page vẫn thấy history |
 | C4B | Quản lý history và security hardening | session management + access tests | session list, rename/delete nếu scope cho phép | security/e2e tests | public share confusion | session history quản lý được và không lộ chéo user |
 
@@ -53,7 +53,7 @@ Ngày cập nhật: 2026-06-03
 | Chat/live provider behavior chưa có | `00060D-R`, `00059C`, `00060B` | NO | C3B / provider smoke | dùng fake provider trong test và kế thừa contract `429/503` đã verify ở generate |
 | Sync generate không đảm bảo eventually-complete | `00060G`, `00060H`, current blocking HTTP flow | NO | future async job phase | không hứa "generate xong dù chậm" nếu chưa có worker + polling/status API |
 | Goong/live ETL partial | `00059C`, ETL reports | NO | generate/data hardening | không block chat foundation |
-| Stale patch handling còn mở | issue `c3_stale_patch_handling_missing.md` | NO | C3C / future apply-patch | chốt conflict/version strategy trước mutation |
+| Stale patch handling còn mở | issue `c3_stale_patch_handling_missing.md` | NO | C3C hardening follow-up | current source đã có `trip.updated_at` snapshot strategy; phần còn mở là policy/rate-limit/UX polish |
 
 ## C3A — Chat Session Foundation
 
@@ -207,7 +207,7 @@ Làm chat usable trong `TripWorkspace`.
 
 - user spam send
 - UI overlap với workspace edit tools
-- stale patch semantics chưa chốt
+- stale patch semantics cơ bản đã có và đã được verify với `409` + persisted `confirmationStatus='stale'`; phần còn lại là UX/copy/policy polish
 
 ### Exit criteria
 
@@ -292,7 +292,7 @@ Làm history dễ quản lý và giữ an toàn ownership.
 |---|---|---|
 | C3A | YES | Source đã có schema chat và trip ownership đủ tin cậy sau 00060A |
 | C3B | NO | Cần session foundation + quota policy rõ trước |
-| C3C | NO | Phụ thuộc C3B |
+| C3C | YES | Current source đã có patch-confirm core; follow-up còn lại là hardening |
 | C4A | NO | Phụ thuộc session/message foundation trước |
 | C4B | NO | Phụ thuộc history API trước |
 

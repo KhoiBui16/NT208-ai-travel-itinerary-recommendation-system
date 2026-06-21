@@ -21,23 +21,33 @@ from datetime import UTC, datetime
 from time import perf_counter
 from typing import Protocol
 
-from pydantic import Field, ValidationError, field_validator
+from pydantic import Field, ValidationError, field_validator, model_validator
 
 from src.agent.config import AgentConfig
 from src.agent.llm import GeminiLLM, LLMGenerationError, parse_json_response
 from src.core.config import AppSettings, get_settings
-from src.core.exceptions import ForbiddenException, NotFoundException, ServiceUnavailableException
+from src.core.exceptions import (
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+    ServiceUnavailableException,
+    ValidationException,
+)
 from src.core.logger import get_logger
 from src.core.schema import CamelCaseModel
 from src.itineraries.models.chat import ChatMessage, ChatSession
 from src.itineraries.models.trip import Trip
 from src.itineraries.repository import TripRepository
 from src.itineraries.schemas import (
+    ApplyPatchRequest,
+    ApplyPatchResponse,
     ChatMessageListResponse,
     ChatMessageRequest,
     ChatMessageResponse,
+    CompanionPatchOperation,
     SendChatMessageResponse,
 )
+from src.itineraries.service import ItineraryService
 
 logger = get_logger(__name__)
 
@@ -47,7 +57,7 @@ class CompanionReplyPayload(CamelCaseModel):
 
     message: str = Field(min_length=1, max_length=4000)
     requires_confirmation: bool = False
-    proposed_operations: list[dict[str, object]] = Field(default_factory=list)
+    proposed_operations: list[CompanionPatchOperation] = Field(default_factory=list)
 
     @field_validator("message")
     @classmethod
@@ -57,6 +67,13 @@ class CompanionReplyPayload(CamelCaseModel):
         if not normalized:
             raise ValueError("message must not be blank")
         return normalized
+
+    @model_validator(mode="after")
+    def validate_confirmation_payload(self) -> CompanionReplyPayload:
+        """Nếu assistant đòi confirm thì bắt buộc phải có operation cụ thể."""
+        if self.requires_confirmation and not self.proposed_operations:
+            raise ValueError("requiresConfirmation=true must include proposedOperations")
+        return self
 
 
 class CompanionProvider(Protocol):
@@ -207,13 +224,39 @@ Chỉ trả về JSON object hợp lệ với đúng schema sau:
   "requiresConfirmation": true,
   "proposedOperations": [
     {{
-      "type": "add_activity|update_activity|remove_activity|reorder_day|
-               adjust_budget|suggest_accommodation|clarify",
+      "type": "add_activity|update_activity|remove_activity|adjust_budget|clarify",
       "description": "string",
-      "target": {{}}
+      "target": {{
+        "dayId": 2,
+        "activityId": 10
+      }},
+      "activity": {{
+        "name": "string",
+        "time": "HH:mm",
+        "endTime": "HH:mm",
+        "location": "string",
+        "description": "string",
+        "type": "food|attraction|nature|entertainment|shopping",
+        "image": "string",
+        "transportation": "walk|bike|bus|taxi",
+        "adultPrice": 0,
+        "childPrice": 0,
+        "customCost": 0,
+        "busTicketPrice": 0,
+        "taxiCost": 0,
+        "extraExpenses": []
+      }},
+      "budget": 0
     }}
   ]
 }}
+
+Quy tắc payload:
+- `add_activity`: bắt buộc có `target.dayId` + `activity`
+- `update_activity`: bắt buộc có `target.activityId` + `activity`
+- `remove_activity`: bắt buộc có `target.activityId`
+- `adjust_budget`: bắt buộc có `budget`
+- `clarify`: dùng khi chưa đủ dữ liệu để patch, không gửi `activity` hay `budget`
 
 Trip context:
 {trip_block}
@@ -322,6 +365,10 @@ class CompanionService:
             history=history,
             user_message=request.content,
         )
+        serialized_operations = [
+            operation.model_dump(mode="json", by_alias=True)
+            for operation in reply.proposed_operations
+        ]
 
         user_message = await self.repo.create_chat_message(
             session_id=session.id,
@@ -329,13 +376,16 @@ class CompanionService:
             content=request.content,
             proposed_operations=[],
             requires_confirmation=False,
+            confirmation_status="not_required",
         )
         assistant_message = await self.repo.create_chat_message(
             session_id=session.id,
             role="assistant",
             content=reply.message,
-            proposed_operations=reply.proposed_operations,
+            proposed_operations=serialized_operations,
             requires_confirmation=reply.requires_confirmation,
+            confirmation_status="pending" if reply.requires_confirmation else "not_required",
+            trip_snapshot_updated_at=trip.updated_at if reply.requires_confirmation else None,
         )
 
         # Chạm `updated_at` để session list phản ánh cuộc hội thoại gần nhất.
@@ -351,6 +401,122 @@ class CompanionService:
             message=assistant_payload.content,
             requires_confirmation=assistant_payload.requires_confirmation,
             proposed_operations=assistant_payload.proposed_operations,
+        )
+
+    async def apply_patch(
+        self,
+        trip_id: int,
+        user_id: int,
+        request: ApplyPatchRequest,
+    ) -> ApplyPatchResponse:
+        """Xác nhận hoặc hủy một assistant proposal đã persist trong DB."""
+        trip = await self.repo.get_with_full_data(trip_id)
+        if not trip:
+            raise NotFoundException("Trip not found")
+        if trip.user_id != user_id:
+            raise ForbiddenException("Not trip owner")
+
+        assistant_message = await self.repo.get_chat_message_by_id(request.assistant_message_id)
+        if not assistant_message:
+            raise NotFoundException("Assistant proposal not found")
+        if assistant_message.role != "assistant":
+            raise ValidationException("Only assistant proposals can be confirmed")
+        if assistant_message.session.trip_id != trip_id:
+            raise ForbiddenException("Assistant proposal does not belong to this trip")
+        if (
+            assistant_message.session.user_id is not None
+            and assistant_message.session.user_id != user_id
+        ):
+            raise ForbiddenException("Not chat session owner")
+        if not assistant_message.requires_confirmation:
+            raise ValidationException("This message does not require confirmation")
+        if assistant_message.confirmation_status != "pending":
+            raise ConflictException("Đề xuất này đã được xử lý trước đó")
+
+        if request.action == "cancel":
+            assistant_message.confirmation_status = "cancelled"
+            assistant_message.resolved_at = datetime.now(UTC)
+            system_message = await self.repo.create_chat_message(
+                session_id=assistant_message.session_id,
+                role="system",
+                content="Bạn đã hủy đề xuất thay đổi lịch trình này.",
+                proposed_operations=[],
+                requires_confirmation=False,
+                confirmation_status="not_required",
+            )
+            assistant_message.session.updated_at = datetime.now(UTC)
+            await self.repo.touch_chat_session(assistant_message.session)
+            return ApplyPatchResponse(
+                applied=False,
+                status="cancelled",
+                message="Đã hủy đề xuất. Lịch trình hiện tại được giữ nguyên.",
+                trip=None,
+                assistant_message=self._to_chat_message_response(assistant_message),
+            )
+
+        if assistant_message.trip_snapshot_updated_at != trip.updated_at:
+            assistant_message.confirmation_status = "stale"
+            assistant_message.resolved_at = datetime.now(UTC)
+            assistant_message.session.updated_at = datetime.now(UTC)
+            await self.repo.touch_chat_session(assistant_message.session)
+            # Persist stale marker before raising 409 so FE/history can render
+            # the resolved proposal state on the next refresh.
+            await self.session.commit()
+            raise ConflictException(
+                "Lịch trình đã thay đổi sau khi AI tạo đề xuất này. "
+                "Hãy yêu cầu AI đề xuất lại trên dữ liệu mới nhất."
+            )
+
+        operations = [
+            CompanionPatchOperation.model_validate(operation)
+            for operation in (assistant_message.proposed_operations or [])
+        ]
+        if not operations:
+            raise ValidationException("Assistant proposal does not contain applicable operations")
+
+        session_id = assistant_message.session_id
+        next_order_index_by_day: dict[int, int] = {}
+        for operation in operations:
+            await self._apply_operation(trip, operation, next_order_index_by_day)
+
+        assistant_message.confirmation_status = "applied"
+        assistant_message.resolved_at = datetime.now(UTC)
+        await self.session.flush()
+
+        # Re-load fresh graph before recalculating and serializing response.
+        self.session.expire_all()
+        trip = await self.repo.get_with_full_data(trip_id)
+        if not trip:
+            raise NotFoundException("Trip not found")
+        trip.total_cost = ItineraryService(self.session)._calculate_total_cost(trip)
+        await self.session.flush()
+
+        system_message = await self.repo.create_chat_message(
+            session_id=session_id,
+            role="system",
+            content="Đề xuất đã được áp dụng vào lịch trình.",
+            proposed_operations=[],
+            requires_confirmation=False,
+            confirmation_status="not_required",
+        )
+        _ = system_message
+        session = await self.repo.get_chat_session_by_id(session_id)
+        if session:
+            session.updated_at = datetime.now(UTC)
+            await self.repo.touch_chat_session(session)
+
+        self.session.expire_all()
+        final_trip = await self.repo.get_with_full_data(trip_id)
+        refreshed_message = await self.repo.get_chat_message_by_id(request.assistant_message_id)
+        if not final_trip or not refreshed_message:
+            raise NotFoundException("Updated trip state not found")
+        trip_payload = await ItineraryService(self.session)._to_response(final_trip)
+        return ApplyPatchResponse(
+            applied=True,
+            status="applied",
+            message="Đã áp dụng đề xuất vào lịch trình hiện tại.",
+            trip=trip_payload,
+            assistant_message=self._to_chat_message_response(refreshed_message),
         )
 
     async def list_messages(
@@ -400,5 +566,101 @@ class CompanionService:
             content=message.content,
             proposed_operations=message.proposed_operations or [],
             requires_confirmation=message.requires_confirmation,
+            confirmation_status=message.confirmation_status,  # type: ignore[arg-type]
+            trip_snapshot_updated_at=message.trip_snapshot_updated_at,
+            resolved_at=message.resolved_at,
             created_at=message.created_at,
         )
+
+    async def _apply_operation(
+        self,
+        trip: Trip,
+        operation: CompanionPatchOperation,
+        next_order_index_by_day: dict[int, int],
+    ) -> None:
+        """Apply một operation đã được validate lên trip hiện tại."""
+        if operation.type == "clarify":
+            raise ValidationException("Đề xuất này vẫn cần làm rõ thêm trước khi có thể áp dụng")
+
+        if operation.type == "adjust_budget":
+            trip.budget = operation.budget or trip.budget
+            return
+
+        if operation.type == "add_activity":
+            day_id = operation.target.day_id
+            if day_id is None or operation.activity is None:
+                raise ValidationException(
+                    "Thiếu target.dayId hoặc activity payload cho add_activity"
+                )
+            day = next((item for item in trip.days if item.id == day_id), None)
+            if not day:
+                raise ValidationException(
+                    f"Không tìm thấy ngày #{day_id} trong lịch trình hiện tại"
+                )
+
+            current_next = next_order_index_by_day.get(
+                day_id,
+                max((activity.order_index for activity in day.activities), default=-1) + 1,
+            )
+            next_order_index_by_day[day_id] = current_next + 1
+            await self.repo.add_activity(
+                trip_day_id=day.id,
+                name=operation.activity.name,
+                time=operation.activity.time,
+                end_time=operation.activity.end_time,
+                type=operation.activity.type,
+                location=operation.activity.location,
+                description=operation.activity.description,
+                image=operation.activity.image,
+                transportation=operation.activity.transportation,
+                adult_price=operation.activity.adult_price,
+                child_price=operation.activity.child_price,
+                custom_cost=operation.activity.custom_cost,
+                bus_ticket_price=operation.activity.bus_ticket_price,
+                taxi_cost=operation.activity.taxi_cost,
+                order_index=current_next,
+            )
+            return
+
+        if operation.type == "update_activity":
+            activity_id = operation.target.activity_id
+            if activity_id is None or operation.activity is None:
+                raise ValidationException(
+                    "Thiếu target.activityId hoặc activity payload cho update_activity"
+                )
+            activity = await self.repo.get_activity_for_trip(activity_id, trip.id)
+            if not activity:
+                raise ValidationException(
+                    f"Không tìm thấy activity #{activity_id} trong lịch trình hiện tại"
+                )
+            await self.repo.update_activity(
+                activity,
+                name=operation.activity.name,
+                time=operation.activity.time,
+                end_time=operation.activity.end_time,
+                type=operation.activity.type,
+                location=operation.activity.location,
+                description=operation.activity.description,
+                image=operation.activity.image,
+                transportation=operation.activity.transportation,
+                adult_price=operation.activity.adult_price,
+                child_price=operation.activity.child_price,
+                custom_cost=operation.activity.custom_cost,
+                bus_ticket_price=operation.activity.bus_ticket_price,
+                taxi_cost=operation.activity.taxi_cost,
+            )
+            return
+
+        if operation.type == "remove_activity":
+            activity_id = operation.target.activity_id
+            if activity_id is None:
+                raise ValidationException("Thiếu target.activityId cho remove_activity")
+            activity = await self.repo.get_activity_for_trip(activity_id, trip.id)
+            if not activity:
+                raise ValidationException(
+                    f"Không tìm thấy activity #{activity_id} trong lịch trình hiện tại"
+                )
+            await self.repo.delete_activity(activity)
+            return
+
+        raise ValidationException(f"Operation type `{operation.type}` chưa được hỗ trợ")

@@ -6,7 +6,11 @@ import { Day, Accommodation, TravelerInfo, Place, Activity, ExtraExpense, DayExt
 import { getItinerary, createItinerary, updateItinerary } from "../../services/itinerary";
 import { useTripWizard } from "../../contexts/TripWizardContext";
 import { storePendingClaim } from "../../contexts/AuthContext";
-import { readSessionTrip, writeSessionTrip } from "../../utils/tripResponseMapper";
+import {
+  mapItineraryResponseToSessionTrip,
+  readSessionTrip,
+  writeSessionTrip,
+} from "../../utils/tripResponseMapper";
 import { ApiError } from "../../services/api";
 
 /** Convert dd/MM/yyyy → yyyy-MM-dd for API. Pass-through if already ISO or empty. */
@@ -39,11 +43,45 @@ export const useTripSync = (
   const isInitialMount = useRef(true);
   const currentTripIdRef = useRef<number | null>(tripIdParam ?? null);
   const [currentTripId, _setCurrentTripId] = useState<number | null>(tripIdParam ?? null);
+  const [currentTripUpdatedAt, setCurrentTripUpdatedAt] = useState<string | null>(null);
   const setCurrentTripId = useCallback((id: number | null) => {
     currentTripIdRef.current = id;
     _setCurrentTripId(id);
   }, []);
   const { destinations: wizardDestinations, dayAllocations: wizardAllocations, budget: wizardBudget, resetWizard } = useTripWizard();
+
+  const applyServerTrip = useCallback((response: Awaited<ReturnType<typeof getItinerary>>) => {
+    const mapped = mapItineraryResponseToSessionTrip(response);
+    setCurrentTripId(mapped.tripId);
+    setCurrentTripUpdatedAt(mapped.updatedAt);
+    setTripName(mapped.name);
+    setTotalBudget(mapped.totalBudget);
+    setTravelers(mapped.travelers);
+    setDays(mapped.days);
+    if (mapped.days.length > 0) {
+      setSelectedDayId(mapped.days[0].id);
+    }
+    setAccommodations(mapped.accommodations);
+
+    let maxId = 0;
+    mapped.days.forEach((day) => {
+      if (day.id > maxId) maxId = day.id;
+      day.activities?.forEach((activity) => {
+        if (activity.id > maxId) maxId = activity.id;
+      });
+    });
+    updateNextId(maxId + 1);
+    writeSessionTrip(mapped);
+  }, [
+    setAccommodations,
+    setDays,
+    setSelectedDayId,
+    setTotalBudget,
+    setTravelers,
+    setTripName,
+    updateNextId,
+    setCurrentTripId,
+  ]);
 
   // Sync auth state
   useEffect(() => {
@@ -60,70 +98,7 @@ export const useTripSync = (
         try {
           const resp = await getItinerary(tripIdParam);
           if (!isMounted) return;
-          setCurrentTripId(resp.id);
-
-          if (resp.tripName) setTripName(resp.tripName);
-          if (resp.budget) setTotalBudget(resp.budget);
-          if (resp.travelerInfo) setTravelers(resp.travelerInfo);
-
-          if (resp.days && resp.days.length > 0) {
-            const mappedDays: Day[] = resp.days.map((d, idx) => ({
-              id: d.id || idx + 1,
-              label: d.label || `Ngày ${idx + 1}${d.destinationName ? ` - ${d.destinationName}` : ""}`,
-              date: d.date || "",
-              activities: (d.activities || []).map((a) => ({
-                id: a.id ?? Date.now() + idx * 100 + Math.random(),
-                name: a.name,
-                time: a.time,
-                endTime: a.endTime,
-                location: a.location,
-                description: a.description,
-                type: a.type || "attraction",
-                image: a.image,
-                transportation: a.transportation,
-                adultPrice: a.adultPrice,
-                childPrice: a.childPrice,
-                customCost: a.customCost,
-                taxiCost: a.taxiCost,
-                extraExpenses: (a.extraExpenses || []) as ExtraExpense[],
-              })),
-              destinationName: d.destinationName,
-            }));
-            setDays(mappedDays);
-            setSelectedDayId(mappedDays[0].id);
-
-            let maxId = 0;
-            mappedDays.forEach((day) => {
-              if (day.id > maxId) maxId = day.id;
-              day.activities?.forEach((act) => {
-                if (act.id > maxId) maxId = act.id;
-              });
-            });
-            updateNextId(maxId + 1);
-          }
-
-          // Load accommodations from API response
-          if (resp.accommodations && resp.accommodations.length > 0) {
-            const accMap: Record<number, Accommodation> = {};
-            resp.accommodations.forEach((acc) => {
-              (acc.dayIds || []).forEach((dayId: number) => {
-                accMap[dayId] = {
-                  id: acc.id,
-                  hotel: acc.hotel as any,
-                  dayIds: acc.dayIds,
-                  bookingType: acc.bookingType,
-                  duration: acc.duration,
-                  name: acc.name,
-                  checkIn: acc.checkIn,
-                  checkOut: acc.checkOut,
-                  pricePerNight: acc.pricePerNight,
-                  totalPrice: acc.totalPrice,
-                };
-              });
-            });
-            setAccommodations(accMap);
-          }
-
+          applyServerTrip(resp);
           isInitialMount.current = false;
           return;
         } catch (error) {
@@ -140,6 +115,7 @@ export const useTripSync = (
       const tripData = readSessionTrip();
       if (tripData?.days?.length) {
         if (tripData.tripId) setCurrentTripId(tripData.tripId);
+        setCurrentTripUpdatedAt(tripData.updatedAt ?? null);
         if (tripData.name) setTripName(tripData.name);
         setDays(tripData.days);
         setSelectedDayId(tripData.days[0].id);
@@ -202,7 +178,7 @@ export const useTripSync = (
 
     loadInitialData();
     return () => { isMounted = false; };
-  }, [tripIdParam, isAuthenticated, setCurrentTripId]);
+  }, [tripIdParam, isAuthenticated, setCurrentTripId, applyServerTrip]);
 
   // 2. Auto-save debounce (save to sessionStorage for quick restore, API when tripId exists)
   useEffect(() => {
@@ -215,10 +191,11 @@ export const useTripSync = (
         accommodations,
         totalBudget,
         travelers,
+        updatedAt: currentTripUpdatedAt,
         savedAt: new Date().toISOString(),
       });
     }
-  }, [days, accommodations, totalBudget, travelers, tripName]);
+  }, [days, accommodations, totalBudget, travelers, tripName, currentTripUpdatedAt]);
 
   // 3. Save to API
   const handleSaveItinerary = useCallback(async () => {
@@ -234,13 +211,14 @@ export const useTripSync = (
       accommodations,
       totalBudget,
       travelers,
+      updatedAt: currentTripUpdatedAt,
       savedAt: new Date().toISOString(),
     };
 
     try {
       if (currentTripIdRef.current) {
         // Update existing itinerary
-        await updateItinerary(currentTripIdRef.current, {
+        const response = await updateItinerary(currentTripIdRef.current, {
           tripName: tripName || "Lịch trình mới",
           budget: totalBudget,
           travelerInfo: travelers,
@@ -279,6 +257,7 @@ export const useTripSync = (
             totalPrice: acc.totalPrice,
           })),
         });
+        setCurrentTripUpdatedAt(response.updatedAt);
       } else {
         // Create new itinerary
         const destinationNames = Array.from(new Set(days.map((d) => d.destinationName).filter(Boolean)));
@@ -292,6 +271,7 @@ export const useTripSync = (
           childrenCount: travelers.children,
         });
         setCurrentTripId(resp.id);
+        setCurrentTripUpdatedAt(resp.updatedAt);
 
         // Store claimToken for guest → owner claim after login
         if (resp.claimToken) {
@@ -299,7 +279,7 @@ export const useTripSync = (
         }
 
         // Now update with the full days data
-        await updateItinerary(resp.id, {
+        const updateResponse = await updateItinerary(resp.id, {
           travelerInfo: travelers,
           days: days.map((d, idx) => ({
             id: d.id,
@@ -336,6 +316,7 @@ export const useTripSync = (
             totalPrice: acc.totalPrice,
           })),
         });
+        setCurrentTripUpdatedAt(updateResponse.updatedAt);
       }
 
       // Also save to sessionStorage as cache
@@ -396,7 +377,16 @@ export const useTripSync = (
         { position: "top-right" }
       );
     }
-  }, [isAuthenticated, tripName, days, accommodations, totalBudget, travelers, setShowLoginModal]);
+  }, [
+    isAuthenticated,
+    tripName,
+    days,
+    accommodations,
+    totalBudget,
+    travelers,
+    setShowLoginModal,
+    currentTripUpdatedAt,
+  ]);
 
-  return { handleSaveItinerary, currentTripId };
+  return { applyServerTrip, currentTripId, currentTripUpdatedAt, handleSaveItinerary };
 };

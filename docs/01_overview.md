@@ -63,7 +63,7 @@ MVP1
 
 | Hạng mục | Current truth |
 |---|---|
-| Overall readiness | `C3B_RUNTIME_READY_C3C_PATCH_PENDING` |
+| Overall readiness | `C3C_RUNTIME_VERIFIED_ETL_PENDING` |
 | `C3A — Chat Session Foundation` | Đã merge (`PR #98-100`) |
 | `C3B` | Đã có message flow, owner-check, real AI call, chat quota riêng, persisted `chat_messages` |
 | `C4` | Đã có persisted history read-path; history-management UX vẫn pending |
@@ -79,7 +79,7 @@ MVP1
 - `C3A` đã dựng xong session foundation owner-only, trip-scoped trong `TripWorkspace`.
 - `00100` là hardening pass sau khi message flow đã có: fix ETL scheduler smoke, cập nhật browser/docs theo current truth, và khóa lại evidence FE-BE-DB-Redis thật.
 - `C3B` đã xử lý message generation, provider abstraction, chat quota, và chat error UX riêng.
-- `C4` hiện ở trạng thái partial: persisted history read-path đã có nhưng chưa có history-management UX hoàn chỉnh.
+- `C4` hiện vẫn ở trạng thái partial: persisted history read-path đã có, proposal resolution status đã persist thật, nhưng history-management UX hoàn chỉnh vẫn chưa có.
 
 ---
 
@@ -146,7 +146,7 @@ MVP1
 
 - C.1 đã có direct generate pipeline local-ready, nhưng cần PR/CI review và thêm monitoring trước production.
 - C.2 SuggestionService (EP-30) đã implement và merged trên `feat/00047` → PR #49.
-- Chưa có `apply-patch` confirm endpoint, chưa có history-management UX đầy đủ, và data readiness cho các city thưa dữ liệu vẫn còn không đồng đều.
+- Companion editing core đã có `apply-patch` confirm endpoint/UI và stale strategy cơ bản; phần còn lại là history-management UX đầy đủ, ETL ops wiring, patch-specific rate limit, và data readiness cho các city thưa dữ liệu.
 - Analytics EP-34 chưa bật và chưa có SQL guardrails.
 
 ### ETL/Data
@@ -197,4 +197,4 @@ MVP1
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. `C3B` hiện đã có message flow thật trên current source, các mock AI surface chủ động đã được gỡ khỏi runtime chính, và phần còn lại trước khi xem companion editing là hoàn chỉnh nằm ở `C3C`/follow-up: `apply-patch`, history-management UX sâu hơn, scheduler wiring, và data enrichment cho sparse cities.
+Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. `C3C` hiện đã có confirm/cancel/stale flow thật trên current source, các mock AI surface chủ động đã được gỡ khỏi runtime chính, và phần còn lại trước khi xem companion editing là ổn hơn nằm ở ops/data hardening: scheduler wiring, patch-specific rate limit, session/history UX sâu hơn, và data enrichment cho sparse cities.

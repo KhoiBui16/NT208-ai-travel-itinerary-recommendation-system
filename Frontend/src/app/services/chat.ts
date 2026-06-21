@@ -11,6 +11,8 @@
 
 import { api } from "./api";
 import type {
+  ApplyChatPatchRequest,
+  ApplyChatPatchResponse,
   ChatMessageListResponse,
   ChatSession,
   ChatSessionListResponse,
@@ -86,6 +88,23 @@ export async function sendChatMessage(
 ): Promise<SendChatMessageResponse> {
   return api.post<SendChatMessageResponse>(
     `/api/v1/itineraries/chat-sessions/${sessionId}/messages`,
+    payload,
+  );
+}
+
+/**
+ * Confirm or cancel one persisted assistant proposal for the current trip.
+ *
+ * Backend resolves the proposal by `assistantMessageId`, validates ownership,
+ * checks stale-trip revision, then either mutates the itinerary or marks the
+ * proposal as cancelled.
+ */
+export async function applyChatPatch(
+  tripId: number,
+  payload: ApplyChatPatchRequest,
+): Promise<ApplyChatPatchResponse> {
+  return api.post<ApplyChatPatchResponse>(
+    `/api/v1/itineraries/${tripId}/apply-patch`,
     payload,
   );
 }

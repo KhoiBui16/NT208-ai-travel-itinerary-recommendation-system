@@ -8,7 +8,7 @@
 
 ## Problem
 
-Khi C3 apply-patch endpoint được implement, C3 design hiện tại không có mechanism để reject stale patches.
+Current source đã có stale detection cơ bản bằng `trip_snapshot_updated_at` so với `trips.updated_at`, trả `409` và persist `confirmationStatus='stale'`. Issue này được hạ cấp thành follow-up cho policy/rate-limit/UX hardening thay vì blocker “chưa có stale handling”.
 
 Nếu hai clients cùng làm việc trên cùng một trip:
 1. User A đọc trip (version N)
@@ -22,7 +22,7 @@ Nếu hai clients cùng làm việc trên cùng một trip:
 - `service.py` có `update()` nhưng không có version field check
 - `docs/06_ai_roadmap.md` section 3 không nói về stale patch handling
 - No `day.version` hoặc `trip.version` field
-- No 409 Conflict response cho stale state
+- Đã có `409 Conflict` cho stale state trên current source
 
 ## Recommended fix
 

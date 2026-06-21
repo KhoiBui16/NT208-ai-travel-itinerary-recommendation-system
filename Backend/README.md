@@ -14,8 +14,8 @@ FastAPI backend for the NT208 AI travel itinerary recommendation system.
 | AI C.1 | Implemented: `POST /api/v1/itineraries/generate` builds DB recommendation context, calls Gemini, validates, retries, persists generated trip data, and enforces user/guest quota |
 | AI C.2 | Implemented: `GET /api/v1/agent/suggest/{activity_id}` DB-only suggestion service |
 | AI C.3A | Implemented: Chat session REST APIs (EP-37/38/39), FE ChatPanel component, e2e tests |
-| AI C.3B | Current source has trip-bound `POST/GET /itineraries/chat-sessions/{sessionId}/messages`, `companion_service.py`, real Gemini call, persisted `chat_messages`, and auth-user chat quota riêng |
-| Remaining AI | C.3C apply-patch confirm + richer proposedOperations, C.5 analytics |
+| AI C.3B/C.3C | Current source has trip-bound `POST/GET /itineraries/chat-sessions/{sessionId}/messages`, `POST /itineraries/{tripId}/apply-patch`, real Gemini call, persisted `chat_messages`, stale proposal handling, and auth-user chat quota riêng |
+| Remaining AI | C.4 history-management UX/policy, patch-specific rate limit, ETL ops wiring, C.5 analytics |
 | Verified 2026-06-19 | Ruff check pass, Alembic upgrade/check pass, backend full suite `199 passed, 30 skipped, 1 warning`, real generate/chat smoke pass on project DB/Redis stack, ETL scheduler once smoke pass |
 
 ## Architecture

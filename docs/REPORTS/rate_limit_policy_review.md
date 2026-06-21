@@ -41,7 +41,7 @@ limit = 20-50/day cho UX tốt hơn
 
 ### Apply-patch
 
-**⚠️ CHƯA CÓ rate limit cho apply-patch** (C3 chưa implement endpoint).
+**⚠️ CHƯA CÓ rate limit riêng cho apply-patch** (endpoint đã có trên current source, nhưng limiter riêng vẫn chưa được thêm).
 
 Apply-patch không tốn LLM nhưng nên có rate limit nhẹ chống spam.
 

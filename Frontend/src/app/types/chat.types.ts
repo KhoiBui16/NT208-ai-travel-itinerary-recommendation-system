@@ -7,6 +7,8 @@
  * Used by: ChatPanel, future chat components, and chat API services.
  */
 
+import type { ItineraryResponse } from "../services/itinerary";
+
 // ===================================================================
 // Chat Session — Trip-bound companion conversation
 // ===================================================================
@@ -55,6 +57,9 @@ export interface ChatMessage {
   content: string; // Message text content
   proposedOperations: Record<string, unknown>[]; // Proposed itinerary changes (if requiresConfirmation)
   requiresConfirmation: boolean; // Whether user must confirm before applying changes
+  confirmationStatus: "not_required" | "pending" | "applied" | "cancelled" | "stale";
+  tripSnapshotUpdatedAt: string | null;
+  resolvedAt: string | null;
   createdAt: string; // ISO datetime string
 }
 
@@ -88,4 +93,17 @@ export interface SendChatMessageResponse {
   message: string; // Assistant reply text (top-level shortcut)
   requiresConfirmation: boolean; // Whether proposed operations need user confirm
   proposedOperations: Record<string, unknown>[]; // Suggested itinerary changes
+}
+
+export interface ApplyChatPatchRequest {
+  assistantMessageId: number;
+  action: "apply" | "cancel";
+}
+
+export interface ApplyChatPatchResponse {
+  applied: boolean;
+  status: "not_required" | "pending" | "applied" | "cancelled" | "stale";
+  message: string;
+  trip: ItineraryResponse | null;
+  assistantMessage: ChatMessage;
 }

@@ -24,7 +24,7 @@ Kế hoạch này vẫn là source test-plan, nhưng current live verification g
 Lưu ý phase:
 
 - `C3B` message flow đã có trên current source; đây không còn là pre-`C3B` baseline.
-- Phần còn lại trước khi xem companion hoàn chỉnh là `apply-patch`, `FloatingAIChat` cleanup/wiring, scheduler wiring, và docs/PR sync.
+- Phần còn lại trước khi xem companion ổn hơn là patch-specific rate limit, scheduler wiring, history-management UX, và docs/PR sync; `apply-patch` core + `FloatingAIChat` runtime cleanup đã có.
 
 ---
 

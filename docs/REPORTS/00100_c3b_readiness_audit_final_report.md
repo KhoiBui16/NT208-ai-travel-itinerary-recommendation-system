@@ -12,7 +12,7 @@
 
 Điểm còn mở:
 
-- chưa có `apply-patch` confirm endpoint/UI
+> **Superseded note (2026-06-21):** phần `apply-patch` endpoint/UI và stale strategy bên dưới đã được current source `00101` triển khai và verify. Giữ báo cáo này như snapshot của mốc `00100`, không còn là current truth cho companion editing.
 - live provider smoke ngày `2026-06-20` mới trả clarification-first, chưa tạo được `requiresConfirmation=true` bằng runtime thật
 - data readiness vẫn không đều giữa city rich và city sparse
 
@@ -359,4 +359,4 @@ All sub-agent transcripts available tại:
 **Report Generated:** 2026-06-20
 **Audited By:** Claude (glm-4.7)
 **Branch:** feat/00100-c-c3b-chat-hardening
-**Status:** C3B core `REVIEW_READY`; companion editing still pending follow-up
+**Status:** Historical `00100` snapshot only. Superseded on `2026-06-21` by `00101` for apply-patch/stale current truth.

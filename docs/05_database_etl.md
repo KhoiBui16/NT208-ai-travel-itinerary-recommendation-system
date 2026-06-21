@@ -144,7 +144,7 @@ File này mô tả **chi tiết toàn bộ database schema** — từng bảng, 
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    AI/CHAT DOMAIN (schema đã có trên main, API chưa có)     │
+│                    AI/CHAT DOMAIN (schema + API đã có trên current source)   │
 │                                                                             │
 │  ┌──────── chat_sessions ──────────┐     ┌──── chat_messages ────────────┐ │
 │  │ PK  id               int        │1──N │ PK  id                int     │ │
@@ -495,7 +495,7 @@ CHECK (
 
 ### 2.15 `chat_sessions` / `chat_messages` — AI Chat (Phase C)
 
-Schema đã có trong DB qua Alembic migration, nhưng chưa có API endpoints.
+Schema đã có trong DB qua Alembic migration, và current source đã có session/message/apply-patch endpoints.
 
 **`chat_sessions`:**
 
