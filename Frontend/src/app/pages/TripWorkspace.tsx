@@ -119,7 +119,7 @@ export default function TripWorkspace() {
     calculateTotalCostByCategory, formatCurrency
   } = useTripCost(days, accommodations, travelers);
 
-  const { handleSaveItinerary, currentTripId } = useTripSync(
+  const { applyServerTrip, handleSaveItinerary, currentTripId, currentTripUpdatedAt } = useTripSync(
     days, setDays, setSelectedDayId, accommodations, setAccommodations,
     totalBudget, setTotalBudget, travelers, setTravelers, setIsAuthenticated, setPlaces,
     isAuthenticated, setShowLoginModal, updateNextId,
@@ -391,7 +391,12 @@ export default function TripWorkspace() {
           ) : (
             <div className="h-[calc(100vh-8rem)]">
               {remoteTripId ? (
-                <ChatPanel tripId={remoteTripId} isAuthenticated={isAuthenticated} />
+                <ChatPanel
+                  tripId={remoteTripId}
+                  isAuthenticated={isAuthenticated}
+                  tripUpdatedAt={currentTripUpdatedAt}
+                  onTripPatched={applyServerTrip}
+                />
               ) : (
                 <div className="flex h-full items-center justify-center p-6 text-center">
                   <div>

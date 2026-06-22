@@ -23,17 +23,21 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import {
+  applyChatPatch,
   createChatSession,
   listChatMessages,
   listChatSessions,
   sendChatMessage,
 } from "../services/chat";
 import type { ChatMessage, ChatSession } from "../types/chat.types";
+import type { ItineraryResponse } from "../services/itinerary";
 import { getChatErrorMessage } from "../utils/chatErrorHandler";
 
 interface ChatPanelProps {
   tripId: number;
   isAuthenticated: boolean;
+  tripUpdatedAt: string | null;
+  onTripPatched: (trip: ItineraryResponse) => void;
 }
 
 type PanelState = "loading" | "error" | "empty" | "active";
@@ -52,7 +56,27 @@ function summarizeOperation(operation: Record<string, unknown>): string {
   return "Đề xuất thay đổi lịch trình";
 }
 
-export function ChatPanel({ tripId, isAuthenticated }: ChatPanelProps) {
+function getConfirmationStatusLabel(status: ChatMessage["confirmationStatus"]): string | null {
+  switch (status) {
+    case "pending":
+      return "Chờ xác nhận";
+    case "applied":
+      return "Đã áp dụng";
+    case "cancelled":
+      return "Đã hủy";
+    case "stale":
+      return "Đã lỗi thời";
+    default:
+      return null;
+  }
+}
+
+export function ChatPanel({
+  tripId,
+  isAuthenticated,
+  tripUpdatedAt,
+  onTripPatched,
+}: ChatPanelProps) {
   const [panelState, setPanelState] = useState<PanelState>("loading");
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [sessionCount, setSessionCount] = useState(0);
@@ -61,6 +85,7 @@ export function ChatPanel({ tripId, isAuthenticated }: ChatPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [resolvingMessageId, setResolvingMessageId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -157,6 +182,39 @@ export function ChatPanel({ tripId, isAuthenticated }: ChatPanelProps) {
       setError(getChatErrorMessage(err));
     } finally {
       setIsSending(false);
+    }
+  }
+
+  async function handleResolveProposal(
+    message: ChatMessage,
+    action: "apply" | "cancel",
+  ) {
+    if (!currentSession || resolvingMessageId !== null) return;
+
+    setResolvingMessageId(message.id);
+    setError(null);
+
+    try {
+      const response = await applyChatPatch(tripId, {
+        assistantMessageId: message.id,
+        action,
+      });
+
+      setMessages((prev) =>
+        prev.map((item) => (item.id === response.assistantMessage.id ? response.assistantMessage : item)),
+      );
+
+      if (response.trip) {
+        onTripPatched(response.trip);
+      }
+
+      await loadMessages(currentSession.id);
+    } catch (err) {
+      console.error("Failed to resolve chat proposal:", err);
+      setError(getChatErrorMessage(err));
+      await loadMessages(currentSession.id);
+    } finally {
+      setResolvingMessageId(null);
     }
   }
 
@@ -308,6 +366,12 @@ export function ChatPanel({ tripId, isAuthenticated }: ChatPanelProps) {
           messages.map((message) => {
             const isUser = message.role === "user";
             const operationSummaries = message.proposedOperations.map(summarizeOperation);
+            const confirmationLabel = getConfirmationStatusLabel(message.confirmationStatus);
+            const canResolve =
+              !isUser &&
+              message.requiresConfirmation &&
+              message.confirmationStatus === "pending" &&
+              tripUpdatedAt !== null;
 
             return (
               <div
@@ -330,7 +394,14 @@ export function ChatPanel({ tripId, isAuthenticated }: ChatPanelProps) {
 
                   {!isUser && message.requiresConfirmation && (
                     <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                      <p className="font-semibold">Cần xác nhận trước khi áp dụng</p>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-semibold">Cần xác nhận trước khi áp dụng</p>
+                        {confirmationLabel && (
+                          <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold">
+                            {confirmationLabel}
+                          </span>
+                        )}
+                      </div>
                       {operationSummaries.length > 0 && (
                         <ul className="mt-2 space-y-1">
                           {operationSummaries.map((summary, index) => (
@@ -339,6 +410,24 @@ export function ChatPanel({ tripId, isAuthenticated }: ChatPanelProps) {
                             </li>
                           ))}
                         </ul>
+                      )}
+                      {canResolve && (
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            onClick={() => void handleResolveProposal(message, "apply")}
+                            disabled={resolvingMessageId === message.id}
+                            className="rounded-lg bg-cyan-600 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-cyan-300"
+                          >
+                            {resolvingMessageId === message.id ? "Đang áp dụng..." : "Xác nhận áp dụng"}
+                          </button>
+                          <button
+                            onClick={() => void handleResolveProposal(message, "cancel")}
+                            disabled={resolvingMessageId === message.id}
+                            className="rounded-lg border border-amber-300 px-3 py-1.5 text-[11px] font-semibold text-amber-900 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Bỏ qua đề xuất
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}

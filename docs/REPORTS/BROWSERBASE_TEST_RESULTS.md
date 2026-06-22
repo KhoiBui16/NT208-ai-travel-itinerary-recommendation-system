@@ -19,7 +19,7 @@
 > - `TripWorkspace` và `DailyItinerary` không còn mount `FloatingAIChat` / promo mock surfaces
 > - `/cities/ha-noi` và `/cities/chau-doc` render đúng rich/sparse truth từ backend
 > - `chat_sessions.id=206` persisted cùng `4` `chat_messages`
-> - live provider prompt chỉnh itinerary vẫn trả clarification-first (`requiresConfirmation=false`), nên proposal-confirm path chưa có evidence end-to-end
+> - live provider prompt chỉnh itinerary vẫn có thể trả clarification-first (`requiresConfirmation=false`), nhưng pass `00101` đã bổ sung evidence end-to-end cho proposal-confirm bằng browser/API/DB thật
 
 ---
 
@@ -209,7 +209,7 @@ Evidence:
 Interpretation:
 
 - `C3A` foundation is real and stable.
-- `C3B` messaging / patch-confirm is still not implemented, and the UI explicitly says so.
+- Historical note from the pre-`00101` pass: at that point patch-confirm was not yet implemented. Current source has already superseded this conclusion with real apply/cancel/stale verification.
 
 ### 7. Real AI generate guest flow
 
@@ -308,7 +308,7 @@ Important green areas from the suite:
 
 ### Remaining limitation
 
-1. `C3B` messaging / patch-confirm is still not implemented.
+1. `C3B/C3C` messaging + patch-confirm core is implemented and locally verified; remaining gaps are data/ops hardening.
 2. Many destinations remain sparse in DB coverage, so hotel-only pages are expected for those cities.
 
 ### Tooling note

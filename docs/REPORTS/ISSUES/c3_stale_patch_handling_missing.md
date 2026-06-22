@@ -3,12 +3,12 @@
 **Date**: 2026-05-28
 **Branch**: `docs/00050-c-c3-design-readiness-audit`
 **Priority**: HIGH
-**Status**: OPEN
+**Status**: RESOLVED IN `00101` / FOLLOW-UP FOR HARDENING ONLY
 **Related**: `docs/REPORTS/phase_c3_design_readiness.md`
 
 ## Problem
 
-Khi C3 apply-patch endpoint được implement, C3 design hiện tại không có mechanism để reject stale patches.
+Current source đã có stale detection cơ bản bằng `trip_snapshot_updated_at` so với `trips.updated_at`, trả `409` và persist `confirmationStatus='stale'`. Issue này được hạ cấp thành follow-up cho policy/rate-limit/UX hardening thay vì blocker “chưa có stale handling”.
 
 Nếu hai clients cùng làm việc trên cùng một trip:
 1. User A đọc trip (version N)
@@ -22,7 +22,7 @@ Nếu hai clients cùng làm việc trên cùng một trip:
 - `service.py` có `update()` nhưng không có version field check
 - `docs/06_ai_roadmap.md` section 3 không nói về stale patch handling
 - No `day.version` hoặc `trip.version` field
-- No 409 Conflict response cho stale state
+- Đã có `409 Conflict` cho stale state trên current source
 
 ## Recommended fix
 
@@ -47,10 +47,13 @@ Hoặc:
 # Server validate và reject nếu không match
 ```
 
-## Does not block
+## Current disposition
 
-C3 implementation có thể bắt đầu mà không có stale handling, nhưng production sẽ có race condition risk.
+Current source đã có stale detection cơ bản và persist `confirmationStatus='stale'` thật. Issue này không còn là blocker “thiếu stale handling”; follow-up còn lại chỉ là optimistic-locking sâu hơn, policy/rate-limit và UX polish nếu muốn tránh race condition tinh hơn.
 
-## No action in this audit branch
+## Follow-up scope only
 
-This is an audit-only branch. Fix sẽ được implement trong feature branch riêng.
+Nếu cần làm sâu hơn, hãy mở issue riêng cho:
+- trip/day version field hoặc ETag strategy
+- patch-specific rate limit
+- UX refresh/resolve flow khi user gặp `409`

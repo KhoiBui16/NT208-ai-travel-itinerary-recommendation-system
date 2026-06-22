@@ -9,7 +9,7 @@
 
 ## One-Line Summary
 
-🟢 **C3B MESSAGE FLOW ĐÃ XANH TRÊN RUNTIME THẬT; C3C APPLY-PATCH VÀ DATA ENRICHMENT VẪN LÀ FOLLOW-UP** - `ChatPanel` đã gửi/đọc message thật, các mock AI surface chủ động đã bị gỡ khỏi runtime chính, còn city sparse/confirm-mutation path vẫn cần chốt tiếp.
+🟢 **C3C APPLY-PATCH CORE ĐÃ ĐƯỢC VERIFY TRÊN RUNTIME THẬT; DATA/OPS HARDENING VẪN LÀ FOLLOW-UP** - `ChatPanel` đã gửi/đọc message thật, confirm/cancel/stale đã qua browser/API/DB verification, các mock AI surface chủ động đã bị gỡ khỏi runtime chính, còn city sparse và scheduler/rate-limit vẫn cần chốt tiếp.
 
 ---
 
@@ -35,8 +35,8 @@
 ### What this means
 
 - Message flow và persistence là **real** trên stack FE -> BE -> Postgres -> Redis.
-- UI render path cho `requiresConfirmation/proposedOperations` vẫn tồn tại trong source/test, nhưng live provider smoke ngày `2026-06-20` chưa tạo được một proposal-confirm response để chứng minh end-to-end mutation path.
-- Điều này khớp với current follow-up scope: `apply-patch` và companion editing hoàn chỉnh vẫn chưa xong.
+- Live provider smoke ngày `2026-06-20` vẫn trả clarification-first, nhưng pass `2026-06-21` đã chứng minh end-to-end mutation path bằng browser thật + proposal seed trên DB thật + `apply-patch` thật.
+- Follow-up còn lại không còn là thiếu endpoint/UI, mà là patch-specific rate limit, history-management UX, scheduler wiring, và data enrichment.
 
 ## 2026-06-19 addendum
 

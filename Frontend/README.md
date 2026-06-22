@@ -13,8 +13,8 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 | AI C.1 | `CreateTrip` calls BE `POST /api/v1/itineraries/generate` and navigates to `TripWorkspace` |
 | AI C.2 | Suggestion backend ready (`GET /api/v1/agent/suggest/{activity_id}`), nhưng FE suggestion surfaces vẫn dùng mock data |
 | AI C.3A | `ChatPanel` integrated into `TripWorkspace` with chat session REST APIs |
-| AI C.3B | `ChatPanel` now loads history thật, gửi message thật, render `requiresConfirmation` + `proposedOperations`, và dùng chat-specific error handling |
-| Remaining AI UI | `FloatingAIChat`, promo bubble, and contextual panels vẫn còn trên source như legacy demo components nhưng đã không còn mount trên runtime chính; apply-patch confirmation UX vẫn pending |
+| AI C.3B/C.3C | `ChatPanel` now loads history thật, gửi message thật, render `requiresConfirmation` + `proposedOperations`, và đã có confirm/cancel UI gọi `apply-patch` thật |
+| Remaining AI UI | Legacy companion/demo components vẫn còn trên source nhưng không còn mount trên runtime chính; history-management UX, session switcher, và patch conflict copy có thể còn cần polish thêm |
 | Verified 2026-06-20 | Production build pass qua `npm run build -- --outDir .build-tmp\\verify`; live Chrome smoke verified real ChatPanel session/history persistence against backend on `localhost:8000`; latest recorded full Playwright suite vẫn là `33 passed, 3 skipped` |
 
 ## Local Start

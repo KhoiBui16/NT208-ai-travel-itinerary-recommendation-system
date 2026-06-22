@@ -15,6 +15,7 @@ export interface SessionTripData {
   accommodations: Record<number, Accommodation>;
   totalBudget: number;
   travelers: TravelerInfo;
+  updatedAt: string | null;
   savedAt: string;
 }
 
@@ -74,6 +75,7 @@ export function mapItineraryResponseToSessionTrip(
     accommodations,
     totalBudget: response.budget || 0,
     travelers: response.travelerInfo,
+    updatedAt: response.updatedAt ?? null,
     savedAt: new Date().toISOString(),
   };
 }
@@ -100,6 +102,7 @@ export function readSessionTrip(): SessionTripData | null {
           children: 0,
           total: 2,
         },
+      updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : null,
       savedAt: parsed.savedAt || new Date(0).toISOString(),
     };
   } catch {

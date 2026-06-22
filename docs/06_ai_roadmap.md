@@ -21,8 +21,8 @@ File này mô tả **kiến trúc AI dài hạn cho Phase C** — generate pipel
 - Chat/companion UI ở FE hiện dùng `ChatPanel` làm runtime surface thật trong `TripWorkspace`; `FloatingAIChat` và các panel companion cũ vẫn còn trên source như legacy demo components nhưng không còn được mount trên route runtime chính.
 - DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn) và C3A đã có session CRUD foundation.
 - Đã có owner-only session CRUD API, message send/history API, `companion_service.py`, và chat quota riêng cho auth user.
-- Live smoke 2026-06-20 xác nhận message flow/persistence là thật; provider ở các prompt thử nghiệm gần nhất vẫn trả lời theo hướng clarification-first, nên `requiresConfirmation/proposedOperations` chưa được chứng minh end-to-end bằng live mutation path.
-- Sau `PR #98-100`, `C3A` đã merge; current local branch `00100` đang chốt `C3B` message-flow runtime truth, còn `C3C` apply-patch và `C4` history-management UX vẫn là follow-up.
+- Live smoke 2026-06-20 xác nhận message flow/persistence là thật; pass `00101` trên 2026-06-21 đã bổ sung browser/API/DB evidence cho `apply`, `cancel`, `stale`, đồng thời lộ ra và fix 2 bug thật: alias `restaurant` làm nổ `500`, và stale status không persist vì rollback.
+- Sau `PR #98-100`, `C3A` đã merge; current local branch `00101` đang chốt `C3C` patch-confirm runtime truth, còn `C4` history-management UX, patch rate-limit, và ops/data hardening vẫn là follow-up.
 - C.1 không phải multi-agent; provider/tool-calling để dành cho giai đoạn sau `C3A`.
 
 ---
@@ -148,7 +148,7 @@ Ngày 2026-05-25:
 
 ## 3. Companion Chat — Patch-Confirm Flow
 
-> **Lưu ý:** Phần dưới đây mô tả target architecture cho `C3C`/apply-patch và phần companion editing đầy đủ. Current source `00100` đã có owner-only session + message APIs, real Gemini call, persisted history read-path, và chat quota riêng; phần còn thiếu là confirm-mutation path vào itinerary.
+> **Lưu ý:** Phần dưới đây mô tả target architecture cho companion editing. Current source `00101` đã có owner-only session + message APIs, real Gemini call, persisted history read-path, `apply-patch` confirm/cancel UI+API, và stale proposal handling cơ bản; phần còn thiếu là UX/policy hardening và ops/data follow-up.
 
 ### 3.1 Kiến trúc tổng thể
 
@@ -333,7 +333,7 @@ Ngày 2026-05-25:
 
 ### 5.1 Trạng thái
 
-DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn qua Alembic), nhưng chưa có API.
+DB đã có bảng `chat_sessions` + `chat_messages`, và current source đã có session/message/apply-patch APIs thật.
 
 ### 5.2 Endpoints dự kiến
 

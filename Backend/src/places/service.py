@@ -34,13 +34,16 @@ from src.shared.service import BaseService
 
 logger = logging.getLogger(__name__)
 
+LOCAL_DESTINATION_IMAGE_PREFIX = "/img/destinations/"
+MIN_LIST_GENERATE_READY_PLACES = 2
+
 
 class PlaceService(BaseService):
     """Business logic for places, destinations, and saved bookmarks.
 
     Uses composition with CacheClient for Redis caching. Cache keys:
-    - "destinations:all:v2"              → Destination list with data quality
-    - "destinations:detail:v2:{name}"    → City detail (dest + places + hotels)
+    - "destinations:all:v3"              → Destination list with data quality
+    - "destinations:detail:v3:{name}"    → City detail (dest + places + hotels)
     - "places:search:{query}:{city}:..." → Search results
     """
 
@@ -63,13 +66,14 @@ class PlaceService(BaseService):
     async def get_destinations(self) -> list[DestinationResponse]:
         """Get all active destinations with place/hotel counts.
 
-        Uses v2 cache key to reflect updated data quality semantics:
-        data quality is advisory (non-blocking warning), not a submit gate.
+        Uses v3 cache key to reflect updated readiness semantics:
+        data quality remains advisory, but `isGenerateReady` now tracks
+        the minimum viable place coverage for the shortest AI trip.
 
         Cache TTL: destination_cache_ttl_seconds from settings.
         """
         # Try cache first
-        cached = await self.cache.get("destinations:all:v2")
+        cached = await self.cache.get("destinations:all:v3")
         if cached is not None:
             cached_items = json.loads(cached)
             return [
@@ -89,7 +93,7 @@ class PlaceService(BaseService):
 
         # Store in cache for future requests
         await self.cache.set(
-            "destinations:all:v2",
+            "destinations:all:v3",
             json.dumps([i.model_dump() for i in items]),
             self.settings.destination_cache_ttl_seconds,
         )
@@ -103,7 +107,7 @@ class PlaceService(BaseService):
 
         Cache TTL: destination_cache_ttl_seconds from settings.
         """
-        cache_key = normalize_cache_key("destinations", "detail", "v2", name)
+        cache_key = normalize_cache_key("destinations", "detail", "v3", name)
 
         # Try cache first
         cached = await self.cache.get(cache_key)
@@ -263,8 +267,9 @@ class PlaceService(BaseService):
         - "partial" (≥6 places):  Limited data, results may have fewer options
         - "sparse"  (<6 places):  Very little data, results may be incomplete
 
-        All API-listed destinations have isGenerateReady=True. Backend may
-        still return 422 if context is truly insufficient at generation time.
+        `isGenerateReady` is coarse list-level guidance only. Backend may
+        still return 422 if the final trip request needs more context than
+        the destination currently has.
         """
         return self._build_destination_response(
             dest_id=dest_data["id"],
@@ -285,7 +290,13 @@ class PlaceService(BaseService):
         places_count: int,
         hotels_count: int,
     ) -> DestinationResponse:
-        """Create a destination response with consistent readiness metadata."""
+        """Create a destination response with consistent readiness metadata.
+
+        `isGenerateReady` is intentionally coarse because the destination
+        listing does not know the user's final trip length yet. We only mark
+        a city as unavailable when the live place count is below the minimum
+        needed for even the shortest AI-generated trip.
+        """
         # Determine data quality status and advisory message
         if places_count >= 30:
             status = "ready"
@@ -299,21 +310,47 @@ class PlaceService(BaseService):
         else:
             status = "sparse"
             reason = (
-                f"Dữ liệu cho {dest_name} còn rất ít. "
-                f"Bạn vẫn có thể thử tạo lịch trình, nhưng kết quả có thể không đầy đủ."
+                f"Dữ liệu cho {dest_name} hiện còn quá ít để AI tạo lịch trình ổn định. "
+                "Bạn vẫn có thể xem chi tiết điểm đến, nhưng nên ETL thêm dữ liệu "
+                "trước khi generate."
             )
+
+        is_generate_ready = places_count >= MIN_LIST_GENERATE_READY_PLACES
 
         return DestinationResponse(
             id=dest_id,
             name=dest_name,
             slug=dest_slug,
-            image=image,
+            image=self._resolve_destination_image(
+                image=image,
+                dest_slug=dest_slug,
+                dest_name=dest_name,
+            ),
             placesCount=places_count,
             hotelsCount=hotels_count,
-            isGenerateReady=True,  # All API-listed destinations allowed to attempt generate
+            isGenerateReady=is_generate_ready,
             readinessStatus=status,
             readinessReason=reason,
         )
+
+    def _resolve_destination_image(self, *, image: str, dest_slug: str, dest_name: str) -> str:
+        """Normalize destination cover image paths for list/detail responses.
+
+        Legacy ETL rows may carry stale local image slugs such as
+        `/img/destinations/ha-n-i.jpg`. When the API is already returning
+        a canonical destination slug, prefer rebuilding the local asset path
+        from that slug so FE and docs see the same truth.
+        """
+        normalized_slug = dest_slug or slugify(dest_name)
+        trimmed_image = image.strip()
+
+        if trimmed_image.startswith(("http://", "https://")):
+            return trimmed_image
+
+        if not trimmed_image or trimmed_image.startswith(LOCAL_DESTINATION_IMAGE_PREFIX):
+            return f"{LOCAL_DESTINATION_IMAGE_PREFIX}{normalized_slug}.jpg"
+
+        return trimmed_image
 
     def _to_place_response(self, place: Place) -> PlaceResponse:
         """Convert a Place ORM to PlaceResponse schema.

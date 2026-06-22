@@ -83,6 +83,7 @@ test("ChatPanel renders real session and appends mocked C3B reply contract", asy
 
   const trip = await createTripViaAPI(tokens.accessToken);
   const session = await createChatSessionViaAPI(tokens.accessToken, trip.id);
+  let historyItems: Record<string, unknown>[] = [];
 
   await page.route(
     `${API_URL}/api/v1/itineraries/chat-sessions/${session.id}/messages?skip=0&limit=50`,
@@ -91,8 +92,8 @@ test("ChatPanel renders real session and appends mocked C3B reply contract", asy
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          items: [],
-          total: 0,
+          items: historyItems,
+          total: historyItems.length,
           skip: 0,
           limit: 50,
         }),
@@ -108,6 +109,52 @@ test("ChatPanel renders real session and appends mocked C3B reply contract", asy
         return;
       }
 
+      historyItems = [
+        {
+          id: 101,
+          sessionId: session.id,
+          role: "user",
+          content: "Thêm giúp mình một điểm tham quan lịch sử",
+          proposedOperations: [],
+          requiresConfirmation: false,
+          confirmationStatus: "not_required",
+          tripSnapshotUpdatedAt: null,
+          resolvedAt: null,
+          createdAt: "2026-07-01T09:00:00Z",
+        },
+        {
+          id: 102,
+          sessionId: session.id,
+          role: "assistant",
+          content: "Mình đề xuất thêm Văn Miếu vào ngày 2.",
+          proposedOperations: [
+            {
+              type: "add_activity",
+              description: "Thêm Văn Miếu vào ngày 2",
+              target: { dayId: 2 },
+              activity: {
+                name: "Văn Miếu",
+                time: "14:00",
+                endTime: "16:00",
+                location: "58 Quốc Tử Giám, Hà Nội",
+                description: "Tham quan di tích lịch sử",
+                type: "attraction",
+                image: "",
+                transportation: "taxi",
+                adultPrice: 70000,
+                childPrice: 35000,
+                extraExpenses: [],
+              },
+            },
+          ],
+          requiresConfirmation: true,
+          confirmationStatus: "pending",
+          tripSnapshotUpdatedAt: "2026-07-01T08:00:00Z",
+          resolvedAt: null,
+          createdAt: "2026-07-01T09:00:05Z",
+        },
+      ];
+
       await route.fulfill({
         status: 201,
         headers: {
@@ -118,39 +165,142 @@ test("ChatPanel renders real session and appends mocked C3B reply contract", asy
         },
         body: JSON.stringify({
           sessionId: session.id,
-          userMessage: {
-            id: 101,
-            sessionId: session.id,
-            role: "user",
-            content: "Thêm giúp mình một điểm tham quan lịch sử",
-            proposedOperations: [],
-            requiresConfirmation: false,
-            createdAt: "2026-07-01T09:00:00Z",
-          },
-          assistantMessage: {
-            id: 102,
-            sessionId: session.id,
-            role: "assistant",
-            content: "Mình đề xuất thêm Văn Miếu vào ngày 2.",
-            proposedOperations: [
-              {
-                type: "add_activity",
-                description: "Thêm Văn Miếu vào ngày 2",
-                target: { dayId: 2 },
-              },
-            ],
-            requiresConfirmation: true,
-            createdAt: "2026-07-01T09:00:05Z",
-          },
+          userMessage: historyItems[0],
+          assistantMessage: historyItems[1],
           message: "Mình đề xuất thêm Văn Miếu vào ngày 2.",
           requiresConfirmation: true,
-          proposedOperations: [
-            {
-              type: "add_activity",
-              description: "Thêm Văn Miếu vào ngày 2",
-              target: { dayId: 2 },
-            },
-          ],
+          proposedOperations: (historyItems[1] as any).proposedOperations,
+        }),
+      });
+    },
+  );
+
+  await page.route(
+    `${API_URL}/api/v1/itineraries/${trip.id}/apply-patch`,
+    async (route) => {
+      const requestBody = route.request().postDataJSON() as {
+        assistantMessageId: number;
+        action: "apply" | "cancel";
+      };
+
+      const assistant = historyItems.find((item) => item.id === requestBody.assistantMessageId);
+      if (!assistant) {
+        await route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          body: JSON.stringify({
+            detail: "Assistant proposal not found",
+            error_code: "NOT_FOUND",
+            status_code: 404,
+          }),
+        });
+        return;
+      }
+
+      if (requestBody.action === "cancel") {
+        (assistant as any).confirmationStatus = "cancelled";
+        (assistant as any).resolvedAt = "2026-07-01T09:01:00Z";
+        historyItems = [
+          ...historyItems,
+          {
+            id: 103,
+            sessionId: session.id,
+            role: "system",
+            content: "Bạn đã hủy đề xuất thay đổi lịch trình này.",
+            proposedOperations: [],
+            requiresConfirmation: false,
+            confirmationStatus: "not_required",
+            tripSnapshotUpdatedAt: null,
+            resolvedAt: null,
+            createdAt: "2026-07-01T09:01:00Z",
+          },
+        ];
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            applied: false,
+            status: "cancelled",
+            message: "Đã hủy đề xuất. Lịch trình hiện tại được giữ nguyên.",
+            trip: null,
+            assistantMessage: assistant,
+          }),
+        });
+        return;
+      }
+
+      (assistant as any).confirmationStatus = "applied";
+      (assistant as any).resolvedAt = "2026-07-01T09:01:00Z";
+      historyItems = [
+        ...historyItems,
+        {
+          id: 103,
+          sessionId: session.id,
+          role: "system",
+          content: "Đề xuất đã được áp dụng vào lịch trình.",
+          proposedOperations: [],
+          requiresConfirmation: false,
+          confirmationStatus: "not_required",
+          tripSnapshotUpdatedAt: null,
+          resolvedAt: null,
+          createdAt: "2026-07-01T09:01:00Z",
+        },
+      ];
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          applied: true,
+          status: "applied",
+          message: "Đã áp dụng đề xuất vào lịch trình hiện tại.",
+          assistantMessage: assistant,
+          trip: {
+            id: trip.id,
+            destination: "Hanoi",
+            tripName: "E2E C3B Chat Trip",
+            startDate: "2026-07-01",
+            endDate: "2026-07-03",
+            budget: 5000000,
+            totalCost: 70000,
+            travelerInfo: { adults: 2, children: 0, total: 2 },
+            interests: ["food"],
+            days: [
+              {
+                id: 1,
+                label: "Ngày 1",
+                date: "2026-07-01",
+                destinationName: "Hanoi",
+                activities: [],
+              },
+              {
+                id: 2,
+                label: "Ngày 2",
+                date: "2026-07-02",
+                destinationName: "Hanoi",
+                activities: [
+                  {
+                    id: 501,
+                    name: "Văn Miếu",
+                    time: "14:00",
+                    endTime: "16:00",
+                    location: "58 Quốc Tử Giám, Hà Nội",
+                    description: "Tham quan di tích lịch sử",
+                    type: "attraction",
+                    image: "",
+                    transportation: "taxi",
+                    adultPrice: 70000,
+                    childPrice: 35000,
+                    extraExpenses: [],
+                  },
+                ],
+              },
+            ],
+            accommodations: [],
+            claimToken: null,
+            createdAt: "2026-07-01T08:00:00Z",
+            updatedAt: "2026-07-01T09:01:00Z",
+          },
         }),
       });
     },
@@ -173,7 +323,13 @@ test("ChatPanel renders real session and appends mocked C3B reply contract", asy
   await expect(page.getByText("Thêm giúp mình một điểm tham quan lịch sử")).toBeVisible();
   await expect(page.getByText("Mình đề xuất thêm Văn Miếu vào ngày 2.")).toBeVisible();
   await expect(page.getByText(/Cần xác nhận trước khi áp dụng/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Xác nhận áp dụng" })).toBeVisible();
   await expect(
     page.getByRole("listitem").filter({ hasText: "Thêm Văn Miếu vào ngày 2" }),
   ).toBeVisible();
+
+  await page.getByRole("button", { name: "Xác nhận áp dụng" }).click();
+
+  await expect(page.getByText(/Đã áp dụng/i)).toBeVisible();
+  await expect(page.getByText(/Đề xuất đã được áp dụng vào lịch trình/i)).toBeVisible();
 });

@@ -144,7 +144,7 @@ File này mô tả **chi tiết toàn bộ database schema** — từng bảng, 
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    AI/CHAT DOMAIN (schema đã có trên main, API chưa có)     │
+│                    AI/CHAT DOMAIN (schema + API đã có trên current source)   │
 │                                                                             │
 │  ┌──────── chat_sessions ──────────┐     ┌──── chat_messages ────────────┐ │
 │  │ PK  id               int        │1──N │ PK  id                int     │ │
@@ -495,7 +495,7 @@ CHECK (
 
 ### 2.15 `chat_sessions` / `chat_messages` — AI Chat (Phase C)
 
-Schema đã có trong DB qua Alembic migration, nhưng chưa có API endpoints.
+Schema đã có trong DB qua Alembic migration, và current source đã có session/message/apply-patch endpoints.
 
 **`chat_sessions`:**
 
@@ -547,6 +547,9 @@ Schema đã có trong DB qua Alembic migration, nhưng chưa có API endpoints.
 | `20260504_0003_add_password_reset_fields` | 2026-05-04 | Password reset | `users` thêm `password_reset_token_hash`, `password_reset_expires_at` |
 | `20260525_0004_add_goong_place_metadata` | 2026-05-25 | Goong ETL metadata | `places` thêm `external_id` (120 char), `raw_metadata` (JSONB); index `ix_places_external_id` |
 | `20260525_0005_expand_goong_external_id` | 2026-05-25 | Long Goong place_id | `places.external_id` mở rộng `varchar(512)` để chứa Goong `place_id` dài |
+| `20260608_0006_fix_accommodation_day_ids` | 2026-06-08 | Accommodation day linking fix | Chuẩn hóa `accommodations.day_ids` cho dữ liệu cũ |
+| `20260609_0007_seed_trip_days_for_existing_trips` | 2026-06-09 | Backfill trip days | Seed `trip_days` cho trip cũ để workspace/edit flow ổn định |
+| `20260621_0008_add_chat_message_confirmation_fields` | 2026-06-21 | C3C apply-patch confirmation state | `chat_messages` thêm `confirmation_status`, `trip_snapshot_updated_at`, `resolved_at` |
 **Nguyên tắc migration:**
 - Alembic là source of truth — không dùng `create_all()` trong production.
 - Mỗi migration phải có `upgrade()` và `downgrade()`.
@@ -756,4 +759,4 @@ uv run python -m src.etl --cities "Hà Nội" --dry-run
 - Kiểm tra số lượng places/hotels sau crawl trước khi test AI generate cho city đó.
 - Thiết lập lịch crawl định kỳ nếu cần dữ liệu mới (gợi ý: cron 30 ngày/lần).
 - ETL chưa có incremental update — mỗi lần chạy reload toàn bộ city.
-- Phase C: `chat_sessions` / `chat_messages` cần API endpoints.
+- Phase C: `chat_sessions` / `chat_messages` đã có runtime APIs; phần còn thiếu nằm ở session-management UX, patch-specific rate limit, và data coverage cho city sparse.

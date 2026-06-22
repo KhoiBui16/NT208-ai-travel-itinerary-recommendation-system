@@ -12,7 +12,7 @@ are automatically serialized/deserialized as camelCase for the frontend.
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from src.core.schema import CamelCaseModel
 from src.places.schemas import HotelResponse
@@ -32,6 +32,7 @@ ExpenseCategory = Literal["food", "attraction", "entertainment", "transportation
 
 # Chat actor role used by persisted message history
 ChatRole = Literal["user", "assistant", "system"]
+ConfirmationStatus = Literal["not_required", "pending", "applied", "cancelled", "stale"]
 
 
 # ===================================================================
@@ -331,6 +332,77 @@ class ChatMessageRequest(CamelCaseModel):
         return normalized
 
 
+class CompanionOperationTarget(CamelCaseModel):
+    """Định danh đối tượng trong itinerary mà assistant muốn đụng tới."""
+
+    day_id: int | None = Field(default=None, ge=1)
+    activity_id: int | None = Field(default=None, ge=1)
+
+
+class CompanionPatchActivityInput(CamelCaseModel):
+    """Payload activity tối thiểu để apply vào itinerary sau confirm."""
+
+    time: str
+    end_time: str | None = None
+    name: str
+    location: str = ""
+    description: str = ""
+    type: ActivityType
+    image: str = ""
+    transportation: TransportType | None = None
+    adult_price: int | None = Field(default=None, ge=0)
+    child_price: int | None = Field(default=None, ge=0)
+    custom_cost: int | None = Field(default=None, ge=0)
+    bus_ticket_price: int | None = Field(default=None, ge=0)
+    taxi_cost: int | None = Field(default=None, ge=0)
+    extra_expenses: list[ExtraExpenseSchema] = Field(default_factory=list)
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def normalize_legacy_activity_type(cls, value: object) -> object:
+        """Chuẩn hóa alias category cũ để proposal đã persist không làm vỡ apply-patch."""
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            legacy_aliases = {
+                "restaurant": "food",
+                "cafe": "food",
+                "coffee": "food",
+            }
+            return legacy_aliases.get(normalized, normalized)
+        return value
+
+
+class CompanionPatchOperation(CamelCaseModel):
+    """Một thay đổi itinerary mà AI đề xuất nhưng chưa được persist."""
+
+    type: Literal["add_activity", "update_activity", "remove_activity", "adjust_budget", "clarify"]
+    description: str = Field(min_length=1, max_length=500)
+    target: CompanionOperationTarget = Field(default_factory=CompanionOperationTarget)
+    activity: CompanionPatchActivityInput | None = None
+    budget: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_operation_shape(self) -> "CompanionPatchOperation":
+        """Bắt assistant trả đủ dữ liệu cho các operation có thể apply thật."""
+        if self.type == "add_activity":
+            if self.target.day_id is None:
+                raise ValueError("add_activity requires target.dayId")
+            if self.activity is None:
+                raise ValueError("add_activity requires activity payload")
+        elif self.type == "update_activity":
+            if self.target.activity_id is None:
+                raise ValueError("update_activity requires target.activityId")
+            if self.activity is None:
+                raise ValueError("update_activity requires activity payload")
+        elif self.type == "remove_activity":
+            if self.target.activity_id is None:
+                raise ValueError("remove_activity requires target.activityId")
+        elif self.type == "adjust_budget":
+            if self.budget is None:
+                raise ValueError("adjust_budget requires budget")
+        return self
+
+
 class ChatMessageResponse(CamelCaseModel):
     """Một message đã persist trong `chat_messages`."""
 
@@ -340,6 +412,9 @@ class ChatMessageResponse(CamelCaseModel):
     content: str
     proposed_operations: list[dict[str, object]] = Field(default_factory=list)
     requires_confirmation: bool = False
+    confirmation_status: ConfirmationStatus = "not_required"
+    trip_snapshot_updated_at: datetime | None = None
+    resolved_at: datetime | None = None
     created_at: datetime
 
 
@@ -365,3 +440,20 @@ class SendChatMessageResponse(CamelCaseModel):
     message: str
     requires_confirmation: bool = False
     proposed_operations: list[dict[str, object]] = Field(default_factory=list)
+
+
+class ApplyPatchRequest(CamelCaseModel):
+    """Request xác nhận hoặc hủy một assistant proposal đã persist."""
+
+    assistant_message_id: int = Field(ge=1)
+    action: Literal["apply", "cancel"] = "apply"
+
+
+class ApplyPatchResponse(CamelCaseModel):
+    """Kết quả sau khi confirm/cancel một proposal."""
+
+    applied: bool
+    status: ConfirmationStatus
+    message: str
+    trip: ItineraryResponse | None = None
+    assistant_message: ChatMessageResponse

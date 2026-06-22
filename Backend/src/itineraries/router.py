@@ -27,6 +27,8 @@ from src.itineraries.companion_service import CompanionService
 from src.itineraries.schemas import (
     AccommodationSchema,
     ActivitySchema,
+    ApplyPatchRequest,
+    ApplyPatchResponse,
     ChatMessageListResponse,
     ChatMessageRequest,
     ChatSessionListResponse,
@@ -199,6 +201,20 @@ async def list_chat_messages(
 ) -> ChatMessageListResponse:
     """Đọc persisted message history của một chat session."""
     return await service.list_messages(session_id, user.id, skip=skip, limit=limit)
+
+
+@router.post(
+    "/{trip_id}/apply-patch",
+    response_model=ApplyPatchResponse,
+)
+async def apply_chat_patch(
+    trip_id: int,
+    body: ApplyPatchRequest,
+    user: User = Depends(get_current_user),
+    service: CompanionService = Depends(get_companion_service),
+) -> ApplyPatchResponse:
+    """Xác nhận hoặc hủy một AI proposal rồi mới persist thay đổi vào itinerary."""
+    return await service.apply_patch(trip_id, user.id, body)
 
 
 @router.post(

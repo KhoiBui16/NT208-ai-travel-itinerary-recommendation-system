@@ -351,5 +351,36 @@ Thứ tự ưu tiên:
 - Gap còn lại sau 00100:
   - chưa có `apply-patch` confirm endpoint
   - scheduler chưa wire vào compose service/CI schedule
-  - destination readiness vẫn bị overstate ở một số city sparse (`isGenerateReady` true dù `places_count=0`)
+  - destination readiness từng bị overstate ở một số city sparse (`isGenerateReady` true dù `places_count=0`) — đã được fix tiếp trong `00101`
   - live provider smoke hiện trả lời theo hướng clarification-first; proposed-operation confirm path chưa được chứng minh end-to-end
+
+## Scope Task 00101 (C3C apply-patch confirm + browser/API/DB truth)
+
+- Giữ nguyên repo hiện tại, tiếp tục dùng đúng Docker stack `nt208-ai-travel-itinerary-recommendation-system` với DB/Redis/API thật.
+- Hoàn thiện `C3C`:
+  - thêm `POST /api/v1/itineraries/{tripId}/apply-patch`
+  - thêm FE confirm/cancel UI trong `ChatPanel`
+  - persist `confirmation_status`, `trip_snapshot_updated_at`, `resolved_at`
+  - thêm stale strategy dựa trên `trip.updated_at`
+- Bug thật lộ ra qua UAT và đã fix:
+  - normalize alias `restaurant -> food` để proposal legacy không làm nổ `500`
+  - stale path commit trước khi raise `409` để `confirmationStatus='stale'` không bị rollback mất
+- Verification 2026-06-21:
+  - backend unit file mục tiêu: `8 passed`
+  - backend integration file mục tiêu: `9 passed`
+  - backend full suite: `161 passed, 1 warning` + `76 passed`
+  - frontend build: `npm run build -- --outDir .build-tmp\\verify-00101-c3c-3` → pass
+  - browser/API/DB evidence trên trip `780`, session `265`:
+    - apply: assistant `81` -> `applied`, activity `842` persisted
+    - cancel: assistant `83` -> `cancelled`, không tạo activity mới cho day 1
+    - stale: assistant `85` -> `stale`, `409` returned, không mutate itinerary
+    - real AI smoke: assistant `99` trả summary itinerary thật với `201`
+  - destination truth hardening tiếp theo trên cùng branch:
+    - `Châu Đốc` API list hiện trả `placesCount=0`, `isGenerateReady=false`, `readinessStatus='sparse'`
+    - `Hà Nội` API list/detail hiện trả image slug chuẩn `/img/destinations/ha-noi.jpg`
+    - cache destinations bump sang `v3` để không giữ lại readiness/image semantics cũ trong Redis
+- Gap còn lại sau 00101:
+  - scheduler vẫn chưa wire vào compose service/CI schedule
+  - patch-specific rate limit chưa có riêng
+  - data enrichment cho city sparse vẫn còn mở
+  - history-management/session UX sâu hơn vẫn chưa hoàn tất

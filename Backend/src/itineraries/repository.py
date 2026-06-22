@@ -501,6 +501,16 @@ class TripRepository:
         await self.session.refresh(message)
         return message
 
+    async def get_chat_message_by_id(self, message_id: int) -> ChatMessage | None:
+        """Lấy một chat message cùng session để apply/cancel proposal an toàn."""
+        stmt = (
+            select(ChatMessage)
+            .where(ChatMessage.id == message_id)
+            .options(selectinload(ChatMessage.session))
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def list_messages_by_session(
         self, session_id: int, skip: int = 0, limit: int = 50
     ) -> tuple[list[ChatMessage], int]:

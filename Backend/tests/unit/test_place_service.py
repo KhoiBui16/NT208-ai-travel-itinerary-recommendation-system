@@ -42,6 +42,7 @@ def _make_destination_dict(
     slug: str = "ha-noi",
     places_count: int = 10,
     hotels_count: int = 2,
+    image: str = "/img/hanoi.jpg",
 ) -> dict:
     """Helper to create destination dict matching get_destinations_with_counts() response."""
     return {
@@ -49,7 +50,7 @@ def _make_destination_dict(
         "name": name,
         "slug": slug,
         "description": None,
-        "image": "/img/hanoi.jpg",
+        "image": image,
         "latitude": None,
         "longitude": None,
         "places_count": places_count,
@@ -132,6 +133,39 @@ async def test_get_destinations__redis_down(
 
     result = await service.get_destinations()
     assert len(result) == 1
+
+
+async def test_get_destinations__sparse_city__marks_generate_not_ready(
+    service: PlaceService, mock_repo: AsyncMock, mock_redis: AsyncMock
+) -> None:
+    mock_redis.get.return_value = None
+    mock_repo.get_destinations_with_counts.return_value = [
+        _make_destination_dict(name="Châu Đốc", slug="chau-doc", places_count=0, hotels_count=1)
+    ]
+
+    result = await service.get_destinations()
+
+    assert len(result) == 1
+    assert result[0].isGenerateReady is False
+    assert result[0].readinessStatus == "sparse"
+    assert "ETL thêm dữ liệu" in (result[0].readinessReason or "")
+
+
+async def test_get_destinations__normalizes_local_destination_image_from_slug(
+    service: PlaceService, mock_repo: AsyncMock, mock_redis: AsyncMock
+) -> None:
+    mock_redis.get.return_value = None
+    mock_repo.get_destinations_with_counts.return_value = [
+        _make_destination_dict(
+            name="Hà Nội",
+            slug="ha-noi",
+            image="/img/destinations/ha-n-i.jpg",
+        )
+    ]
+
+    result = await service.get_destinations()
+
+    assert result[0].image == "/img/destinations/ha-noi.jpg"
 
 
 # --- get_destination_detail ---

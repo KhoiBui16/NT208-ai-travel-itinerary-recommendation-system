@@ -574,7 +574,7 @@ Job `frontend-e2e` trong `frontend-ci.yml`:
 
 - `FloatingAIChat` / `AIPromoBubble` vẫn còn trên source như legacy components, nhưng `TripWorkspace` và `DailyItinerary` không còn mount chúng; active runtime chat surface là `ChatPanel`.
 - CreateTrip đã gọi BE generate API thật; chất lượng lịch trình phụ thuộc Goong ETL data + Gemini key.
-- E2E hiện chưa cover sâu: trip workspace drag-and-drop, accommodation CRUD, proposal-confirm path của companion chat, và history-management UX.
+- E2E/browser verification hiện đã cover companion proposal-confirm path (`apply`, `cancel`, `stale`) trên runtime thật; gap còn lại là trip workspace drag-and-drop, accommodation CRUD, và history-management UX sâu hơn.
 - City browse/detail hiện đã API-backed; gap còn lại là sparse-city data richness, image quality, và một số destination image path cũ như `ha-n-i.jpg`.
 - Visual regression testing chưa có.
 

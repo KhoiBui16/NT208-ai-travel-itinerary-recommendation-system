@@ -79,13 +79,13 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 
 ---
 
-## 1.1 Trạng thái hiện tại sau khi C3B message flow đã được harden cục bộ
+## 1.1 Trạng thái hiện tại sau khi C3C apply-patch đã được verify cục bộ
 
-Current truth trên local branch `feat/00100-c-c3b-chat-hardening`:
+Current truth trên local branch `feat/00101-c-c3c-apply-patch-confirm`:
 
 | Hạng mục | Trạng thái |
 |---|---|
-| Readiness tổng thể sau hardening `00100` | `C3B_RUNTIME_READY_C3C_PATCH_PENDING` |
+| Readiness tổng thể sau hardening `00101` | `C3C_RUNTIME_VERIFIED_ETL_PENDING` |
 | `C3A — Chat Session Foundation` | Đã merge (`PR #98-100`) |
 | `C3B — Companion Chat API` | Đã có message send thật, real AI call, owner-check, chat quota riêng, persisted `chat_messages` |
 | `C4 — Chat History` | Đã có persisted history read-path qua `GET /itineraries/chat-sessions/{sessionId}/messages`; phần quản lý history nâng cao vẫn pending |
@@ -95,7 +95,7 @@ Current truth trên local branch `feat/00100-c-c3b-chat-hardening`:
 | Chat session/message API | Đã có session CRUD + `POST/GET /itineraries/chat-sessions/{sessionId}/messages` |
 | Real AI call trong chat | Đã có qua `Backend/src/itineraries/companion_service.py` |
 | Chat quota tách khỏi generate quota | Đã có `rate:ai:chat:user:{user_id}:{YYYYMMDD}` |
-| Apply-patch confirm vào itinerary | Chưa có; đây là follow-up chính của `C3C` |
+| Apply-patch confirm vào itinerary | Đã có `POST /api/v1/itineraries/{tripId}/apply-patch`, FE confirm/cancel UI, và browser/API/DB evidence cho apply/cancel/stale |
 | Guest AI workspace trong cùng browser session | Đã ổn định bằng `sessionStorage.currentTrip` + `pendingClaim`; guest xem được trip vừa generate nhưng chưa chat trước khi claim |
 | Generated activity images sau reload | Đã ưu tiên `Place.image` khi `place_id` hợp lệ, FE có fallback khi image rỗng/hỏng |
 | Gemini SDK backend | Đã migrate sang `google-genai`; timeout vẫn trả `503 AI_PROVIDER_TIMEOUT` |
@@ -113,8 +113,9 @@ Current truth trên local branch `feat/00100-c-c3b-chat-hardening`:
 - Browser `429` submit-path của generate đã có regression test; chat quota riêng cho auth user đã được verify trên current source.
 - Guest chưa đăng nhập vẫn có thể generate và xem trip vừa tạo trong chính browser session hiện tại; đăng nhập mới cần để nhận ownership dài hạn, share, và edit/save server-side đầy đủ.
 - Generate hiện vẫn là sync HTTP flow; tăng timeout chỉ giúp local/staging dễ smoke hơn, còn "eventually complete" cần background job/polling ở phase tương lai.
-- `apply-patch`, cross-tab hardening, và enrichment cho non-mock destination patching
-  vẫn chưa xong; đây là phần còn lại trước khi xem companion là hoàn chỉnh.
+- Companion editing core hiện đã qua local verification cho `apply`, `cancel`, `stale`.
+- Phần còn lại trước khi xem hệ thống là ổn định hơn ở mức phase tiếp theo nằm ở:
+  ETL scheduler wiring, sparse-city enrichment, patch-specific rate limit, và history-management UX sâu hơn.
 
 ---
 
@@ -538,7 +539,7 @@ sequenceDiagram
 
 - FE ưu tiên cập nhật UI trước để thao tác sửa activity/accommodation mượt hơn cho người dùng.
 - Hook luôn giữ `prevState` để có thể rollback nếu BE trả lỗi hoặc timeout.
-- Quy tắc này chỉ áp dụng cho CRUD đã có thật trong workspace; nó không thay thế confirm flow cho future `apply-patch` ở chat.
+- Quy tắc này chỉ áp dụng cho CRUD đã có thật trong workspace; các thay đổi do companion chat đề xuất vẫn phải đi qua `apply-patch` confirm riêng.
 - Vì vậy `C3A` có thể gắn panel chat vào `TripWorkspace` mà không cần thay đổi cơ chế optimistic update hiện tại.
 
 ### 4.6 Backend — Cấu trúc file theo domain
@@ -1240,7 +1241,7 @@ Guest đăng nhập / đăng ký:
 
 ## 8. AI Pipeline Flow
 
-> Toàn bộ AI trong hệ thống hiện đi qua 3 luồng chính: **C.1 Generate** (sinh lịch trình từ đầu bằng Gemini), **C.2 Suggest** (gợi ý thay thế từ DB, không LLM), và **C.3B Companion Chat message flow** (trip-bound, owner-only, persisted history). `C3C` apply-patch confirm vẫn chưa implement.
+> Toàn bộ AI trong hệ thống hiện đi qua 3 luồng chính: **C.1 Generate** (sinh lịch trình từ đầu bằng Gemini), **C.2 Suggest** (gợi ý thay thế từ DB, không LLM), và **C.3C Companion Chat patch-confirm flow** (trip-bound, owner-only, persisted history + confirm mutation). Phần còn lại sau `00101` không còn là thiếu endpoint/UI, mà là ops/data hardening.
 
 ### 8.1 C.1 — Generate Itinerary (Mermaid)
 
@@ -1511,7 +1512,7 @@ CompanionService.chat()
 
 FE hiển thị proposed changes
   → current source chưa tự apply DB
-  → future apply-patch endpoint mới là bước persist itinerary sau confirm
+  → current source dùng `POST /api/v1/itineraries/{tripId}/apply-patch` để persist itinerary sau confirm
 
 KEY: Chat KHÔNG TỰ PERSIST DB trước khi user confirm.
      Quota chat đã tách khỏi generate quota ở current source.
@@ -1806,8 +1807,9 @@ POST /auth/reset-password {token, newPassword}
 | **C.1** | AI Generate Itinerary (Gemini direct pipeline) | `merged` | ✅ Done |
 | **C.2** | Suggestion Service (DB-only, EP-30) | `merged` | ✅ Done |
 | **C.3A** | Chat Session Foundation (owner-only, trip-scoped, no real AI call) | `merged` | ✅ Done (`PR #98-100`) |
-| **C.3B** | Companion Chat API + provider abstraction + chat quota | `local_verified_on_00100` | 🔄 Đã có source + local verification, còn thiếu PR/apply-patch |
-| **C.4** | Chat history persistence + session UX | `partial_on_00100` | 🔄 Persisted history read-path đã có; history management UX còn pending |
+| **C.3B** | Companion Chat API + provider abstraction + chat quota | `merged` | ✅ Done (`PR #104`) |
+| **C.3C** | Apply-patch confirm + stale handling + workspace companion UX | `pr_00101_open` | ✅ Review-ready (`PR #105`) |
+| **C.4** | Chat history persistence + session UX | `partial_on_00101` | 🔄 Persisted history read-path đã có; delete/history-management UX còn pending |
 | **C.5** | Analytics Text-to-SQL (optional) | `future optional` | 🔄 Optional |
 
 **Latest runtime snapshot after hardening `00100`:**
@@ -1979,7 +1981,7 @@ npm run dev -- --host localhost --port 5173
 **Lưu ý dữ liệu thật vs fallback:**
 - Places/hotels trong PostgreSQL là **nguồn thật** sau ETL Goong.
 - Goong Place Detail **không trả URL ảnh** — `places.image` có thể rỗng; FE dùng fallback có nhãn, không phải ảnh từ Goong.
-- Map tile Goong (`VITE_GOONG_MAP_KEY`) vẫn chưa được dùng ở FE runtime; companion chat thật hiện đi qua `ChatPanel`, còn `C3C` apply-patch confirm vẫn pending.
+- Map tile Goong (`VITE_GOONG_MAP_KEY`) vẫn chưa được dùng ở FE runtime; companion chat thật hiện đi qua `ChatPanel`, còn follow-up chính sau `00101` là patch-specific rate limit, ETL scheduler wiring và data enrichment cho city sparse.
 
 #### Kiểm tra DB nhanh (sau ETL)
 
