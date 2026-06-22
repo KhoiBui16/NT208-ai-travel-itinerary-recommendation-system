@@ -1,7 +1,7 @@
 # Issue: ETL Scheduler Missing — Manual Only
 
 ## Status
-OPEN — Phase 3A-R: Deployment strategy documented in `00052_deployment_etl_strategy.md`
+RESOLVED (PR #106 / task 00107): scheduler đã wired vào `docker-compose.yml` qua compose profile `etl` (service `scheduler`, không chạy cùng `docker compose up` mặc định). One-shot qua `docker compose exec -T api uv run python -m src.etl.scheduler --once --cities "<city>"`. (Historical Phase 3A-R: deployment strategy documented in `00052_deployment_etl_strategy.md`)
 
 ## Evidence
 - **B1.5 ETL Scheduling Audit** (2026-05-28): `ETL_MANUAL_ONLY`
