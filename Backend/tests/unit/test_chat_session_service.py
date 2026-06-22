@@ -53,6 +53,7 @@ def mock_chat_session():
     session.user_id = 100
     session.thread_id = "trip-1-abc123def456"
     session.status = "active"
+    session.title = None
     session.created_at = datetime.now(UTC)
     session.updated_at = datetime.now(UTC)
     return session
@@ -75,6 +76,7 @@ async def test_create_chat_session_success(service, mock_repo, mock_trip):
             user_id=100,
             thread_id="trip-1-abc123def456",
             status="active",
+            title=None,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
@@ -217,6 +219,73 @@ async def test_get_chat_session_not_owner(service, mock_repo, mock_chat_session)
     with patch.object(service, "_verify_owner", side_effect=ForbiddenException("Not trip owner")):
         with pytest.raises(ForbiddenException, match="Not trip owner"):
             await service.get_chat_session(1, 999)
+
+
+# ===================================================================
+# rename_chat_session
+# ===================================================================
+
+
+@pytest.mark.asyncio
+async def test_rename_chat_session_success(service, mock_repo, mock_chat_session):
+    """rename_chat_session cập nhật title khi user là owner."""
+    mock_chat_session.title = "Old"
+    mock_repo.get_chat_session_by_id.return_value = mock_chat_session
+    mock_repo.update_chat_session_title.return_value = mock_chat_session
+
+    with patch.object(service, "_verify_owner", return_value=AsyncMock(id=1, user_id=100)):
+        result = await service.rename_chat_session(1, 100, "New Title")
+
+    mock_repo.update_chat_session_title.assert_called_once_with(mock_chat_session, "New Title")
+    assert isinstance(result, ChatSessionResponse)
+
+
+@pytest.mark.asyncio
+async def test_rename_chat_session_not_found(service, mock_repo):
+    mock_repo.get_chat_session_by_id.return_value = None
+    with pytest.raises(NotFoundException, match="Chat session not found"):
+        await service.rename_chat_session(999, 100, "X")
+    mock_repo.update_chat_session_title.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_rename_chat_session_not_owner(service, mock_repo, mock_chat_session):
+    mock_repo.get_chat_session_by_id.return_value = mock_chat_session
+    with patch.object(service, "_verify_owner", side_effect=ForbiddenException("Not trip owner")):
+        with pytest.raises(ForbiddenException):
+            await service.rename_chat_session(1, 999, "X")
+    mock_repo.update_chat_session_title.assert_not_called()
+
+
+# ===================================================================
+# delete_chat_session
+# ===================================================================
+
+
+@pytest.mark.asyncio
+async def test_delete_chat_session_success(service, mock_repo, mock_chat_session):
+    """delete_chat_session xoá session khi user là owner."""
+    mock_repo.get_chat_session_by_id.return_value = mock_chat_session
+    with patch.object(service, "_verify_owner", return_value=AsyncMock(id=1, user_id=100)):
+        await service.delete_chat_session(1, 100)
+    mock_repo.delete_chat_session.assert_called_once_with(mock_chat_session)
+
+
+@pytest.mark.asyncio
+async def test_delete_chat_session_not_found(service, mock_repo):
+    mock_repo.get_chat_session_by_id.return_value = None
+    with pytest.raises(NotFoundException, match="Chat session not found"):
+        await service.delete_chat_session(999, 100)
+    mock_repo.delete_chat_session.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_chat_session_not_owner(service, mock_repo, mock_chat_session):
+    mock_repo.get_chat_session_by_id.return_value = mock_chat_session
+    with patch.object(service, "_verify_owner", side_effect=ForbiddenException("Not trip owner")):
+        with pytest.raises(ForbiddenException):
+            await service.delete_chat_session(1, 999)
+    mock_repo.delete_chat_session.assert_not_called()
 
 
 # ===================================================================

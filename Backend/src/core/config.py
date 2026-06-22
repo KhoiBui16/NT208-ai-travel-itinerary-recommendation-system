@@ -169,6 +169,13 @@ class AppSettings(BaseSettings):
         ge=1,
         validation_alias=AliasChoices("RATE_LIMIT_AI_CHAT_USER", "AI_CHAT_CALLS_PER_DAY"),
     )
+    rate_limit_ai_apply_patch_user: int = Field(
+        default=20,
+        ge=1,
+        validation_alias=AliasChoices(
+            "RATE_LIMIT_AI_APPLY_PATCH_USER", "AI_APPLY_PATCH_CALLS_PER_DAY"
+        ),
+    )
     rate_limit_api: int = 100
     ai_rate_limit_fail_mode: str = "closed"
     companion_requires_confirmation: bool = True

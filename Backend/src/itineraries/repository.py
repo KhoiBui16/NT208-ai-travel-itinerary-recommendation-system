@@ -493,6 +493,18 @@ class TripRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all()), total
 
+    async def update_chat_session_title(self, session: ChatSession, title: str) -> ChatSession:
+        """Cập nhật title (rename) cho một chat session."""
+        session.title = title
+        await self.session.flush()
+        await self.session.refresh(session)
+        return session
+
+    async def delete_chat_session(self, session: ChatSession) -> None:
+        """Xoá một chat session; chat_messages cascade theo FK ondelete=CASCADE."""
+        await self.session.delete(session)
+        await self.session.flush()
+
     async def create_chat_message(self, **kwargs: object) -> ChatMessage:
         """Insert một message mới vào lịch sử chat của session."""
         message = ChatMessage(**kwargs)  # type: ignore[arg-type]

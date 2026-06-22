@@ -57,5 +57,30 @@ services:
       timeout: 5s
       retries: 10
 
+  # ETL scheduler — gated bởi profile "etl" nên KHÔNG chạy cùng `docker compose up`
+  # mặc định (tránh container 24/7 cho job chu kỳ 30 ngày). Bật khi ops muốn refresh
+  # dữ liệu định kỳ: `docker compose --profile etl up -d scheduler`.
+  # Ghi thẳng vào PROD DB qua mạng compose; GOONG_API_KEY lấy từ Backend/.env.
+  scheduler:
+    profiles: ["etl"]
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./Backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/dulichviet
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "src.etl.scheduler", "--run-immediately"]
+    restart: unless-stopped
+    volumes:
+      - ./Backend/src:/app/src
+      - ./Backend/config.yaml:/app/config.yaml
+
 volumes:
   postgres_data:

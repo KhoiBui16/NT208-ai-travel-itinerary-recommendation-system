@@ -187,6 +187,35 @@ class RateLimiter:
             limit=self.settings.rate_limit_ai_chat_user,
         )
 
+    async def enforce_apply_patch_limit(self, user_id: int) -> None:
+        """Chặn apply-patch khi user đã dùng hết quota apply-patch riêng trong ngày.
+
+        apply-patch là mutation nhanh (không gọi LLM) nhưng vẫn cần chặn spam nên
+        dùng namespace ``apply_patch``, tách biệt hẳn với generate và chat.
+        """
+        limit = self.settings.rate_limit_ai_apply_patch_user
+        if not await self.check_ai_actor_limit(
+            f"user:{user_id}",
+            namespace="apply_patch",
+            limit=limit,
+        ):
+            reset = self._next_midnight_utc()
+            raise RateLimitException(
+                detail=f"Bạn đã dùng hết {limit} lượt xác nhận chỉnh sửa AI hôm nay. "
+                f"Hạn mức sẽ được đặt lại lúc {reset.strftime('%H:%M UTC')}.",
+                limit=limit,
+                remaining=0,
+                reset_at=reset,
+            )
+
+    async def get_apply_patch_remaining(self, user_id: int) -> RateLimitInfo:
+        """Trả về quota apply-patch còn lại của user hiện tại."""
+        return await self.get_remaining_for_actor(
+            f"user:{user_id}",
+            namespace="apply_patch",
+            limit=self.settings.rate_limit_ai_apply_patch_user,
+        )
+
     async def get_remaining_for_actor(
         self,
         actor: str,

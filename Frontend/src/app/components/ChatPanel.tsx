@@ -15,18 +15,24 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import {
   AlertCircle,
+  Check,
   Loader2,
   MessageCircle,
+  Pencil,
   Plus,
   RefreshCcw,
   SendHorizontal,
   ShieldAlert,
+  Trash2,
+  X,
 } from "lucide-react";
 import {
   applyChatPatch,
   createChatSession,
+  deleteChatSession,
   listChatMessages,
   listChatSessions,
+  renameChatSession,
   sendChatMessage,
 } from "../services/chat";
 import type { ChatMessage, ChatSession } from "../types/chat.types";
@@ -79,8 +85,13 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const [panelState, setPanelState] = useState<PanelState>("loading");
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionCount, setSessionCount] = useState(0);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messagesTotal, setMessagesTotal] = useState(0);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [isManaging, setIsManaging] = useState(false);
   const [draftMessage, setDraftMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isMessagesLoading, setIsMessagesLoading] = useState(false);
@@ -101,10 +112,11 @@ export function ChatPanel({
     setError(null);
 
     try {
-      const response = await listChatSessions(tripId, 0, 1);
+      const response = await listChatSessions(tripId, 0, 50);
 
       if (response.total === 0) {
         setMessages([]);
+        setSessions([]);
         setSessionCount(0);
         setCurrentSession(null);
         setPanelState("empty");
@@ -112,6 +124,7 @@ export function ChatPanel({
       }
 
       const latestSession = response.items[0];
+      setSessions(response.items);
       setCurrentSession(latestSession);
       setSessionCount(response.total);
       setPanelState("active");
@@ -132,6 +145,7 @@ export function ChatPanel({
     try {
       const response = await listChatMessages(sessionId, 0, 50);
       setMessages(response.items);
+      setMessagesTotal(response.total);
     } catch (err) {
       console.error("Failed to load chat messages:", err);
       setError(getChatErrorMessage(err));
@@ -147,7 +161,9 @@ export function ChatPanel({
     try {
       const newSession = await createChatSession(tripId);
       setCurrentSession(newSession);
+      setSessions((prev) => [newSession, ...prev]);
       setMessages([]);
+      setMessagesTotal(0);
       setSessionCount((prev) => prev + 1);
       setDraftMessage("");
       setPanelState("active");
@@ -164,6 +180,75 @@ export function ChatPanel({
       return;
     }
     await loadMessages(currentSession.id);
+  }
+
+  async function handleSelectSession(session: ChatSession) {
+    if (session.id === currentSession?.id) return;
+    setCurrentSession(session);
+    setRenaming(false);
+    await loadMessages(session.id);
+  }
+
+  async function handleLoadMoreMessages() {
+    if (!currentSession || isMessagesLoading || messages.length >= messagesTotal) return;
+    setIsMessagesLoading(true);
+    try {
+      // BE trả message theo thứ tự tăng dần thời gian -> thêm tiếp vào cuối.
+      const response = await listChatMessages(currentSession.id, messages.length, 50);
+      setMessages((prev) => [...prev, ...response.items]);
+      setMessagesTotal(response.total);
+    } catch (err) {
+      console.error("Failed to load more messages:", err);
+      setError(getChatErrorMessage(err));
+    } finally {
+      setIsMessagesLoading(false);
+    }
+  }
+
+  function handleStartRename() {
+    if (!currentSession) return;
+    setRenameValue(currentSession.title ?? "");
+    setRenaming(true);
+  }
+
+  async function handleSaveRename() {
+    if (!currentSession) return;
+    const title = renameValue.trim();
+    if (!title) return;
+    setIsManaging(true);
+    setError(null);
+    try {
+      const updated = await renameChatSession(currentSession.id, title);
+      setCurrentSession(updated);
+      setSessions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      setRenaming(false);
+    } catch (err) {
+      console.error("Failed to rename session:", err);
+      setError(getChatErrorMessage(err));
+    } finally {
+      setIsManaging(false);
+    }
+  }
+
+  async function handleDeleteSession() {
+    if (!currentSession || isManaging) return;
+    const confirmed = window.confirm("Xoá phiên chat này? Toàn bộ tin nhắn sẽ bị xoá theo.");
+    if (!confirmed) return;
+    setIsManaging(true);
+    setError(null);
+    try {
+      await deleteChatSession(currentSession.id);
+      await loadSessions();
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+      setError(getChatErrorMessage(err));
+    } finally {
+      setIsManaging(false);
+    }
+  }
+
+  function sessionLabel(s: ChatSession): string {
+    return s.title?.trim() || `Phiên #${s.id}`;
   }
 
   async function handleSendMessage() {
@@ -321,15 +406,77 @@ export function ChatPanel({
       </div>
 
       <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
-          <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 font-medium text-green-800">
-            {currentSession?.status}
-          </span>
-          <span>•</span>
-          <span>{sessionCount} phiên</span>
-          <span>•</span>
-          <span>Session #{currentSession?.id}</span>
-        </div>
+        {renaming ? (
+          <div className="flex items-center gap-2">
+            <input
+              value={renameValue}
+              onChange={(event) => setRenameValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void handleSaveRename();
+                if (event.key === "Escape") setRenaming(false);
+              }}
+              placeholder="Tên phiên chat"
+              autoFocus
+              className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm text-gray-900 outline-none focus:border-cyan-500"
+            />
+            <button
+              onClick={() => void handleSaveRename()}
+              disabled={isManaging || renameValue.trim().length === 0}
+              className="rounded bg-cyan-600 p-1.5 text-white transition-colors hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Lưu tên"
+            >
+              <Check className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setRenaming(false)}
+              className="rounded border border-gray-300 p-1.5 text-gray-600 transition-colors hover:bg-gray-100"
+              title="Hủy đổi tên"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+            <select
+              value={currentSession?.id ?? ""}
+              onChange={(event) => {
+                const next = sessions.find((s) => s.id === Number(event.target.value));
+                if (next) void handleSelectSession(next);
+              }}
+              disabled={sessions.length <= 1}
+              className="max-w-[55%] truncate rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-800 outline-none focus:border-cyan-500 disabled:bg-gray-100"
+              title="Chọn phiên chat"
+            >
+              {sessions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {sessionLabel(s)}
+                </option>
+              ))}
+            </select>
+            <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 font-medium text-green-800">
+              {currentSession?.status}
+            </span>
+            <span>•</span>
+            <span>{sessionCount} phiên</span>
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                onClick={handleStartRename}
+                className="rounded p-1.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"
+                title="Đổi tên phiên"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => void handleDeleteSession()}
+                disabled={isManaging}
+                className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Xoá phiên"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -342,6 +489,16 @@ export function ChatPanel({
       )}
 
       <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50 p-4">
+        {!isMessagesLoading && messages.length > 0 && messages.length < messagesTotal && (
+          <div className="flex justify-center pb-2">
+            <button
+              onClick={() => void handleLoadMoreMessages()}
+              className="rounded-full border border-gray-300 bg-white px-4 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+            >
+              Tải thêm tin nhắn · còn {messagesTotal - messages.length}
+            </button>
+          </div>
+        )}
         {isMessagesLoading ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
