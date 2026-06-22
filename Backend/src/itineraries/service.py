@@ -926,6 +926,25 @@ class ItineraryService(BaseService):
         await self._verify_owner(session.trip_id, user_id)
         return self._to_chat_session_response(session)
 
+    async def rename_chat_session(
+        self, session_id: int, user_id: int, title: str
+    ) -> ChatSessionResponse:
+        """Đổi tên (title) một chat session. Enforces ownership via trip."""
+        session = await self.repo.get_chat_session_by_id(session_id)
+        if not session:
+            raise NotFoundException("Chat session not found")
+        await self._verify_owner(session.trip_id, user_id)
+        session = await self.repo.update_chat_session_title(session, title)
+        return self._to_chat_session_response(session)
+
+    async def delete_chat_session(self, session_id: int, user_id: int) -> None:
+        """Xoá một chat session + message (cascade). Enforces ownership via trip."""
+        session = await self.repo.get_chat_session_by_id(session_id)
+        if not session:
+            raise NotFoundException("Chat session not found")
+        await self._verify_owner(session.trip_id, user_id)
+        await self.repo.delete_chat_session(session)
+
     def _to_chat_session_response(self, session) -> ChatSessionResponse:
         """Convert ChatSession ORM to ChatSessionResponse schema."""
         return ChatSessionResponse(
@@ -934,6 +953,7 @@ class ItineraryService(BaseService):
             user_id=session.user_id,
             thread_id=session.thread_id,
             status=session.status,
+            title=session.title,
             created_at=session.created_at,
             updated_at=session.updated_at,
         )

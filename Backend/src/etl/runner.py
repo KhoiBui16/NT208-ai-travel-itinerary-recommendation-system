@@ -123,6 +123,7 @@ async def run_etl(
                         goong=goong,
                         osm=osm,
                         max_places=settings.etl_max_places_per_city,
+                        known_cities=target_cities,
                     )
 
                     result.raw_pois = len(places) if places else 0
@@ -320,6 +321,7 @@ async def _extract_places_for_city(
     goong: GoongExtractor | None,
     osm: OsmExtractor,
     max_places: int,
+    known_cities: list[str] | None = None,
 ) -> list[dict]:
     """Extract, enrich, and normalize places for one city."""
     raw_pois = []
@@ -338,7 +340,7 @@ async def _extract_places_for_city(
     if goong:
         await _geocode_missing_coordinates(goong, raw_pois, city)
 
-    places = transform(raw_pois, city)[:max_places]
+    places = transform(raw_pois, city, known_cities=known_cities)[:max_places]
     logger.info("Transformed %d valid places for %s", len(places), city)
     return places
 

@@ -26,7 +26,7 @@ Neu docs va code xung dot:
 
 - Backend runtime hien tai la MVP2 trong `Backend/src/`
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
-- 215 BE tests (148 unit + 67 integration)
+- BE local suite: 184 unit pass + 43 integration pass / 34 CI-gated skip (full suite xanh trên CI postgres)
 - Frontend runtime hien tai nam trong `Frontend/`
 - Playwright suite hiện bao phủ 16 spec files / 35 test cases trong `Frontend/tests/e2e/`
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
@@ -36,6 +36,7 @@ Neu docs va code xung dot:
 - **00062 fixes merged** (PR #86-90): SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding, FE error handling
 - **00093 slugify fix merged** (PR #92): Shared `core/slugify.py`, places service fuzzy matching, itineraries refactor, browser test automation
 - **00094 C3A chat session merged** (PR #98-100): Chat session REST APIs, FE ChatPanel component, e2e tests
+- **00107 post-PR#105 completion** (branch `feat/00107-c-post-105-completion`): ETL cross-city contamination guard (`src.etl.transformers.city_match`) + idempotent cleanup CLI (`python -m src.etl.cleanup`); scheduler wired vào compose qua profile `etl`; apply-patch rate limit riêng (`rate_limit_ai_apply_patch_user`, namespace `rate:ai:apply_patch:*`); C4 session management (PATCH rename + DELETE + FE switcher/load-more); migration 0009 `chat_sessions.title`. Image/review sparsity là giới hạn provider Goong (không trả photo/rating), không phải bug.
 
 ## Target MVP2 decisions da chot
 

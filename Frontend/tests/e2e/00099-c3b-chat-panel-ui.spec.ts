@@ -309,7 +309,9 @@ test("ChatPanel renders real session and appends mocked C3B reply contract", asy
   await page.goto(`/trip-workspace?tripId=${trip.id}`);
   await page.getByRole("button", { name: "AI Chat" }).click();
 
-  await expect(page.getByText(`Session #${session.id}`)).toBeVisible();
+  // Priority D: session bar giờ là <select> "Phiên #id" + count "N phiên".
+  // Count label là tín hiệu ổn định nhất rằng một session đã load.
+  await expect(page.getByText(/\d+\s+phiên/i)).toBeVisible();
   await expect(
     page.getByText(/AI companion chưa có tin nhắn nào trong phiên này/i),
   ).toBeVisible();

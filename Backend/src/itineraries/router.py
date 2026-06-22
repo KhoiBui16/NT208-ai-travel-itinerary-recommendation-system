@@ -39,6 +39,7 @@ from src.itineraries.schemas import (
     ItineraryResponse,
     SendChatMessageResponse,
     ShareResponse,
+    UpdateChatSessionRequest,
     UpdateTripRequest,
 )
 from src.itineraries.service import ItineraryService
@@ -210,10 +211,17 @@ async def list_chat_messages(
 async def apply_chat_patch(
     trip_id: int,
     body: ApplyPatchRequest,
+    response: Response,
     user: User = Depends(get_current_user),
     service: CompanionService = Depends(get_companion_service),
+    rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> ApplyPatchResponse:
     """Xác nhận hoặc hủy một AI proposal rồi mới persist thay đổi vào itinerary."""
+    await rate_limiter.enforce_apply_patch_limit(user.id)
+    rate_info = await rate_limiter.get_apply_patch_remaining(user.id)
+    response.headers["X-RateLimit-Limit"] = str(rate_info.limit)
+    response.headers["X-RateLimit-Remaining"] = str(rate_info.remaining)
+    response.headers["X-RateLimit-Reset"] = rate_info.reset_at.isoformat()
     return await service.apply_patch(trip_id, user.id, body)
 
 
@@ -244,6 +252,33 @@ async def list_chat_sessions(
 ) -> ChatSessionListResponse:
     """List chat sessions for a trip."""
     return await service.list_chat_sessions(trip_id, user.id, skip=skip, limit=limit)
+
+
+@router.patch(
+    "/chat-sessions/{session_id}",
+    response_model=ChatSessionResponse,
+)
+async def rename_chat_session(
+    session_id: int,
+    body: UpdateChatSessionRequest,
+    user: User = Depends(get_current_user),
+    service: ItineraryService = Depends(get_itinerary_service),
+) -> ChatSessionResponse:
+    """Đổi tên một chat session (C4 history-management UX)."""
+    return await service.rename_chat_session(session_id, user.id, body.title)
+
+
+@router.delete(
+    "/chat-sessions/{session_id}",
+    status_code=204,
+)
+async def delete_chat_session(
+    session_id: int,
+    user: User = Depends(get_current_user),
+    service: ItineraryService = Depends(get_itinerary_service),
+) -> None:
+    """Xoá một chat session và toàn bộ message của nó (cascade)."""
+    await service.delete_chat_session(session_id, user.id)
 
 
 @router.get("/{trip_id}", response_model=ItineraryResponse)

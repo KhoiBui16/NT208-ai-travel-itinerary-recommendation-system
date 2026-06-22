@@ -238,6 +238,13 @@ export const api = {
       body: body ? JSON.stringify(body) : undefined,
     }),
 
+  /** Send a PATCH request with optional JSON body. */
+  patch: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: "PATCH",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+
   /** Send a DELETE request. Returns void for 204 responses. */
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

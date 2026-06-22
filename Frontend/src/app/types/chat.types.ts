@@ -26,8 +26,16 @@ export interface ChatSession {
   userId: number | null; // User ID (null for guest sessions before claim)
   threadId: string; // AI thread identifier for context tracking
   status: string; // Session status: "active", "archived", etc.
+  title: string | null; // Tên phiên do user đặt (null -> FE dùng fallback)
   createdAt: string; // ISO datetime string
   updatedAt: string; // ISO datetime string
+}
+
+/**
+ * Payload rename một chat session (C4 history-management UX).
+ */
+export interface UpdateChatSessionRequest {
+  title: string;
 }
 
 /**

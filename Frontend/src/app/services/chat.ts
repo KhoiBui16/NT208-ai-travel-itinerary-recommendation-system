@@ -108,3 +108,22 @@ export async function applyChatPatch(
     payload,
   );
 }
+
+/**
+ * Rename một chat session (C4 history-management UX).
+ *
+ * Backend PATCH /chat-sessions/:id cập nhật title sau khi kiểm ownership qua trip.
+ */
+export async function renameChatSession(sessionId: number, title: string): Promise<ChatSession> {
+  return api.patch<ChatSession>(
+    `/api/v1/itineraries/chat-sessions/${sessionId}`,
+    { title },
+  );
+}
+
+/**
+ * Xoá một chat session + message (cascade). Backend trả 204 (void).
+ */
+export async function deleteChatSession(sessionId: number): Promise<void> {
+  await api.delete<void>(`/api/v1/itineraries/chat-sessions/${sessionId}`);
+}

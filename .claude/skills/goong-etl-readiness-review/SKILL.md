@@ -61,16 +61,16 @@ Use this skill to assess whether the Goong/ETL data layer is rich enough for int
 
 ```powershell
 # Check how many places are in DB
-docker compose exec db psql -U postgres -d travel_app -c "SELECT COUNT(*), city FROM places GROUP BY city;"
+docker compose exec db psql -U postgres -d dulichviet -c "SELECT COUNT(*), city FROM places GROUP BY city;"
 
 # Check places with rating
-docker compose exec db psql -U postgres -d travel_app -c "SELECT name, rating, review_count FROM places WHERE rating IS NOT NULL LIMIT 10;"
+docker compose exec db psql -U postgres -d dulichviet -c "SELECT name, rating, review_count FROM places WHERE rating IS NOT NULL LIMIT 10;"
 
 # Check if opening_hours exists
-docker compose exec db psql -U postgres -d travel_app -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'places' AND column_name LIKE '%hour%';"
+docker compose exec db psql -U postgres -d dulichviet -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'places' AND column_name LIKE '%hour%';"
 
 # Check latest migration
-docker compose exec db psql -U postgres -d travel_app -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'places' ORDER BY column_name;"
+docker compose exec db psql -U postgres -d dulichviet -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'places' ORDER BY column_name;"
 ```
 
 ## Output Format

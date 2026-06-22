@@ -757,6 +757,13 @@ uv run python -m src.etl --cities "Hà Nội" --dry-run
 
 - Chạy full ETL cho các city chính còn lại (Đà Nẵng, TP.HCM, Phú Quốc, Hội An...).
 - Kiểm tra số lượng places/hotels sau crawl trước khi test AI generate cho city đó.
-- Thiết lập lịch crawl định kỳ nếu cần dữ liệu mới (gợi ý: cron 30 ngày/lần).
 - ETL chưa có incremental update — mỗi lần chạy reload toàn bộ city.
-- Phase C: `chat_sessions` / `chat_messages` đã có runtime APIs; phần còn thiếu nằm ở session-management UX, patch-specific rate limit, và data coverage cho city sparse.
+- Phase C (post-00107): `chat_sessions`/`chat_messages` đã có full runtime APIs + session-management UX (rename/delete/switcher/load-more); `apply-patch` có rate limit riêng; phần còn thiếu chủ yếu là **data coverage cho city sparse** (Goong không trả places cho ~9/28 destination) — đã xử lý bằng `isGenerateReady=false` + pipeline empty-context guard.
+
+## 8. Data quality ops (00107)
+
+- **Cross-city contamination**: ETL guard trong `src.etl.transformers.city_match` dùng heuristic "last city token wins" (city hành chính cuối địa chỉ) để từ chối place sai thành phố — đáng tin hơn tên thành phố xuất hiện trong tên nhà hàng (vd "Nhà hàng Huế" ở Ba Đình, Hà Nội). Cleanup dữ liệu đã có qua CLI idempotent:
+  - `docker compose exec -T api uv run python -m src.etl.cleanup --dry-run` (chỉ báo cáo)
+  - `docker compose exec -T api uv run python -m src.etl.cleanup` (dọn thật: reassign `destination_id` cho place sai city; xoá place thiếu tọa độ không bị activity reference; recompute `places_count`)
+- **Scheduler wiring**: service `scheduler` trong `docker-compose.yml` gate bởi profile `etl` (KHÔNG chạy cùng `docker compose up` mặc định). Bật khi cần refresh định kỳ: `docker compose --profile etl up -d scheduler`. One-shot: `docker compose exec -T api uv run python -m src.etl.scheduler --once --cities "Hà Nội"`.
+- **Image/review sparsity là giới hạn provider**: Goong Places API (autocomplete + place_detail) không trả trường photo/image hay rating/review_count, nên phần lớn place trong DB có `image=''` và `review_count=0`. Đây là hạn chế nguồn dữ liệu, không phải bug — không fake ảnh/rating. Ranking theo rating chưa khả thi cho đến khi thêm provider có photo+review.

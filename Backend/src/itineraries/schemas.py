@@ -300,6 +300,7 @@ class ChatSessionResponse(CamelCaseModel):
     user_id: int | None = None
     thread_id: str
     status: str
+    title: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -311,6 +312,21 @@ class ChatSessionListResponse(CamelCaseModel):
     total: int
     skip: int = Field(default=0, ge=0)
     limit: int = Field(default=20, ge=1, le=100)
+
+
+class UpdateChatSessionRequest(CamelCaseModel):
+    """Payload rename một chat session (C4 history-management UX)."""
+
+    title: str = Field(min_length=1, max_length=200)
+
+    @field_validator("title")
+    @classmethod
+    def validate_title_not_blank(cls, value: str) -> str:
+        """Chặn title chỉ chứa khoảng trắng."""
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("title must not be blank")
+        return normalized
 
 
 class ChatMessageRequest(CamelCaseModel):
