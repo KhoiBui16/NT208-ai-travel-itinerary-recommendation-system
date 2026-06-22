@@ -3,7 +3,7 @@
 **Date**: 2026-05-28
 **Branch**: `docs/00050-c-c3-design-readiness-audit`
 **Priority**: HIGH
-**Status**: OPEN (known issue)
+**Status**: RESOLVED (PR #106 / task 00107) — apply-patch có rate limit riêng `rate_limit_ai_apply_patch_user` (namespace `rate:ai:apply_patch:*`) và companion chat dùng namespace `rate:ai:chat:*`, tách hoàn toàn khỏi generate quota.
 **Related**: `docs/REPORTS/rate_limit_policy_review.md`, `ISSUES/guest_rate_limit_ua_bypass.md`
 
 ## Problem
