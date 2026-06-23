@@ -362,6 +362,15 @@ export default function ItineraryView() {
 
           <div className="flex flex-wrap gap-3">
             {isAuthenticated && (
+              <Link
+                to={`/trip-workspace?tripId=${itinerary.id}`}
+                className="flex items-center gap-2 rounded-lg bg-white/20 px-6 py-2 font-semibold backdrop-blur-sm transition-all hover:bg-white/30"
+              >
+                <Edit2 className="h-5 w-5" />
+                Tiếp tục chỉnh sửa
+              </Link>
+            )}
+            {isAuthenticated && (
               <button
                 onClick={handleSave}
                 className="flex items-center gap-2 rounded-lg bg-white/20 px-6 py-2 font-semibold backdrop-blur-sm transition-all hover:bg-white/30"
@@ -427,10 +436,10 @@ export default function ItineraryView() {
                 <div className="text-center">
                   <Map className="mx-auto mb-4 h-16 w-16 text-gray-400" />
                   <p className="text-lg text-gray-600">
-                    Bản đồ hiển thị tất cả các điểm trong lịch trình
+                    Bản đồ hành trình sắp ra mắt
                   </p>
                   <p className="text-sm text-gray-500">
-                    Tính năng tích hợp bản đồ tương tác
+                    Tính năng hiển thị bản đồ đang được phát triển
                   </p>
                 </div>
               </div>

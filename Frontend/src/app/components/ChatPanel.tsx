@@ -48,6 +48,17 @@ interface ChatPanelProps {
 
 type PanelState = "loading" | "error" | "empty" | "active";
 
+// Nhãn tiếng Việt cho từng loại thao tác đề xuất (operation.type).
+// Ưu tiên description do AI sinh; nếu thiếu mới fallback theo type để tránh
+// hiển thị enum tiếng Anh (vd: "Đề xuất: add_activity") cho người dùng cuối.
+const OPERATION_TYPE_LABELS: Record<string, string> = {
+  add_activity: "Thêm hoạt động",
+  update_activity: "Đổi hoạt động",
+  remove_activity: "Xóa hoạt động",
+  adjust_budget: "Điều chỉnh ngân sách",
+  clarify: "Cần làm rõ",
+};
+
 function summarizeOperation(operation: Record<string, unknown>): string {
   const description = operation.description;
   if (typeof description === "string" && description.trim().length > 0) {
@@ -56,7 +67,7 @@ function summarizeOperation(operation: Record<string, unknown>): string {
 
   const type = operation.type;
   if (typeof type === "string" && type.trim().length > 0) {
-    return `Đề xuất: ${type.trim()}`;
+    return OPERATION_TYPE_LABELS[type.trim()] ?? `Đề xuất: ${type.trim()}`;
   }
 
   return "Đề xuất thay đổi lịch trình";
@@ -549,7 +560,7 @@ export function ChatPanel({
                   </div>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{message.content}</p>
 
-                  {!isUser && message.requiresConfirmation && (
+                  {!isUser && message.requiresConfirmation && operationSummaries.length > 0 && (
                     <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                       <div className="flex items-center justify-between gap-3">
                         <p className="font-semibold">Cần xác nhận trước khi áp dụng</p>
@@ -598,8 +609,8 @@ export function ChatPanel({
 
       <div className="border-t border-gray-200 bg-white p-4">
         <p className="mb-2 text-[11px] leading-5 text-gray-500">
-          AI companion chỉ đọc itinerary hiện tại và trả đề xuất thay đổi. Chưa có thao tác nào
-          được lưu tự động vào DB ở bước này.
+          Trợ lý AI gợi ý thay đổi cho lịch trình này. Bạn chọn áp dụng hoặc bỏ qua — lịch trình
+          không tự thay đổi nếu chưa được bạn xác nhận.
         </p>
 
         <div className="rounded-2xl border border-gray-200 bg-gray-50 p-2">

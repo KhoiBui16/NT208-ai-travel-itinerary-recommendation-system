@@ -42,7 +42,7 @@ export function TripSidebar({
                   {day.label}
                 </p>
                 <p className={`text-xs ${selectedDayId === day.id ? "text-cyan-100" : "text-gray-400"}`}>
-                  {day.date}
+                  {day.date ? day.date.split("-").reverse().join("/") : ""}
                 </p>
                 <p className={`mt-1 text-xs ${selectedDayId === day.id ? "text-cyan-100" : "text-gray-400"}`}>
                   {day.activities.length} hoạt động
