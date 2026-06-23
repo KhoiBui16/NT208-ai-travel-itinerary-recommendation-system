@@ -324,12 +324,9 @@ export const useTripSync = (
       toast.success("Đã lưu lịch trình thành công", { position: "top-right" });
     } catch (error) {
       console.error("Error saving itinerary:", error);
-      toast.error("Không thể lưu lịch trình lên server. Bản nháp hiện chỉ được giữ tạm trên trình duyệt này.", {
-        position: "top-right",
-        duration: 5000,
-      });
 
-      // Fallback: save to sessionStorage only
+      // Fallback: lưu tạm vào sessionStorage (im lặng). Thông báo cho user
+      // được chọn theo loại lỗi ở khối classify bên dưới để tránh toast trùng.
       writeSessionTrip(tripData);
 
       // Classify error type for better UX message
