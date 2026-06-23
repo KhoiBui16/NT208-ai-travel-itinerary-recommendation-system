@@ -125,6 +125,9 @@ export default function CityDetail() {
   const [savedPlaces, setSavedPlaces] = useState<number[]>([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [savedPlaceNames, setSavedPlaceNames] = useState<Set<string>>(new Set());
+  // place name -> SavedPlace record id, cached from the initial list fetch so
+  // unsave does not refetch /places/saved/list on every bookmark toggle.
+  const [savedIdByName, setSavedIdByName] = useState<Map<string, number>>(new Map());
   const [apiDestination, setApiDestination] = useState<DestinationResponse | null>(null);
   const [apiPlaces, setApiPlaces] = useState<PlaceResponse[]>([]);
   const [apiHotels, setApiHotels] = useState<HotelResponse[]>([]);
@@ -184,22 +187,33 @@ export default function CityDetail() {
 
   const displayPlaceCount = hasApiDetail ? apiPlaceCount : displayPlaces.length;
 
-  // Sync bookmark state from BE API on mount
+  // Sync bookmark state from BE API once per city load (or when auth changes).
+  // NOTE: depend on the stable `apiDestination`/`apiPlaces` state refs, NOT on
+  // `displayCity`/`displayPlaces` (which are new objects every render) — otherwise
+  // this effect refires every render and storms /places/saved/list. See B1.
   useEffect(() => {
-    if (!displayCity || !isAuthenticated || displayPlaces.length === 0) return;
+    if (!apiDestination || !isAuthenticated || apiPlaces.length === 0) return;
+    let isMounted = true;
     listSavedPlaces().then((data) => {
-      const names = new Set(
-        data
-          .map((savedPlace: SavedPlaceResponse) => savedPlace.place?.name)
-          .filter((name): name is string => Boolean(name)),
-      );
+      if (!isMounted) return;
+      const names = new Set<string>();
+      const idByName = new Map<string, number>();
+      for (const savedPlace of data) {
+        const placeName = savedPlace.place?.name;
+        if (placeName) {
+          names.add(placeName);
+          idByName.set(placeName, savedPlace.id);
+        }
+      }
       setSavedPlaceNames(names);
-      const matchedIds = displayPlaces
+      setSavedIdByName(idByName);
+      const matchedIds = apiPlaces
         .filter((place) => names.has(place.name))
         .map((place) => place.id);
       setSavedPlaces(matchedIds);
     }).catch(() => {});
-  }, [displayCity, displayPlaces, isAuthenticated]);
+    return () => { isMounted = false; };
+  }, [apiDestination, apiPlaces, isAuthenticated]);
 
   if (!displayCity) {
     if (!apiLoaded) {
@@ -252,6 +266,7 @@ export default function CityDetail() {
     if (isAlreadySaved) {
       setSavedPlaces(prev => prev.filter(id => id !== placeId));
       setSavedPlaceNames(prev => { const n = new Set(prev); n.delete(place.name); return n; });
+      setSavedIdByName(prev => { const n = new Map(prev); n.delete(place.name); return n; });
     } else {
       setSavedPlaces(prev => [...prev, placeId]);
       setSavedPlaceNames(prev => { const n = new Set(prev); n.add(place.name); return n; });
@@ -259,12 +274,26 @@ export default function CityDetail() {
 
     try {
       if (isAlreadySaved) {
-        const savedList = await listSavedPlaces();
-        const match = savedList.find((savedPlace) => savedPlace.place?.name === place.name);
-        if (match) await unsavePlace(match.id);
+        // Use the cached SavedPlace id so a bookmark toggle does NOT refetch
+        // /places/saved/list every time. Only refetch (once) if the id is
+        // missing — e.g. the place was saved before this view cached its id.
+        let savedId = savedIdByName.get(place.name);
+        if (savedId === undefined) {
+          const savedList = await listSavedPlaces();
+          const match = savedList.find((savedPlace) => savedPlace.place?.name === place.name);
+          savedId = match?.id;
+        }
+        if (savedId !== undefined) {
+          await unsavePlace(savedId);
+        }
         toast.success("Đã bỏ lưu địa điểm");
       } else {
-        await savePlace(placeId);
+        const created = await savePlace(placeId);
+        setSavedIdByName(prev => {
+          const n = new Map(prev);
+          n.set(created.place.name, created.id);
+          return n;
+        });
         toast.success("Đã lưu địa điểm");
       }
     } catch {

@@ -7,6 +7,7 @@ from typing import Any
 
 from google import genai
 from google.genai import types
+from google.genai.errors import ServerError
 
 from src.agent.config import AgentConfig
 from src.core.exceptions import ServiceUnavailableException
@@ -102,6 +103,24 @@ class GeminiLLM:
             ) from exc
         except ServiceUnavailableException:
             raise
+        except ServerError as exc:
+            # Upstream Gemini server error (e.g. HTTP 503 overloaded/unavailable).
+            # Distinct from a client-side timeout: the provider responded fast
+            # with a server-side failure. Surface a dedicated, retryable code so
+            # the frontend can show an accurate "quá tải" message instead of the
+            # timeout copy, and so the pipeline does not retry a provider outage.
+            logger.warning(
+                "gemini_request_overloaded",
+                model=self.config.model,
+                error_type=exc.__class__.__name__,
+                duration_ms=round((perf_counter() - started_at) * 1000),
+            )
+            raise ServiceUnavailableException(
+                "Dịch vụ AI đang tạm thời quá tải. Vui lòng thử lại sau ít phút. "
+                "Chưa có lịch trình nào được lưu.",
+                error_code="AI_PROVIDER_OVERLOADED",
+                retryable=True,
+            ) from exc
         except Exception as exc:
             logger.warning(
                 "gemini_request_failed",

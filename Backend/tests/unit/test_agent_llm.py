@@ -90,3 +90,27 @@ async def test_generate_text__timeout_returns_retryable_service_unavailable(
 
     assert exc_info.value.error_code == "AI_PROVIDER_TIMEOUT"
     assert exc_info.value.retryable is True
+
+
+@pytest.mark.asyncio
+async def test_generate_text__server_error_returns_overloaded_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Upstream Gemini HTTP 503 (overloaded) must surface as a dedicated,
+    retryable AI_PROVIDER_OVERLOADED error — distinct from a client-side
+    timeout so the FE shows accurate "quá tải" copy instead of "phản hồi quá
+    lâu". See B2."""
+    from google.genai.errors import ServerError
+
+    llm = GeminiLLM(_make_config())
+
+    async def fake_generate_with_client(prompt: str) -> object:
+        raise ServerError(503, {"error": {"message": "The model is overloaded"}})
+
+    monkeypatch.setattr(llm, "_generate_with_client", fake_generate_with_client)
+
+    with pytest.raises(ServiceUnavailableException) as exc_info:
+        await llm.generate_text("hello")
+
+    assert exc_info.value.error_code == "AI_PROVIDER_OVERLOADED"
+    assert exc_info.value.retryable is True

@@ -108,6 +108,26 @@ class FakeRepo:
         self.trip.days.append(day)
         return day
 
+    async def get_or_create_day(
+        self, *, trip_id: int, day_number: int, **kwargs: object
+    ) -> TripDay:
+        """Fake mirror of TripRepository.get_or_create_day.
+
+        The production helper is race-safe via ON CONFLICT DO NOTHING; in this
+        in-memory fake there is no concurrency, so we simply return the
+        existing day for (trip_id, day_number) if one was already created, or
+        create+append a new one. This keeps pipeline persistence tests
+        deterministic after the caller switch from add_day.
+        """
+        assert self.trip is not None
+        existing = next(
+            (d for d in self.trip.days if d.day_number == day_number),
+            None,
+        )
+        if existing is not None:
+            return existing
+        return await self.add_day(trip_id=trip_id, day_number=day_number, **kwargs)
+
     async def add_activity(self, **kwargs: object) -> Activity:
         assert self.trip is not None
         self._activity_id += 1

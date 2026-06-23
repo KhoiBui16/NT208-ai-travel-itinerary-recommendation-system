@@ -1,0 +1,22 @@
+{
+  "user": "b1-evidence-1782199591043@test.com",
+  "phases": {
+    "city-load": 1,
+    "save-toggle (delta)": 0,
+    "unsave-toggle (delta)": 0,
+    "render-stress (delta)": 0,
+    "saved-page (delta)": 1
+  },
+  "total_saved_list_calls": 2,
+  "calls": [
+    {
+      "phase": "city-load",
+      "url": "http://localhost:8000/api/v1/places/saved/list"
+    },
+    {
+      "phase": "saved-page",
+      "url": "http://localhost:8000/api/v1/places/saved/list"
+    }
+  ],
+  "verdict": "PASS — /places/saved/list bounded to 1 initial sync; toggles + renders do not refetch"
+}

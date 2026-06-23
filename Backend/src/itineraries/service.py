@@ -136,7 +136,7 @@ class ItineraryService(BaseService):
 
         for idx in range(day_count):
             current_date = start + timedelta(days=idx)
-            await self.repo.add_day(
+            await self.repo.get_or_create_day(
                 trip_id=trip.id,
                 day_number=idx + 1,
                 label=f"Ngày {idx + 1}",
@@ -547,7 +547,7 @@ class ItineraryService(BaseService):
                 await self._sync_activities(day, day_data.activities)
             else:
                 # CREATE new day + all its activities
-                day = await self.repo.add_day(
+                day = await self.repo.get_or_create_day(
                     trip_id=trip.id,
                     day_number=idx + 1,
                     label=day_data.label,

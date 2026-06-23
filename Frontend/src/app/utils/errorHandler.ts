@@ -136,20 +136,23 @@ export function getGenerateErrorMessage(error: unknown, context?: GenerateErrorC
 
   // 503 Service Unavailable
   if (status === 503) {
-    const detail = typeof body.detail === "string" ? body.detail : "";
     const errorCode = typeof body.error_code === "string" ? body.error_code : "";
+    const detail = typeof body.detail === "string" ? body.detail : "";
     const detailLower = detail.toLowerCase();
 
-    if (
-      errorCode === "AI_PROVIDER_TIMEOUT" ||
-      detailLower.includes("ai") ||
-      detailLower.includes("gemini") ||
-      detailLower.includes("timeout") ||
-      detailLower.includes("llm")
-    ) {
+    // AI provider timeout — slow / no response within the dynamic timeout.
+    if (errorCode === "AI_PROVIDER_TIMEOUT") {
       return "Dịch vụ AI đang phản hồi quá lâu nên chưa thể tạo lịch trình. Chưa có lịch trình nào được lưu. Vui lòng thử lại sau, hoặc tạo chuyến đi ngắn hơn 1–2 ngày để kiểm tra nhanh.";
     }
 
+    // AI provider overload / upstream 503 — the provider responded fast with a
+    // server-side failure. Distinct from timeout; show an accurate message
+    // instead of misclassifying overload as "phản hồi quá lâu".
+    if (errorCode === "AI_PROVIDER_OVERLOADED") {
+      return "Dịch vụ AI đang tạm thời quá tải. Vui lòng thử lại sau ít phút. Chưa có lịch trình nào được lưu.";
+    }
+
+    // Cache / infrastructure issues (e.g. Redis down)
     if (detailLower.includes("redis") || detailLower.includes("cache")) {
       return "Hệ thống đang gặp sự cố tạm thời. Vui lòng thử lại sau.";
     }
