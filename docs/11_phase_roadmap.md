@@ -11,14 +11,14 @@
 | C.1b | Guest claim reload | merged | `fix/00045-c-restage-c1-guest-flow` | #45 | — | — |
 | C.2 | Suggestion | merged | `feat/00047-c-suggestion-service` | #49 | `GET /agent/suggest/{id}` | none (DB only) |
 | C.3A | Chat session foundation | merged | `feat/00094-c-c3a-chat-session-apis` + `feat/00095-c-c3a-fe-chat-panel` + `chore/00096-c-c3a-chat-e2e-tests` | #98-100 | `POST/GET /itineraries/{tripId}/chat-sessions` | none |
-| C.3B | Companion chat API | review_ready | `feat/00100-c-c3b-chat-hardening` + `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `POST /itineraries/chat-sessions/{sessionId}/messages` | `GEMINI_API_KEY` |
-| C.3C | Chat UX hardening + patch-confirm | local_verified | `feat/00101-c-c3c-apply-patch-confirm` + `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | FE UX + real apply/cancel/stale contract | none |
-| C.4 | Chat history persistence | wip | `feat/00100-c-c3b-chat-hardening` + `docs/C3_C4_IMPLEMENTATION_PLAN.md` | — | `GET /itineraries/{tripId}/chat-sessions`, `GET /chat-sessions/{id}/messages` | none |
+| C.3B | Companion chat API | merged | `feat/00100-c-c3b-chat-hardening` + `docs/C3_C4_IMPLEMENTATION_PLAN.md` | #105 | `POST /itineraries/chat-sessions/{sessionId}/messages` | `GEMINI_API_KEY` |
+| C.3C | Chat UX hardening + patch-confirm | merged | `feat/00101-c-c3c-apply-patch-confirm` + `docs/C3_C4_IMPLEMENTATION_PLAN.md` | #105 | FE UX + real apply/cancel/stale contract | none |
+| C.4 | Chat history + session management | merged | `feat/00107-c-post-105-completion` | #106 | `GET /itineraries/{tripId}/chat-sessions`, `GET /chat-sessions/{id}/messages`, PATCH rename + DELETE | none |
 | C.5 | Analytics | optional | `feat/00053-c5-analytics-optional` | — | `POST /agent/analytics` | `ENABLE_ANALYTICS`, `ANALYTICS_DATABASE_URL` |
 
 **Status:** `todo` | `wip` | `review_ready` | `merged`
 
-> **Current gate on local branch `00101`:** `C3C` patch-confirm core đã có local verification qua browser/API/DB cho `apply`, `cancel`, `stale`; active runtime mock drift đã được gỡ khỏi `TripWorkspace`/`DailyItinerary`. Phần còn lại trước khi xem phase này là ổn hơn nằm ở scheduler wiring, patch-specific rate limit, session/history UX, và data enrichment cho sparse cities.
+> **Current state (2026-06-24, HEAD `#109`):** Phase C.0–C.4 đã merge hoàn chỉnh — `C3C` apply/cancel/stale (#105), scheduler wiring + apply-patch rate limit + session management (#106). Phần còn lại là C.5 Analytics (optional/deferred) và data enrichment cho sparse cities (giới hạn Goong provider — không trả photo/rating).
 
 ---
 
@@ -78,8 +78,8 @@
 - [x] Chat history lưu vào `chat_sessions` / `chat_messages`
 - [x] Unit + integration tests + Playwright + live smoke pass cục bộ
 - [x] Active runtime mock drift đã được gỡ; `TripWorkspace` và `DailyItinerary` không còn mount `FloatingAIChat` / promo surfaces
-- [x] `C3C` core: `apply-patch` confirm endpoint + DB update sau confirm
-- [ ] `C3C` follow-up: patch-specific rate limit + UX/history polish
+- [x] `C3C` core: `apply-patch` confirm endpoint + DB update sau confirm (merged #105)
+- [x] `C3C` follow-up: patch-specific rate limit (`rate:ai:apply_patch:user:*`) + session-management UX (merged #106)
 
 ### Verification log
 
@@ -102,12 +102,12 @@
 
 ## C.4 — Definition of Done
 
-- [ ] ChatService full management CRUD (list sessions, get messages, delete session)
-- [x] Read-path endpoints mounted (GET /chat/sessions, GET /chat/sessions/{id}/messages)
-- [ ] Delete-session endpoint mounted nếu scope C4B giữ nguyên
-- [ ] Owner-check trên mọi endpoint
-- [ ] Unit + integration tests pass
-- [ ] docs/03, docs/06, docs/09, docs/10 updated
+- [x] ChatService full management CRUD (list sessions, get messages, rename/delete session) — merged #106
+- [x] Read-path endpoints mounted (GET /chat-sessions, GET /chat-sessions/{id}/messages)
+- [x] Delete-session + rename endpoint mounted (merged #106)
+- [x] Owner-check trên mọi endpoint
+- [x] Unit + integration tests pass
+- [x] docs/03, docs/06, docs/09, docs/10 updated
 
 ### Verification log
 

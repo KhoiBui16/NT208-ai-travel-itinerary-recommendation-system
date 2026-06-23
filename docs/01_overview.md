@@ -112,7 +112,7 @@ MVP1
 - Places/cache: destinations, destination detail, place search/detail, saved places, Redis read cache fail-open.
 - ETL D1/C.0: Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, `hotels.yaml`, `scraped_sources`.
 - AI C.1 generate pipeline: DB recommendation context, Gemini JSON output, Pydantic validation, retry, guest/user AI rate limit.
-- Tests current local source: backend full suite đạt `199 passed, 30 skipped, 1 warning`; Playwright suite hiện là `36` test cases / `17` spec files với latest full local run `33 passed, 3 skipped`.
+- Tests current local source (2026-06-24): backend `187 unit + 77 integration` collected (43 int pass + 34 CI-gated skip local); Playwright suite hiện là `14` spec files (CI `frontend-e2e` green trên PR #109).
 - AI C.2 SuggestionService (EP-30): DB-only suggest alternatives, owner-check, no LLM.
 - Destination slug matching: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" → "ha-noi" → match DB.
 

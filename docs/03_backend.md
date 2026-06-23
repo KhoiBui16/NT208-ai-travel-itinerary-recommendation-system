@@ -665,9 +665,9 @@ EmailService
 
 ## 11. Backend còn thiếu
 
-- `C3B` current source đã có message send, provider abstraction, chat quota riêng, và persisted history read-path.
-- `C3C` còn thiếu `apply-patch` confirm endpoint, proposed-operations enrichment, và UX hardening sâu hơn.
-- `C4` còn thiếu history-management UX, lifecycle policy rõ hơn cho session/message, và follow-up browser flows đa tab/dài phiên.
-- Analytics optional EP-34 với SQL guardrails (C.5, optional).
+- `C3B` đã merged: message send, provider abstraction, chat quota riêng (`rate:ai:chat:user:*`), persisted history read-path.
+- `C3C` đã merged (#105): `POST /itineraries/{tripId}/apply-patch` confirm endpoint, proposed-operations enrichment, stale-proposal handling.
+- `C4` đã merged (#106): session management (rename/delete/switcher/load-more), history reload; apply-patch rate limit riêng (`rate:ai:apply_patch:user:*`) + ETL scheduler wired vào compose (profile `etl`).
+- Analytics EP-34 (C.5) — optional/deferred, **chưa implement** (`/agent/analytics` route absent, `enable_analytics` default false); cần guardrails (read-only role, table allowlist, SQL validator, max rows, audit log) nếu bật.
 
-> **Current gate:** repo đã qua local verification cho `C3B` message flow trên nhánh `00100`; phần còn lại trước khi xem companion hoàn chỉnh là `apply-patch`, doc/PR sync, và scheduler/service wiring.
+> **Current state (2026-06-24, HEAD `#109`):** Phase C.1–C.4 đã merge hoàn chỉnh. Phần còn lại trước khi coi hệ thống "production-complete" là C.5 Analytics (optional) + data enrichment cho sparse cities (giới hạn Goong provider — không trả photo/rating).

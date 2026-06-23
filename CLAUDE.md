@@ -26,9 +26,9 @@ Neu docs va code xung dot:
 
 - Backend runtime hien tai la MVP2 trong `Backend/src/`
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
-- BE local suite: 184 unit pass + 43 integration pass / 34 CI-gated skip (full suite xanh trên CI postgres)
+- BE local suite: 187 unit pass + 77 integration collected (43 int pass / 34 CI-gated skip) (full suite xanh trên CI postgres)
 - Frontend runtime hien tai nam trong `Frontend/`
-- Playwright suite hiện bao phủ 16 spec files / 35 test cases trong `Frontend/tests/e2e/`
+- Playwright suite hiện có 14 spec files trong `Frontend/tests/e2e/` (CI `frontend-e2e` green)
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
 - Register page bypass OTP cho den khi BE email OTP san sang
 - `docs/` la bo tai lieu chi tiet cho user va reviewer
