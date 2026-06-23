@@ -494,7 +494,7 @@ class ItineraryPipeline:
             # Calculate the actual calendar date for this day
             trip_date = request.start_date + timedelta(days=idx)
 
-            trip_day = await self.repo.add_day(
+            trip_day = await self.repo.get_or_create_day(
                 trip_id=trip.id,
                 day_number=idx + 1,
                 label=day.label,

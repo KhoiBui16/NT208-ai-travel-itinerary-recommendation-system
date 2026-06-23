@@ -15,6 +15,7 @@ Also provides AI recommendation context queries:
 """
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -222,6 +223,45 @@ class TripRepository:
         self.session.add(day)
         await self.session.flush()
         return day
+
+    async def get_or_create_day(
+        self, *, trip_id: int, day_number: int, **kwargs: object
+    ) -> TripDay:
+        """Insert a TripDay for (trip_id, day_number) or return the existing row.
+
+        Race-safe against the ``uq_trip_days_trip_number`` unique constraint:
+        uses ``INSERT ... ON CONFLICT (trip_id, day_number) DO NOTHING``. If the
+        insert is skipped because a matching row already exists (e.g. a
+        concurrent auto-save created the same day first), the pre-existing row
+        is returned instead, so the caller always receives a TripDay with a
+        valid ``id`` for attaching activities/accommodations.
+
+        ``kwargs`` (label, date, destination_name) only apply on a fresh
+        insert; an existing row is returned unchanged to preserve activities
+        already attached to it.
+        """
+        insert_stmt = (
+            pg_insert(TripDay)
+            .values(trip_id=trip_id, day_number=day_number, **kwargs)
+            .on_conflict_do_nothing(index_elements=["trip_id", "day_number"])
+            .returning(TripDay.id)
+        )
+        result = await self.session.execute(insert_stmt)
+        await self.session.flush()
+        inserted_id = result.scalar_one_or_none()
+
+        if inserted_id is None:
+            # Conflict: another row already owns (trip_id, day_number).
+            existing = await self.session.execute(
+                select(TripDay).where(
+                    TripDay.trip_id == trip_id,
+                    TripDay.day_number == day_number,
+                )
+            )
+            return existing.scalar_one()
+
+        created = await self.session.execute(select(TripDay).where(TripDay.id == inserted_id))
+        return created.scalar_one()
 
     async def update_day(self, day: TripDay, **kwargs: object) -> TripDay:
         """Update day fields from keyword arguments (skip None values)."""
