@@ -125,10 +125,10 @@ Expected current merged-source result after `00060A` / `00060B`:
 - Backend ruff check: pass.
 - Backend ruff format check: pass.
 - Alembic upgrade/check: pass.
-- Backend unit: 125 passed.
-- Backend integration: 51 passed.
+- Backend unit: 187 passed.
+- Backend integration: 77 collected (43 pass + 34 CI-gated skip local; đủ trên CI postgres).
 - Frontend build: pass with Vite chunk-size warning only.
-- Playwright: 19 passed, 3 skipped.
+- Playwright: 36 tests trên 17 spec files (CI `frontend-e2e` green; latest local recorded run ~33 passed, 3 skipped — `b3/*` flows skip khi thiếu data/seed).
 
 ## Manual Browser UAT
 

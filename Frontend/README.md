@@ -14,8 +14,8 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 | AI C.2 | Suggestion backend ready (`GET /api/v1/agent/suggest/{activity_id}`), nhưng FE suggestion surfaces vẫn dùng mock data |
 | AI C.3A | `ChatPanel` integrated into `TripWorkspace` with chat session REST APIs |
 | AI C.3B/C.3C | `ChatPanel` now loads history thật, gửi message thật, render `requiresConfirmation` + `proposedOperations`, và đã có confirm/cancel UI gọi `apply-patch` thật |
-| Remaining AI UI | Legacy companion/demo components vẫn còn trên source nhưng không còn mount trên runtime chính; history-management UX, session switcher, và patch conflict copy có thể còn cần polish thêm |
-| Verified 2026-06-20 | Production build pass qua `npm run build -- --outDir .build-tmp\\verify`; live Chrome smoke verified real ChatPanel session/history persistence against backend on `localhost:8000`; latest recorded full Playwright suite vẫn là `33 passed, 3 skipped` |
+| Remaining AI UI | Legacy companion/demo components vẫn còn trên source nhưng không còn mount trên runtime chính; C.4 session management (switcher/rename/delete/load-more) đã merged (#106) |
+| Verified 2026-06-24 | Production build pass qua `npm run build`; CI `frontend-e2e` green trên PR #109; 17 spec files Playwright ở `tests/e2e/` (14 top-level + 3 `b3/`; cần BE chạy trên `localhost:8000`) |
 
 ## Local Start
 
@@ -134,7 +134,7 @@ npm run test:e2e
 
 Post-verify note from 2026-06-19:
 
-- `npm run test:e2e`: `36` test cases across `17` spec files; latest full local run `33 passed, 3 skipped` (legacy `b3` flows remain skipped).
+- `npm run test:e2e`: `17` spec files ở `tests/e2e/` (14 top-level + 3 `b3/`; cần BE chạy trên `localhost:8000`); CI `frontend-e2e` green trên PR #109. Số case chính xác chạy đủ trên CI.
 - FE error handling improved: toast notifications now show specific error messages instead of generic "Không thể tạo lịch trình" for rate limits, validation errors, and AI timeouts.
 - Destination slugify fuzzy matching (PR #92): Backend now properly matches "Ha Noi" → "ha-noi" → DB, improving destination resolution for users typing city names without accents.
 - C3A chat session foundation (PR #98-100): ChatPanel component integrated into TripWorkspace, chat session REST APIs (EP-37/38/39), e2e tests for chat session CRUD.
@@ -172,7 +172,7 @@ Keep UI/UX unchanged while debugging logic.
 - [`docs/04_frontend.md`](../docs/04_frontend.md) - Frontend architecture and component reference
 - [`docs/08_testing_local_run.md`](../docs/08_testing_local_run.md) - Local testing guide
 - [`docs/USER_JOURNEY_UAT.md`](../docs/USER_JOURNEY_UAT.md) - User journey matrix
-- [`docs/REPORTS/00060k_r2_full_testing_report.md`](../docs/REPORTS/00060k_r2_full_testing_report.md) - Latest full testing report
+- [`docs/REPORTS/00060k_r2_full_testing_report.md`](../docs/REPORTS/00060k_r2_full_testing_report.md) - Full testing report (snapshot 2026-06-09; current inventory xem `docs/08_testing_local_run.md`)
 
 **Browser debug skill:**
 - `.claude/skills/fullstack-browser-debug/SKILL.md` - Full FE-BE verification checklist

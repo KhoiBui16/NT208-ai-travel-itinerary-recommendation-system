@@ -4,7 +4,7 @@ Ngày cập nhật: 2026-06-02
 
 ## 1. Mục tiêu
 
-Tài liệu này chốt cách deploy staging theo **current source truth** trước khi bước vào `C3A`.
+Tài liệu này chốt cách deploy staging theo **current source truth** (HEAD `#109`, Phase C.0–C.4 đã merge).
 
 Mục tiêu của staging:
 
@@ -82,8 +82,14 @@ flowchart LR
 | `ENVIRONMENT` | Yes | Khuyến nghị `production` cho staging public để giữ production validator |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` | Optional | Chỉ cần nếu muốn test email reset thật |
 | `EMAIL_FROM_ADDRESS` / `EMAIL_FROM_NAME` | Optional | Có ích nếu bật SMTP |
-| `ENABLE_ANALYTICS` | Optional | Giữ `false` trước `C3A` |
+| `ENABLE_ANALYTICS` | Optional | Giữ `false` (C.5 Analytics chưa implement) |
 | `ANALYTICS_DATABASE_URL` | Optional | Chỉ cần nếu bật analytics |
+| `RATE_LIMIT_AI_FREE` | Optional, default 3 | Số lượt AI generate/ngày cho guest |
+| `RATE_LIMIT_AI_CHAT_USER` | Optional, default 20 | Quota companion chat/ngày cho auth user |
+| `RATE_LIMIT_AI_APPLY_PATCH_USER` | Optional, default 20 | Quota apply-patch/ngày cho auth user |
+| `AI_RATE_LIMIT_FAIL_MODE` | Optional, default `closed` | `closed` = fail-closed (trả 503) khi Redis down; KHÔNG set `open` trên staging internet-facing |
+| `ETL_UPDATE_INTERVAL_DAYS` | Optional, default 30 | Khoảng refresh (ngày) cho ETL scheduler |
+| `ETL_MAX_PLACES_PER_CITY` | Optional, default 75 | Giới hạn places crawl mỗi city khi chạy ETL |
 
 ### 5.3 CORS format đề xuất
 
@@ -319,16 +325,14 @@ Workflow đó chỉ nên chạy safe checks như:
 - `curl` backend health
 - optional Playwright smoke không cần secret mới ngoài URL
 
-## 14. Known limitations trước C3A/C3B/C4
+## 14. Known limitations (sau merge C3A/C3B/C3C/C4)
 
 | Area | Current limitation |
 |---|---|
-| C3A | Chat session API chưa có |
-| C3B | Chat quota riêng chưa có |
-| C3C | apply-patch stale handling chưa có |
-| C4 | persisted chat history chưa có |
-| ETL scheduler | Chưa tự động hóa trên staging |
-| Analytics | Chưa bật, chưa cần trước `C3A` |
+| C3A/C3B/C3C/C4 | **Đã merge (#98–106):** chat session API, chat quota riêng, apply-patch stale handling, persisted chat history + session management |
+| ETL scheduler | Opt-in qua compose profile `etl`; chưa auto-schedule 24/7 trên staging (chạy seed một lần trước deploy) |
+| Analytics (C.5) | Chưa implement; `ENABLE_ANALYTICS=false`. Optional/deferred — cần guardrails (read-only role, allowlist, validator, audit) nếu bật |
+| Goong data | 9 city sparse (zero-place) + provider không trả photo/rating — ảnh/thumbnail dùng FE fallback |
 
 ## 15. Deployment recommendation ngắn gọn
 

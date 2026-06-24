@@ -53,12 +53,12 @@ Backend/
 │   ├── agent/                     # Shared AI infrastructure
 │   │   ├── config.py              # AgentConfig (model, temp, retries, timeout, pacing)
 │   │   ├── llm.py                 # GeminiLLM wrapper + parse_json_response()
-│   │   ├── router.py              # /agent prefix — EP-30 suggest only (chat/apply-patch chưa implement)
+│   │   ├── router.py              # /agent prefix — EP-30 suggest only (chat/apply-patch nằm trong itineraries router)
 │   │   ├── prompts/
 │   │   │   └── itinerary_prompts.py   # build_itinerary_prompt() cho C.1
 │   │   └── schemas/
 │   │       └── itinerary_schemas.py   # AgentItinerary, AgentDay, AgentActivity
-│   │   # TODO C.3: tools/, graph/ subdirs chưa tồn tại
+│   │   # Companion chat dùng JSON prompt-driven proposedOperations (không cần tools/ hay graph/)
 │   │
 │   ├── core/                      # Cross-cutting concerns
 │   │   ├── config.py              # AppSettings (pydantic-settings, YAML + .env)
@@ -91,8 +91,8 @@ Backend/
 │   └── shared/                    # Shared base classes
 │       └── service.py             # BaseService
 ├── tests/
-│   ├── unit/                      # 125 unit tests
-│   └── integration/               # 51 integration tests
+│   ├── unit/                      # 187 unit tests
+│   └── integration/               # 77 integration tests (43 pass + 34 CI-gated skip local)
 ├── alembic/
 │   └── versions/                  # DB migration files
 ├── config.yaml                    # Non-secret config
@@ -130,7 +130,7 @@ Backend/
 | EP-6 | PUT | `/api/v1/users/profile` | Bearer | `{name?, phone?, interests?}` | `UserResponse` |
 | EP-7 | PUT | `/api/v1/users/password` | Bearer | `{currentPassword, newPassword}` | `{message}` |
 
-### Itinerary endpoints (14 endpoints)
+### Itinerary endpoints (22 endpoints: 14 CRUD + 8 chat/apply-patch)
 
 | EP | Method | Path | Auth | Request Body | Response |
 |---|---|---|---|---|---|
@@ -148,6 +148,23 @@ Backend/
 | EP-19 | DELETE | `/api/v1/itineraries/{tripId}/activities/{activityId}` | Bearer | — | `{message}` |
 | EP-20 | POST | `/api/v1/itineraries/{tripId}/accommodations` | Bearer | `AccommodationSchema` | `AccommodationSchema` |
 | EP-21 | DELETE | `/api/v1/itineraries/{tripId}/accommodations/{accommodationId}` | Bearer | — | `{message}` |
+
+### Chat & apply-patch endpoints (C.3/C.4 — 8 endpoints)
+
+Trip-bound companion chat: owner-only, session/message REST + patch-confirm (merged #98-106).
+
+| Method | Path | Auth | Request Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/itineraries/{tripId}/chat-sessions` | Bearer | `{title?}` | `ChatSessionResponse` |
+| GET | `/api/v1/itineraries/{tripId}/chat-sessions` | Bearer | — | `list[ChatSessionSummary]` |
+| GET | `/api/v1/itineraries/chat-sessions/{sessionId}` | Bearer | — | `ChatSessionResponse` |
+| PATCH | `/api/v1/itineraries/chat-sessions/{sessionId}` | Bearer | `{title}` | `ChatSessionResponse` |
+| DELETE | `/api/v1/itineraries/chat-sessions/{sessionId}` | Bearer | — | `{message}` |
+| POST | `/api/v1/itineraries/chat-sessions/{sessionId}/messages` | Bearer | `{content}` | `ChatMessageResponse` (+ `requiresConfirmation`, `proposedOperations`) |
+| GET | `/api/v1/itineraries/chat-sessions/{sessionId}/messages` | Bearer | — | `list[ChatMessageResponse]` |
+| POST | `/api/v1/itineraries/{tripId}/apply-patch` | Bearer | `{action, assistantMessageId}` | `{applied, message}` |
+
+> Companion chat KHÔNG tự persist itinerary trong message flow; user phải `apply-patch` để xác nhận. Apply-patch có rate limit riêng (`rate:ai:apply_patch:user:*`). Chi tiết flow xem `docs/06_ai_roadmap.md` mục Companion Chat.
 
 ### Shared endpoint (1 endpoint)
 
@@ -167,7 +184,7 @@ Backend/
 | EP-28 | POST | `/api/v1/places/saved` | Bearer | `SavedPlaceResponse` |
 | EP-29 | DELETE | `/api/v1/places/saved/{savedId}` | Bearer | `{message}` |
 
-**Tổng: 35 endpoints** trên `main` sau merge C.2 (EP-0 đến EP-32 + EP-30 suggest; EP-34 analytics optional MVP2+)
+**Tổng: 41 `/api/v1` endpoints** trên `main` sau merge C.4 (14 GET / 16 POST / 5 PUT / 5 DELETE / 1 PATCH — EP-0..EP-32 + EP-30 suggest + 8 chat/apply-patch; EP-34 analytics optional/deferred)
 
 ### EP-23: `GET /api/v1/places/destinations` — Destination Data Quality Contract
 
@@ -500,7 +517,7 @@ HTTP Request
 
 ### CamelCaseModel
 
-Tất cả response schema kế thừa `CamelCaseModel` (trong `schemas/common.py`):
+Tất cả response schema kế thừa `CamelCaseModel` (trong `src/core/schema.py`):
 
 ```python
 class CamelCaseModel(BaseModel):
@@ -665,9 +682,9 @@ EmailService
 
 ## 11. Backend còn thiếu
 
-- `C3B` current source đã có message send, provider abstraction, chat quota riêng, và persisted history read-path.
-- `C3C` còn thiếu `apply-patch` confirm endpoint, proposed-operations enrichment, và UX hardening sâu hơn.
-- `C4` còn thiếu history-management UX, lifecycle policy rõ hơn cho session/message, và follow-up browser flows đa tab/dài phiên.
-- Analytics optional EP-34 với SQL guardrails (C.5, optional).
+- `C3B` đã merged: message send, provider abstraction, chat quota riêng (`rate:ai:chat:user:*`), persisted history read-path.
+- `C3C` đã merged (#105): `POST /itineraries/{tripId}/apply-patch` confirm endpoint, proposed-operations enrichment, stale-proposal handling.
+- `C4` đã merged (#106): session management (rename/delete/switcher/load-more), history reload; apply-patch rate limit riêng (`rate:ai:apply_patch:user:*`) + ETL scheduler wired vào compose (profile `etl`).
+- Analytics EP-34 (C.5) — optional/deferred, **chưa implement** (`/agent/analytics` route absent, `enable_analytics` default false); cần guardrails (read-only role, table allowlist, SQL validator, max rows, audit log) nếu bật.
 
-> **Current gate:** repo đã qua local verification cho `C3B` message flow trên nhánh `00100`; phần còn lại trước khi xem companion hoàn chỉnh là `apply-patch`, doc/PR sync, và scheduler/service wiring.
+> **Current state (2026-06-24, HEAD `#109`):** Phase C.1–C.4 đã merge hoàn chỉnh. Phần còn lại trước khi coi hệ thống "production-complete" là C.5 Analytics (optional) + data enrichment cho sparse cities (giới hạn Goong provider — không trả photo/rating).

@@ -1,8 +1,7 @@
 # Documentation Index
 
 **Ngày tạo:** 2026-06-08
-**Tổng số files:** 150 .md files
-**Cập nhật lần cuối:** 2026-06-08
+**Cập nhật lần cuối:** 2026-06-24 (sync task 00116)
 
 ---
 
@@ -28,7 +27,7 @@
 | File | Mục đích | Khi nào đọc |
 |------|----------|-------------|
 | [`01_overview.md`](01_overview.md) | Entry point, reading order, invariant rules | **Đọc đầu tiên** - New developer onboarding |
-| [`README.md`](README.md) | Quick start, tech stack, architecture overview | Project overview |
+| [`../README.md`](../README.md) | Quick start, tech stack, architecture overview | Project overview |
 | [`02_architecture.md`](02_architecture.md) | System architecture FE-BE-DB-Redis-AI | Understanding system design |
 | [`03_backend.md`](03_backend.md) | Backend endpoints, services, repositories | Backend development |
 | [`04_frontend.md`](04_frontend.md) | Frontend components, hooks, API client | Frontend development |
@@ -37,7 +36,7 @@
 | [`07_workflow_ci.md`](07_workflow_ci.md) | Branch/commit/PR format, CI/CD rules | Contributing guidelines |
 | [`08_testing_local_run.md`](08_testing_local_run.md) | Local development and testing guide | Running tests locally |
 | [`09_execution_tracker.md`](09_execution_tracker.md) | Task/branch/PR tracker (living document) | Project status tracking |
-| [`10_automation_testing_report.md`](10_automation_testing_report.md) | Latest test results (97+ tests) | Test quality verification |
+| [`10_automation_testing_report.md`](10_automation_testing_report.md) | Test results (187 unit + 77 integration; 17 e2e specs) | Test quality verification |
 | [`11_phase_roadmap.md`](11_phase_roadmap.md) | Phase C roadmap & completion tracker | Phase planning |
 
 ### C3/C4 Specific
@@ -169,7 +168,7 @@
 | [`00060i_real_user_smoke_critical_flow.md`](REPORTS/00060i_real_user_smoke_critical_flow.md) | Critical user flow testing | ✅ Verified |
 | [`00060j_fix_local_smoke_ux_data_gate.md`](REPORTS/00060j_fix_local_smoke_ux_data_gate.md) | Local smoke UX fixes | ✅ Merged |
 | [`00060k_pre_chatbot_source_docs_runtime_audit.md`](REPORTS/00060k_pre_chatbot_source_docs_runtime_audit.md) | Pre-chatbot audit | ✅ Complete |
-| [`00060k_r1_critical_data_fixes.md`](REPORTS/00060k_r1_critical_data_fixes.md) | Critical data fixes (Bug #1, #3) | ✅ Fixed |
+| [`00060k_r1_critical_data_contract_fixes.md`](REPORTS/00060k_r1_critical_data_contract_fixes.md) | Critical data fixes (Bug #1, #3) | ✅ Fixed |
 | [`00060k_r2_backend_testing_report.md`](REPORTS/00060k_r2_backend_testing_report.md) | Comprehensive backend testing | ✅ Complete |
 | [`00060k_r2_full_testing_report.md`](REPORTS/00060k_r2_full_testing_report.md) | Complete testing report | ✅ Complete |
 
@@ -295,7 +294,7 @@
 | Phase reports | 40+ | 🟢 Comprehensive |
 | PR descriptions | 35+ | 🟢 Excellent traceability |
 | Issue reports | 45+ | 🟢 Well tracked |
-| Cập nhật gần nhất | 2026-06-08 | 🟢 Current |
+| Cập nhật gần nhất | 2026-06-24 | 🟢 Current |
 
 ---
 
@@ -330,10 +329,11 @@
 3. UAT: [`00059b_full_user_journey_uat.md`](REPORTS/00059b_full_user_journey_uat.md)
 4. Results: [`00060k_r2_full_testing_report.md`](REPORTS/00060k_r2_full_testing_report.md)
 
-### For Current Status (June 2026)
-1. Tracker: [`09_execution_tracker.md`](09_execution_tracker.md)
-2. Latest: [`00060k_r2_full_testing_report.md`](REPORTS/00060k_r2_full_testing_report.md)
-3. Bugs: [`plan_00060_critical_data_fixes.md`](REPORTS/ISSUES/plan_00060_critical_data_fixes.md)
+### For Current Status (June 2026, HEAD `#109`)
+1. Phase status: [`11_phase_roadmap.md`](11_phase_roadmap.md) (C.0–C.4 merged; C.5 optional)
+2. Tracker: [`09_execution_tracker.md`](09_execution_tracker.md)
+3. Deploy readiness: [`STAGING_DEPLOYMENT_GUIDE.md`](STAGING_DEPLOYMENT_GUIDE.md) · evidence `REPORTS/EVIDENCE/00115_post_109_deploy_readiness/`
+4. Latest test inventory: 187 unit + 77 integration (17 e2e specs / 36 tests); CI green trên PR #109
 
 ---
 

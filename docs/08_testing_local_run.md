@@ -151,7 +151,7 @@ npm run build           # Production build phải pass
 npm run test:e2e        # Playwright e2e tests (cần BE chạy trên localhost:8000)
 ```
 
-FE build phải pass (production bundle). Playwright e2e tests hiện có `36` test cases trong `17` spec files; latest full local run ghi nhận `33 passed, 3 skipped`. Yêu cầu BE server chạy trước khi chạy e2e.
+FE build phải pass (production bundle). Playwright e2e tests hiện có `17` spec files ở `tests/e2e/` (14 top-level + 3 trong `b3/`; CI `frontend-e2e` green trên PR #109). Yêu cầu BE server chạy trước khi chạy e2e.
 
 ### Current evidence snapshot (2026-06-19)
 
@@ -160,11 +160,10 @@ Set-Location "<repo-root>\\Backend"
 uv run pytest tests/unit tests/integration -v --tb=short
 ```
 
-Kết quả full local suite gần nhất:
+Kết quả collect local (2026-06-24):
 
-- `199 passed`
-- `30 skipped`
-- `1 warning`
+- Backend unit: `187 tests` collected
+- Backend integration: `77 tests` collected (43 pass + 34 CI-gated skip local; chạy đủ trên CI postgres)
 
 Companion chat smoke đã verify trên stack thật FE -> BE -> DB -> Redis:
 

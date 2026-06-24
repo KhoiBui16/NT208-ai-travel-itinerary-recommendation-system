@@ -14,9 +14,10 @@ FastAPI backend for the NT208 AI travel itinerary recommendation system.
 | AI C.1 | Implemented: `POST /api/v1/itineraries/generate` builds DB recommendation context, calls Gemini, validates, retries, persists generated trip data, and enforces user/guest quota |
 | AI C.2 | Implemented: `GET /api/v1/agent/suggest/{activity_id}` DB-only suggestion service |
 | AI C.3A | Implemented: Chat session REST APIs (EP-37/38/39), FE ChatPanel component, e2e tests |
-| AI C.3B/C.3C | Current source has trip-bound `POST/GET /itineraries/chat-sessions/{sessionId}/messages`, `POST /itineraries/{tripId}/apply-patch`, real Gemini call, persisted `chat_messages`, stale proposal handling, and auth-user chat quota riêng |
-| Remaining AI | C.4 history-management UX/policy, patch-specific rate limit, ETL ops wiring, C.5 analytics |
-| Verified 2026-06-19 | Ruff check pass, Alembic upgrade/check pass, backend full suite `199 passed, 30 skipped, 1 warning`, real generate/chat smoke pass on project DB/Redis stack, ETL scheduler once smoke pass |
+| AI C.3B/C.3C | Merged (#105): trip-bound `POST/GET /itineraries/chat-sessions/{sessionId}/messages`, `POST /itineraries/{tripId}/apply-patch`, real Gemini call, persisted `chat_messages`, stale proposal handling, auth-user chat quota riêng |
+| AI C.4 | Merged (#106): chat history persisted + session management (rename/delete/switcher/load-more); apply-patch rate limit riêng + ETL scheduler wired vào compose (profile `etl`) |
+| Remaining AI | C.5 Analytics Text-to-SQL — optional/deferred (chưa implement; cần guardrails nếu bật) |
+| Verified 2026-06-24 | Ruff check pass, Alembic upgrade/check pass, `187 unit + 77 integration` collected (43 int pass + 34 CI-gated skip local), ETL scheduler compose profile smoke pass |
 
 ## Architecture
 
@@ -173,6 +174,7 @@ AI quota:
 | Generate | Auth user | `rate:ai:user:{user_id}:{YYYYMMDD}` |
 | Generate | Guest | `rate:ai:guest:{hash(ip + user-agent)}:{YYYYMMDD}` |
 | Companion chat | Auth user | `rate:ai:chat:user:{user_id}:{YYYYMMDD}` |
+| Apply-patch | Auth user | `rate:ai:apply_patch:user:{user_id}:{YYYYMMDD}` |
 
 Redis fail mode is closed by default, so AI endpoints return 503 if quota tracking is unavailable.
 
@@ -190,15 +192,16 @@ uv run pytest tests/unit/ -v --tb=short
 uv run pytest tests/integration/ -v --tb=short
 ```
 
-Expected post-00062 local result on 2026-06-09:
+Expected local result (verified 2026-06-24):
 
 | Gate | Result |
 |---|---|
 | Ruff check | Pass |
 | Ruff format check | Pass |
 | Alembic upgrade/check | Pass |
-| Backend full suite | `199 passed, 30 skipped, 1 warning` |
-| Real AI smoke | Generate + companion chat pass on project DB/Redis stack |
+| Backend unit | `187 passed` |
+| Backend integration | `77 collected` (43 pass + 34 CI-gated skip local; đủ trên CI postgres) |
+| Real AI smoke | Generate + companion chat (phụ thuộc tình trạng provider Gemini) |
 
 ## Debug Notes
 
@@ -254,5 +257,5 @@ One PR merged to fix destination slugify fuzzy matching:
 - [`docs/05_database_etl.md`](../docs/05_database_etl.md) - Database schema and ETL pipeline
 - [`docs/06_ai_roadmap.md`](../docs/06_ai_roadmap.md) - AI implementation roadmap
 - [`docs/08_testing_local_run.md`](../docs/08_testing_local_run.md) - Local testing guide
-- [`docs/REPORTS/00060k_r2_backend_testing_report.md`](../docs/REPORTS/00060k_r2_backend_testing_report.md) - Latest backend testing report
+- [`docs/REPORTS/00060k_r2_backend_testing_report.md`](../docs/REPORTS/00060k_r2_backend_testing_report.md) - Backend testing report (snapshot 2026-06-09; current inventory xem `docs/08_testing_local_run.md`)
 
