@@ -62,8 +62,8 @@ Backend/requirements.txt
 Backend/seed_data.py
 Backend/venv/
 
-# Render/Vercel deploy configs (MVP1)
-render.yaml
+# Render/Vercel deploy configs
+# render.yaml tracked ở MVP2 (Render Blueprint — KHÔNG chứa secret; mọi secret là sync:false trong Render UI)
 vercel.json
 !Frontend/vercel.json
 
