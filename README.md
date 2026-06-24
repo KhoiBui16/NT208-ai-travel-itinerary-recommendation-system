@@ -337,10 +337,10 @@ Bộ tài liệu kỹ thuật tiếng Việt đầy đủ nằm trong [`docs/`](
 
 | Thành viên | MSSV | Vai trò | Đóng góp |
 |---|---|---|---|
-| Bùi Nhật Anh Khôi | — | Leader, Backend, AI | 25% |
-| Dương Đăng Chính | — | Frontend | 25% |
-| Lê Văn Chí | — | Backend | 25% |
-| Nguyễn Hữu Chiến | — | Backend | 25% |
+| Bùi Nhật Anh Khôi | 23520761 | Leader, Backend, AI | 25% |
+| Dương Đăng Chính | 24520222 | Frontend | 25% |
+| Lê Văn Chí | 24520214 | Backend | 25% |
+| Nguyễn Hữu Chiến | 24520218 | Backend | 25% |
 
 ---
 
