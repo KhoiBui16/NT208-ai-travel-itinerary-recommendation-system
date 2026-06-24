@@ -290,7 +290,7 @@ npm run dev -- --host localhost --port 5173
 | Backend unit | 187 tests | `cd Backend && uv run pytest tests/unit -v` |
 | Backend integration | 77 collected (43 pass + 34 CI-gated skip local) | `cd Backend && uv run pytest tests/integration -v` |
 | Frontend build | production bundle | `cd Frontend && npm run build` |
-| Frontend e2e | 14 spec files (Playwright) | `cd Frontend && npm run test:e2e` |
+| Frontend e2e | 17 spec files / 36 tests (Playwright) | `cd Frontend && npm run test:e2e` |
 
 **CI (GitHub Actions) — 7 required checks:** `pr-policy`, `backend-lint`, `backend-unit`, `backend-integration`, `backend-migrations`, `frontend-build`, `frontend-e2e`.
 

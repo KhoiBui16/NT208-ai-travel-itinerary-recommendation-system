@@ -41,7 +41,7 @@ File này là **entry point** cho toàn bộ docs. Đọc file này đầu tiên
 ## Quy Tắc Viết Docs
 
 - Chỉ ghi "đã làm" khi source code, test hoặc workflow hiện tại chứng minh được.
-- Phần AI hiện là pending; không tạo tài liệu như một service đã chạy thật.
+- Phase C.0–C.4 (ETL readiness, generate, suggestion, companion chat, apply-patch, session management) đã merge; C.5 Analytics optional/deferred. Chỉ ghi "đã làm" khi source/test chứng minh được.
 - Khi đổi API contract, schema, config, CI, README hoặc flow local run, cập nhật `docs/` trong cùng branch.
 - `docs/09_execution_tracker.md` phải được sync trước khi branch chuyển sang review.
 - Các folder/file legacy đã loại khỏi workflow active: `plan/`, `md/`, `Diagram/`, `References/`, `guidelines/`, `Backend/BE_docs.md`, `PR_DESCRIPTIONS.md`.
@@ -55,18 +55,18 @@ MVP1
 → FE revamp mạnh về UI/contract
 → BE refactor MVP2 theo FastAPI async + Alembic + repository/service
 → ETL foundation cho city/place/hotel data
-→ AI Phase C C.1/C.2 đã merge
-→ 00060B chốt GO_WITH_LIMITATIONS trước khi vào chat/history
+→ AI Phase C.0–C.4 đã merge (#42, #49, #98-106)
+→ C.5 Analytics optional/deferred
 ```
 
-### Current C3/C4 gate after local hardening `00100`
+### Current state (HEAD `#109`, Phase C.0–C.4 merged)
 
 | Hạng mục | Current truth |
 |---|---|
-| Overall readiness | `C3C_RUNTIME_VERIFIED_ETL_PENDING` |
+| Overall readiness | `C4_MERGED` (Phase C.0–C.4 done; C.5 optional/deferred) |
 | `C3A — Chat Session Foundation` | Đã merge (`PR #98-100`) |
-| `C3B` | Đã có message flow, owner-check, real AI call, chat quota riêng, persisted `chat_messages` |
-| `C4` | Đã có persisted history read-path; history-management UX vẫn pending |
+| `C3B/C3C` | Đã merge (#98-105): message flow, owner-check, real Gemini call, chat quota riêng, persisted `chat_messages`, `apply-patch` confirm/stale |
+| `C4` | Đã merge (#106): history read-path + session management (rename/delete/switcher/load-more); apply-patch rate limit riêng + ETL scheduler wired |
 | `FloatingAIChat.tsx` | Legacy mock component còn nằm trên source nhưng không còn mount ở các route runtime chính |
 | `ChatPanel` | Đã gắn vào `TripWorkspace`, owner-only, trip-scoped, load history thật, send message thật |
 | `chat_sessions` / `chat_messages` | Đã có trong source/migration và session foundation |
@@ -79,7 +79,7 @@ MVP1
 - `C3A` đã dựng xong session foundation owner-only, trip-scoped trong `TripWorkspace`.
 - `00100` là hardening pass sau khi message flow đã có: fix ETL scheduler smoke, cập nhật browser/docs theo current truth, và khóa lại evidence FE-BE-DB-Redis thật.
 - `C3B` đã xử lý message generation, provider abstraction, chat quota, và chat error UX riêng.
-- `C4` hiện vẫn ở trạng thái partial: persisted history read-path đã có, proposal resolution status đã persist thật, nhưng history-management UX hoàn chỉnh vẫn chưa có.
+- `C4` đã merge (#106): session management UX (rename/delete/switcher/load-more), apply-patch rate limit riêng (`rate:ai:apply_patch:user:*`), ETL scheduler wired vào compose (profile `etl`).
 
 ---
 
@@ -112,7 +112,7 @@ MVP1
 - Places/cache: destinations, destination detail, place search/detail, saved places, Redis read cache fail-open.
 - ETL D1/C.0: Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, `hotels.yaml`, `scraped_sources`.
 - AI C.1 generate pipeline: DB recommendation context, Gemini JSON output, Pydantic validation, retry, guest/user AI rate limit.
-- Tests current local source (2026-06-24): backend `187 unit + 77 integration` collected (43 int pass + 34 CI-gated skip local); Playwright suite hiện là `14` spec files (CI `frontend-e2e` green trên PR #109).
+- Tests current local source (2026-06-24): backend `187 unit + 77 integration` collected (43 int pass + 34 CI-gated skip local); Playwright suite hiện là `17` spec files / 36 tests (CI `frontend-e2e` green trên PR #109).
 - AI C.2 SuggestionService (EP-30): DB-only suggest alternatives, owner-check, no LLM.
 - Destination slug matching: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" → "ha-noi" → match DB.
 
@@ -144,10 +144,10 @@ MVP1
 
 ### AI (Phase C)
 
-- C.1 đã có direct generate pipeline local-ready, nhưng cần PR/CI review và thêm monitoring trước production.
-- C.2 SuggestionService (EP-30) đã implement và merged trên `feat/00047` → PR #49.
-- Companion editing core đã có `apply-patch` confirm endpoint/UI và stale strategy cơ bản; phần còn lại là history-management UX đầy đủ, ETL ops wiring, patch-specific rate limit, và data readiness cho các city thưa dữ liệu.
-- Analytics EP-34 chưa bật và chưa có SQL guardrails.
+- C.1 generate pipeline đã merge (#42); C.2 SuggestionService đã merge (PR #49).
+- C.3/C.4 đã merge (#98-106): companion chat, apply-patch confirm/cancel/stale, session management.
+- C.5 Analytics EP-34 optional/deferred: chưa implement (`/agent/analytics` absent, `enable_analytics=false`); cần SQL guardrails nếu bật.
+- Data readiness: một số city thưa dữ liệu (giới hạn Goong provider — không trả photo/rating).
 
 ### ETL/Data
 
@@ -175,7 +175,7 @@ MVP1
 | Guest claim          | `user_id IS NULL` | claimToken hash + expiry + consume                      |
 | Data source          | Mock thuần        | Goong-first ETL places/hotels + Redis cache             |
 | FE architecture      | localStorage      | API client + optimistic CRUD + revert                   |
-| Testing              | Không có          | Backend unit/integration tests + 11 FE e2e              |
+| Testing              | Không có          | Backend unit/integration tests + 17 e2e specs (36 tests)              |
 | CI/CD                | Không có          | 7 required checks                                       |
 
 ---
@@ -197,4 +197,4 @@ MVP1
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. `C3C` hiện đã có confirm/cancel/stale flow thật trên current source, các mock AI surface chủ động đã được gỡ khỏi runtime chính, và phần còn lại trước khi xem companion editing là ổn hơn nằm ở ops/data hardening: scheduler wiring, patch-specific rate limit, session/history UX sâu hơn, và data enrichment cho sparse cities.
+Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. Phase C.0–C.4 đã merge (#42, #49, #98-106): companion chat + apply-patch + session management đều chạy thật trên current source, các mock AI surface chủ động đã được gỡ khỏi runtime chính. Phần còn lại là C.5 Analytics (optional/deferred) + data enrichment cho sparse cities (giới hạn Goong provider).

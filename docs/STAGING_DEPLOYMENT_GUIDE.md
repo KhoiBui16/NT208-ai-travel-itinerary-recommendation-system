@@ -84,6 +84,12 @@ flowchart LR
 | `EMAIL_FROM_ADDRESS` / `EMAIL_FROM_NAME` | Optional | Có ích nếu bật SMTP |
 | `ENABLE_ANALYTICS` | Optional | Giữ `false` (C.5 Analytics chưa implement) |
 | `ANALYTICS_DATABASE_URL` | Optional | Chỉ cần nếu bật analytics |
+| `RATE_LIMIT_AI_FREE` | Optional, default 3 | Số lượt AI generate/ngày cho guest |
+| `RATE_LIMIT_AI_CHAT_USER` | Optional, default 20 | Quota companion chat/ngày cho auth user |
+| `RATE_LIMIT_AI_APPLY_PATCH_USER` | Optional, default 20 | Quota apply-patch/ngày cho auth user |
+| `AI_RATE_LIMIT_FAIL_MODE` | Optional, default `closed` | `closed` = fail-closed (trả 503) khi Redis down; KHÔNG set `open` trên staging internet-facing |
+| `ETL_UPDATE_INTERVAL_DAYS` | Optional, default 30 | Khoảng refresh (ngày) cho ETL scheduler |
+| `ETL_MAX_PLACES_PER_CITY` | Optional, default 75 | Giới hạn places crawl mỗi city khi chạy ETL |
 
 ### 5.3 CORS format đề xuất
 

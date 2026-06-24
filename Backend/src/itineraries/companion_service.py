@@ -8,9 +8,11 @@ Service này chịu trách nhiệm:
   - Trả structured payload `message / requiresConfirmation / proposedOperations`
 
 Lưu ý quan trọng:
-  - Service này KHÔNG tự apply patch vào itinerary.
+  - Service này KHÔNG tự apply patch vào itinerary trong message flow.
   - Mọi thay đổi itinerary nếu có chỉ nằm trong `proposedOperations`
-    để FE hiển thị và chờ phase apply-patch ở bước sau.
+    để FE hiển thị; user xác nhận qua endpoint riêng
+    `POST /api/v1/itineraries/{trip_id}/apply-patch` (cũng nằm trong service
+    này, merged #105) mới thực sự ghi DB.
 """
 
 from __future__ import annotations

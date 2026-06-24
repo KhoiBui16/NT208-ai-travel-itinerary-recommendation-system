@@ -65,6 +65,7 @@ Frontend/
 │   │   │   ├── auth.ts            # login, register, logout, forgotPassword, resetPassword
 │   │   │   ├── itinerary.ts       # CRUD, generate, share, claim, nested activity/accommodation
 │   │   │   ├── places.ts          # destinations, search, saved
+│   │   │   ├── chat.ts            # chat session CRUD + message/history + apply-patch APIs (C.3/C.4)
 │   │   │   └── users.ts           # profile, password
 │   │   ├── types/
 │   │   │   └── trip.types.ts      # FE-BE contract: Activity, Day, Place, Accommodation, etc.
@@ -535,7 +536,7 @@ Tất cả trang chính đã nối BE API. Mock chỉ dùng fallback.
 - **Timeout**: 30 giây, retries: 2 trên CI
 - **WebServer**: Tự động start `npm run dev` nếu chưa chạy
 
-### Test suites (35 tests total; latest full local run: 32 passed, 3 skipped)
+### Test suites (36 tests trên 17 spec files; latest full recorded run: 33 passed, 3 skipped)
 
 Current suite coverage:
 
@@ -574,7 +575,7 @@ Job `frontend-e2e` trong `frontend-ci.yml`:
 
 - `FloatingAIChat` / `AIPromoBubble` vẫn còn trên source như legacy components, nhưng `TripWorkspace` và `DailyItinerary` không còn mount chúng; active runtime chat surface là `ChatPanel`.
 - CreateTrip đã gọi BE generate API thật; chất lượng lịch trình phụ thuộc Goong ETL data + Gemini key.
-- E2E/browser verification hiện đã cover companion proposal-confirm path (`apply`, `cancel`, `stale`) trên runtime thật; gap còn lại là trip workspace drag-and-drop, accommodation CRUD, và history-management UX sâu hơn.
+- E2E spec assert confirm `apply` của proposal trên runtime thật; `cancel` và `stale`-proposal có browser/API/DB evidence (pass `00101`) nhưng chưa có e2e spec assertion riêng. Gap còn lại là trip workspace drag-and-drop, accommodation CRUD e2e, và data richness cho sparse cities.
 - City browse/detail hiện đã API-backed; gap còn lại là sparse-city data richness, image quality, và một số destination image path cũ như `ha-n-i.jpg`.
 - Visual regression testing chưa có.
 

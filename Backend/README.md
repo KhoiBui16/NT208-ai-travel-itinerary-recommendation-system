@@ -257,5 +257,5 @@ One PR merged to fix destination slugify fuzzy matching:
 - [`docs/05_database_etl.md`](../docs/05_database_etl.md) - Database schema and ETL pipeline
 - [`docs/06_ai_roadmap.md`](../docs/06_ai_roadmap.md) - AI implementation roadmap
 - [`docs/08_testing_local_run.md`](../docs/08_testing_local_run.md) - Local testing guide
-- [`docs/REPORTS/00060k_r2_backend_testing_report.md`](../docs/REPORTS/00060k_r2_backend_testing_report.md) - Latest backend testing report
+- [`docs/REPORTS/00060k_r2_backend_testing_report.md`](../docs/REPORTS/00060k_r2_backend_testing_report.md) - Backend testing report (snapshot 2026-06-09; current inventory xem `docs/08_testing_local_run.md`)
 

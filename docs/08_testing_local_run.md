@@ -151,7 +151,7 @@ npm run build           # Production build phải pass
 npm run test:e2e        # Playwright e2e tests (cần BE chạy trên localhost:8000)
 ```
 
-FE build phải pass (production bundle). Playwright e2e tests hiện có `14` spec files ở `tests/e2e/` (CI `frontend-e2e` green trên PR #109). Yêu cầu BE server chạy trước khi chạy e2e.
+FE build phải pass (production bundle). Playwright e2e tests hiện có `17` spec files ở `tests/e2e/` (14 top-level + 3 trong `b3/`; CI `frontend-e2e` green trên PR #109). Yêu cầu BE server chạy trước khi chạy e2e.
 
 ### Current evidence snapshot (2026-06-19)
 

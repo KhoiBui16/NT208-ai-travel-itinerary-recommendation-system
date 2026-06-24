@@ -28,7 +28,7 @@ Neu docs va code xung dot:
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
 - BE local suite: 187 unit pass + 77 integration collected (43 int pass / 34 CI-gated skip) (full suite xanh trên CI postgres)
 - Frontend runtime hien tai nam trong `Frontend/`
-- Playwright suite hiện có 14 spec files trong `Frontend/tests/e2e/` (CI `frontend-e2e` green)
+- Playwright suite hiện có 17 spec files trong `Frontend/tests/e2e/` (14 top-level + 3 `b3/`; CI `frontend-e2e` green)
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
 - Register page bypass OTP cho den khi BE email OTP san sang
 - `docs/` la bo tai lieu chi tiet cho user va reviewer
@@ -40,7 +40,7 @@ Neu docs va code xung dot:
 
 ## Target MVP2 decisions da chot
 
-- MVP2 core co `39` endpoints (EP-0 đến EP-39); `EP-34 /agent/analytics` la optional/MVP2+
+- MVP2 core co `41` `/api/v1` routes (14 GET / 16 POST / 5 PUT / 5 DELETE / 1 PATCH; logical EP-0 đến EP-39, trong đó EP-37/38/39 chat + apply-patch mở rộng thành nhiều route); `EP-34 /agent/analytics` la optional/deferred (C.5)
 - Public JSON contract theo FE va dung `camelCase`
 - `GET /api/v1/itineraries/{id}` la owner-only
 - Public share chi doc qua `GET /api/v1/shared/{shareToken}`
