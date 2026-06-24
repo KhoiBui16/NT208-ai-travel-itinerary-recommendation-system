@@ -160,7 +160,7 @@ MVP1
 - Docker Compose hiện chạy API, PostgreSQL, Redis.
 - Chưa có service frontend chính thức trong Compose.
 - Chưa tự động deploy; CI/CD hiện là quality gate.
-- **Deploy target:** FE → Vercel, BE → Render (planned).
+- **Deploy target:** FE → Vercel, BE → Render (target staging, manual-first).
 
 ---
 

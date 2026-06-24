@@ -13,7 +13,7 @@
 
 - Base: `main` @ `759b934 fix: [#00114] close business uat polish backlog (#109)` (Phase C.0–C.4 đã merge).
 - Branch: `docs/00116-d-technical-development-docs` (khớp regex `^(feat|fix|docs|...)/[0-9]+-(...)-d-[a-z0-9-]+$`).
-- Commit đầu: `a7c3505 docs: [#00116] build technical development documentation`. Pass fix-up này = commit thứ hai trên cùng branch.
+- Commit đầu: `a7c3505 docs: [#00116] build technical development documentation`; commit fix-up `e3395c3 docs: [#00116] complete technical docs source sync`; pass finalize này = commit thứ ba (`docs: [#00116] finalize report and wording sync`) trên cùng branch.
 - Product code sạch; không tạo worktree/clone/Docker stack mới (đúng hard scope).
 
 ## 2. Source truth được dùng làm chuẩn (authoritative, verify lại pass này)
@@ -84,7 +84,7 @@ Mỗi chủ đề kỹ thuật có đúng một owner doc (nguyên tắc prefer-
 | 18 | Frontend routing/components | `docs/04_frontend.md` + `Frontend/README.md` | ✅ |
 | 19 | FE API client + auth/guest-claim flow | `docs/04_frontend.md` + `Frontend/README.md` | ✅ |
 | 20 | Testing (unit/integration/e2e/UAT) | `docs/08` + `docs/10` + `LOCAL_MANUAL_UAT_GUIDE` | ✅ (count thật) |
-| 21 | Config/env vars | `docs/03_backend.md` + `STAGING_DEPLOYMENT_GUIDE` + `Backend/README.md` | ✅ (+6 AI/ETL knobs) |
+| 21 | Config/env vars | `docs/03_backend.md` + `STAGING_DEPLOYMENT_GUIDE` + `Backend/README.md` | ⚠️ partial (by design — xem mục 6) |
 | 22 | Deployment (staging) | `STAGING_DEPLOYMENT_GUIDE.md` | ✅ |
 | 23 | Workflow/CI/PR rules | `docs/07_workflow_ci.md` + `CLAUDE.md` | ✅ |
 
@@ -116,6 +116,7 @@ Bonus: C.5 Analytics Text-to-SQL — optional/deferred, owner `docs/06_ai_roadma
 - `docs/08`: "14 spec files" → "17 spec files".
 - `LOCAL_MANUAL_UAT_GUIDE`: backend count "125/51" → "187/77"; Playwright "19 passed, 3 skipped" → "36 tests/17 specs".
 - `STAGING_DEPLOYMENT_GUIDE`: env table thêm 6 knob (`RATE_LIMIT_AI_FREE`, `RATE_LIMIT_AI_CHAT_USER`, `RATE_LIMIT_AI_APPLY_PATCH_USER`, `AI_RATE_LIMIT_FAIL_MODE`, `ETL_UPDATE_INTERVAL_DAYS`, `ETL_MAX_PLACES_PER_CITY`).
+- **Env/config coverage = partial (by design):** `config.py` hỗ trợ đủ 6 knob AI/ETL với safe default (app boot không cần set); `STAGING_DEPLOYMENT_GUIDE` + `Backend/README` tài liệu hóa chúng. `Backend/.env.example` (template secrets-focused) và `docker-compose.yml` KHÔNG surface 6 knob — docker-compose pass-through qua `env_file: ./Backend/.env`, chỉ hardcode 3 var compose-network (`DATABASE_URL`/`REDIS_URL`/`FRONTEND_URL`). Đây là design đúng (knob có default), không phải gap runtime; mark `partial` vì example-file surface chưa liệt kê 6 knob.
 
 **Source docstring (`companion_service.py`):** xem mục 9.
 
@@ -126,7 +127,7 @@ Bonus: C.5 Analytics Text-to-SQL — optional/deferred, owner `docs/06_ai_roadma
 | Backend lint | `uv run ruff check src tests` | All checks passed! |
 | Migrations | `uv run alembic check` | No new upgrade operations detected |
 | FE build | `npm run build` | ✓ built (chunk-size warning non-blocking, pre-existing) |
-| Stale grep active docs | sweep "14 spec"/"35 endpoint"/"tool-calling"/"Service (planned)"/... | Sạch (chỉ còn match trong `docs/REPORTS/*` + `docs/09` = historical snapshot cố ý giữ, và negation text trong `docs/06`) |
+| Stale grep active docs | sweep "File cần tạo"/"future confirm UI"/"(planned)"/"được planned"/"14 Playwright spec"/"tool-calling"/"Service (planned)"/"14 spec"/"35 endpoint" | Sạch trong active docs sau pass này (`docs/02`, `docs/06`, `README`, `docs/01`). Match còn lại: legacy `plan/` (không active), `docs/REPORTS/*` + `docs/09` (historical snapshot cố ý giữ), và negation đúng "KHÔNG dùng tool-calling" trong `docs/06` |
 
 ## 8. Files intention­ally NOT touched
 
@@ -143,4 +144,4 @@ Bonus: C.5 Analytics Text-to-SQL — optional/deferred, owner `docs/06_ai_roadma
 
 ## 10. Merge readiness verdict
 
-**READY.** Docs-only (duy nhất 1 docstring comment-only). Ruff/alembic/build pass. Active docs đã source-verified, không còn claim C3/C4 "todo/planned", không còn framing Gemini "tool-calling", không còn count FE/BE cũ, INDEX broken links đã sửa. 23 chủ đề kỹ thuật đều có owner doc. PR #110 (commit fix-up `docs: [#00116] complete technical docs source sync`) sẵn sàng merge khi CI 7 checks xanh.
+**READY (sau pass finalize này).** Docs-only, không đổi product code (pass trước có 1 docstring comment-only). Ruff/alembic/build pass. Pass này đóng dứt điểm các từ "planned/todo/future/File cần tạo" còn sót: `docs/02` (`được planned`→merged), `docs/06` (5 header "File cần tạo"→"File (C.x đã merge)" + "future confirm UI"→"confirm UI" + "(planned)"→"đã merge"), `README` ("14 Playwright spec files"→17), `docs/01` ("(planned)" deploy→"manual-first"). Env/config mark `partial` (by design — mục 6). Active docs đã source-verified; match "tool-calling/planned" còn lại chỉ là negation đúng trong `docs/06` ("KHÔNG dùng tool-calling") hoặc legacy `plan/` + historical `docs/REPORTS/*`/`docs/09`. 23 chủ đề kỹ thuật đều có owner doc. PR #110 sẵn sàng merge khi CI 7 checks xanh.

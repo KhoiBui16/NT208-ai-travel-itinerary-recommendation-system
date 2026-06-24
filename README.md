@@ -176,7 +176,7 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   ├── components/            # shared + companion/ + ui/
 │   │   ├── services/              # api.ts + auth/chat/itinerary/places/users
 │   │   ├── hooks/ · contexts/ · types/ · data/ · utils/
-│   ├── tests/e2e/                 # 14 Playwright spec files
+│   ├── tests/e2e/                 # 17 Playwright spec files
 │   ├── playwright.config.ts
 │   ├── vite.config.ts · package.json
 │   └── vercel.json                # SPA fallback rewrite

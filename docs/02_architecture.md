@@ -2,7 +2,7 @@
 
 ## Mục đích
 
-File này vẽ và mô tả **toàn bộ kiến trúc hệ thống** — từ trình duyệt user đến database, từ AI pipeline đến cache, từ REST API hiện tại đến các chat/session flows được planned. Mọi thành phần, mọi kết nối, mọi protocol đều được liệt kê và giải thích.
+File này vẽ và mô tả **toàn bộ kiến trúc hệ thống** — từ trình duyệt user đến database, từ AI pipeline đến cache, từ REST API hiện tại đến các chat/session flows đã merge (#98–106). Mọi thành phần, mọi kết nối, mọi protocol đều được liệt kê và giải thích.
 
 **Khi nào đọc file này:**
 - Onboarding dev mới — đọc TRƯỚC TẤT CẢ file khác

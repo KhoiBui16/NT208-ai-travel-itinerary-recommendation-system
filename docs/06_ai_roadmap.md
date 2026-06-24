@@ -104,7 +104,7 @@ ItineraryPipeline.generate()
 | Empty context guard | Không đủ places → 422 trước khi gọi Gemini                                        | Không sinh itinerary từ context rỗng                 |
 | Debug logging       | Log metadata cho context/prompt/attempt/duration                                  | Không log API key, không dump full prompt            |
 
-### 2.4 File cần tạo
+### 2.4 File (C.1 đã merge #42)
 
 | File Backend                             | Mục đích                                                                     | Layer           |
 | ---------------------------------------- | ---------------------------------------------------------------------------- | --------------- |
@@ -156,7 +156,7 @@ Ngày 2026-05-25:
 ┌─────────────────────────────────────────────────────────────┐
 │              COMPANION CHAT FLOW                              │
 │                                                              │
-│  FE (ChatPanel + future confirm UI)                          │
+│  FE (ChatPanel + confirm UI)                          │
 │  → POST /api/v1/itineraries/chat-sessions/{sessionId}/messages │
 │                                                              │
 │  ┌─ CompanionService.chat() ──────────────────────────────┐ │
@@ -270,7 +270,7 @@ Ngày 2026-05-25:
 | **Rate limit**           | Giới hạn message/session                     | Chống abuse                    |
 | **Re-validate on apply** | `apply-patch` validate lại tất cả            | Không tin FE input             |
 
-### 3.5 File cần tạo
+### 3.5 File (C.3 đã merge #98–105)
 
 | File Backend                          | Mục đích                               | Layer   |
 | ------------------------------------- | -------------------------------------- | ------- |
@@ -317,7 +317,7 @@ Ngày 2026-05-25:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 File cần tạo
+### 4.2 File (C.2 đã merge #49)
 
 | File                               | Mục đích                 | Layer   |
 | ---------------------------------- | ------------------------ | ------- |
@@ -343,7 +343,7 @@ DB đã có bảng `chat_sessions` + `chat_messages`, và current source đã c�
 | GET    | `/api/v1/chat/sessions/{sessionId}/messages` | Đọc messages trong session     | Bearer |
 | DELETE | `/api/v1/chat/sessions/{sessionId}`          | Xóa session + messages         | Bearer |
 
-### 5.3 File cần tạo
+### 5.3 File (C.4 đã merge #106)
 
 | File                                      | Mục đích                  | Layer      |
 | ----------------------------------------- | ------------------------- | ---------- |
@@ -419,7 +419,7 @@ Nếu bật Text-to-SQL analytics (EP-34), **bắt buộc** có các guardrails:
 
 ---
 
-## 9. File tổng hợp cần tạo cho Phase C
+## 9. File tổng hợp Phase C (C.0–C.4 đã merge)
 
 | File Backend                              | Mục đích                              | Layer      |
 | ----------------------------------------- | ------------------------------------- | ---------- |
@@ -433,6 +433,6 @@ Nếu bật Text-to-SQL analytics (EP-34), **bắt buộc** có các guardrails:
 
 | File Frontend                           | Mục đích                                  |
 | --------------------------------------- | ----------------------------------------- |
-| `services/agent.ts` hoặc `services/chat.ts` | Chat/session/apply-patch API client (planned) |
+| `services/chat.ts` | Chat/session/apply-patch API client (đã merge #98–106) |
 | `FloatingAIChat.tsx` / `ChatPanel`      | Thay mock bằng session-aware UI           |
 | `companion/*.tsx`                       | Nối real suggestions, confirm UI          |
