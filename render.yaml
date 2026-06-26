@@ -24,7 +24,11 @@ databases:
     plan: free
     region: singapore
 
-redis:
+# Key Value (Redis-compatible, Valkey) — top-level key BẮT BUỘC là `keyvalues:`.
+# KHÔNG dùng `redis:` ở top-level: Render đã bỏ alias đó nên validator báo
+# "Property redis is not allowed". Wiring trong envVars phải dùng `fromKeyValue:`
+# + `keyValueName:` (KHÔNG dùng `fromRedis:` / `name:`).
+keyvalues:
   - name: dulichviet-redis
     plan: free
     region: singapore
@@ -67,8 +71,8 @@ services:
 
       # --- Từ Key Value (Render tự điền) ---
       - key: REDIS_URL
-        fromRedis:
-          name: dulichviet-redis
+        fromKeyValue:
+          keyValueName: dulichviet-redis
           property: connectionString
 
       # --- Giá trị tĩnh ---
@@ -95,13 +99,13 @@ services:
     rootDir: Backend
     buildCommand: pip install uv && uv sync --frozen --no-dev
     schedule: "0 2 1 * *"
-    command: uv run python -m src.etl.scheduler --once --run-immediately
+    startCommand: uv run python -m src.etl.scheduler --once --run-immediately
     envVars:
       - key: DATABASE_URL
         sync: false # cùng giá trị postgresql+asyncpg:// như dulichviet-api
       - key: GOONG_API_KEY
         sync: false
       - key: REDIS_URL
-        fromRedis:
-          name: dulichviet-redis
+        fromKeyValue:
+          keyValueName: dulichviet-redis
           property: connectionString
