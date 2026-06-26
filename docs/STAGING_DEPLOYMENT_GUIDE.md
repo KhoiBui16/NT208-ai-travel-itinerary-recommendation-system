@@ -286,6 +286,28 @@ Chỉ chuyển sang `Backend/Dockerfile` nếu có blocker thật như:
 - cần system dependency mà Render native khó cấp;
 - cần parity chặt với local Docker hơn mức native service đang cho.
 
+### 7.9 Cập nhật service khi render.yaml đổi (Blueprint sync) — gotcha quan trọng
+
+`render.yaml` là config nguồn, NHƯNG nó chỉ được áp dụng đầy đủ lúc **tạo Blueprint** lần đầu. Khi bạn đổi `render.yaml` sau đó (vd thêm `preDeployCommand` ở PR #117), service **ĐÃ TẠO KHÔNG tự nhận** thay đổi đó qua **Manual Deploy** — Manual Deploy chỉ redeploy code với settings **HIỆN TẠI** của service.
+
+**Hậu quả thực tế (đã gặp):** đổi `render.yaml` thêm `preDeployCommand`, bấm Manual Deploy, nhưng alembic vẫn không chạy → log nhảy thẳng `==> Running 'uv run uvicorn ...'`, **không có** `==> Running 'uv run alembic upgrade head'` → DB không có bảng → `/places/destinations` 500.
+
+**Để áp dụng thay đổi render.yaml lên service đã tạo, dùng 1 trong 2 cách:**
+
+**Cách A — Sync Blueprint (giữ render.yaml là nguồn):**
+1. Mở `dulichviet-api` → tìm banner **"Blueprint out of sync"** / nút **"Apply Latest Blueprint Configuration"** (hoặc **Manual Sync** trong menu service).
+2. Bấm **Sync** → Render đọc `render.yaml` mới nhất trên branch và cập nhật settings (gồm `preDeployCommand`).
+3. Sau đó **Manual Deploy** → Deploy latest commit.
+
+**Cách B — Set thủ công trong Settings (nhanh, đảm bảo chạy, khuyến nghị khi đang stuck):**
+1. `dulichviet-api` → **Settings** → ô **Pre-Deploy Command** → dán `uv run alembic upgrade head`.
+2. **Save Changes** → **Manual Deploy** → Deploy latest commit.
+3. Cách này set trực tiếp trên service, không phụ thuộc sync. Vì `render.yaml` trên `main` (sau PR #117) cũng đã có `preDeployCommand`, nên lần Sync tiếp theo sẽ KHÔNG ghi đè/xung đột.
+
+**Cách xác minh preDeployCommand đã chạy:** xem tab **Logs** của deploy gần nhất — phải thấy `==> Running 'uv run alembic upgrade head'` TRƯỚC `==> Running 'uv run uvicorn ...'`, kèm `INFO [alembic.runtime.migration] Running upgrade ... → 0009`. Nếu log nhảy thẳng sang `Running 'uv run uvicorn'` (không có dòng alembic) → preDeployCommand chưa được áp dụng → làm lại Cách A hoặc B.
+
+> **Lưu ý free tier:** cả 2 cách đều KHÔNG cần Render Shell (Shell chỉ có plan Starter+). Sync và Settings đều làm qua Dashboard.
+
 ## 8. Database options
 
 ### Option 1 — Render Postgres (ưu tiên)
@@ -417,6 +439,7 @@ Redis staging cần cho:
 ### 10.1 Vì sao KHÔNG cần Render Shell
 
 - Render `plan: free` **KHÔNG có tab Shell** (Shell chỉ có trên plan Starter trở lên) → không thể chạy `alembic upgrade head` thủ công. `preDeployCommand` giải quyết việc đó: chạy tự động mỗi deploy.
+- **Gotcha:** nếu `preDeployCommand` thêm SAU khi service đã tạo, phải **Sync Blueprint** hoặc **set thủ công Pre-Deploy Command** thì nó mới chạy (Manual Deploy đơn thuần không đủ). Xem §7.9.
 - `alembic/env.py` đọc `settings.database_url` (env `DATABASE_URL`) + dùng async engine (asyncpg đã cài trong `pyproject.toml`) → chạy được với cùng scheme `postgresql+asyncpg://` mà app đang dùng.
 
 ### 10.2 Cách verify migration đã chạy
