@@ -105,6 +105,21 @@ Khuyến nghị set `CORS_ORIGINS` thành JSON array để pydantic parse ổn �
 https://dulichviet-staging.vercel.app
 ```
 
+### 5.4 Goong key model (pre-deploy truth)
+
+Ứng dụng hiện chỉ dùng **một Goong REST key server-side**, không có map-tiles key riêng:
+
+| Mặt | Env | Vai trò | Nơi expose |
+|---|---|---|---|
+| Backend / ETL / geocode / autocomplete / place detail | `GOONG_API_KEY` (canonical) | REST key server-side | Chỉ backend, KHÔNG đưa ra FE |
+| Frontend | — (chưa có) | FE hiện không render map và không đọc key Goong nào | — |
+
+Lưu ý:
+
+- `Backend/src/core/config.py` chấp nhận alias legacy `GOONG_MAP_KEY` / `GOONG_MAP_API_KEY` (đều map vào cùng trường `goong_api_key`), nhưng **canonical là `GOONG_API_KEY`** — `render.yaml` dùng tên này.
+- Các alias trên **không phải** "map-tiles key public"; chúng chỉ là tên tương thích, vẫn là REST key server-side. Đừng dán vào Vercel public env.
+- Goong cấp 2 loại key (map-tiles public + REST server) nhưng app hiện chỉ cần REST. Khi sau này thêm map tile thật ở FE, mới giới thiệu một public `VITE_GOONG_MAP_KEY` riêng (map-tiles key, URL-restricted) và **không bao giờ** expose REST `GOONG_API_KEY` ở FE/Vercel public env.
+
 ## 6. Vercel frontend setup
 
 ### 6.1 Cấu hình project
@@ -143,6 +158,8 @@ với rewrite:
 2. Chọn root `Frontend`.
 3. Thêm env `VITE_API_URL=https://<render-backend>.onrender.com`.
 4. Deploy.
+   - `VITE_*` được bake vào build → mỗi lần đổi env phải **redeploy** (không nhận live).
+   - Tổng env trên Vercel giới hạn 64KB.
 5. Ghi lại:
    - production URL
    - preview URL pattern
@@ -332,7 +349,9 @@ Workflow đó chỉ nên chạy safe checks như:
 | C3A/C3B/C3C/C4 | **Đã merge (#98–106):** chat session API, chat quota riêng, apply-patch stale handling, persisted chat history + session management |
 | ETL scheduler | Opt-in qua compose profile `etl`; chưa auto-schedule 24/7 trên staging (chạy seed một lần trước deploy) |
 | Analytics (C.5) | Chưa implement; `ENABLE_ANALYTICS=false`. Optional/deferred — cần guardrails (read-only role, allowlist, validator, audit) nếu bật |
-| Goong data | 9 city sparse (zero-place) + provider không trả photo/rating — ảnh/thumbnail dùng FE fallback |
+| Goong data | 2 city zero-place (Châu Đốc, Côn Đảo) + 2 marginal (Tây Ninh=3, Vịnh Hạ Long=5); 23 city còn lại ≥15 place. Provider Goong không trả photo/rating/opening_hours → `places.image` rỗng + `rating`=0 (transformer default); FE dùng fallback có nhãn. Đây là giới hạn provider, KHÔNG phải bug |
+| Render free-tier | **Postgres free bị xóa sau thời hạn free tier của Render** (kiểm tra dashboard/email cảnh báo — cần dump hoặc nâng plan trước hạn). Redis/Key Value dùng cho cache + AI quota (ephemeral chấp nhận được); **quota AI sẽ reset khi service restart** |
+| Vercel env | `VITE_*` được bake lúc build → đổi env **phải redeploy** (không nhận live). Tổng env giới hạn 64KB |
 
 ## 15. Deployment recommendation ngắn gọn
 

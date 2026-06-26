@@ -1,5 +1,13 @@
 # 06. Phase Backend Đã Implement
 
+> ⚠️ **Tài liệu này tóm tắt phase Backend tại thời điểm Phase C.1 và không còn được duy trì.**
+> Source of truth hiện tại cho trạng thái phase/AI nằm ở:
+> - `docs/06_ai_roadmap.md` (C.1–C.4 đã merge)
+> - `docs/11_phase_roadmap.md`
+> - `docs/09_execution_tracker.md`
+> - Bảng trạng thái phase trong `README.md`
+> Các claim "Chưa implement" ở phần Phase C bên dưới đã LỆCH thời gian (C.2/C.3/C.4 đã merge).
+
 File này mô tả các phase Backend đã làm thật trong code hiện tại. Phần AI chưa implement được ghi là pending trong overview/tracker, không xem là tính năng đã hoàn thành.
 
 ## Phase A: Foundation
@@ -208,19 +216,22 @@ uv run python -m src.etl --cities "Hà Nội" "Đà Nẵng"
 - Persist Trip/Day/Activity/Accommodation, trả `ItineraryResponse`.
 - AI quota cho authenticated user và guest fingerprint; Redis down fail-closed.
 
-Chưa implement trong code hiện tại:
+> **Cập nhật 2026-06-26:** Đoạn này từng phản ánh trạng thái thời Phase C.1. Hiện tại C.2/C.3/C.4 đã merge (chi tiết ở `docs/06_ai_roadmap.md` + `docs/11_phase_roadmap.md`), chỉ còn C.5 Analytics là optional/deferred.
 
-- C.2 SuggestionService.
-- C.3 Companion chat.
-- Patch-confirm flow.
-- C.4 Chat history API.
-- C.5 Analytics EP-34.
+Phase C hiện tại (đã merge):
+
+- C.1 generate pipeline — merged (#42).
+- C.2 SuggestionService (DB-only, EP-30) — merged (#49).
+- C.3A chat session REST APIs — merged (#98–100).
+- C.3B/C.3C companion chat + apply-patch confirm — merged (#105).
+- C.4 chat history + session management (rename/delete/switcher) — merged (#106).
+- C.5 Analytics (EP-34, Text-to-SQL) — optional/deferred (cần guardrails nếu bật).
 
 Đã implement (trước đây ghi Phase C pending):
 
 - Password reset endpoint (EP-31 forgot-password, EP-32 reset-password) — PR #20.
 
-Do đó chỉ coi **C.1 generate** là local-ready; Phase C tổng thể chưa done.
+Do đó Phase C.1–C.4 đã local-ready; chỉ C.5 Analytics là optional.
 
 ## FE Integration Status Tổng Hợp
 
