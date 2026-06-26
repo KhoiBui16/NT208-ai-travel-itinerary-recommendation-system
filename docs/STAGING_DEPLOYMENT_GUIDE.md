@@ -211,7 +211,8 @@ Thứ tự deploy quan trọng vì có chicken-and-egg:
 **LƯU Ý QUAN TRỌNG về schema:**
 - KHÔNG có top-level `redis:` hay `keyvalues:` — Key Value là 1 service `type: keyvalue` TRONG `services:`
 - REDIS_URL được wire tự động qua `fromService: { type: keyvalue, name: dulichviet-redis, property: connectionString }`
-- Cron ETL KHÔNG có trong blueprint (Render KHÔNG cho `plan: free` cho cron). Chạy ETL manual qua Render Shell khi cần.
+- Cron ETL KHÔNG có trong blueprint (Render KHÔNG cho `plan: free` cho cron). Chạy ETL manual từ **local** chống Render **External Database URL** khi cần. (Free tier KHÔNG có tab Render Shell — Shell chỉ có trên plan Starter trở lên.)
+- **Migration (schema) tự động:** web service có `preDeployCommand: uv run alembic upgrade head` → Render tự tạo bảng mỗi deploy, KHÔNG cần thao tác thủ công (xem §10).
 
 ### 7.2 Bước 1 — Tạo Blueprint trên Render Dashboard
 
@@ -299,7 +300,7 @@ Khuyến nghị:
 
 1. Tạo Render Postgres cùng region với Web Service.
 2. Gán `DATABASE_URL` từ Render secret.
-3. Chạy migration thủ công lần đầu.
+3. Migration **tự động** mỗi deploy qua `preDeployCommand` trong `render.yaml` (xem §10). KHÔNG cần chạy tay.
 
 ### Option 2 — Supabase Postgres
 
@@ -313,9 +314,10 @@ Lưu ý rất quan trọng:
 - Current source **không** có env riêng như `ALEMBIC_DATABASE_URL`.
 - Nếu app runtime dùng một Supabase pooler URL còn migration cần URL khác, hãy override **thủ công cho lệnh migration** chứ không ghi docs như thể source đã hỗ trợ sẵn nhiều DB URL.
 
-Ví dụ one-off migration trong Render Shell:
+Migration mặc định tự chạy mỗi deploy qua `preDeployCommand` (xem §10) với đúng `DATABASE_URL` đang set — kể cả khi DB là Supabase. Free tier KHÔNG có Render Shell, nên nếu cần override URL migration tạm thời (vd pooler ≠ URL migration), chạy từ **local** chống External URL:
 
 ```bash
+# LOCAL, KHÔNG paste URL vào chat/docs
 cd Backend
 DATABASE_URL="<migration-friendly-postgres-url>" uv run alembic upgrade head
 ```
@@ -368,12 +370,10 @@ Nếu pooler/session URL hiện tại dùng được cho cả runtime và migrat
        "TRUNCATE TABLE accommodations, activities, trip_days, trips, itineraries, refresh_tokens, users, scraped_sources, hotels, places, destinations CASCADE;"
      ```
 
-4. **Chạy migration trên Render Shell:**
+4. **Schema ĐÃ TỰ TẠO — KHÔNG cần chạy migration thủ công:**
+   `preDeployCommand` trong `render.yaml` đã chạy `alembic upgrade head` tạo toàn bộ 9 bảng ngay khi `dulichviet-api` deploy thành công (xem §10). Bạn chỉ cần restore DATA (bước 3). Free tier không có Render Shell nên cũng không chạy tay được. Verify bảng đã có (tùy chọn, từ local chống External URL):
    ```bash
-   # Render Shell → dulichviet-api
-   cd Backend
-   uv run alembic upgrade head
-   uv run alembic check
+   psql "$RENDER_EXTERNAL_DB_URL" -c "\dt"
    ```
 
 5. **Verify data counts (psql — robust, không phụ thuộc import Python):**
@@ -412,32 +412,28 @@ Redis staging cần cho:
 
 ## 10. Migration strategy
 
-Khuyến nghị giai đoạn đầu: **manual migration first**.
+**Mặc định: migration TỰ ĐỘNG qua `preDeployCommand`.** `render.yaml` (PR #117) đã thêm `preDeployCommand: uv run alembic upgrade head` vào web service `dulichviet-api`. Render chạy lệnh này **sau `buildCommand`, trước `startCommand` (uvicorn), trên mỗi deploy** — kể cả `plan: free`. App KHÔNG tự `create_all()` ở `main.py` lifespan (chỉ `SELECT 1` check connectivity), nên `preDeployCommand` là nguồn duy nhất tạo schema. Nếu thiếu dòng này → DB không có bảng → mọi endpoint truy vấn DB (như `/places/destinations`) trả 500.
 
-### 10.1 Cách làm an toàn
+### 10.1 Vì sao KHÔNG cần Render Shell
 
-1. Tạo DB service trước.
-2. Set đủ backend env vars.
-3. Deploy backend lần đầu.
-4. Mở Render Shell hoặc Pre-deploy Command.
-5. Chạy:
+- Render `plan: free` **KHÔNG có tab Shell** (Shell chỉ có trên plan Starter trở lên) → không thể chạy `alembic upgrade head` thủ công. `preDeployCommand` giải quyết việc đó: chạy tự động mỗi deploy.
+- `alembic/env.py` đọc `settings.database_url` (env `DATABASE_URL`) + dùng async engine (asyncpg đã cài trong `pyproject.toml`) → chạy được với cùng scheme `postgresql+asyncpg://` mà app đang dùng.
 
-```bash
-cd Backend
-uv run alembic upgrade head
-uv run alembic check
-```
+### 10.2 Cách verify migration đã chạy
 
-6. Sau đó verify:
+Sau khi deploy thành công, xem tab **Logs** của `dulichviet-api`: phải thấy preDeployCommand chạy alembic (`INFO [alembic.runtime.migration] Running upgrade ...` lên 0009). Sau đó:
 
 ```txt
-GET /api/v1/health
+GET /api/v1/health            → 200 {"status":"healthy"}
+GET /api/v1/places/destinations → 200 []   (DB có bảng; chưa có data cho tới Bước 4 copy DB)
 ```
 
-### 10.2 Sau khi staging ổn định hơn
+Nếu `/places/destinations` trả **500** → schema chưa được tạo. Kiểm tra Logs xem preDeployCommand có lỗi không (thường là `DATABASE_URL` scheme sai — phải là `postgresql+asyncpg://`).
 
-- Có thể chuyển `uv run alembic upgrade head` vào Render Pre-Deploy Command.
-- Chỉ làm sau khi đã xác nhận migration path ổn định và rollback plan rõ ràng.
+### 10.3 Khi cần rollback migration
+
+- Render: rollback về deployment trước qua dashboard.
+- Nếu migration gây lỗi schema: downgrade cẩn thận từ **local** chống External URL (`DATABASE_URL="<external-url>" uv run alembic downgrade -1`), review migration impact trước khi làm. KHÔNG downgrade mù.
 
 ## 11. Staging smoke test checklist
 
@@ -546,7 +542,7 @@ Khi deploy dùng **Render free tier**, bạn PHẢI biết các giới hạn sau
 
 ### Cron Jobs (ETL)
 - **KHÔNG CÓ CRON FREE** → Render chỉ cho cron trên `plan: starter` (trả phí)
-- **GIẢI PHÁP:** chạy ETL manual qua Render Shell khi cần (`cd Backend && uv run python -m src.etl`)
+- **GIẢI PHÁP:** chạy ETL manual từ **local** chống Render **External Database URL** khi cần (`cd Backend && DATABASE_URL="<external-url>" uv run python -m src.etl`). Free tier KHÔNG có Render Shell.
 - Sau khi staging ổn định + quota reset, có thể targeted ETL từng city thay vì full crawl
 
 ### Monitoring

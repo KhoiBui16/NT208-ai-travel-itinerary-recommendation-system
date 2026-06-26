@@ -215,14 +215,14 @@ psql "$RENDER_EXTERNAL_DB_URL" < local_data.sql
 - `$RENDER_EXTERNAL_DB_URL`: External Database URL từ `dulichviet-db` → **Connections** → **External Database URL**
 - **CHỈ DÙNG LOCAL**, KHÔNG paste vào chat/docs/commit
 
-### 7.5 Migration trên Render Shell
+### 7.5 Migration — TỰ ĐỘNG qua preDeployCommand (KHÔNG cần Render Shell)
 
-```bash
-# Render Shell → dulichviet-api
-cd Backend
-uv run alembic upgrade head
-uv run alembic check
-```
+`render.yaml` (PR #117) đã có `preDeployCommand: uv run alembic upgrade head` trong web service `dulichviet-api`. Render tự chạy lệnh này **sau build, trước uvicorn, mỗi deploy** → tự tạo toàn bộ 9 bảng. Bạn **KHÔNG cần làm gì** — và cũng **KHÔNG LÀM ĐƯỢC** thủ công vì Render `plan: free` không có tab Shell (Shell chỉ có plan Starter trở lên).
+
+Verify migration đã chạy (sau deploy thành công):
+- Xem tab **Logs** của `dulichviet-api`: phải thấy `INFO [alembic.runtime.migration] Running upgrade ...` lên `0009`.
+- `GET /api/v1/places/destinations` → **200 `[]`** (DB có bảng, chưa có data cho tới Bước 4 copy DB).
+- Nếu trả **500** → preDeployCommand chưa tạo được schema, kiểm tra Logs (thường `DATABASE_URL` scheme sai).
 
 ### 7.6 Verify counts (psql — robust)
 
@@ -265,7 +265,7 @@ psql "$RENDER_EXTERNAL_DB_URL" \
 
 ### Cron Jobs (ETL)
 - **KHÔNG CÓ CRON FREE** → Render chỉ cho cron trên `plan: starter` (trả phí)
-- **GIẢI PHÁP:** chạy ETL manual qua Render Shell khi cần
+- **GIẢI PHÁP:** chạy ETL manual từ **local** chống Render **External Database URL** khi cần (free tier KHÔNG có Render Shell; migration/schema thì đã tự chạy qua `preDeployCommand`)
 - Sau khi staging ổn định + quota reset, có thể targeted ETL từng city
 
 ## 9. Go / No-Go
