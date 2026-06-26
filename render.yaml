@@ -15,6 +15,14 @@
 #   như vậy — hãy đổi phần đầu thành `postgresql+asyncpg://` rồi mới dán vào
 #   env DATABASE_URL (sync: false bên dưới). Nếu quên, backend sẽ crash lúc boot.
 #
+# LƯU Ý QUAN TRỌNG — MIGRATION TỰ CHẠY (preDeployCommand):
+#   App KHÔNG tự tạo bảng ở main.py lifespan (chỉ `SELECT 1` check connectivity).
+#   Nên schema phải được tạo bằng `alembic upgrade head`. Vì Render plan: free
+#   KHÔNG có tab Shell, web service dùng `preDeployCommand` để Render tự chạy
+#   `uv run alembic upgrade head` mỗi deploy (sau build, trước uvicorn). Không
+#   cần thao tác thủ công. Nếu thiếu dòng này → DB không có bảng → mọi endpoint
+#   truy vấn DB (vd /places/destinations) trả 500.
+#
 # SCHEMA (Render Blueprint YAML Reference — render.com/docs/blueprint-spec):
 #   - Root keys hợp lệ: services, databases, envVarGroups, projects, ungrouped,
 #     previews. KHÔNG có top-level `redis:` hay `keyvalues:`.
@@ -58,6 +66,12 @@ services:
     rootDir: Backend
     buildCommand: pip install uv && uv sync --frozen --no-dev
     startCommand: uv run uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    # preDeployCommand chạy SAU buildCommand, TRƯỚC startCommand, trên MỌI deploy
+    # (kể cả plan: free). Tự chạy alembic upgrade head để tạo schema (bảng) trong DB
+    # mà KHÔNG cần Render Shell (Shell chỉ có trên plan Starter trở lên).
+    # App KHÔNG tự create_all() ở main.py lifespan (theo thiết kế), nên bắt buộc
+    # migration phải chạy qua preDeployCommand này, nếu không DB trống → 500.
+    preDeployCommand: uv run alembic upgrade head
     healthCheckPath: /api/v1/health
     autoDeployTrigger: 'off' # tắt auto-deploy lần đầu; bật lại sau khi smoke pass
     envVars:
