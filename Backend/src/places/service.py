@@ -42,7 +42,7 @@ class PlaceService(BaseService):
     """Business logic for places, destinations, and saved bookmarks.
 
     Uses composition with CacheClient for Redis caching. Cache keys:
-    - "destinations:all:v3"              → Destination list with data quality
+    - "destinations:all:v4"              → Destination list with data quality
     - "destinations:detail:v3:{name}"    → City detail (dest + places + hotels)
     - "places:search:{query}:{city}:..." → Search results
     """
@@ -66,14 +66,14 @@ class PlaceService(BaseService):
     async def get_destinations(self) -> list[DestinationResponse]:
         """Get all active destinations with place/hotel counts.
 
-        Uses v3 cache key to reflect updated readiness semantics:
+        Uses v4 cache key to reflect updated readiness semantics:
         data quality remains advisory, but `isGenerateReady` now tracks
         the minimum viable place coverage for the shortest AI trip.
 
         Cache TTL: destination_cache_ttl_seconds from settings.
         """
         # Try cache first
-        cached = await self.cache.get("destinations:all:v3")
+        cached = await self.cache.get("destinations:all:v4")
         if cached is not None:
             cached_items = json.loads(cached)
             return [
@@ -91,12 +91,14 @@ class PlaceService(BaseService):
         destinations = await self.repo.get_destinations_with_counts()
         items = [self._to_destination_response_with_counts(d) for d in destinations]
 
-        # Store in cache for future requests
-        await self.cache.set(
-            "destinations:all:v3",
-            json.dumps([i.model_dump() for i in items]),
-            self.settings.destination_cache_ttl_seconds,
-        )
+        # Cache only non-empty results — a cached empty list would mask data
+        # loaded afterwards (e.g. a DB restore) until the TTL (24h) expires.
+        if items:
+            await self.cache.set(
+                "destinations:all:v4",
+                json.dumps([i.model_dump() for i in items]),
+                self.settings.destination_cache_ttl_seconds,
+            )
         return items
 
     async def get_destination_detail(self, name: str) -> DestinationDetailResponse:
