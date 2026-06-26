@@ -306,7 +306,7 @@ npm run dev -- --host localhost --port 5173
 - **Backend:** Render native Python (`uvicorn ... --port $PORT`, health `/api/v1/health`), hoặc Docker fallback.
 - **Postgres:** Render Postgres (khuyến nghị) hoặc Supabase.
 - **Redis:** Render Key Value / TCP provider (bắt buộc — app dùng Redis TCP client, **không** Upstash REST).
-- **Migrations:** `alembic upgrade head` manual/pre-deploy lần đầu.
+- **Migrations:** tự chạy qua `preDeployCommand` trong `render.yaml` (Render chạy `alembic upgrade head` sau build, trước uvicorn, mỗi deploy — free tier OK, không cần Render Shell).
 
 📖 Runbook đầy đủ (env/secrets/ports/provider): [`docs/STAGING_DEPLOYMENT_GUIDE.md`](docs/STAGING_DEPLOYMENT_GUIDE.md)
 
