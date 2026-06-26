@@ -222,7 +222,7 @@ psql "$RENDER_EXTERNAL_DB_URL" < local_data.sql
 Verify migration đã chạy (sau deploy thành công):
 - Xem tab **Logs** của `dulichviet-api`: phải thấy `INFO [alembic.runtime.migration] Running upgrade ...` lên `0009`.
 - `GET /api/v1/places/destinations` → **200 `[]`** (DB có bảng, chưa có data cho tới Bước 4 copy DB).
-- Nếu trả **500** → preDeployCommand chưa tạo được schema, kiểm tra Logs (thường `DATABASE_URL` scheme sai).
+- Nếu trả **500** → preDeployCommand chưa tạo được schema. 2 nguyên nhân: (a) **Logs KHÔNG có dòng `Running 'uv run alembic upgrade head'`** → service chưa nhận preDeployCommand mới (vì tạo từ render.yaml cũ) → phải **Sync Blueprint** hoặc **set Pre-Deploy Command thủ công** trong Settings rồi redeploy (xem STAGING_DEPLOYMENT_GUIDE §7.9); (b) Logs CÓ chạy alembic nhưng lỗi → kiểm tra traceback (thường `DATABASE_URL` scheme sai).
 
 ### 7.6 Verify counts (psql — robust)
 
