@@ -310,6 +310,46 @@ def _make_accommodation(acc_id: int = 7, trip_id: int = 1) -> Accommodation:
     )
 
 
+def test_calculate_total_cost__matches_frontend_semantics() -> None:
+    service = ItineraryService(session=AsyncMock())
+    trip = _make_trip()
+    trip.adults_count = 2
+    trip.children_count = 1
+
+    food_activity = _make_activity(1, "Breakfast")
+    food_activity.type = "food"
+    food_activity.adult_price = 50000
+    food_activity.child_price = 30000
+    food_activity.transportation = "bus"
+    food_activity.bus_ticket_price = 7000
+    food_activity.extra_expenses = []
+
+    attraction_activity = _make_activity(2, "Museum")
+    attraction_activity.type = "attraction"
+    attraction_activity.adult_price = None
+    attraction_activity.child_price = None
+    attraction_activity.custom_cost = 120000
+    attraction_activity.transportation = "taxi"
+    attraction_activity.taxi_cost = 50000
+    attraction_activity.extra_expenses = []
+
+    shopping_activity = _make_activity(3, "Market")
+    shopping_activity.type = "shopping"
+    shopping_activity.adult_price = 40000
+    shopping_activity.child_price = None
+    shopping_activity.custom_cost = None
+    shopping_activity.transportation = "walk"
+    shopping_activity.extra_expenses = []
+
+    day = MagicMock()
+    day.activities = [food_activity, attraction_activity, shopping_activity]
+    day.extra_expenses = []
+    trip.days = [day]
+    trip.accommodations = [_make_accommodation()]
+
+    assert service._calculate_total_cost(trip) == 861000
+
+
 async def test_update_activity__owner_same_trip__success(
     service: ItineraryService, mock_repo: AsyncMock
 ) -> None:

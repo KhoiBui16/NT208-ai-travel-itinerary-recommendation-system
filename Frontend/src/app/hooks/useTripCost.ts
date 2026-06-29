@@ -31,15 +31,25 @@ export const useTripCost = (
   const calculateActivityCost = (activity: Activity): number => {
     const { type, adultPrice = 0, childPrice = 0, customCost, transportation, busTicketPrice = 0, taxiCost = 0, extraExpenses = [] } = activity;
     let total = 0;
+    const hasPersonPrices = adultPrice > 0 || childPrice > 0;
+    const flatCost = customCost || 0;
     if (transportation === "bus") {
       total += busTicketPrice * travelers.total;
     } else if (transportation === "taxi") {
       total += taxiCost;
     }
     if (type === "food" || type === "attraction") {
-      total += (adultPrice * travelers.adults) + (childPrice * travelers.children);
-    } else if (type === "shopping" || type === "entertainment") {
-      total += customCost || 0;
+      if (hasPersonPrices) {
+        total += (adultPrice * travelers.adults) + (childPrice * travelers.children);
+      } else {
+        total += flatCost;
+      }
+    } else if (type === "shopping" || type === "entertainment" || type === "nature") {
+      if (flatCost > 0) {
+        total += flatCost;
+      } else if (hasPersonPrices) {
+        total += adultPrice + childPrice;
+      }
     }
     extraExpenses.forEach(expense => {
       total += expense.amount;
@@ -49,8 +59,10 @@ export const useTripCost = (
 
   const calculateActivityCostByCategory = (activity: Activity): Record<string, number> => {
     const { type, adultPrice = 0, childPrice = 0, customCost, transportation, busTicketPrice = 0, taxiCost = 0, extraExpenses = [] } = activity;
+    const hasPersonPrices = adultPrice > 0 || childPrice > 0;
+    const flatCost = customCost || 0;
     const breakdown: Record<string, number> = {
-      food: 0, attraction: 0, entertainment: 0, transportation: 0, shopping: 0,
+      food: 0, attraction: 0, entertainment: 0, transportation: 0, shopping: 0, accommodation: 0,
     };
     if (transportation === "bus") {
       breakdown.transportation += busTicketPrice * travelers.total;
@@ -58,22 +70,44 @@ export const useTripCost = (
       breakdown.transportation += taxiCost;
     }
     if (type === "food") {
-      breakdown.food += (adultPrice * travelers.adults) + (childPrice * travelers.children);
+      if (hasPersonPrices) {
+        breakdown.food += (adultPrice * travelers.adults) + (childPrice * travelers.children);
+      } else {
+        breakdown.food += flatCost;
+      }
     } else if (type === "attraction") {
-      breakdown.attraction += (adultPrice * travelers.adults) + (childPrice * travelers.children);
+      if (hasPersonPrices) {
+        breakdown.attraction += (adultPrice * travelers.adults) + (childPrice * travelers.children);
+      } else {
+        breakdown.attraction += flatCost;
+      }
     } else if (type === "shopping") {
-      breakdown.shopping += customCost || 0;
+      breakdown.shopping += flatCost > 0 ? flatCost : adultPrice + childPrice;
     } else if (type === "entertainment") {
-      breakdown.entertainment += customCost || 0;
+      breakdown.entertainment += flatCost > 0 ? flatCost : adultPrice + childPrice;
+    } else if (type === "nature") {
+      breakdown.attraction += flatCost > 0 ? flatCost : adultPrice + childPrice;
     }
     extraExpenses.forEach(expense => {
-      breakdown[expense.category] += expense.amount;
+      if (breakdown[expense.category] !== undefined) {
+        breakdown[expense.category] += expense.amount;
+      }
     });
     return breakdown;
   };
 
-  const calculateDayCost = (day: Day): number => {
+  const calculateAccommodationShareForDay = (day: Day): number => {
     let total = 0;
+    getUniqueAccommodations().forEach((accommodation) => {
+      if (!accommodation.dayIds.includes(day.id)) return;
+      const coveredDayCount = Math.max(1, accommodation.dayIds.length);
+      total += getAccommodationCost(accommodation) / coveredDayCount;
+    });
+    return total;
+  };
+
+  const calculateDayCost = (day: Day): number => {
+    let total = calculateAccommodationShareForDay(day);
     day.activities.forEach(activity => {
       total += calculateActivityCost(activity);
     });
@@ -92,7 +126,8 @@ export const useTripCost = (
     getUniqueAccommodations().forEach((accommodation) => {
       if (accommodation.dayIds.includes(day.id)) {
         const totalHotelCost = getAccommodationCost(accommodation);
-        breakdown.accommodation += totalHotelCost / accommodation.dayIds.length;
+        const coveredDayCount = Math.max(1, accommodation.dayIds.length);
+        breakdown.accommodation += totalHotelCost / coveredDayCount;
       }
     });
     day.activities.forEach((activity) => {
@@ -114,7 +149,14 @@ export const useTripCost = (
   const calculateTotalTripCost = () => {
     let total = 0;
     days.forEach((day) => {
-      total += calculateDayCost(day);
+      day.activities.forEach(activity => {
+        total += calculateActivityCost(activity);
+      });
+      if (day.extraExpenses) {
+        day.extraExpenses.forEach(expense => {
+          total += expense.amount;
+        });
+      }
     });
     getUniqueAccommodations().forEach((accommodation) => {
       total += getAccommodationCost(accommodation);

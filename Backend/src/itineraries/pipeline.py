@@ -68,6 +68,21 @@ MAX_CONTEXT_HOTELS = 3
 # approval) or implement an async generation job — see follow-up task 00060L.
 MAX_TRIP_DAYS = 30
 
+# Conservative fallback costs used only when the model leaves all activity
+# cost fields empty and the DB context has no usable avg_cost value.
+DEFAULT_ACTIVITY_COSTS = {
+    "food": {"adult": 50_000, "child": 30_000},
+    "attraction": {"adult": 40_000, "child": 20_000},
+    "shopping": {"custom": 100_000},
+    "entertainment": {"custom": 100_000},
+    "nature": {"custom": 0},
+}
+DEFAULT_TRANSPORT_COSTS = {
+    "bus": 7_000,
+    "taxi": 50_000,
+}
+CHILD_PRICE_RATIO = 0.6
+
 logger = get_logger(__name__)
 
 
@@ -393,6 +408,12 @@ class ItineraryPipeline:
                 # Parse and validate the structured response
                 payload = parse_json_response(raw_text)
                 itinerary = AgentItinerary.model_validate(payload)
+                self._normalize_itinerary_costs(
+                    itinerary,
+                    request=request,
+                    places=places,
+                    hotels=hotels,
+                )
                 self._validate_itinerary(itinerary, request, day_count)
 
                 # Validation passed — log success and return
@@ -584,6 +605,180 @@ class ItineraryPipeline:
             raise ServiceUnavailableException("Generated trip could not be loaded")
         return refreshed
 
+    def _normalize_itinerary_costs(
+        self,
+        itinerary: AgentItinerary,
+        *,
+        request: GenerateItineraryRequest,
+        places: list[Place],
+        hotels: list[Hotel],
+    ) -> None:
+        """Normalize partial LLM cost output into repo-consistent semantics."""
+        place_by_id = {place.id: place for place in places}
+        hotel_by_id = {hotel.id: hotel for hotel in hotels}
+
+        for day in itinerary.days:
+            for activity in day.activities:
+                matched_place = place_by_id.get(activity.place_id) if activity.place_id else None
+                self._normalize_activity_costs(activity, matched_place=matched_place)
+
+        for accommodation in itinerary.accommodations:
+            matched_hotel = (
+                hotel_by_id.get(accommodation.hotel_id) if accommodation.hotel_id else None
+            )
+            self._normalize_accommodation_costs(
+                accommodation,
+                matched_hotel=matched_hotel,
+            )
+
+        recomputed_total = self._calculate_generated_total_cost(
+            itinerary,
+            adults=request.adults,
+            children=request.children,
+        )
+        if itinerary.total_cost != recomputed_total:
+            logger.info(
+                "ai_generate_total_cost_recomputed",
+                llm_total_cost=itinerary.total_cost,
+                recomputed_total_cost=recomputed_total,
+            )
+            itinerary.total_cost = recomputed_total
+
+    def _normalize_activity_costs(
+        self,
+        activity: Any,
+        *,
+        matched_place: Place | None,
+    ) -> None:
+        """Backfill missing cost fields without overwriting explicit model output."""
+        adult_price = activity.adult_price or 0
+        child_price = activity.child_price or 0
+        custom_cost = activity.custom_cost or 0
+        has_person_prices = adult_price > 0 or child_price > 0
+        has_custom_cost = custom_cost > 0
+
+        if activity.transportation == "bus" and not activity.bus_ticket_price:
+            activity.bus_ticket_price = DEFAULT_TRANSPORT_COSTS["bus"]
+        if activity.transportation == "taxi" and not activity.taxi_cost:
+            activity.taxi_cost = DEFAULT_TRANSPORT_COSTS["taxi"]
+
+        if has_person_prices or has_custom_cost:
+            if (
+                activity.type in {"food", "attraction"}
+                and activity.child_price is None
+                and (activity.adult_price or 0) > 0
+            ):
+                activity.child_price = self._default_child_price(activity.adult_price or 0)
+            return
+
+        avg_cost = matched_place.avg_cost if matched_place and matched_place.avg_cost > 0 else 0
+        defaults = DEFAULT_ACTIVITY_COSTS[activity.type]
+
+        if activity.type in {"food", "attraction"}:
+            activity.adult_price = avg_cost or defaults["adult"]
+            if activity.child_price is None:
+                child_seed = avg_cost or defaults["adult"]
+                activity.child_price = self._default_child_price(child_seed)
+            return
+
+        if activity.custom_cost is None:
+            activity.custom_cost = avg_cost or defaults["custom"]
+
+    def _normalize_accommodation_costs(
+        self,
+        accommodation: Any,
+        *,
+        matched_hotel: Hotel | None,
+    ) -> None:
+        """Fill missing accommodation pricing from hotel context when possible."""
+        if (accommodation.price_per_night or 0) <= 0 and matched_hotel:
+            accommodation.price_per_night = matched_hotel.price_per_night
+
+        if (accommodation.total_price or 0) > 0:
+            return
+
+        if (accommodation.price_per_night or 0) <= 0:
+            return
+
+        duration = accommodation.duration
+        if duration is None or duration <= 0:
+            duration = max(1, len(accommodation.day_ids) - 1)
+            accommodation.duration = duration
+
+        accommodation.total_price = self._calculate_accommodation_total(
+            price_per_night=accommodation.price_per_night,
+            booking_type=accommodation.booking_type,
+            duration=duration,
+        )
+
+    def _calculate_generated_total_cost(
+        self,
+        itinerary: AgentItinerary,
+        *,
+        adults: int,
+        children: int,
+    ) -> int:
+        total = 0
+        for day in itinerary.days:
+            for activity in day.activities:
+                total += self._calculate_generated_activity_cost(
+                    activity,
+                    adults=adults,
+                    children=children,
+                )
+        for accommodation in itinerary.accommodations:
+            total += accommodation.total_price or 0
+        return total
+
+    def _calculate_generated_activity_cost(
+        self,
+        activity: Any,
+        *,
+        adults: int,
+        children: int,
+    ) -> int:
+        total = 0
+        adult_price = activity.adult_price or 0
+        child_price = activity.child_price or 0
+        custom_cost = activity.custom_cost or 0
+        has_person_prices = adult_price > 0 or child_price > 0
+
+        if activity.transportation == "bus":
+            total += (activity.bus_ticket_price or 0) * (adults + children)
+        elif activity.transportation == "taxi":
+            total += activity.taxi_cost or 0
+
+        if activity.type in {"food", "attraction"}:
+            if has_person_prices:
+                total += (adult_price * adults) + (child_price * children)
+            else:
+                total += custom_cost
+            return total
+
+        if custom_cost > 0:
+            total += custom_cost
+        elif has_person_prices:
+            total += adult_price + child_price
+
+        return total
+
+    @staticmethod
+    def _calculate_accommodation_total(
+        *,
+        price_per_night: int,
+        booking_type: str | None,
+        duration: int,
+    ) -> int:
+        if booking_type == "hourly":
+            return round(price_per_night * 0.15) * duration
+        if booking_type == "daily":
+            return round(price_per_night * 1.5) * duration
+        return price_per_night * duration
+
+    @staticmethod
+    def _default_child_price(adult_price: int) -> int:
+        return round(adult_price * CHILD_PRICE_RATIO)
+
     def _activity_image_for_generated_activity(
         self,
         activity: Any,
@@ -639,6 +834,7 @@ class ItineraryPipeline:
         if len(itinerary.days) != day_count:
             raise LLMGenerationError("AI itinerary day count does not match request")
 
+        # itinerary.total_cost is recomputed from nested data before validation.
         # Check budget tolerance (allow up to 20% overshoot)
         if itinerary.total_cost > int(request.budget * 1.2):
             raise LLMGenerationError("AI itinerary exceeds budget tolerance")

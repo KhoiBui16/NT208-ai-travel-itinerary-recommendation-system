@@ -402,6 +402,34 @@ async def test_pipeline__retries_invalid_output_then_accepts_valid() -> None:
 
 
 @pytest.mark.asyncio
+async def test_pipeline__recomputes_total_and_backfills_missing_costs() -> None:
+    payload = _valid_ai_payload()
+    payload["totalCost"] = 1
+    first_activity = payload["days"][0]["activities"][0]
+    first_activity["adultPrice"] = None
+    first_activity["childPrice"] = None
+    first_activity["transportation"] = "taxi"
+    first_activity["taxiCost"] = None
+
+    llm = FakeLLM([payload])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places()),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    trip = await pipeline.generate(_make_request(), user_id=None)
+
+    normalized = trip.days[0].activities[0]
+    assert normalized.adult_price == 50000
+    assert normalized.child_price == 30000
+    assert normalized.taxi_cost == 50000
+    assert trip.total_cost > 1
+
+
+@pytest.mark.asyncio
 async def test_pipeline__ai_timeout__raises_retryable_timeout_without_persisting() -> None:
     llm = FakeTimeoutLLM()
     repo = FakeRepo(places=_make_places())

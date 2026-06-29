@@ -145,6 +145,12 @@ class GoongExtractor:
             "lng": point.get("lng"),
             "location": location,
             "description": source.get("description", ""),
+            "avg_cost": self._extract_int(source.get("avg_cost")),
+            "rating": self._extract_float(source.get("rating")),
+            "review_count": self._extract_int(
+                source.get("review_count") or source.get("user_ratings_total")
+            ),
+            "image": self._extract_image(source),
             "opening_hours": self._format_opening_hours(source.get("opening_hours")),
             "external_id": place_id,
             "source": "goong_places",
@@ -162,6 +168,38 @@ class GoongExtractor:
             if isinstance(weekday_text, list):
                 return "; ".join(str(item) for item in weekday_text)
         return None
+
+    @staticmethod
+    def _extract_int(value: object) -> int:
+        if isinstance(value, bool):
+            return 0
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, str):
+            digits = "".join(ch for ch in value if ch.isdigit())
+            return int(digits) if digits else 0
+        return 0
+
+    @staticmethod
+    def _extract_float(value: object) -> float:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                return 0.0
+        return 0.0
+
+    @staticmethod
+    def _extract_image(source: dict[str, Any]) -> str:
+        for key in ("image", "photo", "thumbnail"):
+            value = source.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return ""
 
     @staticmethod
     def _sanitize_metadata(
