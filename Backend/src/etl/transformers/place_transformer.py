@@ -67,6 +67,30 @@ def normalize_name(name: str) -> str:
     return name
 
 
+def _to_int(value: object) -> int:
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        digits = re.sub(r"[^\d]", "", value)
+        return int(digits) if digits else 0
+    return 0
+
+
+def _to_float(value: object) -> float:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return 0.0
+    return 0.0
+
+
 def transform(
     raw_pois: list[dict],
     city: str,
@@ -108,11 +132,11 @@ def transform(
             "location": poi.get("location", ""),
             "latitude": poi.get("lat"),
             "longitude": poi.get("lng"),
-            "avg_cost": 0,
-            "rating": poi.get("rating", 0),
-            "review_count": poi.get("review_count", 0),
+            "avg_cost": _to_int(poi.get("avg_cost")),
+            "rating": _to_float(poi.get("rating")),
+            "review_count": _to_int(poi.get("review_count")),
             "description": poi.get("description", ""),
-            "image": "",
+            "image": poi.get("image", "") or "",
             "opening_hours": poi.get("opening_hours"),
             "external_id": poi.get("external_id"),
             "raw_metadata": poi.get("raw_metadata"),

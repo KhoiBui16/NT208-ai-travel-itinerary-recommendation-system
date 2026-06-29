@@ -696,22 +696,23 @@ class ItineraryService(BaseService):
         """Calculate the total cost of a trip from all nested cost fields.
 
         Sums:
-        - Activity costs: adult_price, child_price, custom_cost, bus/taxi
+        - Activity costs using the same semantics as the frontend workspace
         - Activity extra expenses
         - Day-level extra expenses
         - Accommodation total prices
         """
         total = 0
+        adults = max(trip.adults_count or 0, 0)
+        children = max(trip.children_count or 0, 0)
 
         # Sum costs from all days and their activities
         for day in trip.days:
             for activity in day.activities:
-                # Standard activity cost fields
-                total += activity.adult_price or 0
-                total += activity.child_price or 0
-                total += activity.custom_cost or 0
-                total += activity.bus_ticket_price or 0
-                total += activity.taxi_cost or 0
+                total += self._calculate_activity_cost(
+                    activity,
+                    adults=adults,
+                    children=children,
+                )
                 # Activity-level extra expenses
                 for expense in activity.extra_expenses:
                     total += expense.amount
@@ -722,6 +723,39 @@ class ItineraryService(BaseService):
         # Sum accommodation costs
         for acc in trip.accommodations:
             total += acc.total_price or 0
+
+        return total
+
+    @staticmethod
+    def _calculate_activity_cost(
+        activity: Activity,
+        *,
+        adults: int,
+        children: int,
+    ) -> int:
+        """Mirror frontend cost rules so persisted totals match user-visible totals."""
+        total = 0
+        adult_price = activity.adult_price or 0
+        child_price = activity.child_price or 0
+        custom_cost = activity.custom_cost or 0
+        has_person_prices = adult_price > 0 or child_price > 0
+
+        if activity.transportation == "bus":
+            total += (activity.bus_ticket_price or 0) * (adults + children)
+        elif activity.transportation == "taxi":
+            total += activity.taxi_cost or 0
+
+        if activity.type in {"food", "attraction"}:
+            if has_person_prices:
+                total += (adult_price * adults) + (child_price * children)
+            else:
+                total += custom_cost
+            return total
+
+        if custom_cost > 0:
+            total += custom_cost
+        elif has_person_prices:
+            total += adult_price + child_price
 
         return total
 

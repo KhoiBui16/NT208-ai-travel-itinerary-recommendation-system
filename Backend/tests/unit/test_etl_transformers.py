@@ -90,12 +90,22 @@ def test_transform__preserves_goong_metadata():
             "category": "attraction",
             "lat": 21.028,
             "lng": 105.835,
+            "avg_cost": "125000",
+            "rating": "4.7",
+            "review_count": "321",
+            "image": "https://cdn.test/van-mieu.jpg",
+            "opening_hours": "08:00-17:00",
             "external_id": "goong-1",
             "source": "goong_places",
             "raw_metadata": {"provider": "goong"},
         },
     ]
     result = transform(raw, "Hà Nội")
+    assert result[0]["avg_cost"] == 125000
+    assert result[0]["rating"] == 4.7
+    assert result[0]["review_count"] == 321
+    assert result[0]["image"] == "https://cdn.test/van-mieu.jpg"
+    assert result[0]["opening_hours"] == "08:00-17:00"
     assert result[0]["external_id"] == "goong-1"
     assert result[0]["raw_metadata"] == {"provider": "goong"}
     assert result[0]["source"] == "goong_places"
