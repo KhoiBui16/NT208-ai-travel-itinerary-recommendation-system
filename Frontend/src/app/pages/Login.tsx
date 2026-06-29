@@ -4,7 +4,7 @@ import { Header } from "../components/Header";
 import { AuthLayout } from "../components/AuthLayout";
 import { Mail, Lock, Chrome } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { ApiError } from "../services/api";
+import { getAuthErrorMessage } from "../utils/authErrorHandler";
 import { toast } from "sonner";
 
 export default function Login() {
@@ -46,11 +46,7 @@ export default function Login() {
       toast.success("Đăng nhập thành công!", { position: "top-right" });
       navigate(claimResult?.returnTo || from, { replace: true });
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Đăng nhập thất bại. Vui lòng thử lại.");
-      }
+      setError(getAuthErrorMessage(err, "login"));
     } finally {
       setLoading(false);
     }
@@ -87,12 +83,13 @@ export default function Login() {
             )}
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-900">
+              <label htmlFor="login-email" className="mb-2 block text-sm font-semibold text-gray-900">
                 Email
               </label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <input
+                  id="login-email"
                   type="email"
                   value={formData.email}
                   onChange={(e) =>
@@ -106,12 +103,13 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-900">
+              <label htmlFor="login-password" className="mb-2 block text-sm font-semibold text-gray-900">
                 Mật khẩu
               </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <input
+                  id="login-password"
                   type="password"
                   value={formData.password}
                   onChange={(e) =>

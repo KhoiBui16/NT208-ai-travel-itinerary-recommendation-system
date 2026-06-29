@@ -11,7 +11,7 @@ Handles the full JWT auth lifecycle:
 
 from datetime import UTC, datetime
 
-from src.auth.email import EmailService
+from src.auth.email import EmailService, PasswordResetDeliveryMode
 from src.auth.models import User
 from src.auth.repository import RefreshTokenRepository, UserRepository
 from src.auth.schemas import AuthResponse, UserResponse
@@ -169,7 +169,7 @@ class AuthService:
             await self.token_repo.revoke(stored.id)
             logger.info("user_logout", user_id=stored.user_id)
 
-    async def forgot_password(self, email: str) -> None:
+    async def forgot_password(self, email: str) -> PasswordResetDeliveryMode:
         """Generate a password reset token and send it via email.
 
         Flow: Yêu cầu reset password
@@ -182,9 +182,17 @@ class AuthService:
         4. Log sự kiện
         5. Reset token là one-time use (được consume bởi reset_password())
         """
+        delivery_mode = self.email_service.get_password_reset_delivery_mode()
         user = await self.user_repo.get_by_email(email)
         if not user or not user.is_active:
-            return
+            return delivery_mode
+
+        if delivery_mode == "disabled":
+            logger.warning(
+                "password_reset_requested_but_delivery_unavailable",
+                user_id=user.id,
+            )
+            return delivery_mode
 
         raw_token, token_hash, expires_at = create_password_reset_token()
         await self.user_repo.update(
@@ -192,11 +200,16 @@ class AuthService:
             password_reset_token_hash=token_hash,
             password_reset_expires_at=expires_at,
         )
-        await self.email_service.send_password_reset(
+        delivery_mode = await self.email_service.send_password_reset(
             to_email=email,
             reset_token=raw_token,
         )
-        logger.info("password_reset_requested", user_id=user.id)
+        logger.info(
+            "password_reset_requested",
+            user_id=user.id,
+            delivery_mode=delivery_mode,
+        )
+        return delivery_mode
 
     async def reset_password(self, raw_token: str, new_password: str) -> None:
         """Consume a password reset token and update the user's password.

@@ -1,6 +1,7 @@
 """Auth + User request and response schemas."""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import EmailStr, Field
 
@@ -39,6 +40,19 @@ class ForgotPasswordRequest(CamelCaseModel):
     """Forgot-password request — triggers a reset email."""
 
     email: EmailStr
+
+
+class ForgotPasswordResponse(CamelCaseModel):
+    """Outcome of a forgot-password request.
+
+    The response stays silent about whether the email exists, but it does
+    expose whether this environment can actually deliver reset emails.
+    """
+
+    success: bool = True
+    message: str
+    email_delivery_enabled: bool
+    delivery_mode: Literal["smtp", "log_only", "disabled"]
 
 
 class ResetPasswordRequest(CamelCaseModel):
