@@ -183,6 +183,8 @@ export interface Hotel {
  * lodging bookings. The `dayIds` field links to TripDay records.
  */
 export interface Accommodation {
+  id?: number; // Accommodation database ID when persisted
+
   // --- Hotel reference (optional — may be manually entered) ---
   hotel?: Hotel | null; // Full hotel data if linked to DB record
 

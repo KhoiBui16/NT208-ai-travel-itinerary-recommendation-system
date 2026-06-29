@@ -1,4 +1,5 @@
 import { Day, Activity, Accommodation, TravelerInfo } from "../types/trip.types";
+import { getUniqueAccommodationsFromRecord } from "../utils/tripResponseMapper";
 
 export const useTripCost = (
   days: Day[],
@@ -20,9 +21,12 @@ export const useTripCost = (
       accommodation.pricePerNight ??
       0;
     const bookingType = accommodation.bookingType || "nightly";
-    const duration = accommodation.duration || Math.max(1, accommodation.dayIds.length - 1);
+    const duration = accommodation.duration ?? Math.max(1, accommodation.dayIds.length - 1);
     return calculateHotelCost(price, bookingType, duration);
   };
+
+  const getUniqueAccommodations = () =>
+    getUniqueAccommodationsFromRecord(accommodations);
 
   const calculateActivityCost = (activity: Activity): number => {
     const { type, adultPrice = 0, childPrice = 0, customCost, transportation, busTicketPrice = 0, taxiCost = 0, extraExpenses = [] } = activity;
@@ -85,7 +89,7 @@ export const useTripCost = (
     const breakdown: Record<string, number> = {
       food: 0, attraction: 0, entertainment: 0, transportation: 0, shopping: 0, accommodation: 0,
     };
-    Object.values(accommodations).forEach((accommodation) => {
+    getUniqueAccommodations().forEach((accommodation) => {
       if (accommodation.dayIds.includes(day.id)) {
         const totalHotelCost = getAccommodationCost(accommodation);
         breakdown.accommodation += totalHotelCost / accommodation.dayIds.length;
@@ -112,7 +116,7 @@ export const useTripCost = (
     days.forEach((day) => {
       total += calculateDayCost(day);
     });
-    Object.values(accommodations).forEach((accommodation) => {
+    getUniqueAccommodations().forEach((accommodation) => {
       total += getAccommodationCost(accommodation);
     });
     return total;
@@ -127,9 +131,6 @@ export const useTripCost = (
       Object.keys(dayBreakdown).forEach(key => {
         breakdown[key] += dayBreakdown[key];
       });
-    });
-    Object.values(accommodations).forEach(accommodation => {
-      breakdown.accommodation += getAccommodationCost(accommodation);
     });
     return breakdown;
   };

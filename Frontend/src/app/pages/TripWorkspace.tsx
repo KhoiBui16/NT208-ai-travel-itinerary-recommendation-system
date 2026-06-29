@@ -229,7 +229,7 @@ export default function TripWorkspace() {
               });
               return;
             }
-            navigate("/daily-itinerary");
+            navigate(remoteTripId ? `/daily-itinerary?tripId=${remoteTripId}` : "/daily-itinerary");
           }}
         />
 
@@ -463,6 +463,7 @@ export default function TripWorkspace() {
           isOpen={showSavedSuggestions}
           onClose={() => {
             setShowSavedSuggestions(false);
+            if (!isAuthenticated) return;
             // Re-sync bookmark state from API
             listSavedPlaces().then((data) => {
               const savedIds = buildSavedPlaceIdSet(normalizeSavedPlaces(data));
@@ -498,6 +499,7 @@ export default function TripWorkspace() {
           onClose={() => {
             setShowPlaceSelectionModal(false);
             setSelectedDayForPlaces(null);
+            if (!isAuthenticated) return;
             // Re-sync bookmark state from API after modal closes
             listSavedPlaces().then((data) => {
               const savedIds = buildSavedPlaceIdSet(normalizeSavedPlaces(data));

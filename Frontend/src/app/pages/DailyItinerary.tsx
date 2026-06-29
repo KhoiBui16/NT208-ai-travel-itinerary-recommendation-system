@@ -1,47 +1,31 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link, useParams } from "react-router";
+import { useNavigate, Link, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
-import { SavedSuggestion } from "../components/SavedSuggestions";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
-import { Suggestion, mockSuggestions } from "../data/suggestions";
 import { useAuth } from "../contexts/AuthContext";
 import { getItinerary } from "../services/itinerary";
-import { listSavedPlaces, savePlace, unsavePlace } from "../services/places";
-import { findSavedPlaceByName, normalizeSavedPlaces } from "../utils/savedPlaces";
+import { getDestinationDetail, listSavedPlaces, savePlace, unsavePlace, type PlaceResponse } from "../services/places";
+import { normalizeSavedPlaces } from "../utils/savedPlaces";
 import {
   Plus,
-  Sparkles,
-  GripVertical,
   Car,
-  Lightbulb,
   MapPin,
-  Users,
-  Sun,
-  CloudRain,
-  Clock,
   Utensils,
   Building,
   Camera,
   Coffee,
-  Zap,
   Share2,
   Download,
-  Link2,
   Map as MapIcon,
   DollarSign,
-  TrendingUp,
-  UserPlus,
   Edit,
-  ChevronDown,
   TreePine,
   Music,
   ShoppingBag,
   Star,
   Eye,
   Bookmark,
-  ChevronLeft,
-  Save as SaveIcon,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import {
@@ -73,14 +57,16 @@ interface Day {
   destinationName?: string;
 }
 
+const formatSuggestionCost = (place: PlaceResponse) => place.price || "Chưa có dữ liệu";
+
 export default function DailyItinerary() {
   const navigate = useNavigate();
-  const { id: tripIdParam } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const tripIdParam = searchParams.get("tripId");
   const { isAuthenticated } = useAuth();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [selectedPin, setSelectedPin] = useState<number | null>(null);
-  const [savedSuggestions, setSavedSuggestions] = useState<string[]>([]);
-  const [viewingPlace, setViewingPlace] = useState<Suggestion | null>(null);
+  const [savedSuggestions, setSavedSuggestions] = useState<number[]>([]);
+  const [viewingPlace, setViewingPlace] = useState<PlaceResponse | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<"suggestions" | "map">("suggestions");
 
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -88,6 +74,9 @@ export default function DailyItinerary() {
   // Load trip data from BE API
   const [days, setDays] = useState<Day[]>([]);
   const [selectedDayId, setSelectedDayId] = useState<string>("1");
+  const [suggestions, setSuggestions] = useState<PlaceResponse[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
 
   // Load data from BE API on mount
   useEffect(() => {
@@ -136,28 +125,57 @@ export default function DailyItinerary() {
     // Load saved places from API
     if (isAuthenticated) {
       listSavedPlaces().then((data) => {
-        const savedNames = new Set(
-          normalizeSavedPlaces(data).map((p) => p.name),
+        const normalized = normalizeSavedPlaces(data);
+        const savedIds = new Set(
+          data
+            .map((item) => item.place?.id)
+            .filter((value): value is number => typeof value === "number"),
         );
-        const matchedIds = mockSuggestions
-          .filter((s) => savedNames.has(s.name))
-          .map((s) => s.id);
+        const savedNames = new Set(normalized.map((p) => p.name));
+        const matchedIds = suggestions
+          .filter((place) => savedIds.has(place.id) || savedNames.has(place.name))
+          .map((place) => place.id);
         setSavedSuggestions(matchedIds);
       }).catch(() => {});
     }
-  }, [tripIdParam, isAuthenticated]);
+  }, [tripIdParam, isAuthenticated, suggestions]);
   
   // Get selected day data
   const selectedDay = days.find(d => d.id.toString() === selectedDayId);
   const currentActivities = selectedDay?.activities || [];
-  
-  // Filter suggestions based on selected day's destination and sort bookmarked to top
-  const filteredSuggestions = mockSuggestions
-    .filter(suggestion => {
-      // Nếu không có ngày chọn thì hiện tất cả, nếu có thì kiểm tra tên thành phố
-      if (!selectedDay?.destinationName) return true;
-      return suggestion.city === selectedDay.destinationName;
-    }) 
+
+  useEffect(() => {
+    if (!selectedDay?.destinationName) {
+      setSuggestions([]);
+      return;
+    }
+
+    let active = true;
+    setSuggestionsLoading(true);
+    setSuggestionsError(null);
+
+    getDestinationDetail(selectedDay.destinationName)
+      .then((detail) => {
+        if (!active) return;
+        setSuggestions(detail.places);
+      })
+      .catch(() => {
+        if (!active) return;
+        setSuggestions([]);
+        setSuggestionsError("Không thể tải gợi ý địa điểm từ dữ liệu hiện có.");
+      })
+      .finally(() => {
+        if (active) {
+          setSuggestionsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedDay?.destinationName]);
+
+  const filteredSuggestions = [...suggestions]
     .sort((a, b) => {
       // Sort bookmarked places to the top
       const aIsBookmarked = savedSuggestions.includes(a.id);
@@ -167,9 +185,7 @@ export default function DailyItinerary() {
       return 0;
     });
     
-  const totalTravelTime = "55 phút";
-  
-  const handleToggleSave = async (suggestion: Suggestion) => {
+  const handleToggleSave = async (suggestion: PlaceResponse) => {
     if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
@@ -187,8 +203,8 @@ export default function DailyItinerary() {
     try {
       if (isAlreadySaved) {
         const savedList = await listSavedPlaces();
-        const match = findSavedPlaceByName(normalizeSavedPlaces(savedList), suggestion.name);
-        if (match) await unsavePlace(match.savedId);
+        const match = savedList.find((item) => item.place?.id === suggestion.id || item.place?.name === suggestion.name);
+        if (match) await unsavePlace(match.id);
       } else {
         await savePlace(suggestion.id);
       }
@@ -200,11 +216,6 @@ export default function DailyItinerary() {
         setSavedSuggestions(prev => prev.filter(id => id !== suggestion.id));
       }
     }
-  };
-
-  const handleAddToItinerary = (suggestion: any, date: string, time: string) => {
-    console.log("Adding to itinerary:", suggestion, date, time);
-    // In production, add to actual itinerary
   };
 
   return (
@@ -238,7 +249,7 @@ export default function DailyItinerary() {
             <div className="flex items-center gap-3">
               {/* Detail Trip Button - UPDATED TEXT */}
               <Link
-                to="/trip-workspace"
+                to={tripIdParam ? `/trip-workspace?tripId=${tripIdParam}` : "/trip-workspace"}
                 className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 font-semibold text-gray-700 shadow-sm transition-all hover:shadow-md"
               >
                 <Edit className="h-4 w-4" />
@@ -270,7 +281,7 @@ export default function DailyItinerary() {
                     ) : (
                       <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
                         <p className="text-sm text-gray-600">
-                          Để tạo link chia sẻ, hãy vào trang chi tiết lịch trình và sử dụng nút Chia Sẻ ở đó.
+                          Màn hình này chỉ là bản xem theo ngày. Để tạo link chia sẻ thật, hãy vào trang Chi tiết lịch trình và dùng nút Chia sẻ ở đó.
                         </p>
                       </div>
                     )}
@@ -426,7 +437,22 @@ export default function DailyItinerary() {
           {/* Tab Content */}
           {rightPanelTab === "suggestions" ? (
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {filteredSuggestions.map((suggestion) => (
+              {suggestionsLoading && (
+                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-500">
+                  Đang tải gợi ý địa điểm từ dữ liệu điểm đến...
+                </div>
+              )}
+              {!suggestionsLoading && suggestionsError && (
+                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-500">
+                  {suggestionsError}
+                </div>
+              )}
+              {!suggestionsLoading && !suggestionsError && filteredSuggestions.length === 0 && (
+                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-500">
+                  Chưa có gợi ý khả dụng cho ngày này từ dữ liệu hiện có.
+                </div>
+              )}
+              {!suggestionsLoading && !suggestionsError && filteredSuggestions.map((suggestion) => (
                 <div
                   key={suggestion.id}
                   className="rounded-xl border-2 border-gray-200 bg-white transition-all hover:border-cyan-300 hover:shadow-md overflow-hidden"
@@ -460,15 +486,15 @@ export default function DailyItinerary() {
                     <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                       <div className="flex items-center gap-1">
                         <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                        <span>{suggestion.rating}</span>
+                        <span>{suggestion.rating ?? 0}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
-                        <span>{suggestion.distance}</span>
+                        <span className="line-clamp-1">{suggestion.location || suggestion.city}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <DollarSign className="h-3 w-3" />
-                        <span>{suggestion.estimatedCost}</span>
+                        <span>{formatSuggestionCost(suggestion)}</span>
                       </div>
                     </div>
 
@@ -486,12 +512,9 @@ export default function DailyItinerary() {
           ) : (
             /* Map Tab */
             <div className="flex-1 relative overflow-hidden">
-              {/* Mock Map */}
               <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 relative">
-                {/* Mock Map Markers */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                   <div className="relative">
-                    {/* Center Marker */}
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500 shadow-lg">
                       <MapIcon className="h-6 w-6 text-white" />
                     </div>
@@ -501,7 +524,6 @@ export default function DailyItinerary() {
                   </div>
                 </div>
 
-                {/* Mock Location Pins */}
                 <div className="absolute top-1/4 left-1/3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 shadow-md">
                     <Utensils className="h-4 w-4 text-white" />
@@ -518,17 +540,15 @@ export default function DailyItinerary() {
                   </div>
                 </div>
 
-                {/* Map Overlay Info */}
                 <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-white/90 p-4 shadow-lg backdrop-blur-sm">
                   <p className="text-sm font-semibold text-gray-700 mb-1">
                     Bản đồ khu vực {selectedDay?.destinationName || "Hà Nội"}
                   </p>
                   <p className="text-xs text-gray-600">
-                    Đang hiển thị các địa điểm gợi ý trong phạm vi thành phố
+                    Bản đồ tương tác chưa được tích hợp ở phase hiện tại. Đây là placeholder minh họa, không phải bản đồ thật từ API.
                   </p>
                 </div>
 
-                {/* Mock Grid Lines */}
                 <div className="absolute inset-0 opacity-10">
                   <div className="h-full w-full" style={{
                     backgroundImage: `
@@ -551,13 +571,10 @@ export default function DailyItinerary() {
             name: viewingPlace.name,
             image: viewingPlace.image,
             description: viewingPlace.description,
-            address: viewingPlace.address,
-            rating: viewingPlace.rating,
+            address: viewingPlace.location || viewingPlace.city,
+            rating: viewingPlace.rating ?? undefined,
             reviewCount: viewingPlace.reviewCount,
-            estimatedCost: viewingPlace.estimatedCost,
-            openingHours: viewingPlace.openingHours,
-            phone: viewingPlace.phone,
-            website: viewingPlace.website,
+            estimatedCost: formatSuggestionCost(viewingPlace),
           }}
           onClose={() => setViewingPlace(null)}
         />

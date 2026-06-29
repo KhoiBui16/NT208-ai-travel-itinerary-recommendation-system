@@ -7,7 +7,9 @@ import { getItinerary, createItinerary, updateItinerary } from "../../services/i
 import { useTripWizard } from "../../contexts/TripWizardContext";
 import { storePendingClaim } from "../../contexts/AuthContext";
 import {
+  getUniqueAccommodationsFromRecord,
   mapItineraryResponseToSessionTrip,
+  normalizeAccommodationRecord,
   readSessionTrip,
   writeSessionTrip,
 } from "../../utils/tripResponseMapper";
@@ -188,7 +190,7 @@ export const useTripSync = (
         tripId: currentTripIdRef.current,
         name: tripName,
         days,
-        accommodations,
+        accommodations: normalizeAccommodationRecord(accommodations),
         totalBudget,
         travelers,
         updatedAt: currentTripUpdatedAt,
@@ -204,11 +206,12 @@ export const useTripSync = (
       return;
     }
 
+    const uniqueAccommodations = getUniqueAccommodationsFromRecord(accommodations);
     const tripData = {
       tripId: currentTripIdRef.current,
       name: tripName,
       days,
-      accommodations,
+      accommodations: normalizeAccommodationRecord(accommodations),
       totalBudget,
       travelers,
       updatedAt: currentTripUpdatedAt,
@@ -244,7 +247,7 @@ export const useTripSync = (
               extraExpenses: a.extraExpenses,
             })),
           })),
-          accommodations: Object.values(accommodations).map((acc) => ({
+          accommodations: uniqueAccommodations.map((acc) => ({
             id: acc.id,
             hotel: acc.hotel,
             dayIds: acc.dayIds,
@@ -303,7 +306,7 @@ export const useTripSync = (
               extraExpenses: a.extraExpenses,
             })),
           })),
-          accommodations: Object.values(accommodations).map((acc) => ({
+          accommodations: uniqueAccommodations.map((acc) => ({
             id: acc.id,
             hotel: acc.hotel,
             dayIds: acc.dayIds,
