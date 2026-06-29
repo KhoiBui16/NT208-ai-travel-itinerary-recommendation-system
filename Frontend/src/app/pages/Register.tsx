@@ -5,7 +5,7 @@ import { AuthLayout } from "../components/AuthLayout";
 // import { OTPModal } from "../components/OTPModal"; // TODO: re-enable when BE email OTP is ready
 import { Mail, Lock, User, Chrome } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { ApiError } from "../services/api";
+import { getAuthErrorMessage } from "../utils/authErrorHandler";
 import { toast } from "sonner";
 
 export default function Register() {
@@ -60,11 +60,7 @@ export default function Register() {
         navigate(claimResult?.returnTo || "/", { replace: true });
       }, 1000);
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Đăng ký thất bại. Vui lòng thử lại.");
-      }
+      setError(getAuthErrorMessage(err, "register"));
     } finally {
       setLoading(false);
     }
@@ -113,12 +109,13 @@ export default function Register() {
             )}
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-900">
+              <label htmlFor="register-name" className="mb-2 block text-sm font-semibold text-gray-900">
                 Họ và tên
               </label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <input
+                  id="register-name"
                   type="text"
                   value={formData.name}
                   onChange={(e) =>
@@ -132,12 +129,13 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-900">
+              <label htmlFor="register-email" className="mb-2 block text-sm font-semibold text-gray-900">
                 Email
               </label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <input
+                  id="register-email"
                   type="email"
                   value={formData.email}
                   onChange={(e) =>
@@ -151,12 +149,13 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-900">
+              <label htmlFor="register-password" className="mb-2 block text-sm font-semibold text-gray-900">
                 Mật khẩu
               </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <input
+                  id="register-password"
                   type="password"
                   value={formData.password}
                   onChange={(e) =>
@@ -167,15 +166,22 @@ export default function Register() {
                   required
                 />
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Mật khẩu cần tối thiểu 6 ký tự.
+              </p>
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-900">
+              <label
+                htmlFor="register-confirm-password"
+                className="mb-2 block text-sm font-semibold text-gray-900"
+              >
                 Xác nhận mật khẩu
               </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <input
+                  id="register-confirm-password"
                   type="password"
                   value={formData.confirmPassword}
                   onChange={(e) =>

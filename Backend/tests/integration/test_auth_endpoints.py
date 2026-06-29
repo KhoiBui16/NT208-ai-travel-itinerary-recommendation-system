@@ -9,12 +9,14 @@ postgres + alembic migrations are available.
 
 import os
 from collections.abc import Generator
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from fastapi.testclient import TestClient
 
 pytest.importorskip("sqlalchemy")
 
+from src.auth.router import _auth_service
 from src.main import create_app
 
 # CI env var is set by GitHub Actions — skip DB-dependent tests locally
@@ -79,6 +81,31 @@ def test_refresh__missing_token__returns_422(client: TestClient) -> None:
     """POST /api/v1/auth/refresh without token should return 422."""
     response = client.post("/api/v1/auth/refresh", json={})
     assert response.status_code == 422
+
+
+def test_forgot_password__delivery_disabled__returns_truthful_contract() -> None:
+    """POST /api/v1/auth/forgot-password should report delivery-disabled truthfully."""
+    app = create_app(verify_database=False)
+    fake_service = Mock()
+    fake_service.forgot_password = AsyncMock(return_value="disabled")
+    app.dependency_overrides[_auth_service] = lambda: fake_service
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/v1/auth/forgot-password",
+                json={"email": "test@example.com"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": True,
+        "message": "Password reset email delivery is not configured",
+        "emailDeliveryEnabled": False,
+        "deliveryMode": "disabled",
+    }
 
 
 def test_logout__missing_token__returns_401_or_422(client: TestClient) -> None:

@@ -19,6 +19,7 @@ from src.auth.schemas import (
     AuthResponse,
     ChangePasswordRequest,
     ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
@@ -122,11 +123,11 @@ async def logout(
     return SuccessResponse(message="Logged out successfully")
 
 
-@auth_router.post("/forgot-password", response_model=SuccessResponse)
+@auth_router.post("/forgot-password", response_model=ForgotPasswordResponse)
 async def forgot_password(
     body: ForgotPasswordRequest,
     service: AuthService = Depends(_auth_service),
-) -> SuccessResponse:
+) -> ForgotPasswordResponse:
     """EP-31: Request a password reset email.
 
     Tính năng: Yêu cầu đặt lại mật khẩu qua email
@@ -138,9 +139,19 @@ async def forgot_password(
     - Gửi email chứa reset token + reset link tới user
     - User nhấp link trong email để truy cập trang reset password
     """
-    await service.forgot_password(email=body.email)
-    return SuccessResponse(
-        message="If the email exists, a reset link has been sent",
+    delivery_mode = await service.forgot_password(email=body.email)
+
+    if delivery_mode == "smtp":
+        message = "If the email exists, a reset link has been sent"
+    elif delivery_mode == "log_only":
+        message = "Password reset links are only logged in this environment"
+    else:
+        message = "Password reset email delivery is not configured"
+
+    return ForgotPasswordResponse(
+        message=message,
+        email_delivery_enabled=delivery_mode == "smtp",
+        delivery_mode=delivery_mode,
     )
 
 

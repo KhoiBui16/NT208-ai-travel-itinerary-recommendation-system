@@ -26,6 +26,13 @@ interface SuccessResponse {
   message: string;
 }
 
+export type PasswordResetDeliveryMode = "smtp" | "log_only" | "disabled";
+
+export interface ForgotPasswordResponse extends SuccessResponse {
+  emailDeliveryEnabled: boolean;
+  deliveryMode: PasswordResetDeliveryMode;
+}
+
 // ---------- Auth API ----------
 
 export async function register(data: {
@@ -56,8 +63,8 @@ export async function logout(refreshToken: string): Promise<void> {
   }
 }
 
-export async function forgotPassword(email: string): Promise<SuccessResponse> {
-  return api.post<SuccessResponse>("/api/v1/auth/forgot-password", { email });
+export async function forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+  return api.post<ForgotPasswordResponse>("/api/v1/auth/forgot-password", { email });
 }
 
 export async function resetPassword(

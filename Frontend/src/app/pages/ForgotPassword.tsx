@@ -3,12 +3,13 @@ import { Link } from "react-router";
 import { Header } from "../components/Header";
 import { AuthLayout } from "../components/AuthLayout";
 import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
-import { forgotPassword } from "../services/auth";
+import { forgotPassword, type ForgotPasswordResponse } from "../services/auth";
+import { getAuthErrorMessage } from "../utils/authErrorHandler";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [submittedResult, setSubmittedResult] = useState<ForgotPasswordResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -17,14 +18,17 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      await forgotPassword(email);
-      setSubmitted(true);
-    } catch {
-      setError("Không thể gửi yêu cầu đặt lại mật khẩu. Vui lòng thử lại.");
+      const result = await forgotPassword(email);
+      setSubmittedResult(result);
+    } catch (err) {
+      setError(getAuthErrorMessage(err, "forgot-password"));
     } finally {
       setLoading(false);
     }
   };
+
+  const submitted = submittedResult !== null;
+  const deliveryMode = submittedResult?.deliveryMode ?? null;
 
   return (
     <>
@@ -43,23 +47,51 @@ export default function ForgotPassword() {
             <h1 className="mb-2 text-3xl font-bold text-gray-900">Tạo lại mật khẩu</h1>
             <p className="text-gray-600">
               {submitted
-                ? "Kiểm tra email của bạn"
+                ? deliveryMode === "smtp"
+                  ? "Kiểm tra email của bạn"
+                  : "Email đặt lại mật khẩu chưa sẵn sàng"
                 : "Nhập email của bạn để nhận liên kết đặt lại mật khẩu"}
             </p>
           </div>
 
           {submitted ? (
             <div className="space-y-5">
-              <div className="flex items-start gap-4 rounded-lg bg-green-50 p-6">
-                <CheckCircle className="h-6 w-6 flex-shrink-0 text-green-600" />
+              <div
+                className={`flex items-start gap-4 rounded-lg p-6 ${
+                  deliveryMode === "smtp" ? "bg-green-50" : "bg-amber-50"
+                }`}
+              >
+                <CheckCircle
+                  className={`h-6 w-6 flex-shrink-0 ${
+                    deliveryMode === "smtp" ? "text-green-600" : "text-amber-600"
+                  }`}
+                />
                 <div>
-                  <p className="font-semibold text-green-800">
-                    Yêu cầu đã được gửi
+                  <p
+                    className={`font-semibold ${
+                      deliveryMode === "smtp" ? "text-green-800" : "text-amber-900"
+                    }`}
+                  >
+                    {deliveryMode === "smtp"
+                      ? "Yêu cầu đã được gửi"
+                      : "Máy chủ chưa gửi email đặt lại mật khẩu"}
                   </p>
-                  <p className="mt-1 text-sm text-green-700">
-                    Nếu email <strong>{email}</strong> đã đăng ký, bạn sẽ nhận được
-                    liên kết đặt lại mật khẩu. Vui lòng kiểm tra hộp thư (và thư rác).
-                  </p>
+                  {deliveryMode === "smtp" ? (
+                    <p className="mt-1 text-sm text-green-700">
+                      Nếu email <strong>{email}</strong> đã đăng ký, bạn sẽ nhận được
+                      liên kết đặt lại mật khẩu. Vui lòng kiểm tra hộp thư (và thư rác).
+                    </p>
+                  ) : deliveryMode === "log_only" ? (
+                    <p className="mt-1 text-sm text-amber-700">
+                      Môi trường hiện tại chưa gửi email thật. Liên kết đặt lại chỉ được
+                      ghi vào log backend để phục vụ phát triển nội bộ.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm text-amber-700">
+                      Hệ thống hiện chưa được cấu hình để gửi email đặt lại mật khẩu.
+                      Vui lòng liên hệ quản trị viên hoặc thử lại sau khi cấu hình SMTP hoàn tất.
+                    </p>
+                  )}
                 </div>
               </div>
               <Link
@@ -78,12 +110,16 @@ export default function ForgotPassword() {
               )}
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-900">
+                <label
+                  htmlFor="forgot-password-email"
+                  className="mb-2 block text-sm font-semibold text-gray-900"
+                >
                   Email đã đăng ký
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                   <input
+                    id="forgot-password-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -92,6 +128,9 @@ export default function ForgotPassword() {
                     required
                   />
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Hãy nhập đúng email bạn đã dùng để đăng ký tài khoản.
+                </p>
               </div>
 
               <button

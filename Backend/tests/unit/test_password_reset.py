@@ -1,10 +1,11 @@
 """Unit tests for password reset (forgot_password / reset_password)."""
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+import src.itineraries.models  # noqa: F401  # Ensure SQLAlchemy relationships are registered
 from src.auth.models import User
 from src.auth.service import AuthService
 from src.core.exceptions import UnauthorizedException
@@ -22,12 +23,15 @@ def token_repo() -> AsyncMock:
 
 
 @pytest.fixture()
-def email_service() -> AsyncMock:
-    return AsyncMock()
+def email_service() -> Mock:
+    service = Mock()
+    service.get_password_reset_delivery_mode = Mock(return_value="smtp")
+    service.send_password_reset = AsyncMock(return_value="smtp")
+    return service
 
 
 @pytest.fixture()
-def service(user_repo: AsyncMock, token_repo: AsyncMock, email_service: AsyncMock) -> AuthService:
+def service(user_repo: AsyncMock, token_repo: AsyncMock, email_service: Mock) -> AuthService:
     return AuthService(
         user_repo=user_repo,
         token_repo=token_repo,
@@ -59,42 +63,60 @@ def _make_user(
 async def test_forgot_password__existing_email__sends_reset(
     service: AuthService,
     user_repo: AsyncMock,
-    email_service: AsyncMock,
+    email_service: Mock,
 ) -> None:
     user_repo.get_by_email.return_value = _make_user()
     user_repo.update.return_value = _make_user()
 
-    await service.forgot_password("test@example.com")
+    delivery_mode = await service.forgot_password("test@example.com")
 
     user_repo.update.assert_called_once()
     email_service.send_password_reset.assert_called_once()
     call_kwargs = email_service.send_password_reset.call_args
     assert call_kwargs.kwargs["to_email"] == "test@example.com"
     assert "reset_" in call_kwargs.kwargs["reset_token"]
+    assert delivery_mode == "smtp"
 
 
 async def test_forgot_password__nonexistent_email__silent_return(
     service: AuthService,
     user_repo: AsyncMock,
-    email_service: AsyncMock,
+    email_service: Mock,
 ) -> None:
     user_repo.get_by_email.return_value = None
 
-    await service.forgot_password("nobody@example.com")
+    delivery_mode = await service.forgot_password("nobody@example.com")
 
     user_repo.update.assert_not_called()
     email_service.send_password_reset.assert_not_called()
+    assert delivery_mode == "smtp"
 
 
 async def test_forgot_password__inactive_user__silent_return(
     service: AuthService,
     user_repo: AsyncMock,
-    email_service: AsyncMock,
+    email_service: Mock,
 ) -> None:
     user_repo.get_by_email.return_value = _make_user(is_active=False)
 
-    await service.forgot_password("test@example.com")
+    delivery_mode = await service.forgot_password("test@example.com")
 
+    user_repo.update.assert_not_called()
+    email_service.send_password_reset.assert_not_called()
+    assert delivery_mode == "smtp"
+
+
+async def test_forgot_password__delivery_disabled__does_not_generate_token(
+    service: AuthService,
+    user_repo: AsyncMock,
+    email_service: Mock,
+) -> None:
+    user_repo.get_by_email.return_value = _make_user()
+    email_service.get_password_reset_delivery_mode.return_value = "disabled"
+
+    delivery_mode = await service.forgot_password("test@example.com")
+
+    assert delivery_mode == "disabled"
     user_repo.update.assert_not_called()
     email_service.send_password_reset.assert_not_called()
 
