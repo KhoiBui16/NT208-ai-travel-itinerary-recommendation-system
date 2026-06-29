@@ -19,6 +19,63 @@ export interface SessionTripData {
   savedAt: string;
 }
 
+function buildAccommodationIdentity(accommodation: Accommodation): string {
+  if (typeof accommodation.id === "number") {
+    return `id:${accommodation.id}`;
+  }
+
+  const sortedDayIds = [...(accommodation.dayIds || [])].sort((a, b) => a - b);
+  return [
+    `days:${sortedDayIds.join(",")}`,
+    `hotel:${accommodation.hotel?.id ?? ""}`,
+    `name:${accommodation.name ?? accommodation.hotel?.name ?? ""}`,
+    `type:${accommodation.bookingType ?? ""}`,
+    `duration:${accommodation.duration ?? ""}`,
+  ].join("|");
+}
+
+export function normalizeAccommodationRecord(
+  records: Record<number, Accommodation> | undefined,
+): Record<number, Accommodation> {
+  if (!records) return {};
+
+  const normalized: Record<number, Accommodation> = {};
+  const seen = new Set<string>();
+  let fallbackKey = -1;
+
+  for (const [rawKey, accommodation] of Object.entries(records)) {
+    if (!accommodation || !Array.isArray(accommodation.dayIds)) continue;
+
+    const identity = buildAccommodationIdentity(accommodation);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+
+    let key =
+      typeof accommodation.id === "number"
+        ? accommodation.id
+        : Number(rawKey);
+
+    if (!Number.isFinite(key) || normalized[key]) {
+      while (normalized[fallbackKey]) fallbackKey -= 1;
+      key = fallbackKey;
+      fallbackKey -= 1;
+    }
+
+    normalized[key] = {
+      ...accommodation,
+      dayIds: [...accommodation.dayIds],
+    };
+  }
+
+  return normalized;
+}
+
+export function getUniqueAccommodationsFromRecord(
+  records: Record<number, Accommodation> | undefined,
+): Accommodation[] {
+  return Object.values(normalizeAccommodationRecord(records));
+}
+
 export function mapItineraryResponseToSessionTrip(
   response: ItineraryResponse,
 ): SessionTripData {
@@ -52,27 +109,27 @@ export function mapItineraryResponseToSessionTrip(
   }));
 
   const accommodations: Record<number, Accommodation> = {};
-  for (const accommodation of response.accommodations || []) {
-    for (const dayId of accommodation.dayIds || []) {
-      accommodations[dayId] = {
-        hotel: (accommodation.hotel as Accommodation["hotel"]) || null,
-        dayIds: accommodation.dayIds,
-        bookingType: accommodation.bookingType as Accommodation["bookingType"],
-        duration: accommodation.duration,
-        name: accommodation.name,
-        checkIn: accommodation.checkIn,
-        checkOut: accommodation.checkOut,
-        pricePerNight: accommodation.pricePerNight,
-        totalPrice: accommodation.totalPrice,
-      };
-    }
+  for (const [index, accommodation] of (response.accommodations || []).entries()) {
+    const key = accommodation.id ?? -(index + 1);
+    accommodations[key] = {
+      id: accommodation.id,
+      hotel: (accommodation.hotel as Accommodation["hotel"]) || null,
+      dayIds: accommodation.dayIds,
+      bookingType: accommodation.bookingType as Accommodation["bookingType"],
+      duration: accommodation.duration,
+      name: accommodation.name,
+      checkIn: accommodation.checkIn,
+      checkOut: accommodation.checkOut,
+      pricePerNight: accommodation.pricePerNight,
+      totalPrice: accommodation.totalPrice,
+    };
   }
 
   return {
     tripId: response.id,
     name: response.tripName || response.destination,
     days,
-    accommodations,
+    accommodations: normalizeAccommodationRecord(accommodations),
     totalBudget: response.budget || 0,
     travelers: response.travelerInfo,
     updatedAt: response.updatedAt ?? null,
@@ -94,7 +151,7 @@ export function readSessionTrip(): SessionTripData | null {
       tripId: typeof parsed.tripId === "number" ? parsed.tripId : null,
       name: parsed.name,
       days: parsed.days,
-      accommodations: parsed.accommodations || {},
+      accommodations: normalizeAccommodationRecord(parsed.accommodations),
       totalBudget: parsed.totalBudget || 0,
       travelers:
         parsed.travelers || {

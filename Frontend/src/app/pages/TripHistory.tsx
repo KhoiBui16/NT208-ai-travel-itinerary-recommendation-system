@@ -52,7 +52,7 @@ export default function TripHistory() {
         startDate: trip.startDate,
         endDate: trip.endDate,
         days: computeTripDurationDays(trip.startDate, trip.endDate),
-        estimatedCost: trip.budget || 0,
+        estimatedCost: trip.totalCost ?? trip.budget ?? 0,
         status: computeTripTimelineStatus(trip.startDate, trip.endDate),
         coverImage: trip.coverImage || getDestinationFallbackImage(trip.destination),
         tripData: trip,
