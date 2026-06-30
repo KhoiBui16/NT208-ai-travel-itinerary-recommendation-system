@@ -93,6 +93,7 @@ class CostNormalizationResult:
     recomputed_total_cost: int
     used_fallback_estimates: bool
 
+
 logger = get_logger(__name__)
 
 
