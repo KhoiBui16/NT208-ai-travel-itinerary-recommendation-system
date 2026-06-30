@@ -146,14 +146,20 @@ class FakeRepo:
         return self.trip
 
 
-def _make_request(days: int = 2) -> GenerateItineraryRequest:
+def _make_request(
+    days: int = 2,
+    *,
+    budget: int = 5_000_000,
+    adults: int = 2,
+    children: int = 0,
+) -> GenerateItineraryRequest:
     return GenerateItineraryRequest(
         destination="Hà Nội",
         startDate=date(2026, 6, 1),
         endDate=date(2026, 6, days),
-        budget=5000000,
-        adults=2,
-        children=0,
+        budget=budget,
+        adults=adults,
+        children=children,
         interests=["food", "culture"],
     )
 
@@ -427,6 +433,102 @@ async def test_pipeline__recomputes_total_and_backfills_missing_costs() -> None:
     assert normalized.child_price == 30000
     assert normalized.taxi_cost == 50000
     assert trip.total_cost > 1
+
+
+def _sparse_cost_payload() -> dict[str, Any]:
+    return {
+        "tripName": "Budget Soft Gate Trip",
+        "totalCost": 450000,
+        "days": [
+            {
+                "dayNumber": 1,
+                "label": "Ngày 1",
+                "activities": [
+                    {
+                        "time": "08:00",
+                        "name": "Place 1",
+                        "type": "food",
+                        "location": "Hà Nội",
+                        "placeId": 1,
+                    },
+                    {
+                        "time": "10:00",
+                        "name": "Place 2",
+                        "type": "attraction",
+                        "location": "Hà Nội",
+                        "placeId": 2,
+                    },
+                    {
+                        "time": "12:00",
+                        "name": "Place 3",
+                        "type": "food",
+                        "location": "Hà Nội",
+                        "placeId": 3,
+                    },
+                    {
+                        "time": "15:00",
+                        "name": "Place 4",
+                        "type": "attraction",
+                        "location": "Hà Nội",
+                        "placeId": 4,
+                    },
+                    {
+                        "time": "18:00",
+                        "name": "Place 5",
+                        "type": "nature",
+                        "location": "Hà Nội",
+                        "placeId": 5,
+                    },
+                ],
+            }
+        ],
+        "accommodations": [],
+    }
+
+
+@pytest.mark.asyncio
+async def test_pipeline__accepts_budget_soft_overshoot_when_costs_are_inferred() -> None:
+    llm = FakeLLM([_sparse_cost_payload()])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places(count=6)),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    trip = await pipeline.generate(
+        _make_request(days=1, budget=400_000, adults=2, children=1),
+        user_id=None,
+    )
+
+    assert trip.total_cost > int(400_000 * 1.2)
+    assert trip.days[0].activities[0].adult_price == 50_000
+    assert trip.days[0].activities[0].child_price == 30_000
+
+
+@pytest.mark.asyncio
+async def test_pipeline__still_rejects_explicit_over_budget_itinerary() -> None:
+    payload = _sparse_cost_payload()
+    payload["totalCost"] = 700000
+    for activity in payload["days"][0]["activities"][:4]:
+        activity["adultPrice"] = 120000
+        activity["childPrice"] = 60000
+
+    llm = FakeLLM([payload])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places(count=6)),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    with pytest.raises(ServiceUnavailableException, match="failed validation"):
+        await pipeline.generate(
+            _make_request(days=1, budget=400_000, adults=2, children=1),
+            user_id=None,
+        )
 
 
 @pytest.mark.asyncio

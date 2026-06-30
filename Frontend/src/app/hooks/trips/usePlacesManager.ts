@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Place, Day, Activity } from "../../types/trip.types";
-import { allPlaces } from "../../utils/tripConstants";
 import * as placesService from "../../services/places";
 import * as itineraryService from "../../services/itinerary";
 import {
@@ -17,7 +16,7 @@ export const usePlacesManager = (
   setShowLoginModal: (show: boolean) => void,
   tripId: number | null
 ) => {
-  const [places, setPlaces] = useState<Place[]>(allPlaces);
+  const [places, setPlaces] = useState<Place[]>([]);
   const [placeSearch, setPlaceSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [showSavedSuggestions, setShowSavedSuggestions] = useState(false);
@@ -44,24 +43,22 @@ export const usePlacesManager = (
           category: activeFilter !== "all" ? activeFilter : undefined,
           limit: 50,
         });
-        if (results.length > 0) {
-          setPlaces(results.map((p) => ({
-            id: p.id,
-            name: p.name,
-            reviewCount: p.reviewCount || 0,
-            type: p.type,
-            image: p.image || "",
-            price: p.price ?? undefined,
-            location: p.location ?? undefined,
-            reviews: p.reviews ?? undefined,
-            rating: p.rating ?? undefined,
-            saved: p.saved,
-            city: p.city,
-            description: p.description ?? undefined,
-          })));
-        }
+        setPlaces(results.map((p) => ({
+          id: p.id,
+          name: p.name,
+          reviewCount: p.reviewCount || 0,
+          type: p.type,
+          image: p.image || "",
+          price: p.price ?? undefined,
+          location: p.location ?? undefined,
+          reviews: p.reviews ?? undefined,
+          rating: p.rating ?? undefined,
+          saved: p.saved,
+          city: p.city,
+          description: p.description ?? undefined,
+        })));
       } catch {
-        // Keep mock fallback — don't clear current places
+        setPlaces([]);
       }
     }, 300);
 

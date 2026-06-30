@@ -18,6 +18,7 @@ Pipeline flow:
 """
 
 import asyncio
+from dataclasses import dataclass
 from datetime import timedelta
 from time import perf_counter
 from typing import Any
@@ -82,6 +83,15 @@ DEFAULT_TRANSPORT_COSTS = {
     "taxi": 50_000,
 }
 CHILD_PRICE_RATIO = 0.6
+
+
+@dataclass(slots=True)
+class CostNormalizationResult:
+    """Tracks whether itinerary cost validation relied on inferred values."""
+
+    llm_total_cost: int
+    recomputed_total_cost: int
+    used_fallback_estimates: bool
 
 logger = get_logger(__name__)
 
@@ -408,13 +418,18 @@ class ItineraryPipeline:
                 # Parse and validate the structured response
                 payload = parse_json_response(raw_text)
                 itinerary = AgentItinerary.model_validate(payload)
-                self._normalize_itinerary_costs(
+                cost_result = self._normalize_itinerary_costs(
                     itinerary,
                     request=request,
                     places=places,
                     hotels=hotels,
                 )
-                self._validate_itinerary(itinerary, request, day_count)
+                self._validate_itinerary(
+                    itinerary,
+                    request,
+                    day_count,
+                    cost_result=cost_result,
+                )
 
                 # Validation passed — log success and return
                 logger.info(
@@ -612,23 +627,31 @@ class ItineraryPipeline:
         request: GenerateItineraryRequest,
         places: list[Place],
         hotels: list[Hotel],
-    ) -> None:
+    ) -> CostNormalizationResult:
         """Normalize partial LLM cost output into repo-consistent semantics."""
+        llm_total_cost = itinerary.total_cost or 0
         place_by_id = {place.id: place for place in places}
         hotel_by_id = {hotel.id: hotel for hotel in hotels}
+        used_fallback_estimates = False
 
         for day in itinerary.days:
             for activity in day.activities:
                 matched_place = place_by_id.get(activity.place_id) if activity.place_id else None
-                self._normalize_activity_costs(activity, matched_place=matched_place)
+                used_fallback_estimates = (
+                    self._normalize_activity_costs(activity, matched_place=matched_place)
+                    or used_fallback_estimates
+                )
 
         for accommodation in itinerary.accommodations:
             matched_hotel = (
                 hotel_by_id.get(accommodation.hotel_id) if accommodation.hotel_id else None
             )
-            self._normalize_accommodation_costs(
-                accommodation,
-                matched_hotel=matched_hotel,
+            used_fallback_estimates = (
+                self._normalize_accommodation_costs(
+                    accommodation,
+                    matched_hotel=matched_hotel,
+                )
+                or used_fallback_estimates
             )
 
         recomputed_total = self._calculate_generated_total_cost(
@@ -643,14 +666,20 @@ class ItineraryPipeline:
                 recomputed_total_cost=recomputed_total,
             )
             itinerary.total_cost = recomputed_total
+        return CostNormalizationResult(
+            llm_total_cost=llm_total_cost,
+            recomputed_total_cost=recomputed_total,
+            used_fallback_estimates=used_fallback_estimates,
+        )
 
     def _normalize_activity_costs(
         self,
         activity: Any,
         *,
         matched_place: Place | None,
-    ) -> None:
+    ) -> bool:
         """Backfill missing cost fields without overwriting explicit model output."""
+        inferred_costs = False
         adult_price = activity.adult_price or 0
         child_price = activity.child_price or 0
         custom_cost = activity.custom_cost or 0
@@ -659,8 +688,10 @@ class ItineraryPipeline:
 
         if activity.transportation == "bus" and not activity.bus_ticket_price:
             activity.bus_ticket_price = DEFAULT_TRANSPORT_COSTS["bus"]
+            inferred_costs = True
         if activity.transportation == "taxi" and not activity.taxi_cost:
             activity.taxi_cost = DEFAULT_TRANSPORT_COSTS["taxi"]
+            inferred_costs = True
 
         if has_person_prices or has_custom_cost:
             if (
@@ -669,7 +700,8 @@ class ItineraryPipeline:
                 and (activity.adult_price or 0) > 0
             ):
                 activity.child_price = self._default_child_price(activity.adult_price or 0)
-            return
+                inferred_costs = True
+            return inferred_costs
 
         avg_cost = matched_place.avg_cost if matched_place and matched_place.avg_cost > 0 else 0
         defaults = DEFAULT_ACTIVITY_COSTS[activity.type]
@@ -679,37 +711,44 @@ class ItineraryPipeline:
             if activity.child_price is None:
                 child_seed = avg_cost or defaults["adult"]
                 activity.child_price = self._default_child_price(child_seed)
-            return
+            return True
 
         if activity.custom_cost is None:
             activity.custom_cost = avg_cost or defaults["custom"]
+            return True
+
+        return inferred_costs
 
     def _normalize_accommodation_costs(
         self,
         accommodation: Any,
         *,
         matched_hotel: Hotel | None,
-    ) -> None:
+    ) -> bool:
         """Fill missing accommodation pricing from hotel context when possible."""
+        inferred_costs = False
         if (accommodation.price_per_night or 0) <= 0 and matched_hotel:
             accommodation.price_per_night = matched_hotel.price_per_night
+            inferred_costs = True
 
         if (accommodation.total_price or 0) > 0:
-            return
+            return inferred_costs
 
         if (accommodation.price_per_night or 0) <= 0:
-            return
+            return inferred_costs
 
         duration = accommodation.duration
         if duration is None or duration <= 0:
             duration = max(1, len(accommodation.day_ids) - 1)
             accommodation.duration = duration
+            inferred_costs = True
 
         accommodation.total_price = self._calculate_accommodation_total(
             price_per_night=accommodation.price_per_night,
             booking_type=accommodation.booking_type,
             duration=duration,
         )
+        return True
 
     def _calculate_generated_total_cost(
         self,
@@ -822,6 +861,8 @@ class ItineraryPipeline:
         itinerary: AgentItinerary,
         request: GenerateItineraryRequest,
         day_count: int,
+        *,
+        cost_result: CostNormalizationResult | None = None,
     ) -> None:
         """Validate the AI-generated itinerary against business rules.
 
@@ -834,9 +875,27 @@ class ItineraryPipeline:
         if len(itinerary.days) != day_count:
             raise LLMGenerationError("AI itinerary day count does not match request")
 
+        budget_limit = int(request.budget * 1.2)
+        budget_total_cost = itinerary.total_cost
+        if (
+            cost_result
+            and cost_result.used_fallback_estimates
+            and cost_result.llm_total_cost > 0
+            and cost_result.recomputed_total_cost > budget_limit
+            and cost_result.llm_total_cost <= budget_limit
+        ):
+            logger.warning(
+                "ai_generate_budget_soft_overshoot",
+                budget=request.budget,
+                llm_total_cost=cost_result.llm_total_cost,
+                recomputed_total_cost=cost_result.recomputed_total_cost,
+            )
+            budget_total_cost = cost_result.llm_total_cost
+
         # itinerary.total_cost is recomputed from nested data before validation.
-        # Check budget tolerance (allow up to 20% overshoot)
-        if itinerary.total_cost > int(request.budget * 1.2):
+        # If cost gaps were filled conservatively, prefer a soft gate over the
+        # model-supplied total instead of rejecting an otherwise valid plan.
+        if budget_total_cost > budget_limit:
             raise LLMGenerationError("AI itinerary exceeds budget tolerance")
 
         # Check per-day activity count bounds

@@ -44,10 +44,12 @@ export function Header() {
             <Link to="/" className="flex items-center gap-2 group">
               <img 
                 src="/app_logo.png"
-                alt="YourTrip Logo" 
+                alt="TravelAI Logo" 
                 className="h-16 w-auto transition-transform duration-300 group-hover:scale-110" 
               />
-              {/* Đã xóa chữ YourTrip văn bản ở đây */}
+              <span className="text-lg font-bold text-gray-900 transition-colors group-hover:text-cyan-600">
+                TravelAI
+              </span>
             </Link>
 
             {/* Desktop Navigation Links - Moved to left */}

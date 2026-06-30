@@ -6,6 +6,7 @@ import { listDestinations, getDestinationDetail, type DestinationResponse } from
 import type { Place } from "../types/trip.types";
 import { useAuth } from "../contexts/AuthContext";
 import { listSavedPlaces, savePlace, unsavePlace } from "../services/places";
+import { applyPlaceImageFallback, resolvePlaceImageWithCategory } from "../utils/placeImage";
 
 interface PlaceSelectionModalProps {
   isOpen: boolean;
@@ -425,8 +426,9 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
                 >
                   <div className="relative h-48">
                     <img
-                      src={city.image}
+                      src={resolvePlaceImageWithCategory(city.image, "attraction")}
                       alt={city.name}
+                      onError={applyPlaceImageFallback}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -475,8 +477,9 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
                       >
                         <div className="relative h-48 flex-shrink-0">
                           <img
-                            src={place.image}
+                            src={resolvePlaceImageWithCategory(place.image, place.type)}
                             alt={place.name}
+                            onError={applyPlaceImageFallback}
                             className="h-full w-full object-cover"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -552,7 +555,7 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
         <PlaceInfoModal
           place={{
             name: viewingPlaceInfo.name,
-            image: viewingPlaceInfo.image,
+            image: resolvePlaceImageWithCategory(viewingPlaceInfo.image, viewingPlaceInfo.type),
             description: viewingPlaceInfo.description,
             address: viewingPlaceInfo.location || viewingPlaceInfo.city,
             rating: viewingPlaceInfo.rating,

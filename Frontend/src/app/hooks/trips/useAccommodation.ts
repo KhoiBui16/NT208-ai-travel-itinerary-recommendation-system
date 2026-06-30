@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Accommodation, Hotel, Day } from "../../types/trip.types";
-import { availableHotels } from "../../utils/tripConstants";
 import * as itineraryService from "../../services/itinerary";
-import { normalizeAccommodationRecord } from "../../utils/tripResponseMapper";
+import { getDestinationDetail } from "../../services/places";
+import { normalizeAccommodationRecord, normalizeHotelPayload } from "../../utils/tripResponseMapper";
 
 export const useAccommodation = (days: Day[], selectedDayId: number, tripId: number | null) => {
   const [accommodations, setAccommodations] = useState<Record<number, Accommodation>>({});
@@ -12,6 +12,54 @@ export const useAccommodation = (days: Day[], selectedDayId: number, tripId: num
   const [selectedDaysForHotel, setSelectedDaysForHotel] = useState<number[]>([]);
   const [bookingType, setBookingType] = useState<'hourly' | 'nightly' | 'daily'>('nightly');
   const [bookingDuration, setBookingDuration] = useState<number>(1);
+  const [hotelsByCity, setHotelsByCity] = useState<Record<string, Hotel[]>>({});
+
+  const selectedDay = useMemo(
+    () => days.find((day) => day.id === selectedDayId) ?? null,
+    [days, selectedDayId],
+  );
+
+  useEffect(() => {
+    const city = selectedDay?.destinationName?.trim();
+    if (!city || Object.prototype.hasOwnProperty.call(hotelsByCity, city)) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void getDestinationDetail(city)
+      .then((detail) => {
+        if (cancelled) return;
+
+        setHotelsByCity((prev) => ({
+          ...prev,
+          [city]: detail.hotels.map((hotel) => ({
+            id: hotel.id,
+            name: hotel.name,
+            rating: hotel.rating,
+            reviewCount: hotel.reviewCount,
+            price: hotel.price,
+            image: hotel.image || "",
+            location: hotel.location || "",
+            city: hotel.city || city,
+            amenities: Array.isArray(hotel.amenities) ? hotel.amenities : [],
+            description: hotel.description || "",
+          })),
+        }));
+      })
+      .catch(() => {
+        if (cancelled) return;
+
+        setHotelsByCity((prev) => ({
+          ...prev,
+          [city]: [],
+        }));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hotelsByCity, selectedDay]);
 
   const getAccommodationForDay = (dayId: number): Accommodation | null => {
     for (const accommodation of Object.values(normalizeAccommodationRecord(accommodations))) {
@@ -30,7 +78,7 @@ export const useAccommodation = (days: Day[], selectedDayId: number, tripId: num
 
   const getHotelsForCity = (city?: string): Hotel[] => {
     if (!city) return [];
-    return availableHotels.filter(h => h.city === city);
+    return hotelsByCity[city] || [];
   };
 
   const handleSelectHotel = (hotel: Hotel) => {
@@ -103,10 +151,11 @@ export const useAccommodation = (days: Day[], selectedDayId: number, tripId: num
           setAccommodations((prev) => {
             const next = { ...prev };
             delete next[optimisticKey];
+            const normalizedHotel = normalizeHotelPayload(created.hotel, newAccommodation) || hotel;
             next[created.id ?? optimisticKey] = {
               ...newAccommodation,
               id: created.id,
-              hotel: (created.hotel as Hotel) || hotel,
+              hotel: normalizedHotel,
               dayIds: created.dayIds,
               bookingType: created.bookingType as Accommodation["bookingType"],
               duration: created.duration,
