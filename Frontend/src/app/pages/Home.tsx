@@ -229,7 +229,7 @@ export default function Home() {
           <div className="mb-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <h4 className="mb-4 text-xl font-bold">Về sản phẩm</h4>
-              <p className="text-gray-300">YourTrip - Chạm là đi</p>
+              <p className="text-gray-300">TravelAI - Chạm là đi</p>
             </div>
             <div>
               <h4 className="mb-4 text-xl font-bold">Đội ngũ phát triển</h4>

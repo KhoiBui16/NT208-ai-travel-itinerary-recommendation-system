@@ -26,6 +26,7 @@ function toISODate(d: string): string {
 export const useTripSync = (
   days: Day[],
   setDays: React.Dispatch<React.SetStateAction<Day[]>>,
+  selectedDayId: number,
   setSelectedDayId: React.Dispatch<React.SetStateAction<number>>,
   accommodations: Record<number, Accommodation>,
   setAccommodations: React.Dispatch<React.SetStateAction<Record<number, Accommodation>>>,
@@ -43,16 +44,21 @@ export const useTripSync = (
   tripIdParam?: number | null,
 ) => {
   const isInitialMount = useRef(true);
+  const saveInFlightRef = useRef(false);
   const currentTripIdRef = useRef<number | null>(tripIdParam ?? null);
   const [currentTripId, _setCurrentTripId] = useState<number | null>(tripIdParam ?? null);
   const [currentTripUpdatedAt, setCurrentTripUpdatedAt] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const setCurrentTripId = useCallback((id: number | null) => {
     currentTripIdRef.current = id;
     _setCurrentTripId(id);
   }, []);
   const { destinations: wizardDestinations, dayAllocations: wizardAllocations, budget: wizardBudget, resetWizard } = useTripWizard();
 
-  const applyServerTrip = useCallback((response: Awaited<ReturnType<typeof getItinerary>>) => {
+  const applyServerTrip = useCallback((
+    response: Awaited<ReturnType<typeof getItinerary>>,
+    preferredDayId?: number | null,
+  ) => {
     const mapped = mapItineraryResponseToSessionTrip(response);
     setCurrentTripId(mapped.tripId);
     setCurrentTripUpdatedAt(mapped.updatedAt);
@@ -61,7 +67,11 @@ export const useTripSync = (
     setTravelers(mapped.travelers);
     setDays(mapped.days);
     if (mapped.days.length > 0) {
-      setSelectedDayId(mapped.days[0].id);
+      const resolvedDayId =
+        preferredDayId && mapped.days.some((day) => day.id === preferredDayId)
+          ? preferredDayId
+          : mapped.days[0].id;
+      setSelectedDayId(resolvedDayId);
     }
     setAccommodations(mapped.accommodations);
 
@@ -95,6 +105,8 @@ export const useTripSync = (
     let isMounted = true;
 
     const loadInitialData = async () => {
+      let allowSessionFallback = true;
+
       // If we have a tripId from URL, load from API
       if (tripIdParam && isAuthenticated) {
         try {
@@ -105,17 +117,32 @@ export const useTripSync = (
           return;
         } catch (error) {
           console.error("Error loading trip from API:", error);
+          allowSessionFallback =
+            !(error instanceof ApiError) ||
+            error.status >= 500 ||
+            error.status === 429;
+
+          if (!allowSessionFallback) {
+            toast.error("Không thể tải lịch trình này từ server.", {
+              position: "top-right",
+              duration: 4000,
+            });
+            isInitialMount.current = false;
+            return;
+          }
+
           toast.warning("Không thể tải dữ liệu từ server. Đang dùng bản nháp tạm trên trình duyệt này.", {
             position: "top-right",
             duration: 3000,
           });
-          // Fall through to sessionStorage fallback
         }
       }
 
       // Fallback: check sessionStorage for workspace-passed data (wizard flow)
       const tripData = readSessionTrip();
-      if (tripData?.days?.length) {
+      const hasMatchingSessionTrip =
+        !tripIdParam || tripData?.tripId === tripIdParam;
+      if (allowSessionFallback && tripData?.days?.length && hasMatchingSessionTrip) {
         if (tripData.tripId) setCurrentTripId(tripData.tripId);
         setCurrentTripUpdatedAt(tripData.updatedAt ?? null);
         if (tripData.name) setTripName(tripData.name);
@@ -206,8 +233,12 @@ export const useTripSync = (
       return;
     }
 
+    if (saveInFlightRef.current) {
+      return;
+    }
+
     const uniqueAccommodations = getUniqueAccommodationsFromRecord(accommodations);
-    const tripData = {
+    let cacheTripData = {
       tripId: currentTripIdRef.current,
       name: tripName,
       days,
@@ -219,6 +250,9 @@ export const useTripSync = (
     };
 
     try {
+      saveInFlightRef.current = true;
+      setIsSaving(true);
+
       if (currentTripIdRef.current) {
         // Update existing itinerary
         const response = await updateItinerary(currentTripIdRef.current, {
@@ -260,7 +294,7 @@ export const useTripSync = (
             totalPrice: acc.totalPrice,
           })),
         });
-        setCurrentTripUpdatedAt(response.updatedAt);
+        applyServerTrip(response, selectedDayId);
       } else {
         // Create new itinerary
         const destinationNames = Array.from(new Set(days.map((d) => d.destinationName).filter(Boolean)));
@@ -274,7 +308,7 @@ export const useTripSync = (
           childrenCount: travelers.children,
         });
         setCurrentTripId(resp.id);
-        setCurrentTripUpdatedAt(resp.updatedAt);
+        cacheTripData = { ...cacheTripData, tripId: resp.id };
 
         // Store claimToken for guest → owner claim after login
         if (resp.claimToken) {
@@ -319,18 +353,16 @@ export const useTripSync = (
             totalPrice: acc.totalPrice,
           })),
         });
-        setCurrentTripUpdatedAt(updateResponse.updatedAt);
+        applyServerTrip(updateResponse, selectedDayId);
       }
 
-      // Also save to sessionStorage as cache
-      writeSessionTrip(tripData);
       toast.success("Đã lưu lịch trình thành công", { position: "top-right" });
     } catch (error) {
       console.error("Error saving itinerary:", error);
 
       // Fallback: lưu tạm vào sessionStorage (im lặng). Thông báo cho user
       // được chọn theo loại lỗi ở khối classify bên dưới để tránh toast trùng.
-      writeSessionTrip(tripData);
+      writeSessionTrip(cacheTripData);
 
       // Classify error type for better UX message
       if (error instanceof ApiError) {
@@ -376,6 +408,9 @@ export const useTripSync = (
         "Không thể lưu lịch trình lên server lúc này. Lịch trình đã được lưu tạm trên thiết bị này.",
         { position: "top-right" }
       );
+    } finally {
+      saveInFlightRef.current = false;
+      setIsSaving(false);
     }
   }, [
     isAuthenticated,
@@ -384,9 +419,11 @@ export const useTripSync = (
     accommodations,
     totalBudget,
     travelers,
+    selectedDayId,
     setShowLoginModal,
     currentTripUpdatedAt,
+    applyServerTrip,
   ]);
 
-  return { applyServerTrip, currentTripId, currentTripUpdatedAt, handleSaveItinerary };
+  return { applyServerTrip, currentTripId, currentTripUpdatedAt, handleSaveItinerary, isSaving };
 };

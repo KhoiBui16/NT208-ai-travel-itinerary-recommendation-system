@@ -7,7 +7,7 @@ import { PlaceSelectionModal } from "../components/PlaceSelectionModal";
 import { CalendarModal } from "../components/CalendarModal";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import {
   Plus, Sparkles, GripVertical, Clock, MapPin, Search, Star, Heart,
   Utensils, Landmark, TreePine, Music, ShoppingBag, Trash2, X, Check,
@@ -119,8 +119,8 @@ export default function TripWorkspace() {
     calculateTotalCostByCategory, formatCurrency
   } = useTripCost(days, accommodations, travelers);
 
-  const { applyServerTrip, handleSaveItinerary, currentTripId, currentTripUpdatedAt } = useTripSync(
-    days, setDays, setSelectedDayId, accommodations, setAccommodations,
+  const { applyServerTrip, handleSaveItinerary, currentTripId, currentTripUpdatedAt, isSaving } = useTripSync(
+    days, setDays, selectedDayId, setSelectedDayId, accommodations, setAccommodations,
     totalBudget, setTotalBudget, travelers, setTravelers, setIsAuthenticated, setPlaces,
     isAuthenticated, setShowLoginModal, updateNextId,
     tripName, setTripName,
@@ -215,6 +215,7 @@ export default function TripWorkspace() {
           travelersTotal={travelers.total}
           tripName={tripName || "Lịch trình mới"}
           tripId={remoteTripId}
+          isSaving={isSaving}
           onNameChange={(newName) => {
             setTripName(newName);
           }}
@@ -535,7 +536,6 @@ export default function TripWorkspace() {
         />
       )}
       
-      <Toaster />
     </div>
   );
 }

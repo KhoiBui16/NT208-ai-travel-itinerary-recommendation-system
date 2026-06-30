@@ -69,17 +69,20 @@ export function TripAccommodation({
   useEffect(() => {
     if (showDaySelection) {
       if (selectedDaysForHotel.length > 0) {
-        setCheckInDayId(selectedDaysForHotel[0]);
+        const firstId = selectedDaysForHotel[0];
+        const lastId = selectedDaysForHotel[selectedDaysForHotel.length - 1];
+        setCheckInDayId(firstId);
         if (bookingType === 'nightly') {
-          const lastId = selectedDaysForHotel[selectedDaysForHotel.length - 1];
           const lastIdx = contiguousDays.findIndex(d => d.id === lastId);
           if (lastIdx !== -1 && lastIdx + 1 < contiguousDays.length) {
             setCheckOutDayId(contiguousDays[lastIdx + 1].id);
           } else {
             setCheckOutDayId(lastId);
           }
+        } else if (bookingType === 'daily') {
+          setCheckOutDayId(lastId);
         } else {
-          setCheckOutDayId(selectedDaysForHotel[0]);
+          setCheckOutDayId(firstId);
         }
       } else {
         setCheckInDayId(selectedDayId);
@@ -115,9 +118,7 @@ export function TripAccommodation({
 
   // LOGIC CHẶN NGƯỜI DÙNG CHỌN SAI
   useEffect(() => {
-    if (checkInDayId === checkOutDayId && bookingType === 'nightly') {
-      setBookingType('hourly'); // Cùng ngày thì ép về theo giờ
-    } else if (checkInDayId !== checkOutDayId && bookingType === 'hourly') {
+    if (checkInDayId !== checkOutDayId && bookingType === 'hourly') {
       setBookingType('nightly'); // Khác ngày thì ép về qua đêm
     }
   }, [checkInDayId, checkOutDayId, bookingType, setBookingType]);
@@ -147,6 +148,14 @@ export function TripAccommodation({
   }, [autoDuration, setBookingDuration]);
   
   if (showDaySelection && selectedHotel) {
+    const hotelImage = selectedHotel.image || "";
+    const hotelLocation = selectedHotel.location || "Chưa có địa chỉ chi tiết";
+    const hotelRating = Number.isFinite(selectedHotel.rating) ? selectedHotel.rating : 0;
+    const hotelReviewCount = Number.isFinite(selectedHotel.reviewCount)
+      ? selectedHotel.reviewCount
+      : 0;
+    const hotelPrice = Number.isFinite(selectedHotel.price) ? selectedHotel.price : 0;
+
     return (
       <div className="max-w-3xl mx-auto pb-10">
         <div className="mb-6 flex items-center justify-between gap-4 border-b border-gray-100 pb-5">
@@ -158,16 +167,22 @@ export function TripAccommodation({
         </div>
 
         <div className="mb-8 p-5 rounded-2xl bg-gray-50 border border-gray-100 shadow-inner flex items-center gap-5">
-          <img src={selectedHotel.image} alt={selectedHotel.name} className="h-20 w-32 rounded-lg object-cover flex-shrink-0 shadow-sm" />
+          {hotelImage ? (
+            <img src={hotelImage} alt={selectedHotel.name} className="h-20 w-32 rounded-lg object-cover flex-shrink-0 shadow-sm" />
+          ) : (
+            <div className="flex h-20 w-32 items-center justify-center rounded-lg bg-cyan-50 text-cyan-500 shadow-sm">
+              <HotelIcon className="h-8 w-8" />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h4 className="font-bold text-gray-900 truncate text-lg mb-1">{selectedHotel.name}</h4>
             <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-2">
               <MapPin className="h-4 w-4" />
-              <span className="truncate">{selectedHotel.location}</span>
+              <span className="truncate">{hotelLocation}</span>
             </div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" /> <span className="text-sm font-semibold">{selectedHotel.rating}</span></div>
-              <span className="text-xs text-gray-400">({selectedHotel.reviewCount.toLocaleString()} đánh giá)</span>
+              <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" /> <span className="text-sm font-semibold">{hotelRating}</span></div>
+              <span className="text-xs text-gray-400">({hotelReviewCount.toLocaleString()} đánh giá)</span>
             </div>
             <button 
               onClick={() => {
@@ -244,11 +259,11 @@ export function TripAccommodation({
               >
                 {/* KHÓA "QUA ĐÊM" NẾU CHỌN CÙNG 1 NGÀY */}
                 <option value="nightly" disabled={checkInDayId === checkOutDayId}>
-                  Qua đêm ({selectedHotel.price.toLocaleString()}đ/đêm)
+                  Qua đêm ({hotelPrice.toLocaleString()}đ/đêm)
                 </option>
-                <option value="daily">Nguyên ngày ({(selectedHotel.price * 1.5).toLocaleString()}đ/ngày)</option>
+                <option value="daily">Nguyên ngày ({(hotelPrice * 1.5).toLocaleString()}đ/ngày)</option>
                 {checkInDayId === checkOutDayId && (
-                  <option value="hourly">Theo giờ ({(selectedHotel.price * 0.15).toLocaleString()}đ/h)</option>
+                  <option value="hourly">Theo giờ ({(hotelPrice * 0.15).toLocaleString()}đ/h)</option>
                 )}
               </select>
             </div>
@@ -294,7 +309,7 @@ export function TripAccommodation({
             <div className="text-right">
                 <span className="text-sm font-medium text-cyan-700 mr-2">{autoDuration} {bookingType === 'hourly' ? 'giờ' : bookingType === 'nightly' ? 'đêm' : 'ngày'}</span>
                 <span className="text-3xl font-bold text-cyan-700">
-                {calculateHotelCost(selectedHotel.price, bookingType, autoDuration).toLocaleString('vi-VN')}₫
+                {calculateHotelCost(hotelPrice, bookingType, autoDuration).toLocaleString('vi-VN')}₫
                 </span>
             </div>
           </div>
@@ -332,7 +347,13 @@ export function TripAccommodation({
             {hotels.map((hotel) => (
               <div key={hotel.id} onClick={() => onSelectHotel(hotel)} className="cursor-pointer rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-lg hover:border-cyan-400 overflow-hidden transition-all flex flex-col group">
                 <div className="relative h-44 overflow-hidden">
-                  <img src={hotel.image} alt={hotel.name} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  {hotel.image ? (
+                    <img src={hotel.image} alt={hotel.name} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-cyan-50 text-cyan-500">
+                      <HotelIcon className="h-12 w-12" />
+                    </div>
+                  )}
                 </div>
                 <div className="p-5 flex-1 flex flex-col">
                   <h4 className="font-bold text-gray-900 mb-1 group-hover:text-cyan-700">{hotel.name}</h4>

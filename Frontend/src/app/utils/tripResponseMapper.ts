@@ -3,6 +3,7 @@ import type {
   Accommodation,
   Activity,
   Day,
+  Hotel,
   TravelerInfo,
 } from "../types/trip.types";
 
@@ -17,6 +18,47 @@ export interface SessionTripData {
   travelers: TravelerInfo;
   updatedAt: string | null;
   savedAt: string;
+}
+
+function toNumber(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function toString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+export function normalizeHotelPayload(
+  hotel: unknown,
+  fallback?: Partial<Hotel | Accommodation>,
+): Hotel | null {
+  if (!hotel || typeof hotel !== "object") {
+    return null;
+  }
+
+  const raw = hotel as Record<string, unknown>;
+  const id = toNumber(raw.id, -1);
+  const name = toString(raw.name, toString(fallback?.name, ""));
+  if (id < 0 || !name) {
+    return null;
+  }
+
+  return {
+    id,
+    name,
+    rating: toNumber(raw.rating),
+    reviewCount: toNumber(raw.reviewCount),
+    price: toNumber(raw.price, toNumber(fallback?.pricePerNight)),
+    image: toString(raw.image),
+    location: toString(raw.location),
+    city: toString(raw.city),
+    amenities: toStringArray(raw.amenities),
+    description: toString(raw.description),
+  };
 }
 
 function buildAccommodationIdentity(accommodation: Accommodation): string {
@@ -111,9 +153,10 @@ export function mapItineraryResponseToSessionTrip(
   const accommodations: Record<number, Accommodation> = {};
   for (const [index, accommodation] of (response.accommodations || []).entries()) {
     const key = accommodation.id ?? -(index + 1);
+    const hotel = normalizeHotelPayload(accommodation.hotel, accommodation);
     accommodations[key] = {
       id: accommodation.id,
-      hotel: (accommodation.hotel as Accommodation["hotel"]) || null,
+      hotel,
       dayIds: accommodation.dayIds,
       bookingType: accommodation.bookingType as Accommodation["bookingType"],
       duration: accommodation.duration,

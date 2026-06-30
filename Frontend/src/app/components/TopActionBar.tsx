@@ -7,13 +7,14 @@ interface TopActionBarProps {
   travelersTotal: number;
   tripName: string;
   tripId: number | null;
+  isSaving: boolean;
   onEditTravelers: () => void;
   onSaveItinerary: () => void;
   onCreateItinerary: () => void;
   onNameChange: (newName: string) => void;
 }
 
-export function TopActionBar({ travelersTotal, tripName, tripId, onEditTravelers, onSaveItinerary, onCreateItinerary, onNameChange }: TopActionBarProps) {
+export function TopActionBar({ travelersTotal, tripName, tripId, isSaving, onEditTravelers, onSaveItinerary, onCreateItinerary, onNameChange }: TopActionBarProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(tripName);
   const [shareLink, setShareLink] = useState<string | null>(null);
@@ -165,10 +166,11 @@ export function TopActionBar({ travelersTotal, tripName, tripId, onEditTravelers
           )}
           <button
             onClick={onSaveItinerary}
-            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:shadow-md"
+            disabled={isSaving}
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Save className="h-4 w-4" />
-            Lưu lịch trình
+            {isSaving ? "Đang lưu..." : "Lưu lịch trình"}
           </button>
           <button
             onClick={onCreateItinerary}
