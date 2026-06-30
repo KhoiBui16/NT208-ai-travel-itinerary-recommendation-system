@@ -25,6 +25,8 @@ import {
   type SavedPlaceResponse,
 } from "../services/places";
 import {
+  applyPlaceImageFallback,
+  getDestinationFallbackImage,
   resolvePlaceImage,
   resolvePlaceImageWithCategory,
   DEFAULT_PLACE_IMAGE,
@@ -75,17 +77,7 @@ function formatPlaceCategory(type: string): string {
 }
 
 function resolveDestinationImage(name: string, apiImage?: string | null): string {
-  const trimmedImage = apiImage?.trim();
-  if (trimmedImage) {
-    if (
-      trimmedImage.startsWith("http://") ||
-      trimmedImage.startsWith("https://")
-    ) {
-      return trimmedImage;
-    }
-  }
-
-  return DEFAULT_PLACE_IMAGE;
+  return resolvePlaceImage(apiImage, getDestinationFallbackImage(name));
 }
 
 function toDisplayPlace(place: PlaceResponse): DisplayPlaceCard {
@@ -318,6 +310,12 @@ export default function CityDetail() {
         <img
           src={displayCity.bannerImage}
           alt={displayCity.name}
+          onError={(event) =>
+            applyPlaceImageFallback(
+              event,
+              getDestinationFallbackImage(displayCity.name),
+            )
+          }
           className="h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
@@ -469,6 +467,7 @@ export default function CityDetail() {
                     <img
                       src={place.image}
                       alt={place.name}
+                      onError={applyPlaceImageFallback}
                       className="h-full w-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -573,6 +572,7 @@ export default function CityDetail() {
                     <img
                       src={resolvePlaceImage(hotel.image)}
                       alt={hotel.name}
+                      onError={applyPlaceImageFallback}
                       className="h-full w-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { MapPin, Star, Hotel as HotelIcon, Plus, Clock, CalendarDays, ArrowRight, PencilRuler } from "lucide-react";
 import { Day, Hotel, Accommodation } from "../types/trip.types";
+import { applyPlaceImageFallback, resolvePlaceImage } from "../utils/placeImage";
 
 interface TripAccommodationProps {
   selectedDay: Day;
@@ -348,7 +349,12 @@ export function TripAccommodation({
               <div key={hotel.id} onClick={() => onSelectHotel(hotel)} className="cursor-pointer rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-lg hover:border-cyan-400 overflow-hidden transition-all flex flex-col group">
                 <div className="relative h-44 overflow-hidden">
                   {hotel.image ? (
-                    <img src={hotel.image} alt={hotel.name} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img
+                      src={resolvePlaceImage(hotel.image)}
+                      alt={hotel.name}
+                      onError={applyPlaceImageFallback}
+                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-cyan-50 text-cyan-500">
                       <HotelIcon className="h-12 w-12" />
@@ -410,7 +416,12 @@ export function TripAccommodation({
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden mb-6">
           <div className="relative h-48">
             {hotel?.image ? (
-              <img src={hotel.image} alt={accommodationName} className="h-full w-full object-cover" />
+              <img
+                src={resolvePlaceImage(hotel.image)}
+                alt={accommodationName}
+                onError={applyPlaceImageFallback}
+                className="h-full w-full object-cover"
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-cyan-50">
                 <HotelIcon className="h-16 w-16 text-cyan-500" />
