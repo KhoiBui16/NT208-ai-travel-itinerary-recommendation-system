@@ -1,0 +1,65 @@
+{
+  "imgs": [
+    {
+      "src": "/app_logo.png",
+      "currentSrc": "http://localhost:5173/app_logo.png",
+      "alt": "TravelAI Logo"
+    },
+    {
+      "src": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "currentSrc": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "alt": "Buôn Ma Thuột"
+    },
+    {
+      "src": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "currentSrc": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "alt": "Châu Đốc"
+    },
+    {
+      "src": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "currentSrc": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "alt": "Côn Đảo"
+    },
+    {
+      "src": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "currentSrc": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "alt": "Cần Thơ"
+    },
+    {
+      "src": "https://images.pexels.com/photos/2249485/pexels-photo-2249485.jpeg?w=600",
+      "currentSrc": "https://images.pexels.com/photos/2249485/pexels-photo-2249485.jpeg?w=600",
+      "alt": "Huế"
+    },
+    {
+      "src": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "currentSrc": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "alt": "Hà Giang"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1509030450996-dd1a26dda07a?w=600&q=80",
+      "currentSrc": "https://images.unsplash.com/photo-1509030450996-dd1a26dda07a?w=600&q=80",
+      "alt": "Hà Nội"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1668000018482-a02acf02b22a?w=600&q=80",
+      "currentSrc": "https://images.unsplash.com/photo-1668000018482-a02acf02b22a?w=600&q=80",
+      "alt": "Hạ Long"
+    },
+    {
+      "src": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "currentSrc": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "alt": "Hải Phòng"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1664650440553-ab53804814b3?w=600&q=80",
+      "currentSrc": "https://images.unsplash.com/photo-1664650440553-ab53804814b3?w=600&q=80",
+      "alt": "Hội An"
+    },
+    {
+      "src": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "currentSrc": "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080",
+      "alt": "Mũi Né"
+    }
+  ],
+  "imgResponses": []
+}

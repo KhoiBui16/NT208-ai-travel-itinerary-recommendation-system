@@ -1,4 +1,5 @@
 import type { SyntheticEvent } from "react";
+import { API_BASE } from "../services/api";
 
 export const DEFAULT_PLACE_IMAGE =
   "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080";
@@ -29,9 +30,33 @@ const DESTINATION_COVER_IMAGES: Record<string, string> = {
   "Ninh Bình": "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?w=600",
 };
 
-export function resolvePlaceImage(image?: string | null): string {
+function resolveApiImageUrl(
+  image?: string | null,
+  fallbackSrc: string = DEFAULT_PLACE_IMAGE,
+): string {
   const trimmedImage = image?.trim();
-  return trimmedImage || DEFAULT_PLACE_IMAGE;
+  if (!trimmedImage) return fallbackSrc;
+
+  if (
+    trimmedImage.startsWith("http://") ||
+    trimmedImage.startsWith("https://") ||
+    trimmedImage.startsWith("data:")
+  ) {
+    return trimmedImage;
+  }
+
+  if (trimmedImage.startsWith("/")) {
+    return `${API_BASE}${trimmedImage}`;
+  }
+
+  return `${API_BASE}/${trimmedImage.replace(/^\.?\//, "")}`;
+}
+
+export function resolvePlaceImage(
+  image?: string | null,
+  fallbackSrc: string = DEFAULT_PLACE_IMAGE,
+): string {
+  return resolveApiImageUrl(image, fallbackSrc);
 }
 
 /**
@@ -53,9 +78,7 @@ export function resolvePlaceImageWithCategory(
   image?: string | null,
   category?: string,
 ): string {
-  const trimmedImage = image?.trim();
-  if (trimmedImage) return trimmedImage;
-  return getPlaceFallbackImage(category);
+  return resolveApiImageUrl(image, getPlaceFallbackImage(category));
 }
 
 /**
@@ -69,11 +92,12 @@ export function getDestinationFallbackImage(destination?: string | null): string
 
 export function applyPlaceImageFallback(
   event: SyntheticEvent<HTMLImageElement>,
+  fallbackSrc: string = DEFAULT_PLACE_IMAGE,
 ): void {
   if (event.currentTarget.dataset.fallbackApplied === "true") {
     return;
   }
 
   event.currentTarget.dataset.fallbackApplied = "true";
-  event.currentTarget.src = DEFAULT_PLACE_IMAGE;
+  event.currentTarget.src = fallbackSrc;
 }

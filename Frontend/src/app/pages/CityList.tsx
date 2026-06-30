@@ -3,7 +3,12 @@ import { Link } from "react-router";
 import { Header } from "../components/Header";
 import { MapPin, Star, ArrowRight } from "lucide-react";
 import { listDestinations, type DestinationResponse } from "../services/places";
-import { DEFAULT_PLACE_IMAGE } from "../utils/placeImage";
+import {
+  applyPlaceImageFallback,
+  DEFAULT_PLACE_IMAGE,
+  getDestinationFallbackImage,
+  resolvePlaceImage,
+} from "../utils/placeImage";
 
 interface DisplayCity {
   id: number;
@@ -16,15 +21,11 @@ interface DisplayCity {
   rating: number;
 }
 
-function resolveDestinationCardImage(image?: string | null): string {
-  const trimmedImage = image?.trim();
-  if (
-    trimmedImage &&
-    (trimmedImage.startsWith("http://") || trimmedImage.startsWith("https://"))
-  ) {
-    return trimmedImage;
-  }
-  return DEFAULT_PLACE_IMAGE;
+function resolveDestinationCardImage(
+  name: string,
+  image?: string | null,
+): string {
+  return resolvePlaceImage(image, getDestinationFallbackImage(name));
 }
 
 /** Map API destinations to the display shape CityList expects. */
@@ -34,7 +35,7 @@ function apiToCity(d: DestinationResponse): DisplayCity {
     slug: d.slug,
     name: d.name,
     region: "",
-    image: resolveDestinationCardImage(d.image),
+    image: resolveDestinationCardImage(d.name, d.image),
     description: d.readinessReason || d.country || "",
     popularPlaces: d.placesCount,
     rating: d.rating || 0,
@@ -141,6 +142,12 @@ export default function CityList() {
                   <img
                     src={city.image}
                     alt={city.name}
+                    onError={(event) =>
+                      applyPlaceImageFallback(
+                        event,
+                        getDestinationFallbackImage(city.name),
+                      )
+                    }
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />

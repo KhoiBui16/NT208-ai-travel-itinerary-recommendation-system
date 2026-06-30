@@ -3,7 +3,12 @@ import { Link } from "react-router";
 import { Header } from "../components/Header";
 import { features, heroFeatures } from "../data/homeData";
 import { listDestinations, type DestinationResponse } from "../services/places";
-import { applyPlaceImageFallback, DEFAULT_PLACE_IMAGE } from "../utils/placeImage";
+import {
+  applyPlaceImageFallback,
+  DEFAULT_PLACE_IMAGE,
+  getDestinationFallbackImage,
+  resolvePlaceImage,
+} from "../utils/placeImage";
 import { Sparkles, MapPin, Plane, ArrowRight } from "lucide-react";
 
 interface DisplayDest {
@@ -16,18 +21,14 @@ interface DisplayDest {
 /**
  * Resolves a destination image URL for display.
  *
- * Chỉ tin ảnh tuyệt đối `http/https` từ backend. Nếu backend đang trả
- * placeholder tương đối hoặc chuỗi rỗng thì dùng ảnh mặc định để tránh
- * che mất tình trạng dữ liệu thật bằng mock pack.
+ * Ảnh tương đối từ API phải được nối với backend origin. Nếu API không có
+ * ảnh thì mới rơi về fallback theo destination.
  */
-function resolveDestinationImage(apiImage?: string | null): string {
-  const trimmedImage = apiImage?.trim();
-  if (trimmedImage) {
-    if (trimmedImage.startsWith("http://") || trimmedImage.startsWith("https://")) {
-      return trimmedImage;
-    }
-  }
-  return DEFAULT_PLACE_IMAGE;
+function resolveDestinationImage(
+  name: string,
+  apiImage?: string | null,
+): string {
+  return resolvePlaceImage(apiImage, getDestinationFallbackImage(name));
 }
 
 export default function Home() {
@@ -46,7 +47,7 @@ export default function Home() {
             apiDests.map((d: DestinationResponse) => ({
               slug: d.slug,
               name: d.name,
-              image: resolveDestinationImage(d.image),
+              image: resolveDestinationImage(d.name, d.image),
               description: d.readinessReason || d.country || "",
             })),
           );
@@ -186,7 +187,12 @@ export default function Home() {
                 <img
                   src={dest.image}
                   alt={dest.name}
-                  onError={applyPlaceImageFallback}
+                  onError={(event) =>
+                    applyPlaceImageFallback(
+                      event,
+                      getDestinationFallbackImage(dest.name),
+                    )
+                  }
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />

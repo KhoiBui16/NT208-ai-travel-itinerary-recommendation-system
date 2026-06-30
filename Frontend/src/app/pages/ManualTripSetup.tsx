@@ -26,17 +26,18 @@ import {
 
 import type { Destination } from "../data/destinations";
 import { listDestinations } from "../services/places";
-import { DEFAULT_PLACE_IMAGE } from "../utils/placeImage";
+import {
+  applyPlaceImageFallback,
+  DEFAULT_PLACE_IMAGE,
+  getDestinationFallbackImage,
+  resolvePlaceImage,
+} from "../utils/placeImage";
 
-function resolveDestinationImage(image?: string | null): string {
-  const trimmedImage = image?.trim();
-  if (
-    trimmedImage &&
-    (trimmedImage.startsWith("http://") || trimmedImage.startsWith("https://"))
-  ) {
-    return trimmedImage;
-  }
-  return DEFAULT_PLACE_IMAGE;
+function resolveDestinationImage(
+  name: string,
+  image?: string | null,
+): string {
+  return resolvePlaceImage(image, getDestinationFallbackImage(name));
 }
 
 export default function ManualTripSetup() {
@@ -65,7 +66,7 @@ export default function ManualTripSetup() {
             id: d.id || idx + 1,
             name: d.name,
             country: d.country || "",
-            image: resolveDestinationImage(d.image),
+            image: resolveDestinationImage(d.name, d.image),
             description: d.readinessReason || d.country || "",
             rating: d.rating || 0,
             places: [],
@@ -152,6 +153,12 @@ export default function ManualTripSetup() {
               <img
                 src={viewingDest.image}
                 alt={viewingDest.name}
+                onError={(event) =>
+                  applyPlaceImageFallback(
+                    event,
+                    getDestinationFallbackImage(viewingDest.name),
+                  )
+                }
                 className="h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/10" />
@@ -340,6 +347,12 @@ export default function ManualTripSetup() {
                   <img
                     src={dest.image}
                     alt={dest.name}
+                    onError={(event) =>
+                      applyPlaceImageFallback(
+                        event,
+                        getDestinationFallbackImage(dest.name),
+                      )
+                    }
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent group-hover:bg-gradient-to-t group-hover:from-black/75 group-hover:via-black/35" />
