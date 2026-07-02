@@ -41,7 +41,7 @@ export const interests = [
 ];
 
 export const popularDestinations = [
-  "Hà Nội", "Đà Nẵng", "Hội An", "Phú Quốc", "Sapa", "Vịnh Hạ Long",
+  "Hà Nội", "Đà Nẵng", "Hội An", "Phú Quốc", "Sapa", "Hạ Long",
   "TP. Hồ Chí Minh", "Nha Trang", "Đà Lạt", "Huế",
 ];
 

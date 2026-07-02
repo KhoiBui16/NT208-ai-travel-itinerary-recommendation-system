@@ -20,7 +20,8 @@ def test_get_settings__default_config__loads_foundation_values(
     assert settings.access_token_expire_minutes == 15
     assert settings.companion_requires_confirmation is True
     assert "Hà Nội" in settings.etl_cities
-    assert "Vịnh Hạ Long" in settings.etl_cities
+    assert "Hạ Long" in settings.etl_cities
+    assert "Vịnh Hạ Long" not in settings.etl_cities
     assert "Châu Đốc" in settings.etl_cities
     assert settings.etl_max_places_per_city == 75
     assert settings.agent_min_activities_per_day == 5

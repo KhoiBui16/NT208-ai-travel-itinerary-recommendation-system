@@ -198,7 +198,6 @@ class AppSettings(BaseSettings):
         "Phú Quốc",
         "Sapa",
         "Hạ Long",
-        "Vịnh Hạ Long",
         "Huế",
         "Đà Lạt",
         "Vũng Tàu",

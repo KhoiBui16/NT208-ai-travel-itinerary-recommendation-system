@@ -1,0 +1,28 @@
+slug,name,active,hotels
+ha-noi,Hà Nội,t,3
+da-lat,Đà Lạt,t,2
+da-nang,Đà Nẵng,t,2
+ha-giang,Hà Giang,t,2
+ha-long,Hạ Long,t,2
+hai-phong,Hải Phòng,t,2
+hoi-an,Hội An,t,2
+moc-chau,Mộc Châu,t,2
+ninh-binh,Ninh Bình,t,2
+tp-ho-chi-minh,TP. Hồ Chí Minh,t,2
+buon-ma-thuot,Buôn Ma Thuột,t,1
+can-tho,Cần Thơ,t,1
+chau-doc,Châu Đốc,t,1
+con-dao,Côn Đảo,t,1
+dong-hoi,Đồng Hới,t,1
+hue,Huế,t,1
+mui-ne,Mũi Né,t,1
+nha-trang,Nha Trang,t,1
+phan-thiet,Phan Thiết,t,1
+phong-nha,Phong Nha,t,1
+phu-quoc,Phú Quốc,t,1
+pleiku,Pleiku,t,1
+quy-nhon,Quy Nhơn,t,1
+sapa,Sapa,t,1
+tay-ninh,Tây Ninh,t,1
+tuy-hoa,Tuy Hòa,t,1
+vung-tau,Vũng Tàu,t,1

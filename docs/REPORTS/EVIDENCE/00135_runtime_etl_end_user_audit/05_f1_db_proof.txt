@@ -1,0 +1,6 @@
+## command: docker exec db psql (post-migration)
+alembic=20260703_0010
+destinations=27
+vinh-ha-long-exists=0
+ha-long-places=86
+ha-long-hotels=2

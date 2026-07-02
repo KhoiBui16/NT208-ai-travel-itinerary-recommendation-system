@@ -1,0 +1,5 @@
+## command: PYTHONPATH=. uv run python f3_check.py (create_app verify_database=False)
+has_img_route: True
+dest_missing_real_image: 200 image/svg+xml 642 bytes
+img_root: 200 image/svg+xml
+F3_LOCAL_OK

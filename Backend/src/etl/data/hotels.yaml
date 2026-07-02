@@ -207,9 +207,9 @@ hotels:
     location: "159 Thùy Vân, Vũng Tàu"
     description: "Khách sạn 4 sao đường biển Thùy Vân"
 
-  # --- Vịnh Hạ Long alias used by FE ---
+  # --- Hạ Long (Vịnh Hạ Long merged as the canonical destination) ---
   - name: "Paradise Suites Hạ Long"
-    city: "Vịnh Hạ Long"
+    city: "Hạ Long"
     rating: 4.5
     review_count: 640
     price: 2400000

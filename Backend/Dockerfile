@@ -22,6 +22,7 @@ RUN adduser --disabled-password --gecos "" appuser
 
 COPY --from=builder /app/.venv /app/.venv
 COPY src ./src
+COPY static ./static
 COPY alembic ./alembic
 COPY alembic.ini config.yaml ./
 
