@@ -16,7 +16,7 @@ Tất cả chạy từ repo root (`<repo-root>`), Windows + local Docker DB/Redi
 | `05_migration_db_proof.txt` | `docker compose exec -T db psql` downgrade↔upgrade cycle | ha-long `places_count=86=real`, downgrade `INSERT 0 1` valid, vinh gone |
 | `06_pytest_full_unit.txt` | `pytest tests/unit/` (full) | **194 passed** |
 | `07_frontend_build.txt` | `npm run build -- --outDir <temp-build-dir>` | `✓ built in 12.30s` |
-| `08_pr_status.txt` | `gh pr checks 126` + `gh pr view 126` (post-push) | PR #126 CI status (capture sau push fix) |
+| `08_pr_status.txt` | `gh pr checks 126` + `gh pr view 126` (post-push) | **8/8 required checks pass** on `a7d3664`: pr-policy, backend-lint, backend-unit, backend-integration, backend-migrations, frontend-build, frontend-e2e, Vercel — state `OPEN`, `MERGEABLE` |
 
 Lưu ý môi trường:
 - Host Windows không kết nối được docker DB qua localhost (asyncpg `WinError 64`); DB query qua `docker compose exec -T db psql` (compose network).
