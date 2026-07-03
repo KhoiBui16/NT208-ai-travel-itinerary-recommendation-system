@@ -435,3 +435,118 @@ Pass này nhắm các required check xanh:
 - **slug anomaly** `ha-n-i.jpg`: audit `core/slugify.py` strip ký tự không-ASCII.
 - **Starlette deprecation** `HTTP_422_UNPROCESSABLE_ENTITY`: đổi sang `HTTP_422_UNPROCESSABLE_CONTENT` (cleanup nhỏ, không gấp).
 - **Asset ảnh thật**: user cung cấp ảnh destination/place thật → thay `placeholder.svg` khi có (route F3 đã sẵn sàng phục vụ file thật khi tồn tại).
+
+---
+
+# Phụ lục A — PR-fix pass (blockers sau review PR #126, trước merge)
+
+> Pass gốc (§1–§27) đã commit/push PR #126 và CI xanh ở commit đầu. Pass **này** là PR-fix cho merge-readiness: re-verify bằng sub-agent hẹp (caveman schema) phát hiện **4 blocker còn sót** trong commit đầu. Cả 4 đã fix + verify local xanh.
+
+## A1. 4 blocker phát hiện + fix
+
+| # | Blocker | Caveman (rút gọn) | Fix | Status |
+|---|---|---|---|---|
+| **B1** | Migration `0010` reassign places/hotels nhưng **không recompute `destinations.places_count`** → ha-long lưu 81, thật 86. | `20260703_0010_merge...py — places_count stale (81 vs 86) — evidence DB query — sort/tally sai — recompute — bug` | Thêm `UPDATE destinations SET places_count=(SELECT COUNT(*)...) WHERE slug='ha-long'` vào `upgrade()`. | ✅ fixed |
+| **B2** | `downgrade()` chỉ insert slug/name/image → **fail** vì `destinations` có NOT NULL no-default (`description`, `is_active`, `places_count`). | `20260703_0010...downgrade — INSERT thiếu NOT NULL cols — schema — alembic downgrade -1 crash — insert đầy đủ hoặc raise irreversible — bug` | Downgrade insert tất cả NOT NULL cols (`is_active=false`, `places_count=0`, description/image). | ✅ fixed |
+| **B3** | `llm.py:124 except Exception` catch-all đổi **generic provider/transport error** → `LLMGenerationError` → pipeline thành **422** thay vì 503. | `agent/llm.py:124 — generic except→LLMGenerationError — ConnectionError test — network err trả 422 (sai) — ServiceUnavailableException — bug` | Thêm `except LLMGenerationError: raise` (giữ 422 cho output rỗng/sai JSON) rồi đổi `except Exception` → `ServiceUnavailableException(503, AI_PROVIDER_ERROR)`. | ✅ fixed + test |
+| **B4** | Pass gốc chỉ đổi `popularDestinations`; **bỏ sót** `availableDestinations` (tripConstants.ts:298) + `homeData.ts:40` + `places.ts:58` vẫn expose "Vịnh Hạ Long" top-level. | `tripConstants.ts:298 — availableDestinations name "Vịnh Hạ Long" — AddDaysModal dùng array này — UI vẫn hiện dest trùng — đổi "Hạ Long" — bug` | Đổi `name: "Vịnh Hạ Long"` → `"Hạ Long"` ở 3 file + bỏ stale key `placeImage.ts` DESTINATION_COVER_IMAGES. | ✅ fixed |
+
+## A2. Migration proof (B1 + B2)
+
+Re-run downgrade↔upgrade bằng SQL trực tiếp (`docker compose exec -T db psql`, vì api container wedge — alembic runner đầy đủ chạy trên CI). Evidence `05_migration_db_proof.txt`:
+
+```
+simulate FIXED downgrade INSERT (all NOT NULL cols) → INSERT 0 1   ✅ (B2 valid)
+simulate FIXED upgrade: reassign(no-op) → UPDATE 0; DELETE vinh → DELETE 1; recompute → UPDATE 1
+POST-STATE: alembic=20260703_0010
+            ha-long stored_places_count=86 == real_places_count=86   ✅ (B1 fixed)
+            vinh-ha-long-exists=0
+            dup-place-names-under-ha-long=0
+```
+
+CI `backend-migrations` (Linux, fresh DB) chạy `alembic upgrade head` + `alembic check` — migration idempotent (no-op trên seed sạch không có vinh-ha-long) → recompute đặt `places_count` đúng.
+
+## A3. AI 422/503 contract proof (B3)
+
+Contract cuối (xác nhận bằng sub-agent + test):
+
+| Tình huống | Exception | HTTP | Test |
+|---|---|---|---|
+| Timeout client | `ServiceUnavailableException` `AI_PROVIDER_TIMEOUT` | **503** | `test_generate_text__timeout_*` |
+| Provider overloaded (ServerError 503) | `ServiceUnavailableException` `AI_PROVIDER_OVERLOADED` | **503** | `test_generate_text__server_error_*` |
+| **Generic provider/transport (ConnectionError, auth, SDK)** | `ServiceUnavailableException` `AI_PROVIDER_ERROR` | **503** | **`test_generate_text__generic_provider_error_*` (MỚI)** |
+| Output rỗng/không parse được | `LLMGenerationError` → pipeline retry → exhaustion | **422** | `test_pipeline__still_rejects_explicit_over_budget_itinerary` |
+
+Test mới (`test_agent_llm.py`): mock `_generate_with_client` raise `ConnectionError` → assert `ServiceUnavailableException` + `error_code="AI_PROVIDER_ERROR"` + `retryable=True`. pytest focused **22 passed**, full unit **194 passed** (+1).
+
+## A4. FE taxonomy completeness (B4)
+
+Cuối FE không còn "Vịnh Hạ Long" top-level (grep toàn `Frontend/src`):
+
+```
+tripConstants.ts:298 availableDestinations id:6  name "Vịnh Hạ Long" → "Hạ Long"  ✅ (AddDaysModal dùng array này)
+homeData.ts:40   destinations[]        name "Vịnh Hạ Long" → "Hạ Long"  ✅
+places.ts:58     cities[] id:6         name "Vịnh Hạ Long" → "Hạ Long"  ✅
+placeImage.ts    DESTINATION_COVER_IMAGES  bỏ stale key "Vịnh Hạ Long" (giữ "Hạ Long")  ✅
+```
+
+"Vịnh Hạ Long" **chỉ còn** là **place name** dưới `ha-long` (place id 1290) — đúng taxonomy. FE build `✓ 12.30s` (evidence `07_frontend_build.txt`).
+
+## A5. Evidence cleanup
+
+- Mọi evidence log (01–07) **sanitize local path**: `D:\...\recommendation-system` → `<repo-root>`, `C:\Users\nhata\.claude\jobs\...` → `<temp-build-dir>`, strip ANSI codes.
+- Command evidence dùng dạng chuẩn **`docker compose exec -T db psql -U postgres -d dulichviet`** (không còn `docker exec db`).
+- `05_f1_db_proof.txt` → đổi tên `05_migration_db_proof.txt` (nhấn places_count + downgrade). README evidence cập nhật.
+
+## A6. Production-deploy clarification (QUAN TRỌNG — không overclaim)
+
+> **Production Render/Vercel hiện chạy `main`, KHÔNG chứa PR #126 đến khi merge.** Do đó production KHÔNG chứng minh PR này.
+
+- Verification PR này dựa trên: **local Docker DB + TestClient + FE build + unit/integration CI** (Linux, fresh DB). CI của PR #126 (sau fix) là bằng chứng pre-merge.
+- Chỉ sau khi **merge `main` + redeploy** Render/Vercel thì mới có thể re-verify production (xem §A9).
+- Vercel **PR preview** cho PR #126 (nếu có) mới là bằng chứng deployed của branch này; chưa test riêng trong pass này.
+- URLs production baseline (chỉ health, KHÔNG verify PR): FE `https://nt-208-ai-travel-itinerary-recommen.vercel.app`, BE `https://dulichviet-api.onrender.com`.
+
+## A7. Asset / data contract — user-provided image files (Step 5)
+
+Canonical contract cho ảnh thật (sau khi user thu thập):
+
+- **BE phục vụ** DB image path qua route `/img/{file_path:path}` (F3). User đặt ảnh thật tại:
+  - `Backend/static/img/destinations/<slug>.jpg`
+  - `Backend/static/img/places/<slug>.jpg`
+  - `Backend/static/img/hotels/<slug>.jpg`
+- **DB lưu path** origin-relative:
+  - `/img/destinations/ha-long.jpg`
+  - `/img/places/vinh-ha-long.jpg`
+  - `/img/hotels/paradise-suites.jpg`
+- **Docker/Render include** các file này vì `Backend/Dockerfile` có `COPY static ./static`.
+- **Missing file** → BE trả `placeholder.svg` (200, `image/svg+xml`) — không 404.
+- **KHÔNG** lưu `Frontend/src/assets/...` trong DB: Vite fingerprint bundled asset → path không ổn định/public.
+- **KHÔNG** lưu binary ảnh trong Postgres.
+- FE (`placeImage.ts`): image rỗng → FE fallback (category/Pexels); path `/img/...` non-empty → resolve backend API base.
+- Backfill: sau khi có ảnh, cung cấp script SQL `UPDATE places SET image='/img/places/<slug>.jpg' WHERE ...`.
+
+## A8. Verification matrix (fix pass — tất cả xanh)
+
+| Gate | Command | Result | Evidence |
+|---|---|---|---|
+| Lint | `uv run ruff check src tests` | All checks passed | `01_ruff_check.txt` |
+| Format | `uv run ruff format --check src tests` | 106 files formatted | `02_ruff_format_check.txt` |
+| Unit (focused) | `pytest test_config test_itinerary_pipeline test_agent_llm` | **22 passed** | `03_pytest_focused.txt` |
+| Unit (full) | `pytest tests/unit/` | **194 passed** | `06_pytest_full_unit.txt` |
+| Migration | SQL downgrade↔upgrade via `docker compose exec -T db` | places_count 86=86, downgrade valid | `05_migration_db_proof.txt` |
+| /img route | TestClient (api wedge) | 200 image/svg+xml | `04_f3_testclient.txt` |
+| FE build | `npm run build` | `✓ 12.30s` | `07_frontend_build.txt` |
+
+> Docker `/img` HTTP proof: api container wedge (environmental, không regression) → dùng TestClient in-process. CI chạy container thật.
+
+## A9. Current PR #126 / CI status + post-merge re-verify
+
+- Commit fix: `fix: [#00135] close runtime data audit blockers` (push branch `fix/00135-a-runtime-etl-image-hardening`).
+- CI (sau push fix): cập nhật trong evidence `08_pr_status.txt` (capture post-push).
+- **Merge-ready khi** 8 required checks xanh: `pr-policy`, `backend-lint`, `backend-unit`, `backend-integration`, `backend-migrations`, `frontend-build`, `frontend-e2e`, (+ Vercel).
+- **Sau merge `main` + redeploy, PHẢI re-verify riêng** (không được claim production theo CI PR):
+  1. Render: `alembic upgrade head` (qua `preDeployCommand`) áp `20260703_0010` lên production DB → recompute `places_count` + drop vinh-ha-long nếu còn.
+  2. Vercel: FE build mới (3 file taxonomy đổi) → "Hạ Long" xuất hiện 1 lần, không "Vịnh Hạ Long" top-level.
+  3. Smoke: `/img/destinations/ha-long.jpg` trả 200; destination list đúng.
+

@@ -114,3 +114,28 @@ async def test_generate_text__server_error_returns_overloaded_code(
 
     assert exc_info.value.error_code == "AI_PROVIDER_OVERLOADED"
     assert exc_info.value.retryable is True
+
+
+@pytest.mark.asyncio
+async def test_generate_text__generic_provider_error_returns_service_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A generic provider/transport/client error (e.g. ConnectionError, auth
+    failure, or any other non-timeout / non-overloaded SDK error) must surface
+    as 503 ServiceUnavailableException (a retryable outage) — it must NOT be
+    swallowed into LLMGenerationError, because the pipeline treats
+    LLMGenerationError as a model-output validation failure and turns it into a
+    permanent 422. Only true model-output failures (empty response / bad JSON)
+    are 422. See 00135."""
+    llm = GeminiLLM(_make_config())
+
+    async def fake_generate_with_client(prompt: str) -> object:
+        raise ConnectionError("connection reset by peer")
+
+    monkeypatch.setattr(llm, "_generate_with_client", fake_generate_with_client)
+
+    with pytest.raises(ServiceUnavailableException) as exc_info:
+        await llm.generate_text("hello")
+
+    assert exc_info.value.error_code == "AI_PROVIDER_ERROR"
+    assert exc_info.value.retryable is True

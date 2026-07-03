@@ -121,6 +121,13 @@ class GeminiLLM:
                 error_code="AI_PROVIDER_OVERLOADED",
                 retryable=True,
             ) from exc
+        except LLMGenerationError:
+            # Unusable model OUTPUT (empty response / no extractable candidates
+            # raised by _extract_response_text). This is a content/validation
+            # failure the pipeline retries and then surfaces as 422 on
+            # exhaustion — NOT a provider outage — so re-raise unchanged and do
+            # not let the generic clause below turn it into a 503.
+            raise
         except Exception as exc:
             logger.warning(
                 "gemini_request_failed",
@@ -128,7 +135,15 @@ class GeminiLLM:
                 error_type=exc.__class__.__name__,
                 duration_ms=round((perf_counter() - started_at) * 1000),
             )
-            raise LLMGenerationError("Gemini generation failed") from exc
+            # Any OTHER failure reaching here is a provider/transport/client
+            # error (connection reset, auth, unexpected SDK error, ...) — NOT a
+            # model-output problem. Surface a retryable 503 so the client treats
+            # it as an outage instead of a permanent 422 validation failure.
+            raise ServiceUnavailableException(
+                "Dịch vụ AI hiện không khả dụng. Vui lòng thử lại sau.",
+                error_code="AI_PROVIDER_ERROR",
+                retryable=True,
+            ) from exc
 
 
 def parse_json_response(raw_text: str) -> dict[str, Any]:

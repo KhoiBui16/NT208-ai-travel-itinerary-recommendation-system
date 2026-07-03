@@ -295,7 +295,7 @@ export const availableDestinations: Destination[] = [
   },
   {
     id: 6,
-    name: "Vịnh Hạ Long",
+    name: "Hạ Long",
     country: "Việt Nam",
     image: "https://images.unsplash.com/photo-1668000018482-a02acf02b22a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYWxvbmclMjBiYXklMjB2aWV0bmFtfGVufDF8fHx8MTc3MjI2NTgyMnww&ixlib=rb-4.1.0&q=80&w=1080",
     rating: 4.9,

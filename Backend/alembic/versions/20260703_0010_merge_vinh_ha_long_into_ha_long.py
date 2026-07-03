@@ -55,17 +55,42 @@ def upgrade() -> None:
         """
     )
     op.execute("DELETE FROM destinations WHERE slug = 'vinh-ha-long'")
+    # The reassign moved vinh-ha-long's places into ha-long, so ha-long's cached
+    # ``destinations.places_count`` is now stale. Recompute it to the live count
+    # so destination list/sort UI and place tallies stay correct. Idempotent and
+    # a no-op when nothing was reassigned (fresh CI DB without vinh-ha-long).
+    op.execute(
+        """
+        UPDATE destinations
+        SET places_count = (
+            SELECT COUNT(*)
+            FROM places
+            WHERE places.destination_id = destinations.id
+        )
+        WHERE slug = 'ha-long'
+        """
+    )
 
 
 def downgrade() -> None:
-    """Best-effort: re-create an empty vinh-ha-long destination row.
+    """Best-effort: re-create an empty (inactive) vinh-ha-long destination row.
 
-    Reassigned places/hotels are NOT moved back — the merge is one-way.
+    All NOT NULL no-default columns (name, slug, description, image, is_active,
+    places_count) are populated with safe defaults so the INSERT succeeds
+    against the current schema. Reassigned places/hotels are NOT moved back —
+    the merge is intentionally one-way, so the recreated row stays empty and
+    inactive (places_count = 0, is_active = false).
     """
     op.execute(
         """
-        INSERT INTO destinations (slug, name, image)
-        SELECT 'vinh-ha-long', 'Vịnh Hạ Long', '/img/destinations/vinh-ha-long.jpg'
+        INSERT INTO destinations (slug, name, description, image, is_active, places_count)
+        SELECT
+            'vinh-ha-long',
+            'Vịnh Hạ Long',
+            'Vịnh Hạ Long (đã hợp nhất vào Hạ Long)',
+            '/img/destinations/vinh-ha-long.jpg',
+            false,
+            0
         WHERE NOT EXISTS (SELECT 1 FROM destinations WHERE slug = 'vinh-ha-long')
         """
     )

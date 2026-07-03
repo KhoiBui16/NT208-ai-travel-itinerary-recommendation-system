@@ -1,0 +1,22 @@
+## Migration 20260703_0010 data-consistency proof
+## commands (from <repo-root>), DB via: docker compose exec -T db psql -U postgres -d dulichviet
+## NOTE: alembic runner (downgrade -1 / upgrade head) could not run locally — the api
+## container is wedged (docker exec/compose into api hangs; environmental, not code).
+## The migration SQL itself is proven valid by direct execution below; the full alembic
+## path (upgrade head + alembic check) runs on CI backend-migrations (Linux, fresh DB).
+
+=== simulate FIXED downgrade(): re-insert empty vinh-ha-long (all NOT NULL cols) ===
+INSERT 0 1
+=== simulate FIXED upgrade(): reassign(no-op) + DELETE vinh + recompute ha-long places_count ===
+UPDATE 0
+DELETE 1
+UPDATE 1
+=== POST-MIGRATION STATE ===
+alembic_version=20260703_0010
+  slug   | stored_places_count | real_places_count 
+---------+---------------------+-------------------
+ ha-long |                  86 |                86
+(1 row)
+
+vinh-ha-long-exists=0
+dup-place-names-under-ha-long=0

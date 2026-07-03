@@ -1,5 +1,6 @@
-## command: uv run ruff format --check src tests
-[1;33mwarning[0m[1m:[0m [1mFailed to write cache file `D:\UIT\FILE_UIT_KHMT2023.2\Nam_03\HK2\NT208_LapTrinhWeb\Project\NT208-ai-travel-itinerary-recommendation-system\Backend\.ruff_cache\0.15.12\4074867529022175939`: Access is denied. (os error 5)[0m
-[1;33mwarning[0m[1m:[0m [1mFailed to write cache file `D:\UIT\FILE_UIT_KHMT2023.2\Nam_03\HK2\NT208_LapTrinhWeb\Project\NT208-ai-travel-itinerary-recommendation-system\Backend\.ruff_cache\0.15.12\9695461097254405288`: Access is denied. (os error 5)[0m
-[1;33mwarning[0m[1m:[0m [1mFailed to write cache file `D:\UIT\FILE_UIT_KHMT2023.2\Nam_03\HK2\NT208_LapTrinhWeb\Project\NT208-ai-travel-itinerary-recommendation-system\Backend\.ruff_cache\0.15.12\9947800375260325238`: Access is denied. (os error 5)[0m
+## command (run from <repo-root>/Backend): uv run ruff format --check src tests
+(.ruff_cache write warnings are benign)
+warning: Failed to write cache file `<repo-root>\Backend\.ruff_cache\0.15.12\9947800375260325238`: Access is denied. (os error 5)
+warning: Failed to write cache file `<repo-root>\Backend\.ruff_cache\0.15.12\4074867529022175939`: Access is denied. (os error 5)
+warning: Failed to write cache file `<repo-root>\Backend\.ruff_cache\0.15.12\9695461097254405288`: Access is denied. (os error 5)
 106 files already formatted

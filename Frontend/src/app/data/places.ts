@@ -55,7 +55,7 @@ export const cities: City[] = [
   },
   {
     id: 6,
-    name: "Vịnh Hạ Long",
+    name: "Hạ Long",
     country: "Việt Nam",
     image: "https://images.unsplash.com/photo-1668000018482-a02acf02b22a?w=400",
     description: "Di sản thiên nhiên thế giới với hàng nghìn đảo",

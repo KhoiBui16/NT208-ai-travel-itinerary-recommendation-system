@@ -20,7 +20,6 @@ const DESTINATION_COVER_IMAGES: Record<string, string> = {
   "Hồ Chí Minh": "https://images.unsplash.com/photo-1532961432136-ca37cae5fa4a?w=600&q=80",
   "Đà Nẵng": "https://images.unsplash.com/photo-1723142282970-1fd415eec1ad?w=600&q=80",
   "Hội An": "https://images.unsplash.com/photo-1664650440553-ab53804814b3?w=600&q=80",
-  "Vịnh Hạ Long": "https://images.unsplash.com/photo-1668000018482-a02acf02b22a?w=600&q=80",
   "Hạ Long": "https://images.unsplash.com/photo-1668000018482-a02acf02b22a?w=600&q=80",
   "Sapa": "https://images.unsplash.com/photo-1694152362876-42d5815a214d?w=600&q=80",
   "Nha Trang": "https://images.pexels.com/photos/2166553/pexels-photo-2166553.jpeg?w=600",
