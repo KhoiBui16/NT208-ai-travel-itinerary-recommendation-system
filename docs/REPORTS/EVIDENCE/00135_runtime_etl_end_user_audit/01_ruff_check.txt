@@ -1,0 +1,6 @@
+## command (run from <repo-root>/Backend): uv run ruff check src tests
+(.ruff_cache write warnings are benign — Access denied to cache dir; checks still pass)
+warning: Failed to write cache file `<repo-root>\Backend\.ruff_cache\0.15.12\9695461097254405288`: Access is denied. (os error 5)
+warning: Failed to write cache file `<repo-root>\Backend\.ruff_cache\0.15.12\9947800375260325238`: Access is denied. (os error 5)
+warning: Failed to write cache file `<repo-root>\Backend\.ruff_cache\0.15.12\4074867529022175939`: Access is denied. (os error 5)
+All checks passed!

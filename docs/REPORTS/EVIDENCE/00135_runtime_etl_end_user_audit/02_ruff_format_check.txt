@@ -1,0 +1,6 @@
+## command (run from <repo-root>/Backend): uv run ruff format --check src tests
+(.ruff_cache write warnings are benign)
+warning: Failed to write cache file `<repo-root>\Backend\.ruff_cache\0.15.12\9947800375260325238`: Access is denied. (os error 5)
+warning: Failed to write cache file `<repo-root>\Backend\.ruff_cache\0.15.12\4074867529022175939`: Access is denied. (os error 5)
+warning: Failed to write cache file `<repo-root>\Backend\.ruff_cache\0.15.12\9695461097254405288`: Access is denied. (os error 5)
+106 files already formatted

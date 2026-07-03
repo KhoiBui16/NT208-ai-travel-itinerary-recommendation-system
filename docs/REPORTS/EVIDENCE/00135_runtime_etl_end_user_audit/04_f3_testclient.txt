@@ -1,0 +1,6 @@
+## command (run from <repo-root>/Backend): PYTHONPATH=. uv run python f3_check.py  -- create_app(verify_database=False) via Starlette TestClient
+(api container wedged locally; /img route verified in-process. CI runs real container.)
+has_img_route: True
+dest_missing_real_image: 200 image/svg+xml 642 bytes
+img_root: 200 image/svg+xml
+F3_LOCAL_OK

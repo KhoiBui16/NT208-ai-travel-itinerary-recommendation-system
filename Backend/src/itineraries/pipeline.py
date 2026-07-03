@@ -474,7 +474,12 @@ class ItineraryPipeline:
             attempts=attempts,
             validation_errors=len(errors),
         )
-        raise ServiceUnavailableException("AI itinerary generation failed validation")
+        # Validation exhaustion is a client/business-contract failure (bad LLM
+        # output: wrong day count, over budget, too few/many activities). It is
+        # NOT a provider outage, so it must surface as 422 — not 503. Genuine
+        # provider/timeout failures are re-raised as ServiceUnavailableException
+        # (503) by the upstream except clause above.
+        raise ValidationException("AI itinerary generation failed validation")
 
     # ===================================================================
     # Persistence — Save generated itinerary to database

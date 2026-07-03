@@ -524,7 +524,7 @@ async def test_pipeline__still_rejects_explicit_over_budget_itinerary() -> None:
         retry_delay_seconds=0,
     )
 
-    with pytest.raises(ServiceUnavailableException, match="failed validation"):
+    with pytest.raises(ValidationException, match="failed validation"):
         await pipeline.generate(
             _make_request(days=1, budget=400_000, adults=2, children=1),
             user_id=None,
