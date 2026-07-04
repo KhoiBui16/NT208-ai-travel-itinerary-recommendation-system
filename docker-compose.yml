@@ -23,6 +23,11 @@ services:
       - ./Backend/src:/app/src
       - ./Backend/alembic:/app/alembic
       - ./Backend/config.yaml:/app/config.yaml
+      # Read-only mount of the static image assets so newly crawled images under
+      # Backend/static/img are served live without rebuilding the API image. The
+      # image already bakes static/ in via Dockerfile COPY; this overlay keeps
+      # the container in sync with the host during local development.
+      - ./Backend/static:/app/static:ro
 
   db:
     image: postgres:16-alpine
