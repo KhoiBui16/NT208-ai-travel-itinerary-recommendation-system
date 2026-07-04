@@ -1,0 +1,270 @@
+kind,destination_slug,destination_name,source_file,target_file,db_table,db_id,db_name,db_image_path,match_status,notes
+home_hero,,,AnhBia.jpg,Backend/static/img/home/hero.jpg,,,,,exact,hero
+destination_cover,buon-ma-thuot,,BuonMaThuat/AnhDaiDien.jpg,Backend/static/img/destinations/buon-ma-thuot.jpg,destinations,,buon-ma-thuot,/img/destinations/buon-ma-thuot.jpg,exact,AnhDaiDien cover
+destination_cover,can-tho,,CanTho/AnhDaiDien.jpg,Backend/static/img/destinations/can-tho.jpg,destinations,,can-tho,/img/destinations/can-tho.jpg,exact,AnhDaiDien cover
+destination_cover,da-nang,,DANANG/AnhDaiDien.webp,Backend/static/img/destinations/da-nang.webp,destinations,,da-nang,/img/destinations/da-nang.webp,exact,AnhDaiDien cover
+destination_cover,da-lat,,Dalat/AnhDaiDien.webp,Backend/static/img/destinations/da-lat.webp,destinations,,da-lat,/img/destinations/da-lat.webp,exact,AnhDaiDien cover
+destination_cover,dong-hoi,,DongHoi/AnhDaiDien.jpg,Backend/static/img/destinations/dong-hoi.jpg,destinations,,dong-hoi,/img/destinations/dong-hoi.jpg,exact,AnhDaiDien cover
+destination_cover,ha-giang,,Hagiang/AnhDaiDien.jpg,Backend/static/img/destinations/ha-giang.jpg,destinations,,ha-giang,/img/destinations/ha-giang.jpg,exact,AnhDaiDien cover
+destination_cover,ha-long,,HaLong/AnhDaiDien.jpg,Backend/static/img/destinations/ha-long.jpg,destinations,,ha-long,/img/destinations/ha-long.jpg,exact,AnhDaiDien cover
+destination_cover,ha-noi,,Hanoi/AnhDaiDien.jpg,Backend/static/img/destinations/ha-noi.jpg,destinations,,ha-noi,/img/destinations/ha-noi.jpg,exact,AnhDaiDien cover
+destination_cover,hai-phong,,Haiphong/AnhDaiDien.jpg,Backend/static/img/destinations/hai-phong.jpg,destinations,,hai-phong,/img/destinations/hai-phong.jpg,exact,AnhDaiDien cover
+destination_cover,hoi-an,,HoiAn/AnhDaiDien.jpg,Backend/static/img/destinations/hoi-an.jpg,destinations,,hoi-an,/img/destinations/hoi-an.jpg,exact,AnhDaiDien cover
+destination_cover,hue,,Hue/AnhDaiDien.webp,Backend/static/img/destinations/hue.webp,destinations,,hue,/img/destinations/hue.webp,exact,AnhDaiDien cover
+destination_cover,moc-chau,,MocChau/AnhDaiDien.jpg,Backend/static/img/destinations/moc-chau.jpg,destinations,,moc-chau,/img/destinations/moc-chau.jpg,exact,AnhDaiDien cover
+destination_cover,nha-trang,,NhaTrang/AnhDaiDien.webp,Backend/static/img/destinations/nha-trang.webp,destinations,,nha-trang,/img/destinations/nha-trang.webp,exact,AnhDaiDien cover
+destination_cover,ninh-binh,,NinhBinh/AnhDaiDien.webp,Backend/static/img/destinations/ninh-binh.webp,destinations,,ninh-binh,/img/destinations/ninh-binh.webp,exact,AnhDaiDien cover
+destination_cover,phan-thiet,,PhanThiet/AnhDaiDien.webp,Backend/static/img/destinations/phan-thiet.webp,destinations,,phan-thiet,/img/destinations/phan-thiet.webp,exact,AnhDaiDien cover
+destination_cover,phu-quoc,,PhuQuoc/AnhDaiDien.jpg,Backend/static/img/destinations/phu-quoc.jpg,destinations,,phu-quoc,/img/destinations/phu-quoc.jpg,exact,AnhDaiDien cover
+destination_cover,pleiku,,Pleiku/AnhDaiDien.jpg,Backend/static/img/destinations/pleiku.jpg,destinations,,pleiku,/img/destinations/pleiku.jpg,exact,AnhDaiDien cover
+destination_cover,quy-nhon,,QuyNhon/AnhDaiDien.webp,Backend/static/img/destinations/quy-nhon.webp,destinations,,quy-nhon,/img/destinations/quy-nhon.webp,exact,AnhDaiDien cover
+destination_cover,sapa,,Sapa/AnhDaiDien.jpg,Backend/static/img/destinations/sapa.jpg,destinations,,sapa,/img/destinations/sapa.jpg,exact,AnhDaiDien cover
+destination_cover,tay-ninh,,TayNinh/AnhDaiDien.webp,Backend/static/img/destinations/tay-ninh.webp,destinations,,tay-ninh,/img/destinations/tay-ninh.webp,exact,AnhDaiDien cover
+destination_cover,tp-ho-chi-minh,,TPHCM/AnhDaiDien.jpg,Backend/static/img/destinations/tp-ho-chi-minh.jpg,destinations,,tp-ho-chi-minh,/img/destinations/tp-ho-chi-minh.jpg,exact,AnhDaiDien cover
+destination_cover,tuy-hoa,,TuyHoa/AnhDaiDien.png,Backend/static/img/destinations/tuy-hoa.png,destinations,,tuy-hoa,/img/destinations/tuy-hoa.png,exact,AnhDaiDien cover
+destination_cover,vung-tau,,VungTau/AnhDaiDien.webp,Backend/static/img/destinations/vung-tau.webp,destinations,,vung-tau,/img/destinations/vung-tau.webp,exact,AnhDaiDien cover
+missing_placeholder,chau-doc,,,,destinations,,chau-doc,,placeholder,no crawled source folder; DB image cleared to empty
+missing_placeholder,con-dao,,,,destinations,,con-dao,,placeholder,no crawled source folder; DB image cleared to empty
+missing_placeholder,mui-ne,,,,destinations,,mui-ne,,placeholder,no crawled source folder; DB image cleared to empty
+missing_placeholder,phong-nha,,,,destinations,,phong-nha,,placeholder,no crawled source folder; DB image cleared to empty
+unmatched,buon-ma-thuot,,BuonMaThuat/BaoTangCaPhe.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,buon-ma-thuot,,BuonMaThuat/BaoTangDakLak.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,buon-ma-thuot,,BuonMaThuat/ChoBMT.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,buon-ma-thuot,,BuonMaThuat/CongVienTPBMT.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,buon-ma-thuot,,BuonMaThuat/DiTIchNhaDayBMT.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,buon-ma-thuot,,BuonMaThuat/KDLKoTam.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,buon-ma-thuot,,BuonMaThuat/NhaHangDaiHung.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,can-tho,,CanTho/BaoTangCanTho.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,can-tho,,CanTho/BaoTangQuanKhu9.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,can-tho,,CanTho/BungDaNoi.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,can-tho,,CanTho/ChoCaiKhe.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,can-tho,,CanTho/DiTichLongMy.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,can-tho,,CanTho/NhaHangHoaSu.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,can-tho,,CanTho/NhaHangLuaNep.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,can-tho,,CanTho/NhaHangSaoHom.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,can-tho,,CanTho/WoodHouseCafe.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-lat,,Dalat/BaoTangLamDon.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-lat,,Dalat/BaoTangSinhHocDaLat.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-lat,,Dalat/CaoNguyenHoa.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-lat,,Dalat/ChoDemDaLả.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-lat,,Dalat/cinestarDaLat.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-lat,,Dalat/HoaSonDienTrang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-lat,,Dalat/LangBiangLand.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-lat,,Dalat/NhaThieuNhiDaLat.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-lat,,Dalat/QuangTruongDaLat.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-lat,,Dalat/VuonHoaDaLat.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-nang,,DANANG/AsiaPar.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-nang,,DANANG/BaoTangDaNang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-nang,,DANANG/BaoTangDieuKhacCHam.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-nang,,DANANG/BaoTangMyThuat.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-nang,,DANANG/ComNieuCoiNguon.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-nang,,DANANG/CongVienBienDong.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-nang,,DANANG/CongVienKyQuan.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-nang,,DANANG/CongVienNuiThanTai.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-nang,,DANANG/DanangSquare.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,da-nang,,DANANG/ThanhDienHai.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,dong-hoi,,DongHoi/BaoTangQuangBinh.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,dong-hoi,,DongHoi/ChoDongHoi.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,dong-hoi,,DongHoi/CongVienDongHoi.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,dong-hoi,,DongHoi/SquareCoffee.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,dong-hoi,,DongHoi/ThanhCoDongHoi.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,dong-hoi,,DongHoi/TuongDaiMeSuot.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,dong-hoi,,DongHoi/VuonHoaNhatNguyet.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-giang,,Hagiang/BaoTangHaGiang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-giang,,Hagiang/CongVienNuocHaPhuong.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-giang,,Hagiang/CuaKhauThanhThuy.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-giang,,Hagiang/DinhHoVuong.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-giang,,Hagiang/DiTichBotDeoGio.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-giang,,Hagiang/DiTichCangBacMe.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-giang,,Hagiang/KDLSinhThaiTruongXuan.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-giang,,Hagiang/LikaCoffee.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-giang,,Hagiang/LikaCoffeee.webp,,,,,,manual_needed,no exact slug match in DB
+unmatched,hai-phong,,Haiphong/AEONMail.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hai-phong,,Haiphong/BaoTangHaiPhong.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hai-phong,,Haiphong/BaoTangHaiQuan.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hai-phong,,Haiphong/ChoVinhNiem.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hai-phong,,Haiphong/DiTichTuLuongXam.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hai-phong,,Haiphong/KhuDiTichBachDangGiang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hai-phong,,Haiphong/KhuSinhThaiNamSon.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hai-phong,,Haiphong/NhaHatLonHaiPhong.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hai-phong,,Haiphong/SuoiKhoangTienLang.jpg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,ha-long,,HaLong/bao-tang-quang-ninh.jpg,Backend/static/img/places/ha-long/bao-tang-quang-ninh.jpg,places,560,Bảo Tàng Quảng Ninh,,exact,slug match
+unmatched,ha-long,,HaLong/bien-bai-chay.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-long,,HaLong/cho-dem-ha-long.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-long,,HaLong/DaoTuanChau.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-long,,HaLong/hang-sung-sot.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-long,,HaLong/nui-bai-tho.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-long,,HaLong/ong-thien-cung.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-long,,HaLong/sun-world-ha-long.jpg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,ha-long,,HaLong/vinh-ha-long.jpg,Backend/static/img/places/ha-long/vinh-ha-long.jpg,places,1290,Vịnh Hạ Long,,exact,slug match
+hotel_candidate,ha-long,,HaLong/wyndham-legend-ha-long.jpg,Backend/static/img/hotels/ha-long/wyndham-legend-ha-long.jpg,hotels,94,Wyndham Legend Hạ Long,/img/hotels/wyndham.jpg,exact,slug match
+unmatched,ha-noi,,Hanoi/cau-long-bien.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-noi,,Hanoi/cho-ong-xuan.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-noi,,Hanoi/chua-mot-cot.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-noi,,Hanoi/ho-hoan-kiem.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-noi,,Hanoi/ho-tay.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-noi,,Hanoi/lang-chu-tich-ho-chi-minh.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-noi,,Hanoi/nha-tho-lon-ha-noi.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ha-noi,,Hanoi/pho-co-ha-noi.jpg,,,,,,manual_needed,no exact slug match in DB
+hotel_candidate,ha-noi,,Hanoi/sofitel-legend-metropole-ha-noi.jpg,Backend/static/img/hotels/ha-noi/sofitel-legend-metropole-ha-noi.jpg,hotels,1,Sofitel Legend Metropole Hà Nội,/img/hotels/metropole.jpg,exact,slug match
+unmatched,ha-noi,,Hanoi/van-mieu-quoc-tu-giam.jpg,,,,,,manual_needed,no exact slug match in DB
+hotel_candidate,hoi-an,,HoiAn/almanity-hoi-an.jpg,Backend/static/img/hotels/hoi-an/almanity-hoi-an.jpg,hotels,88,Almanity Hoi An,/img/hotels/almanity.jpg,exact,slug match
+unmatched,hoi-an,,HoiAn/bien-an-bang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hoi-an,,HoiAn/bien-cua-ai.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hoi-an,,HoiAn/cho-dem-hoi-an.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hoi-an,,HoiAn/cu-lao-cham.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hoi-an,,HoiAn/lang-gom-thanh-ha.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hoi-an,,HoiAn/lang-rau-tra-que.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hoi-an,,HoiAn/nha-co-tan-ky.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hoi-an,,HoiAn/pho-co-hoi-an.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hoi-an,,HoiAn/rung-dua-bay-mau.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hue,,Hue/cau-trang-tien.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hue,,Hue/cho-ong-ba.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hue,,Hue/chua-thien-mu.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hue,,Hue/co-do-hue.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hue,,Hue/lang-khai-inh.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hue,,Hue/lang-minh-mang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hue,,Hue/lang-tu-uc.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hue,,Hue/nui-ngu-binh.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hue,,Hue/song-huong-hue.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,hue,,Hue/vinpearl-hotel-hue.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,moc-chau,,MocChau/ban-pa-phach.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,moc-chau,,MocChau/cau-kinh-tinh-yeu.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,moc-chau,,MocChau/cho-tinh-moc-chau.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,moc-chau,,MocChau/hang-doi-moc-chau.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,moc-chau,,MocChau/inh-pha-luong.jpg,,,,,,manual_needed,no exact slug match in DB
+hotel_candidate,moc-chau,,MocChau/moc-chau-eco-garden-resort.jpg,Backend/static/img/hotels/moc-chau/moc-chau-eco-garden-resort.jpg,hotels,151,Mộc Châu Eco Garden Resort,/img/hotels/eco-garden-moc-chau.jpg,exact,slug match
+unmatched,moc-chau,,MocChau/oi-che-trai-tim-moc-chau.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,moc-chau,,MocChau/rung-thong-ban-ang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,moc-chau,,MocChau/thac-dai-yem.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,moc-chau,,MocChau/thung-lung-man-na-ka.jpg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,nha-trang,,NhaTrang/an-cafe-nha-trang.jpg,Backend/static/img/places/nha-trang/an-cafe-nha-trang.jpg,places,410,An Cafe Nha Trang,,exact,slug match
+unmatched,nha-trang,,NhaTrang/bao-tang-phong-khong-khong-quan-nha-trang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,nha-trang,,NhaTrang/cho-hai-san-Bon-bao-nha-trang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,nha-trang,,NhaTrang/cho-Vinh-Ngoc-nha-trang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,nha-trang,,NhaTrang/khu-do-thi-sinh-thai-ban-dao-Thanh-Phong-nha-trang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,nha-trang,,NhaTrang/sailing-club-nha-trang.webp,,,,,,manual_needed,no exact slug match in DB
+hotel_candidate,nha-trang,,NhaTrang/Sheraton-nha-trang.webp,Backend/static/img/hotels/nha-trang/sheraton-nha-trang.webp,hotels,90,Sheraton Nha Trang,/img/hotels/sheraton.jpg,exact,slug match
+unmatched,nha-trang,,NhaTrang/thap-ba-Ponagar-nha-trang.webp,,,,,,manual_needed,no exact slug match in DB
+unmatched,nha-trang,,NhaTrang/trang-trai-phong-thuy-nha-trang.JPG,,,,,,manual_needed,no exact slug match in DB
+unmatched,nha-trang,,NhaTrang/vien-hai-duong-hoc-nha-trang.webp,,,,,,manual_needed,no exact slug match in DB
+unmatched,ninh-binh,,NinhBinh/chua-bai-inh.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ninh-binh,,NinhBinh/co-o-hoa-lu.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ninh-binh,,NinhBinh/dam-van-long.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ninh-binh,,NinhBinh/hang-mua-ninh-binh.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ninh-binh,,NinhBinh/khu-du-lich-sinh-thai-trang-an.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ninh-binh,,NinhBinh/khu-du-lich-thung-nham.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ninh-binh,,NinhBinh/rung-quoc-gia-cuc-phuong.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ninh-binh,,NinhBinh/tam-coc-bich-dong.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ninh-binh,,NinhBinh/tam-coc-garden-resort-ninh-binh.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,ninh-binh,,NinhBinh/thach-bich-thung-nang.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phan-thiet,,PhanThiet/bai-a-ong-ia.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phan-thiet,,PhanThiet/bai-bien-co-thach.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phan-thiet,,PhanThiet/bau-trang-phan-thiet.jpg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,phan-thiet,,PhanThiet/cho-phan-thiet.jpg,Backend/static/img/places/phan-thiet/cho-phan-thiet.jpg,places,2104,Chợ Phan Thiết,,exact,slug match
+unmatched,phan-thiet,,PhanThiet/lang-chai-mui-ne.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phan-thiet,,PhanThiet/lau-ai-ruou-vang-phan-thiet.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phan-thiet,,PhanThiet/oi-cat-bay-mui-ne.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phan-thiet,,PhanThiet/suoi-tien-mui-ne.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phan-thiet,,PhanThiet/thap-poshanu.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phan-thiet,,PhanThiet/the-cliff-resort-phan-thiet.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phu-quoc,,PhuQuoc/bai-sao-phu-quoc.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phu-quoc,,PhuQuoc/cap-treo-hon-thom.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phu-quoc,,PhuQuoc/cho-em-dinh-cau.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phu-quoc,,PhuQuoc/chua-ho-quoc.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phu-quoc,,PhuQuoc/grand-world-phu-quoc.jpg,,,,,,manual_needed,no exact slug match in DB
+hotel_candidate,phu-quoc,,PhuQuoc/intercontinental-phu-quoc.jpg,Backend/static/img/hotels/phu-quoc/intercontinental-phu-quoc.jpg,hotels,93,InterContinental Phú Quốc,/img/hotels/intercontinental.jpg,exact,slug match
+unmatched,phu-quoc,,PhuQuoc/lang-chai-ham-ninh.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phu-quoc,,PhuQuoc/nha-tu-phu-quoc.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phu-quoc,,PhuQuoc/safari-phu-quoc.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,phu-quoc,,PhuQuoc/vinwonders-phu-quoc.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,pleiku,,Pleiku/bao-tang-hcm-chi-nhanh-gia-lai-kontum-pleiku.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,pleiku,,Pleiku/bao-tang-pleiku.webp,,,,,,manual_needed,no exact slug match in DB
+place_candidate,pleiku,,Pleiku/Cong-vien-Dien-Hong-pleiku.jpg,Backend/static/img/places/pleiku/cong-vien-dien-hong-pleiku.jpg,places,2220,Công Viên Diên Hồng Pleiku,,exact,slug match
+hotel_candidate,pleiku,,Pleiku/hagl-hotel-pleiku.jpg,Backend/static/img/hotels/pleiku/hagl-hotel-pleiku.jpg,hotels,158,HAGL Hotel Pleiku,/img/hotels/hagl-pleiku.jpg,exact,slug match
+unmatched,pleiku,,Pleiku/khach-san-pleiku&em-pleiku.avif,,,,,,manual_needed,no exact slug match in DB
+unmatched,pleiku,,Pleiku/khu-vui-choi-tre-em-pleiku.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,pleiku,,Pleiku/Nha-hang-Pho-Bien-Pleiku.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,pleiku,,Pleiku/nha-hat-kich-Dam-San-pleiku.webp,,,,,,manual_needed,no exact slug match in DB
+unmatched,pleiku,,Pleiku/quan-com-ga-my-tam-2-pleiku.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,pleiku,,Pleiku/touch-cinema-pleiku.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,quy-nhon,,QuyNhon/avani-quynhon-resort.png,,,,,,manual_needed,no exact slug match in DB
+unmatched,quy-nhon,,QuyNhon/bao-tang-Quan-Trung-quy-nhon.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,quy-nhon,,QuyNhon/binh-dinh-museum-quy-nhon.jpg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,quy-nhon,,QuyNhon/cho-quy-nhon.jpg,Backend/static/img/places/quy-nhon/cho-quy-nhon.jpg,places,1730,Chợ Quy Nhơn,,exact,slug match
+place_candidate,quy-nhon,,QuyNhon/Du-lich-Quy-Nhon-Vung-Boi.jpg,Backend/static/img/places/quy-nhon/du-lich-quy-nhon-vung-boi.jpg,places,1692,Du lịch Quy Nhơn - Vũng Bồi,,exact,slug match
+unmatched,quy-nhon,,QuyNhon/hata-hotel-quy-nhon.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,quy-nhon,,QuyNhon/khu-sinh-thai-suoi-tien-quy-nhon.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,quy-nhon,,QuyNhon/nha-hang-hai-nam-quy-nhon.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,quy-nhon,,QuyNhon/starlight-quy-nhon.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,quy-nhon,,QuyNhon/vvhouse-quy-nhon.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,sapa,,Sapa/bao-tang-dan-toc-lai-chau-sapa.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,sapa,,Sapa/bao-tang-sapa.jpg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,sapa,,Sapa/cho-dem-sapa.png,Backend/static/img/places/sapa/cho-dem-sapa.png,places,659,Chợ đêm Sapa,,exact,slug match
+unmatched,sapa,,Sapa/cho-sapa.jpg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,sapa,,Sapa/hem-may-cafe-sapa.jpg,Backend/static/img/places/sapa/hem-may-cafe-sapa.jpg,places,621,Hẻm Mây Cafe Sapa,,exact,slug match
+hotel_candidate,sapa,,Sapa/Hotel-de-la-Coupole-Sapa.jpg,Backend/static/img/hotels/sapa/hotel-de-la-coupole-sapa.jpg,hotels,95,Hotel de la Coupole Sapa,/img/hotels/coupole.jpg,exact,slug match
+place_candidate,sapa,,Sapa/khu-du-lich-sinh-thai-Ham-rong-sapa.jpg,Backend/static/img/places/sapa/khu-du-lich-sinh-thai-ham-rong-sapa.jpg,places,644,Khu Du Lịch Sinh Thái Hàm Rồng SaPa,,exact,slug match
+place_candidate,sapa,,Sapa/nha-hang-sapa.jpg,Backend/static/img/places/sapa/nha-hang-sapa.jpg,places,612,Nhà hàng Sapa,,exact,slug match
+unmatched,sapa,,Sapa/nha-hat-Suoi-reo-sapa.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,sapa,,Sapa/trung-tam-thuong-mai-moi-xa-Sapa.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tay-ninh,,TayNinh/Chavi-Garden-Tay-ninh.jpg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,tay-ninh,,TayNinh/lotte-cinema-Tay-ninh.jpg,Backend/static/img/places/tay-ninh/lotte-cinema-tay-ninh.jpg,places,525,Lotte Cinema Tây Ninh,,exact,slug match
+hotel_candidate,tay-ninh,,TayNinh/Melia-Vinpearl-Tay-Ninh.avif,Backend/static/img/hotels/tay-ninh/melia-vinpearl-tay-ninh.avif,hotels,160,Melia Vinpearl Tây Ninh,/img/hotels/melia-tay-ninh.jpg,exact,slug match
+unmatched,tay-ninh,,TayNinh/trung-tam-thuong-mai-tay-ninh.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tp-ho-chi-minh,,TPHCM/bao_tang_my_thuat_tphcm.webp,,,,,,manual_needed,no exact slug match in DB
+unmatched,tp-ho-chi-minh,,TPHCM/bao-tang-lich-su-tphcm.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tp-ho-chi-minh,,TPHCM/cafe-Da-lat-pho-tphcm.jpg,,,,,,manual_needed,no exact slug match in DB
+hotel_candidate,tp-ho-chi-minh,,TPHCM/Caravelle_Saigon.jpg,Backend/static/img/hotels/tp-ho-chi-minh/caravelle-saigon.jpg,hotels,77,Caravelle Saigon,/img/hotels/caravelle.jpg,exact,slug match
+unmatched,tp-ho-chi-minh,,TPHCM/nha-hang-ai-hue-tphcm.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tp-ho-chi-minh,,TPHCM/nha-hat-hoa-binh-tphcm.webp,,,,,,manual_needed,no exact slug match in DB
+unmatched,tp-ho-chi-minh,,TPHCM/Nhanvip-coffee-tphcm.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tp-ho-chi-minh,,TPHCM/QT-coffee-tphcm.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tp-ho-chi-minh,,TPHCM/quan-an-hue-tphcm.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tp-ho-chi-minh,,TPHCM/quan-an-hue-xua-tphcm.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tuy-hoa,,TuyHoa/bao-tang-phu-yen-tuy-hoa.jpeg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tuy-hoa,,TuyHoa/cafe-Huong-que-tuy-hoa.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tuy-hoa,,TuyHoa/cafe-Long-den-do-tuy-hoa.jpg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,tuy-hoa,,TuyHoa/cong-vien-tuy-hoa.jpeg,Backend/static/img/places/tuy-hoa/cong-vien-tuy-hoa.jpeg,places,2154,Công viên Tuy Hòa,,exact,slug match
+unmatched,tuy-hoa,,TuyHoa/khu-du-lich-thuan-thao.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tuy-hoa,,TuyHoa/Khu-vui-choi-HOBBY-LAND-tuy-hoa.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,tuy-hoa,,TuyHoa/nha-hang-Tre-viet-tuy-hoa.jpg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,tuy-hoa,,TuyHoa/nha-sach-fahasa-phu-yen.jpg,Backend/static/img/places/tuy-hoa/nha-sach-fahasa-phu-yen.jpg,places,2184,Nhà Sách FAHASA Phú Yên,,exact,slug match
+unmatched,tuy-hoa,,TuyHoa/rap-chieu-phim-Hung-dao-tuy-hoa.jpg,,,,,,manual_needed,no exact slug match in DB
+hotel_candidate,tuy-hoa,,TuyHoa/sala-tuy-hoa-beach-hotel.jpg,Backend/static/img/hotels/tuy-hoa/sala-tuy-hoa-beach-hotel.jpg,hotels,156,Sala Tuy Hòa Beach Hotel,/img/hotels/sala-tuy-hoa.jpg,exact,slug match
+unmatched,vung-tau,,VungTau/bao-tang-con-dao-vung-tau.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,vung-tau,,VungTau/bao-tang-vu-khi-toan-cau-vung-tau.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,vung-tau,,VungTau/Cinema-Dien-Bien-Vung-tau.jpeg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,vung-tau,,VungTau/di-tich-bach-dinh.jpg,Backend/static/img/places/vung-tau/di-tich-bach-dinh.jpg,places,1766,Di tích Bạch Dinh,,exact,slug match
+place_candidate,vung-tau,,VungTau/di-tich-lich-su-nha-tron.jpg,Backend/static/img/places/vung-tau/di-tich-lich-su-nha-tron.jpg,places,1770,Di tích lịch sử Nhà Tròn,,exact,slug match
+hotel_candidate,vung-tau,,VungTau/imperial-hotel-vung-tau.jpg,Backend/static/img/hotels/vung-tau/imperial-hotel-vung-tau.jpg,hotels,141,Imperial Hotel Vũng Tàu,/img/hotels/imperial.jpg,exact,slug match
+place_candidate,vung-tau,,VungTau/khu-b-cho-vung-tau.jpg,Backend/static/img/places/vung-tau/khu-b-cho-vung-tau.jpg,places,1800,Khu B Chợ Vũng Tàu,,exact,slug match
+unmatched,vung-tau,,VungTau/nha-hang-huong-lua.jpg,,,,,,manual_needed,no exact slug match in DB
+unmatched,vung-tau,,VungTau/olivia-hotel.jpg,,,,,,manual_needed,no exact slug match in DB
+place_candidate,vung-tau,,VungTau/vuon-hoa-thach-thao.jpg,Backend/static/img/places/vung-tau/vuon-hoa-thach-thao.jpg,places,1778,Vườn Hoa Thạch Thảo,,exact,slug match
+hotel_candidate,buon-ma-thuot,,,,hotels,157,Mường Thanh Luxury Buôn Ma Thuột,/img/hotels/muong-thanh-bmt.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,can-tho,,,,hotels,142,Azerai Cần Thơ,/img/hotels/azerai-canTho.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,chau-doc,,,,hotels,161,Victoria Núi Sam Lodge,/img/hotels/victoria-nui-sam.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,con-dao,,,,hotels,159,Poulo Condor Boutique Resort,/img/hotels/poulo-condor.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,da-lat,,,,hotels,91,Ana Mandara Villas Đà Lạt,/img/hotels/anamandara.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,da-lat,,,,hotels,92,Swiss-Belresort Tuyen Lam,/img/hotels/swissbel.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,da-nang,,,,hotels,86,A La Carte Da Nang Beach,/img/hotels/alacarte.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,da-nang,,,,hotels,85,Furama Resort Đà Nẵng,/img/hotels/furama.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,dong-hoi,,,,hotels,152,Melia Vinpearl Quảng Bình,/img/hotels/melia-quang-binh.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,ha-giang,,,,hotels,148,P'apiu Resort Hà Giang,/img/hotels/papiu-ha-giang.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,ha-giang,,,,hotels,149,Phoenix Hotel Hà Giang,/img/hotels/phoenix-ha-giang.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,ha-long,,,,hotels,137,Paradise Suites Hạ Long,/img/hotels/paradise-suites.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,ha-noi,,,,hotels,2,Hotel de l'Opera Hà Nội,/img/hotels/delopera.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,ha-noi,,,,hotels,3,La Siesta Premium Hang Be,/img/hotels/lasiesta.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,hai-phong,,,,hotels,144,Hotel Nikko Hải Phòng,/img/hotels/nikko-hai-phong.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,hai-phong,,,,hotels,145,Melia Vinpearl Hải Phòng Rivera,/img/hotels/melia-hai-phong.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,hoi-an,,,,hotels,87,Victoria Hội An Beach Resort,/img/hotels/victoria.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,hue,,,,hotels,89,Azerai La Résidence Huế,/img/hotels/azerai.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,moc-chau,,,,hotels,150,Mường Thanh Holiday Mộc Châu,/img/hotels/muong-thanh-moc-chau.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,mui-ne,,,,hotels,155,Anantara Mũi Né Resort,/img/hotels/anantara-mui-ne.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,ninh-binh,,,,hotels,147,Emeralda Resort Ninh Bình,/img/hotels/emeralda-ninh-binh.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,ninh-binh,,,,hotels,146,Tam Coc Garden Resort,/img/hotels/tam-coc-garden.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,phan-thiet,,,,hotels,154,The Cliff Resort & Residences,/img/hotels/the-cliff-phan-thiet.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,phong-nha,,,,hotels,153,Phong Nha Lake House Resort,/img/hotels/phong-nha-lake-house.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,quy-nhon,,,,hotels,143,Avani Quy Nhơn Resort,/img/hotels/avani.jpg,placeholder,no crawled source; clear lying path
+hotel_candidate,tp-ho-chi-minh,,,,hotels,78,Liberty Central Saigon Riverside,/img/hotels/liberty.jpg,placeholder,no crawled source; clear lying path

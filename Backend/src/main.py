@@ -1,5 +1,6 @@
 """FastAPI application factory for the MVP2 backend."""
 
+import mimetypes
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -38,6 +39,14 @@ logger = get_logger(__name__)
 _STATIC_IMG_DIR = Path(__file__).resolve().parent.parent / "static" / "img"
 _STATIC_IMG_ROOT = _STATIC_IMG_DIR.resolve()
 _STATIC_IMG_PLACEHOLDER = _STATIC_IMG_DIR / "placeholder.svg"
+
+# Register explicit MIME types for modern image formats so FileResponse serves
+# .webp/.avif with a correct Content-Type. Python's stdlib mimetypes omits
+# .webp on some platforms (verified: CPython 3.12 on Windows returns
+# guess_type('x.webp') -> (None, None)); without this Starlette falls back to
+# text/plain and the browser shows a broken <img> for the .webp covers.
+mimetypes.add_type("image/webp", ".webp")
+mimetypes.add_type("image/avif", ".avif")
 
 assets_router = APIRouter(tags=["assets"])
 

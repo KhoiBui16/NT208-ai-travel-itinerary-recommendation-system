@@ -66,7 +66,9 @@ export default function TripWorkspace() {
   const [searchParams] = useSearchParams();
   const tripIdParam = searchParams.get("tripId");
   const { isAuthenticated: authIsAuthenticated } = useAuth();
-  const [tripId, setTripId] = useState<number | null>(tripIdParam ? Number(tripIdParam) : null);
+  const [tripId, setTripId] = useState<number | null>(
+    tripIdParam && Number.isFinite(Number(tripIdParam)) ? Number(tripIdParam) : null,
+  );
   const [days, setDays] = useState<Day[]>(initialDays);
   const [selectedDayId, setSelectedDayId] = useState(1);
 
