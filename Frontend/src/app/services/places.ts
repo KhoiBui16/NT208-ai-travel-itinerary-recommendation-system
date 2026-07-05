@@ -86,6 +86,8 @@ export interface PlaceResponse {
   image: string; // Photo URL
   price: string | null; // Display price string (formatted VND or null — BE sends string)
   location: string | null; // Address text
+  latitude?: number; // Map coordinate (Goong map integration)
+  longitude?: number; // Map coordinate (Goong map integration)
 
   // --- Review info ---
   reviews: unknown[]; // Review details (if available)

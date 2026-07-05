@@ -191,3 +191,106 @@ trả `200` với `Content-Type` đúng.
 
 CI bắt buộc sẽ chạy: `pr-policy`, `backend-lint`, `backend-unit`, `backend-integration`,
 `backend-migrations`, `frontend-build`, `frontend-e2e` (+ Vercel preview).
+
+---
+
+## Phase B — Second-pass image coverage + trip-snapshot fix (2026-07-05)
+
+> Tiếp nối Phase A. Nguyên tắc giữ nguyên: chỉ gán ảnh **đã verify tồn tại trên đĩa**,
+> không gán random để giấu thiếu. Mọi UPDATE đều dùng predicate `(name, destination_id)`
+> để chạy giống nhau ở local và Render.
+
+### B1. Root-cause audit (ground-truth, không đoán)
+
+Query trực tiếp DB lấy **toàn bộ** image path rồi check tồn tại + khớp case trong
+`Backend/static/img/`:
+
+| Lớp | Số path trong DB | Resolve OK |
+| --- | ---------------- | ---------- |
+| Destinations | 23 | 23/23 ✅ |
+| Places (sau 0012) | 18 | 18/18 ✅ |
+| Hotels (sau 0012) | 12 | 12/12 ✅ |
+| **Tổng Phase A** | **53** | **53/53 ✅** |
+
+→ Foundation Phase A **đã đúng**: `/cities` và `/cities/{slug}` lấy ảnh từ DB,
+path đều resolve → hiển thị đúng. `data/cities.ts` + `data/places.ts` là **dead code**
+(không page nào import), không phải nguồn lỗi.
+
+### B2. Hai bug thật còn sót
+
+1. **`DailyItinerary.tsx` (dòng ~364, ~463)**: `<img src={item.image}>` và
+   `<img src={suggestion.image}>` **không** dùng `resolvePlaceImage` + **không có `onError`**
+   → khi path rỗng hoặc URL ngoài gãy, trình duyệt hiện **icon vỡ** thay vì placeholder.
+   → **Fix**: import `applyPlaceImageFallback, resolvePlaceImage`; bọc cả hai `<img>`:
+   `src={resolvePlaceImage(x.image)}` + `onError={applyPlaceImageFallback}`. (Sửa function,
+   không đổi UI.)
+
+2. **Trip snapshot đóng băng ảnh (gốc rễ "trip 837 hiện mock")**:
+   `GET /api/v1/itineraries/{id}` trả `activities.image` là **snapshot lưu lúc generate**
+   (pipeline `pipeline.py:_activity_image_for_generated_activity` resolve từ `place.image`
+   **lúc sinh trip**). Trip generate trước khi có thư viện ảnh → activity.image rỗng mãi.
+   Migration 0012/0013 chỉ sửa `places`, **không** sửa trip đã sinh. `accommodations`
+   **không** có cột `image` (chỉ lưu `hotel_id`, resolve live) → "nơi ở" đúng khi
+   `hotels.image` đúng.
+
+### B3. Migration 0013 (bản ĐÃ SỬA, verified)
+
+Bản nháp sub-agent ban đầu **sai**: 6 path trỏ file không tồn tại (`cho-nha-trang.jpg`,
+`hang-mua.jpg`, `trang-an.jpg`, `bai-sao.jpg`, `cong-vien-vinwonders.jpg`, `mui-ne-doi-cat.jpg`)
++ 8 file lệch HOA/thường (`baotanghagiang.jpg` vs `BaoTangHaGiang.jpg`) → 404 trên Linux
+Render. **Đã viết lại**, chỉ giữ 14 match đã **verify tay**: DB name tồn tại (query live)
+**và** file crawl tồn tại với **đúng tên + extension**. Copy 14 file vào static giữ nguyên
+case/extension (Linux-safe).
+
+### B4. Migration 0014 (backfill activity images)
+
+```sql
+UPDATE activities a SET image = p.image
+FROM places p
+WHERE a.place_id = p.id AND p.image<>'' AND (a.image IS NULL OR a.image='')
+```
+
+SAFE + idempotent: chỉ fill activity image rỗng khi place liên kết có ảnh thật; không
+ghi đè snapshot tốt. Áp dụng cho **mọi** trip cũ.
+
+### B5. Kết quả verify (local docker, end-to-end)
+
+| Check | Kết quả |
+| --- | --- |
+| `alembic upgrade head` | head `20260703_0014` |
+| `alembic check` | No drift |
+| `ruff check` migration mới | PASS |
+| Ground-truth re-audit | 67/67 path resolve (23D + 31P + 13H) |
+| **Trip 837** activities | 2/5 museum giờ có ảnh thật (`/img/places/tp-ho-chi-minh/...`);
+  3/5 generic meal (Breakfast/Lunch/Dinner, không phải POI thật, không `place_id`) → rỗng →
+  fallback category (đúng) |
+| Trip 837 "nơi ở" | hotel `Liberty Central Saigon Riverside` (id 78) **không có** file crawl →
+  fallback (đúng, không có ảnh thật) |
+| Docker `:8000` serve ảnh trip 837 | `bao_tang_my_thuat.webp` 200 (131KB), `bao-tang-lich-su.jpg` 200 (2.7MB) |
+| API `/api/v1/places/destinations` | 27 dest, path đúng |
+| API `/api/v1/places/144` | `Bảo tàng Mỹ thuật TP.HCM` → path ảnh mới đúng |
+| `FE npm run build` | PASS (21.6s) |
+
+### B6. Render sync — KHÔNG cần dump lại DB
+
+Migrations 0013/0014 dùng predicate portable + file static đã commit → Render tự cập nhật
+qua `preDeployCommand: alembic upgrade head` khi deploy code mới (commit → PR → merge).
+Dump toàn bộ local→Render sẽ **overwrite** dữ liệu người dùng đã tạo trên Render (rủi ro)
+→ **không khuyến nghị**. Chỉ dump lại nếu Render bị lệch schema nặng.
+
+### B7. Goong map — chưa ship (cần verify visually)
+
+Map hiện là placeholder (`DailyItinerary.tsx:512-562`). Data lat/lng **đã có** trong DB
+(`destinations.latitude/longitude`, `places.latitude/longitude`; pipeline đã expose ở
+suggestion context `pipeline.py:981-982`). Cần: (1) BE expose lat/lng trên
+`DestinationResponse`/`PlaceResponse`; (2) FE `npm i @goongmaps/goong-js`; (3) component
+`GoongMap` + `VITE_GOONG_MAP_API_KEY`; (4) verify render thực (Playwright bị block trong
+Claude bg trên Windows → cần user check bằng mắt). Quyết định **không** ship code map mù
+(không verify được) để tránh hỏng build đã xanh; data layer sẵn sàng cho bước kế tiếp.
+
+### B8. Còn lại (non-blocker)
+
+- ~141 file crawl chưa match DB place/hotel (landmark lớn như Hồ Hoàn Kiếm, Văn Miếu, Chùa
+  Một Cột chưa có row tương ứng trong DB — ETL ưu tiên POI thực tế). Cần enrich DB hoặc thêm
+  row rồi set path theo cùng quy ước verify.
+

@@ -89,6 +89,8 @@ class PlaceResponse(CamelCaseModel):
     image: str  # Photo URL
     price: str | None = None  # Display price string (formatted)
     location: str | None = None  # Address text
+    latitude: float | None = None  # Map coordinate (Goong map integration)
+    longitude: float | None = None  # Map coordinate (Goong map integration)
 
     # --- Review info (alias for backward compatibility) ---
     reviews: int | None = None  # Alias for review_count in some FE contexts
