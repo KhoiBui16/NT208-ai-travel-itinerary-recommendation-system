@@ -7,6 +7,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { getItinerary } from "../services/itinerary";
 import { getDestinationDetail, listSavedPlaces, savePlace, unsavePlace, type PlaceResponse } from "../services/places";
 import { normalizeSavedPlaces } from "../utils/savedPlaces";
+import { applyPlaceImageFallback, resolvePlaceImage } from "../utils/placeImage";
+import { GoongMap } from "../components/GoongMap";
 import {
   Plus,
   Car,
@@ -361,8 +363,9 @@ export default function DailyItinerary() {
                           <div className="flex gap-4">
                             {/* Thumbnail */}
                             <img
-                              src={item.image}
+                              src={resolvePlaceImage(item.image)}
                               alt={item.name}
+                              onError={applyPlaceImageFallback}
                               className="h-24 w-24 rounded-lg object-cover"
                             />
 
@@ -460,8 +463,9 @@ export default function DailyItinerary() {
                   {/* Image with Bookmark */}
                   <div className="relative">
                     <img
-                      src={suggestion.image}
+                      src={resolvePlaceImage(suggestion.image)}
                       alt={suggestion.name}
+                      onError={applyPlaceImageFallback}
                       className="h-32 w-full object-cover"
                     />
                     {/* Bookmark Icon */}
@@ -510,55 +514,12 @@ export default function DailyItinerary() {
               ))}
             </div>
           ) : (
-            /* Map Tab */
+            /* Map Tab — real Goong map of the destination's places */
             <div className="flex-1 relative overflow-hidden">
-              <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 relative">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <div className="relative">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500 shadow-lg">
-                      <MapIcon className="h-6 w-6 text-white" />
-                    </div>
-                    <p className="mt-2 text-xs font-semibold text-gray-700 text-center">
-                      {selectedDay?.destinationName || "Hà Nội"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="absolute top-1/4 left-1/3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 shadow-md">
-                    <Utensils className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-                <div className="absolute top-2/3 left-2/3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 shadow-md">
-                    <Building className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-                <div className="absolute top-1/3 right-1/4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 shadow-md">
-                    <Coffee className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-
-                <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-white/90 p-4 shadow-lg backdrop-blur-sm">
-                  <p className="text-sm font-semibold text-gray-700 mb-1">
-                    Bản đồ khu vực {selectedDay?.destinationName || "Hà Nội"}
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    Bản đồ tương tác chưa được tích hợp ở phase hiện tại. Đây là placeholder minh họa, không phải bản đồ thật từ API.
-                  </p>
-                </div>
-
-                <div className="absolute inset-0 opacity-10">
-                  <div className="h-full w-full" style={{
-                    backgroundImage: `
-                      linear-gradient(to right, #000 1px, transparent 1px),
-                      linear-gradient(to bottom, #000 1px, transparent 1px)
-                    `,
-                    backgroundSize: '40px 40px'
-                  }} />
-                </div>
-              </div>
+              <GoongMap
+                places={filteredSuggestions}
+                destinationName={selectedDay?.destinationName}
+              />
             </div>
           )}
         </div>

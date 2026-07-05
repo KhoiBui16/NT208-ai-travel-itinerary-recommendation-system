@@ -43,7 +43,7 @@ class PlaceService(BaseService):
 
     Uses composition with CacheClient for Redis caching. Cache keys:
     - "destinations:all:v4"              → Destination list with data quality
-    - "destinations:detail:v3:{name}"    → City detail (dest + places + hotels)
+    - "destinations:detail:v4:{name}"    → City detail (dest + places + hotels, +lat/lng)
     - "places:search:{query}:{city}:..." → Search results
     """
 
@@ -109,7 +109,7 @@ class PlaceService(BaseService):
 
         Cache TTL: destination_cache_ttl_seconds from settings.
         """
-        cache_key = normalize_cache_key("destinations", "detail", "v3", name)
+        cache_key = normalize_cache_key("destinations", "detail", "v4", name)
 
         # Try cache first
         cached = await self.cache.get(cache_key)
@@ -369,6 +369,8 @@ class PlaceService(BaseService):
             rating=place.rating,
             city=city,
             description=place.description,
+            latitude=place.latitude,
+            longitude=place.longitude,
         )
 
     def _to_hotel_response(self, hotel, dest: Destination) -> HotelResponse:
