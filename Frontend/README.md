@@ -99,7 +99,7 @@ The backend remains source of truth after a generated trip is claimed or owned b
 
 Do not call Goong REST APIs directly from FE with `GOONG_API_KEY`.
 
-Current FE only calls backend places APIs:
+FE calls backend places APIs for data:
 
 ```text
 GET /api/v1/places/destinations
@@ -107,13 +107,17 @@ GET /api/v1/places/destinations/{name}
 GET /api/v1/places/search
 ```
 
-Future map view, if implemented, should use a separate public map key:
+The DailyItinerary "Bản đồ" tab renders a real Goong map via `src/app/components/GoongMap.tsx` (PR #128), using the `@goongmaps/goong-js` SDK. The map:
+
+- Reads `import.meta.env.VITE_GOONG_MAP_API_KEY` (map-tiles public key, set on Vercel as `VITE_GOONG_MAP_API_KEY`).
+- Plots a colored marker per suggestion place that has `latitude`/`longitude` (exposed on `PlaceResponse` by the backend), centers on their centroid (fallback Hà Nội), and shows a popup per marker.
+- Falls back to a "Chưa cấu hình Goong Maps API key" hint when `VITE_GOONG_MAP_API_KEY` is missing, and to a no-marker map when no place has coordinates.
 
 ```env
-VITE_GOONG_MAP_KEY=<frontend map tile key>
+VITE_GOONG_MAP_API_KEY=<Goong map-tiles public key, URL-restricted on Goong dashboard>
 ```
 
-REST geocode/detail/direction calls should still go through the backend.
+`VITE_GOONG_MAP_API_KEY` is a **separate map-tiles public key** — it is NOT the REST `GOONG_API_KEY` used server-side for ETL/geocode. REST geocode/detail/direction calls still go through the backend only.
 
 ## Test Commands
 

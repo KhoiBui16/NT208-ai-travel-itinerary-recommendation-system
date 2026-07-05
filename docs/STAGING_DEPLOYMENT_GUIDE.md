@@ -66,6 +66,7 @@ flowchart LR
 | Variable | Required? | Notes |
 |---|---|---|
 | `VITE_API_URL` | Yes | URL backend Render, ví dụ `https://dulichviet-api.onrender.com` |
+| `VITE_GOONG_MAP_API_KEY` | Yes (cho map) | Goong **map-tiles public key**, render bản đồ ở DailyItinerary tab "Bản đồ" (PR #128). Thiếu → tab hiện hint "Chưa cấu hình Goong Maps API key" thay vì map. Đây là key **khác** REST `GOONG_API_KEY` server-side — lấy map-tiles key riêng từ Goong dashboard. |
 
 ### 5.2 Backend (Render)
 
@@ -107,18 +108,18 @@ https://dulichviet-staging.vercel.app
 
 ### 5.4 Goong key model (pre-deploy truth)
 
-Ứng dụng hiện chỉ dùng **một Goong REST key server-side**, không có map-tiles key riêng:
+Ứng dụng dùng **hai loại Goong key tách biệt** (REST server-side + map-tiles public):
 
 | Mặt | Env | Vai trò | Nơi expose |
 |---|---|---|---|
 | Backend / ETL / geocode / autocomplete / place detail | `GOONG_API_KEY` (canonical) | REST key server-side | Chỉ backend, KHÔNG đưa ra FE |
-| Frontend | — (chưa có) | FE hiện không render map và không đọc key Goong nào | — |
+| Frontend (map tiles) | `VITE_GOONG_MAP_API_KEY` | Map-tiles public key, render bản đồ Goong ở DailyItinerary tab "Bản đồ" (PR #128) | Vercel build-time (public, URL-restricted trên Goong dashboard) |
 
 Lưu ý:
 
 - `Backend/src/core/config.py` chấp nhận alias legacy `GOONG_MAP_KEY` / `GOONG_MAP_API_KEY` (đều map vào cùng trường `goong_api_key`), nhưng **canonical là `GOONG_API_KEY`** — `render.yaml` dùng tên này.
-- Các alias trên **không phải** "map-tiles key public"; chúng chỉ là tên tương thích, vẫn là REST key server-side. Đừng dán vào Vercel public env.
-- Goong cấp 2 loại key (map-tiles public + REST server) nhưng app hiện chỉ cần REST. Khi sau này thêm map tile thật ở FE, mới giới thiệu một public `VITE_GOONG_MAP_KEY` riêng (map-tiles key, URL-restricted) và **không bao giờ** expose REST `GOONG_API_KEY` ở FE/Vercel public env.
+- Các alias trên **không phải** "map-tiles key public"; chúng chỉ là tên tương thích của REST key server-side. Đừng dán REST key vào Vercel public env.
+- `VITE_GOONG_MAP_API_KEY` là **map-tiles key public riêng** (Goong cấp loại này ngoài REST key), chỉ dùng để load tile + marker ở FE. Nó **khác** REST `GOONG_API_KEY` — KHÔNG dán REST key server-side vào Vercel public env. Latitude/longitude của marker lấy từ `places.latitude/longitude` do Goong ETL geocode điền (dùng REST `GOONG_API_KEY`), nên map có marker hay không phụ thuộc data DB, không phụ thuộc key này.
 
 ## 6. Vercel frontend setup
 

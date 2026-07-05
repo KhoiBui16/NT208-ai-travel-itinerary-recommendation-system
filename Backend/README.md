@@ -56,7 +56,7 @@ Copy-Item .env.example .env
 | `JWT_SECRET_KEY` | Required for real auth | Sign access/refresh JWTs |
 | `DATABASE_URL` | Default works with local Docker | PostgreSQL async URL |
 | `REDIS_URL` | Default works with local Docker | Cache and AI quota |
-| `GOONG_API_KEY` | Required for real Goong ETL | Autocomplete, place detail, geocode |
+| `GOONG_API_KEY` | Required for real Goong ETL | Autocomplete, place detail, geocode. Backend cũng chấp nhận alias `GOONG_MAP_KEY` / `GOONG_MAP_API_KEY` (cùng field). Key map-tiles public `VITE_GOONG_MAP_API_KEY` chỉ dùng ở FE (Vercel), **không** cần set ở backend. |
 | `GEMINI_API_KEY` | Required for real AI generate | Gemini C.1 generation |
 | `AGENT_TIMEOUT_SECONDS` | Optional, default 30 | Local smoke can use 60 or 120 if provider latency is high |
 | `AGENT_MIN_ACTIVITIES_PER_DAY` | Optional, default 5 | Minimum C.1 activities per day |

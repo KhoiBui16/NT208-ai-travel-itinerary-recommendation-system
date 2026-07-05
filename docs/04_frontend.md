@@ -40,6 +40,7 @@ Frontend/
 │   │   │   ├── AIPromoBubble.tsx  # Legacy promo bubble (không còn mount ở TripWorkspace)
 │   │   │   ├── ContextualSuggestionsPanel.tsx # Suggestions demo panel (mock/inactive)
 │   │   │   ├── SavedSuggestions.tsx
+│   │   │   ├── GoongMap.tsx    # Real Goong map (DailyItinerary "Bản đồ" tab, @goongmaps/goong-js, VITE_GOONG_MAP_API_KEY)
 │   │   │   └── SimpleFooter.tsx
 │   │   ├── contexts/
 │   │   │   ├── AuthContext.tsx     # JWT state, login/logout/register, pending claim
