@@ -66,14 +66,14 @@ class PlaceService(BaseService):
     async def get_destinations(self) -> list[DestinationResponse]:
         """Get all active destinations with place/hotel counts.
 
-        Uses v4 cache key to reflect updated readiness semantics:
-        data quality remains advisory, but `isGenerateReady` now tracks
-        the minimum viable place coverage for the shortest AI trip.
+        Uses v5 cache key. Bumped from v4 because migrations 0013/0014
+        changed place image data held in this cache; an old v4 entry would
+        keep serving stale (empty) images until the TTL expired.
 
         Cache TTL: destination_cache_ttl_seconds from settings.
         """
         # Try cache first
-        cached = await self.cache.get("destinations:all:v4")
+        cached = await self.cache.get("destinations:all:v5")
         if cached is not None:
             cached_items = json.loads(cached)
             return [
@@ -95,7 +95,7 @@ class PlaceService(BaseService):
         # loaded afterwards (e.g. a DB restore) until the TTL (24h) expires.
         if items:
             await self.cache.set(
-                "destinations:all:v4",
+                "destinations:all:v5",
                 json.dumps([i.model_dump() for i in items]),
                 self.settings.destination_cache_ttl_seconds,
             )
@@ -109,7 +109,8 @@ class PlaceService(BaseService):
 
         Cache TTL: destination_cache_ttl_seconds from settings.
         """
-        cache_key = normalize_cache_key("destinations", "detail", "v4", name)
+        # v5: bumped across migrations 0013/0014 (place images changed); see get_destinations.
+        cache_key = normalize_cache_key("destinations", "detail", "v5", name)
 
         # Try cache first
         cached = await self.cache.get(cache_key)
@@ -170,8 +171,10 @@ class PlaceService(BaseService):
         Results are ordered by rating descending.
         Cache TTL: place_search_cache_ttl_seconds from settings.
         """
-        # Build normalized cache key from all search parameters
-        cache_key = normalize_cache_key("places", "search", query, city, category, limit)
+        # Build normalized cache key from all search parameters.
+        # "v2": bumped across migrations 0013/0014 (place images changed), else stale search
+        # results would keep serving old/empty images until the TTL expired.
+        cache_key = normalize_cache_key("places", "search", "v2", query, city, category, limit)
 
         # Try cache first
         cached = await self.cache.get(cache_key)
@@ -312,9 +315,9 @@ class PlaceService(BaseService):
         else:
             status = "sparse"
             reason = (
-                f"Dữ liệu cho {dest_name} hiện còn quá ít để AI tạo lịch trình ổn định. "
-                "Bạn vẫn có thể xem chi tiết điểm đến, nhưng nên ETL thêm dữ liệu "
-                "trước khi generate."
+                f"Dữ liệu về {dest_name} hiện còn quá ít để tạo lịch trình tốt. "
+                "Bạn vẫn có thể xem thông tin điểm đến này; chúng tôi sẽ bổ sung "
+                "thêm địa điểm trong thời gian tới."
             )
 
         is_generate_ready = places_count >= MIN_LIST_GENERATE_READY_PLACES

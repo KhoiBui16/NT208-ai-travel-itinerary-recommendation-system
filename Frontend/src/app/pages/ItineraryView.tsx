@@ -18,6 +18,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { resolvePlaceImage, applyPlaceImageFallback } from "../utils/placeImage";
 import {
   deleteActivity,
   getItinerary,
@@ -70,10 +71,10 @@ function mapApiToLocal(resp: ItineraryResponse): LocalItinerary {
     budget: resp.budget,
     interests: resp.interests,
     totalCost: resp.totalCost,
-    days: resp.days.map((d, idx) => ({
+    days: (resp.days || []).map((d, idx) => ({
       day: idx + 1,
-      date: d.date || d.label || "",
-      activities: (d.activities || []).map((a) => ({
+      date: d?.date || d?.label || "",
+      activities: (d?.activities || []).map((a) => ({
         id: String(a.id ?? idx * 100 + Math.random()),
         time: a.time,
         title: a.name,
@@ -499,8 +500,9 @@ export default function ItineraryView() {
                     className="flex gap-4 rounded-xl border border-gray-200 p-4 transition-all hover:shadow-lg"
                   >
                     <img
-                      src={activity.image}
+                      src={resolvePlaceImage(activity.image)}
                       alt={activity.title}
+                      onError={applyPlaceImageFallback}
                       className="h-24 w-24 rounded-lg object-cover"
                     />
                     <div className="flex-1">
