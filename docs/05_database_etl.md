@@ -550,6 +550,11 @@ Schema đã có trong DB qua Alembic migration, và current source đã có sess
 | `20260608_0006_fix_accommodation_day_ids` | 2026-06-08 | Accommodation day linking fix | Chuẩn hóa `accommodations.day_ids` cho dữ liệu cũ |
 | `20260609_0007_seed_trip_days_for_existing_trips` | 2026-06-09 | Backfill trip days | Seed `trip_days` cho trip cũ để workspace/edit flow ổn định |
 | `20260621_0008_add_chat_message_confirmation_fields` | 2026-06-21 | C3C apply-patch confirmation state | `chat_messages` thêm `confirmation_status`, `trip_snapshot_updated_at`, `resolved_at` |
+| `20260622_0009_add_chat_session_title` | 2026-06-22 | C4 chat session rename | `chat_sessions` thêm `title` |
+| `20260703_0010_merge_vinh_ha_long_into_ha_long` | 2026-07-03 | Gộp `vinh-ha-long` lệch vào `ha-long` + tính lại `destinations.places_count` | `destinations`, `places.destination_id` |
+| `20260703_0012_import_crawled_image_paths` | 2026-07-03 | Import ảnh crawl thật (places/hotels/destinations) theo slug | `places.image`, `hotels.image`, `destinations.image` |
+| `20260703_0013_expand_crawled_image_paths` | 2026-07-03 | Bổ sung ảnh thật cho 13 place + 1 hotel còn trống (predicate `name`+`destination_id`) | `places.image`, `hotels.image` |
+| `20260703_0014_backfill_activity_images_from_places` | 2026-07-03 | Backfill `activities.image` rỗng từ `places.image` qua `place_id` (sửa snapshot trip đóng băng lúc generate, vd. trip 837) | `activities.image` |
 **Nguyên tắc migration:**
 - Alembic là source of truth — không dùng `create_all()` trong production.
 - Mỗi migration phải có `upgrade()` và `downgrade()`.

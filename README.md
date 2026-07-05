@@ -165,7 +165,7 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   ├── core/                  # config, db, security, dependencies, middleware, rate limiter
 │   │   └── shared/                # cache client, pagination, base helpers
 │   ├── tests/                     # 187 unit + 77 integration (collect)
-│   ├── alembic/versions/          # 9 migrations
+│   ├── alembic/versions/          # 13 migrations
 │   ├── config.yaml                # non-secret defaults
 │   ├── .env.example               # secret template
 │   ├── pyproject.toml             # uv deps + Ruff config
@@ -277,7 +277,7 @@ npm run dev -- --host localhost --port 5173
 | C.4 History | Chat history + session management (rename/delete/switcher) | ✅ Merged (#106) |
 | C.5 Analytics | Text-to-SQL | 🔄 Optional/deferred |
 
-**HEAD hiện tại:** `fix: [#00114] close business uat polish backlog (#109)` — Phase C.1–C.4 đã merge hoàn chỉnh; C.5 Analytics là tùy chọn (chưa implement, cần guardrails bảo mật nếu bật).
+**HEAD hiện tại:** `fix: [#00136] integrate goong map and backfill trip image snapshots (#128)` — Phase C.1–C.4 đã merge hoàn chỉnh; gần đây thêm hardening runtime ảnh + tích hợp bản đồ Goong thật ở DailyItinerary (PR #127/#128); C.5 Analytics là tùy chọn (chưa implement, cần guardrails bảo mật nếu bật).
 
 > Mọi chi tiết phase/branch/PR: [`docs/11_phase_roadmap.md`](docs/11_phase_roadmap.md) · Tracker: [`docs/09_execution_tracker.md`](docs/09_execution_tracker.md)
 
@@ -302,7 +302,7 @@ npm run dev -- --host localhost --port 5173
 
 ## ☁️ Deployment
 
-- **Frontend:** Vercel (Vite SPA, `vercel.json` có rewrite, build env `VITE_API_URL` = URL backend prod).
+- **Frontend:** Vercel (Vite SPA, `vercel.json` có rewrite). Build env: `VITE_API_URL` = URL backend prod; `VITE_GOONG_MAP_API_KEY` = Goong map-tiles public key (cho tab "Bản đồ" ở DailyItinerary, PR #128).
 - **Backend:** Render native Python (`uvicorn ... --port $PORT`, health `/api/v1/health`), hoặc Docker fallback.
 - **Postgres:** Render Postgres (khuyến nghị) hoặc Supabase.
 - **Redis:** Render Key Value / TCP provider (bắt buộc — app dùng Redis TCP client, **không** Upstash REST).
