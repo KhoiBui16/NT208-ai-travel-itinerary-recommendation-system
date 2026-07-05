@@ -14,6 +14,7 @@ import json
 import logging
 
 from redis.asyncio import Redis
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import AppSettings, get_settings
@@ -58,6 +59,33 @@ class PlaceService(BaseService):
         self.repo = PlaceRepository(session)
         self.cache = CacheClient(redis)  # Graceful degradation if Redis unavailable
         self.settings = settings or get_settings()
+        # Cache key version: lazily derived from the current Alembic revision so
+        # the cache auto-invalidates whenever a deploy runs a new migration
+        # (Render preDeployCommand runs `alembic upgrade head` before the app
+        # serves). No manual "v4/v5" bump is ever needed again.
+        self._cache_version: str | None = None
+
+    async def _cache_ver(self) -> str:
+        """Resolve the places/destinations cache-key version from the Alembic revision.
+
+        Memoized per instance. Falls back to a constant when the revision
+        cannot be read (e.g. mocked session in unit tests, or the
+        alembic_version table being absent) so caching still works.
+        """
+        if self._cache_version is not None:
+            return self._cache_version
+        rev: str | None = None
+        try:
+            result = await self.session.execute(text("SELECT version_num FROM alembic_version"))
+            row = result.fetchone()
+            if row is not None:
+                candidate = row[0]
+                if isinstance(candidate, str):
+                    rev = candidate
+        except Exception:
+            rev = None
+        self._cache_version = f"rev-{rev}" if rev else "rev-default"
+        return self._cache_version
 
     # ===================================================================
     # Destinations — Public city browsing
@@ -66,14 +94,15 @@ class PlaceService(BaseService):
     async def get_destinations(self) -> list[DestinationResponse]:
         """Get all active destinations with place/hotel counts.
 
-        Uses v4 cache key to reflect updated readiness semantics:
-        data quality remains advisory, but `isGenerateReady` now tracks
-        the minimum viable place coverage for the shortest AI trip.
+        Cache key is versioned by the current Alembic revision
+        (``destinations:all:<rev>``) so it auto-invalidates whenever a deploy
+        runs a new migration — no manual version bump required.
 
         Cache TTL: destination_cache_ttl_seconds from settings.
         """
+        version = await self._cache_ver()
         # Try cache first
-        cached = await self.cache.get("destinations:all:v4")
+        cached = await self.cache.get(f"destinations:all:{version}")
         if cached is not None:
             cached_items = json.loads(cached)
             return [
@@ -95,7 +124,7 @@ class PlaceService(BaseService):
         # loaded afterwards (e.g. a DB restore) until the TTL (24h) expires.
         if items:
             await self.cache.set(
-                "destinations:all:v4",
+                f"destinations:all:{version}",
                 json.dumps([i.model_dump() for i in items]),
                 self.settings.destination_cache_ttl_seconds,
             )
@@ -109,7 +138,9 @@ class PlaceService(BaseService):
 
         Cache TTL: destination_cache_ttl_seconds from settings.
         """
-        cache_key = normalize_cache_key("destinations", "detail", "v4", name)
+        # Cache key is versioned by the current Alembic revision (see get_destinations).
+        version = await self._cache_ver()
+        cache_key = normalize_cache_key("destinations", "detail", version, name)
 
         # Try cache first
         cached = await self.cache.get(cache_key)
@@ -170,8 +201,10 @@ class PlaceService(BaseService):
         Results are ordered by rating descending.
         Cache TTL: place_search_cache_ttl_seconds from settings.
         """
-        # Build normalized cache key from all search parameters
-        cache_key = normalize_cache_key("places", "search", query, city, category, limit)
+        # Build normalized cache key from all search parameters, versioned by
+        # the current Alembic revision (see get_destinations).
+        version = await self._cache_ver()
+        cache_key = normalize_cache_key("places", "search", version, query, city, category, limit)
 
         # Try cache first
         cached = await self.cache.get(cache_key)
@@ -312,9 +345,9 @@ class PlaceService(BaseService):
         else:
             status = "sparse"
             reason = (
-                f"Dữ liệu cho {dest_name} hiện còn quá ít để AI tạo lịch trình ổn định. "
-                "Bạn vẫn có thể xem chi tiết điểm đến, nhưng nên ETL thêm dữ liệu "
-                "trước khi generate."
+                f"Dữ liệu về {dest_name} hiện còn quá ít để tạo lịch trình tốt. "
+                "Bạn vẫn có thể xem thông tin điểm đến này; chúng tôi sẽ bổ sung "
+                "thêm địa điểm trong thời gian tới."
             )
 
         is_generate_ready = places_count >= MIN_LIST_GENERATE_READY_PLACES

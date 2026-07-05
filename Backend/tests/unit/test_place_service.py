@@ -148,7 +148,12 @@ async def test_get_destinations__sparse_city__marks_generate_not_ready(
     assert len(result) == 1
     assert result[0].isGenerateReady is False
     assert result[0].readinessStatus == "sparse"
-    assert "ETL thêm dữ liệu" in (result[0].readinessReason or "")
+    # Sparse-city message must be plain end-user Vietnamese (no "ETL"/"generate" jargon).
+    reason = result[0].readinessReason or ""
+    assert reason, "sparse city must explain the data gap to end users"
+    assert "ETL" not in reason
+    assert "generate" not in reason
+    assert "quá ít" in reason
 
 
 async def test_get_destinations__normalizes_local_destination_image_from_slug(

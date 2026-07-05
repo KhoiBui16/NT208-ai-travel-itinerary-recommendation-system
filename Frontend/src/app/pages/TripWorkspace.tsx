@@ -105,7 +105,11 @@ export default function TripWorkspace() {
 
   // ── 2-Step "Add Days" Flow States ────────────────────────────────────────
   const [showAddDaysModal, setShowAddDaysModal] = useState(false);
-  const selectedDay = days.find((d) => d.id === selectedDayId)!;
+  // Compare ids as strings (tolerant of number/string mismatch between DB day ids
+  // and the selectedDayId state) and fall back to the first day so a stale
+  // selectedDayId can never produce undefined — which previously crashed the
+  // center panel with "Cannot read properties of undefined (reading 'label')".
+  const selectedDay = days.find((d) => String(d.id) === String(selectedDayId)) ?? days[0];
   const {
     accommodations, setAccommodations, showHotelSelection, setShowHotelSelection,
     selectedHotel, setSelectedHotel, showDaySelection, setShowDaySelection,
