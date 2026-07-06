@@ -1,0 +1,310 @@
+
+============================================================
+1. DANH SACH TABLE
+============================================================
++-------------+--------------------+
+| schema_name |     table_name     |
++-------------+--------------------+
+| public      | accommodations     |
+| public      | activities         |
+| public      | alembic_version    |
+| public      | chat_messages      |
+| public      | chat_sessions      |
+| public      | destinations       |
+| public      | extra_expenses     |
+| public      | guest_claim_tokens |
+| public      | hotels             |
+| public      | places             |
+| public      | refresh_tokens     |
+| public      | saved_places       |
+| public      | scraped_sources    |
+| public      | share_links        |
+| public      | trip_days          |
+| public      | trip_ratings       |
+| public      | trips              |
+| public      | users              |
++-------------+--------------------+
+(18 rows)
+
+
+============================================================
+2. TOAN BO COT CUA MOI TABLE
+============================================================
++--------------+--------------------+------------------+---------------------------+--------------------------+-------------+------------------------------------------------+
+| table_schema |     table_name     | ordinal_position |        column_name        |        data_type         | is_nullable |                 column_default                 |
++--------------+--------------------+------------------+---------------------------+--------------------------+-------------+------------------------------------------------+
+| public       | accommodations     |                1 | id                        | integer                  | NO          | nextval('accommodations_id_seq'::regclass)     |
+| public       | accommodations     |                2 | trip_id                   | integer                  | NO          |                                                |
+| public       | accommodations     |                3 | hotel_id                  | integer                  | YES         |                                                |
+| public       | accommodations     |                4 | name                      | character varying        | NO          |                                                |
+| public       | accommodations     |                5 | check_in                  | character varying        | NO          |                                                |
+| public       | accommodations     |                6 | check_out                 | character varying        | NO          |                                                |
+| public       | accommodations     |                7 | price_per_night           | integer                  | NO          |                                                |
+| public       | accommodations     |                8 | total_price               | integer                  | NO          |                                                |
+| public       | accommodations     |                9 | booking_url               | character varying        | YES         |                                                |
+| public       | accommodations     |               10 | booking_type              | character varying        | YES         |                                                |
+| public       | accommodations     |               11 | duration                  | integer                  | YES         |                                                |
+| public       | accommodations     |               12 | day_ids                   | json                     | NO          |                                                |
+| public       | activities         |                1 | id                        | integer                  | NO          | nextval('activities_id_seq'::regclass)         |
+| public       | activities         |                2 | trip_day_id               | integer                  | NO          |                                                |
+| public       | activities         |                3 | place_id                  | integer                  | YES         |                                                |
+| public       | activities         |                4 | name                      | character varying        | NO          |                                                |
+| public       | activities         |                5 | time                      | character varying        | NO          |                                                |
+| public       | activities         |                6 | end_time                  | character varying        | YES         |                                                |
+| public       | activities         |                7 | type                      | character varying        | NO          |                                                |
+| public       | activities         |                8 | location                  | character varying        | NO          |                                                |
+| public       | activities         |                9 | description               | text                     | NO          |                                                |
+| public       | activities         |               10 | image                     | character varying        | NO          |                                                |
+| public       | activities         |               11 | transportation            | character varying        | YES         |                                                |
+| public       | activities         |               12 | adult_price               | integer                  | YES         |                                                |
+| public       | activities         |               13 | child_price               | integer                  | YES         |                                                |
+| public       | activities         |               14 | custom_cost               | integer                  | YES         |                                                |
+| public       | activities         |               15 | bus_ticket_price          | integer                  | YES         |                                                |
+| public       | activities         |               16 | taxi_cost                 | integer                  | YES         |                                                |
+| public       | activities         |               17 | order_index               | integer                  | NO          |                                                |
+| public       | activities         |               18 | created_at                | timestamp with time zone | NO          | now()                                          |
+| public       | alembic_version    |                1 | version_num               | character varying        | NO          |                                                |
+| public       | chat_messages      |                1 | id                        | integer                  | NO          | nextval('chat_messages_id_seq'::regclass)      |
+| public       | chat_messages      |                2 | session_id                | integer                  | NO          |                                                |
+| public       | chat_messages      |                3 | role                      | character varying        | NO          |                                                |
+| public       | chat_messages      |                4 | content                   | text                     | NO          |                                                |
+| public       | chat_messages      |                5 | proposed_operations       | json                     | NO          |                                                |
+| public       | chat_messages      |                6 | requires_confirmation     | boolean                  | NO          |                                                |
+| public       | chat_messages      |                7 | created_at                | timestamp with time zone | NO          | now()                                          |
+| public       | chat_messages      |                8 | confirmation_status       | character varying        | NO          | 'not_required'::character varying              |
+| public       | chat_messages      |                9 | trip_snapshot_updated_at  | timestamp with time zone | YES         |                                                |
+| public       | chat_messages      |               10 | resolved_at               | timestamp with time zone | YES         |                                                |
+| public       | chat_sessions      |                1 | id                        | integer                  | NO          | nextval('chat_sessions_id_seq'::regclass)      |
+| public       | chat_sessions      |                2 | trip_id                   | integer                  | NO          |                                                |
+| public       | chat_sessions      |                3 | user_id                   | integer                  | YES         |                                                |
+| public       | chat_sessions      |                4 | thread_id                 | character varying        | NO          |                                                |
+| public       | chat_sessions      |                5 | status                    | character varying        | NO          |                                                |
+| public       | chat_sessions      |                6 | created_at                | timestamp with time zone | NO          | now()                                          |
+| public       | chat_sessions      |                7 | updated_at                | timestamp with time zone | NO          | now()                                          |
+| public       | chat_sessions      |                8 | title                     | character varying        | YES         |                                                |
+| public       | destinations       |                1 | id                        | integer                  | NO          | nextval('destinations_id_seq'::regclass)       |
+| public       | destinations       |                2 | name                      | character varying        | NO          |                                                |
+| public       | destinations       |                3 | slug                      | character varying        | NO          |                                                |
+| public       | destinations       |                4 | description               | text                     | NO          |                                                |
+| public       | destinations       |                5 | image                     | character varying        | NO          |                                                |
+| public       | destinations       |                6 | latitude                  | double precision         | YES         |                                                |
+| public       | destinations       |                7 | longitude                 | double precision         | YES         |                                                |
+| public       | destinations       |                8 | is_active                 | boolean                  | NO          |                                                |
+| public       | destinations       |                9 | places_count              | integer                  | NO          |                                                |
+| public       | destinations       |               10 | last_etl_at               | timestamp with time zone | YES         |                                                |
+| public       | extra_expenses     |                1 | id                        | integer                  | NO          | nextval('extra_expenses_id_seq'::regclass)     |
+| public       | extra_expenses     |                2 | activity_id               | integer                  | YES         |                                                |
+| public       | extra_expenses     |                3 | trip_day_id               | integer                  | YES         |                                                |
+| public       | extra_expenses     |                4 | name                      | character varying        | NO          |                                                |
+| public       | extra_expenses     |                5 | amount                    | integer                  | NO          |                                                |
+| public       | extra_expenses     |                6 | category                  | character varying        | NO          |                                                |
+| public       | guest_claim_tokens |                1 | id                        | integer                  | NO          | nextval('guest_claim_tokens_id_seq'::regclass) |
+| public       | guest_claim_tokens |                2 | trip_id                   | integer                  | NO          |                                                |
+| public       | guest_claim_tokens |                3 | token_hash                | character varying        | NO          |                                                |
+| public       | guest_claim_tokens |                4 | expires_at                | timestamp with time zone | NO          |                                                |
+| public       | guest_claim_tokens |                5 | consumed_at               | timestamp with time zone | YES         |                                                |
+| public       | guest_claim_tokens |                6 | created_at                | timestamp with time zone | NO          | now()                                          |
+| public       | hotels             |                1 | id                        | integer                  | NO          | nextval('hotels_id_seq'::regclass)             |
+| public       | hotels             |                2 | destination_id            | integer                  | NO          |                                                |
+| public       | hotels             |                3 | name                      | character varying        | NO          |                                                |
+| public       | hotels             |                4 | price_per_night           | integer                  | NO          |                                                |
+| public       | hotels             |                5 | rating                    | double precision         | NO          |                                                |
+| public       | hotels             |                6 | review_count              | integer                  | NO          |                                                |
+| public       | hotels             |                7 | location                  | character varying        | NO          |                                                |
+| public       | hotels             |                8 | image                     | character varying        | NO          |                                                |
+| public       | hotels             |                9 | booking_url               | character varying        | YES         |                                                |
+| public       | hotels             |               10 | amenities                 | text                     | NO          |                                                |
+| public       | hotels             |               11 | description               | text                     | NO          |                                                |
+| public       | places             |                1 | id                        | integer                  | NO          | nextval('places_id_seq'::regclass)             |
+| public       | places             |                2 | destination_id            | integer                  | NO          |                                                |
+| public       | places             |                3 | name                      | character varying        | NO          |                                                |
+| public       | places             |                4 | category                  | character varying        | NO          |                                                |
+| public       | places             |                5 | description               | text                     | NO          |                                                |
+| public       | places             |                6 | location                  | character varying        | NO          |                                                |
+| public       | places             |                7 | latitude                  | double precision         | YES         |                                                |
+| public       | places             |                8 | longitude                 | double precision         | YES         |                                                |
+| public       | places             |                9 | avg_cost                  | integer                  | NO          |                                                |
+| public       | places             |               10 | rating                    | double precision         | NO          |                                                |
+| public       | places             |               11 | review_count              | integer                  | NO          |                                                |
+| public       | places             |               12 | image                     | character varying        | NO          |                                                |
+| public       | places             |               13 | opening_hours             | character varying        | YES         |                                                |
+| public       | places             |               14 | source                    | character varying        | NO          |                                                |
+| public       | places             |               15 | updated_at                | timestamp with time zone | NO          | now()                                          |
+| public       | places             |               16 | external_id               | character varying        | YES         |                                                |
+| public       | places             |               17 | raw_metadata              | jsonb                    | YES         |                                                |
+| public       | refresh_tokens     |                1 | id                        | integer                  | NO          | nextval('refresh_tokens_id_seq'::regclass)     |
+| public       | refresh_tokens     |                2 | user_id                   | integer                  | NO          |                                                |
+| public       | refresh_tokens     |                3 | token_hash                | character varying        | NO          |                                                |
+| public       | refresh_tokens     |                4 | expires_at                | timestamp with time zone | NO          |                                                |
+| public       | refresh_tokens     |                5 | is_revoked                | boolean                  | NO          |                                                |
+| public       | refresh_tokens     |                6 | created_at                | timestamp with time zone | NO          | now()                                          |
+| public       | saved_places       |                1 | id                        | integer                  | NO          | nextval('saved_places_id_seq'::regclass)       |
+| public       | saved_places       |                2 | user_id                   | integer                  | NO          |                                                |
+| public       | saved_places       |                3 | place_id                  | integer                  | NO          |                                                |
+| public       | saved_places       |                4 | created_at                | timestamp with time zone | NO          | now()                                          |
+| public       | scraped_sources    |                1 | id                        | integer                  | NO          | nextval('scraped_sources_id_seq'::regclass)    |
+| public       | scraped_sources    |                2 | source_name               | character varying        | NO          |                                                |
+| public       | scraped_sources    |                3 | city                      | character varying        | YES         |                                                |
+| public       | scraped_sources    |                4 | url                       | text                     | YES         |                                                |
+| public       | scraped_sources    |                5 | last_crawled              | timestamp with time zone | NO          | now()                                          |
+| public       | scraped_sources    |                6 | items_count               | integer                  | NO          |                                                |
+| public       | scraped_sources    |                7 | status                    | character varying        | NO          |                                                |
+| public       | scraped_sources    |                8 | error_message             | text                     | YES         |                                                |
+| public       | scraped_sources    |                9 | created_at                | timestamp with time zone | NO          | now()                                          |
+| public       | share_links        |                1 | id                        | integer                  | NO          | nextval('share_links_id_seq'::regclass)        |
+| public       | share_links        |                2 | trip_id                   | integer                  | NO          |                                                |
+| public       | share_links        |                3 | token_hash                | character varying        | NO          |                                                |
+| public       | share_links        |                4 | created_by_user_id        | integer                  | NO          |                                                |
+| public       | share_links        |                5 | permission                | character varying        | NO          |                                                |
+| public       | share_links        |                6 | expires_at                | timestamp with time zone | YES         |                                                |
+| public       | share_links        |                7 | revoked_at                | timestamp with time zone | YES         |                                                |
+| public       | share_links        |                8 | created_at                | timestamp with time zone | NO          | now()                                          |
+| public       | trip_days          |                1 | id                        | integer                  | NO          | nextval('trip_days_id_seq'::regclass)          |
+| public       | trip_days          |                2 | trip_id                   | integer                  | NO          |                                                |
+| public       | trip_days          |                3 | day_number                | integer                  | NO          |                                                |
+| public       | trip_days          |                4 | label                     | character varying        | NO          |                                                |
+| public       | trip_days          |                5 | date                      | character varying        | NO          |                                                |
+| public       | trip_days          |                6 | destination_name          | character varying        | YES         |                                                |
+| public       | trip_ratings       |                1 | id                        | integer                  | NO          | nextval('trip_ratings_id_seq'::regclass)       |
+| public       | trip_ratings       |                2 | trip_id                   | integer                  | NO          |                                                |
+| public       | trip_ratings       |                3 | rating                    | integer                  | NO          |                                                |
+| public       | trip_ratings       |                4 | feedback                  | text                     | YES         |                                                |
+| public       | trip_ratings       |                5 | created_at                | timestamp with time zone | NO          | now()                                          |
+| public       | trips              |                1 | id                        | integer                  | NO          | nextval('trips_id_seq'::regclass)              |
+| public       | trips              |                2 | user_id                   | integer                  | YES         |                                                |
+| public       | trips              |                3 | destination               | character varying        | NO          |                                                |
+| public       | trips              |                4 | trip_name                 | character varying        | NO          |                                                |
+| public       | trips              |                5 | start_date                | date                     | NO          |                                                |
+| public       | trips              |                6 | end_date                  | date                     | NO          |                                                |
+| public       | trips              |                7 | budget                    | integer                  | NO          |                                                |
+| public       | trips              |                8 | total_cost                | integer                  | NO          |                                                |
+| public       | trips              |                9 | adults_count              | integer                  | NO          |                                                |
+| public       | trips              |               10 | children_count            | integer                  | NO          |                                                |
+| public       | trips              |               11 | interests                 | json                     | NO          |                                                |
+| public       | trips              |               12 | status                    | character varying        | NO          |                                                |
+| public       | trips              |               13 | ai_generated              | boolean                  | NO          |                                                |
+| public       | trips              |               14 | created_at                | timestamp with time zone | NO          | now()                                          |
+| public       | trips              |               15 | updated_at                | timestamp with time zone | NO          | now()                                          |
+| public       | users              |                1 | id                        | integer                  | NO          | nextval('users_id_seq'::regclass)              |
+| public       | users              |                2 | email                     | character varying        | NO          |                                                |
+| public       | users              |                3 | hashed_password           | character varying        | NO          |                                                |
+| public       | users              |                4 | name                      | character varying        | NO          |                                                |
+| public       | users              |                5 | phone                     | character varying        | YES         |                                                |
+| public       | users              |                6 | interests                 | json                     | NO          |                                                |
+| public       | users              |                7 | is_active                 | boolean                  | NO          |                                                |
+| public       | users              |                8 | created_at                | timestamp with time zone | NO          | now()                                          |
+| public       | users              |                9 | updated_at                | timestamp with time zone | NO          | now()                                          |
+| public       | users              |               10 | password_reset_token_hash | character varying        | YES         |                                                |
+| public       | users              |               11 | password_reset_expires_at | timestamp with time zone | YES         |                                                |
++--------------+--------------------+------------------+---------------------------+--------------------------+-------------+------------------------------------------------+
+(163 rows)
+
+
+============================================================
+3. PRIMARY KEY - FOREIGN KEY - UNIQUE CONSTRAINT
+============================================================
++--------------+--------------------+-----------------+--------------------+-------------------+--------------------+-------------------+
+| table_schema |     table_name     | constraint_type |    column_name     | referenced_schema |  referenced_table  | referenced_column |
++--------------+--------------------+-----------------+--------------------+-------------------+--------------------+-------------------+
+| public       | accommodations     | FOREIGN KEY     | hotel_id           | public            | hotels             | id                |
+| public       | accommodations     | FOREIGN KEY     | trip_id            | public            | trips              | id                |
+| public       | accommodations     | PRIMARY KEY     | id                 | public            | accommodations     | id                |
+| public       | activities         | FOREIGN KEY     | trip_day_id        | public            | trip_days          | id                |
+| public       | activities         | FOREIGN KEY     | place_id           | public            | places             | id                |
+| public       | activities         | PRIMARY KEY     | id                 | public            | activities         | id                |
+| public       | alembic_version    | PRIMARY KEY     | version_num        | public            | alembic_version    | version_num       |
+| public       | chat_messages      | FOREIGN KEY     | session_id         | public            | chat_sessions      | id                |
+| public       | chat_messages      | PRIMARY KEY     | id                 | public            | chat_messages      | id                |
+| public       | chat_sessions      | FOREIGN KEY     | trip_id            | public            | trips              | id                |
+| public       | chat_sessions      | FOREIGN KEY     | user_id            | public            | users              | id                |
+| public       | chat_sessions      | PRIMARY KEY     | id                 | public            | chat_sessions      | id                |
+| public       | chat_sessions      | UNIQUE          | thread_id          | public            | chat_sessions      | thread_id         |
+| public       | destinations       | PRIMARY KEY     | id                 | public            | destinations       | id                |
+| public       | destinations       | UNIQUE          | slug               | public            | destinations       | slug              |
+| public       | destinations       | UNIQUE          | name               | public            | destinations       | name              |
+| public       | extra_expenses     | FOREIGN KEY     | trip_day_id        | public            | trip_days          | id                |
+| public       | extra_expenses     | FOREIGN KEY     | activity_id        | public            | activities         | id                |
+| public       | extra_expenses     | PRIMARY KEY     | id                 | public            | extra_expenses     | id                |
+| public       | guest_claim_tokens | FOREIGN KEY     | trip_id            | public            | trips              | id                |
+| public       | guest_claim_tokens | PRIMARY KEY     | id                 | public            | guest_claim_tokens | id                |
+| public       | guest_claim_tokens | UNIQUE          | token_hash         | public            | guest_claim_tokens | token_hash        |
+| public       | hotels             | FOREIGN KEY     | destination_id     | public            | destinations       | id                |
+| public       | hotels             | PRIMARY KEY     | id                 | public            | hotels             | id                |
+| public       | hotels             | UNIQUE          | name               | public            | hotels             | name              |
+| public       | hotels             | UNIQUE          | name               | public            | hotels             | destination_id    |
+| public       | hotels             | UNIQUE          | destination_id     | public            | hotels             | name              |
+| public       | hotels             | UNIQUE          | destination_id     | public            | hotels             | destination_id    |
+| public       | places             | FOREIGN KEY     | destination_id     | public            | destinations       | id                |
+| public       | places             | PRIMARY KEY     | id                 | public            | places             | id                |
+| public       | places             | UNIQUE          | name               | public            | places             | destination_id    |
+| public       | places             | UNIQUE          | name               | public            | places             | name              |
+| public       | places             | UNIQUE          | destination_id     | public            | places             | name              |
+| public       | places             | UNIQUE          | destination_id     | public            | places             | destination_id    |
+| public       | refresh_tokens     | FOREIGN KEY     | user_id            | public            | users              | id                |
+| public       | refresh_tokens     | PRIMARY KEY     | id                 | public            | refresh_tokens     | id                |
+| public       | saved_places       | FOREIGN KEY     | place_id           | public            | places             | id                |
+| public       | saved_places       | FOREIGN KEY     | user_id            | public            | users              | id                |
+| public       | saved_places       | PRIMARY KEY     | id                 | public            | saved_places       | id                |
+| public       | saved_places       | UNIQUE          | user_id            | public            | saved_places       | user_id           |
+| public       | saved_places       | UNIQUE          | user_id            | public            | saved_places       | place_id          |
+| public       | saved_places       | UNIQUE          | place_id           | public            | saved_places       | user_id           |
+| public       | saved_places       | UNIQUE          | place_id           | public            | saved_places       | place_id          |
+| public       | scraped_sources    | PRIMARY KEY     | id                 | public            | scraped_sources    | id                |
+| public       | share_links        | FOREIGN KEY     | created_by_user_id | public            | users              | id                |
+| public       | share_links        | FOREIGN KEY     | trip_id            | public            | trips              | id                |
+| public       | share_links        | PRIMARY KEY     | id                 | public            | share_links        | id                |
+| public       | share_links        | UNIQUE          | trip_id            | public            | share_links        | trip_id           |
+| public       | share_links        | UNIQUE          | token_hash         | public            | share_links        | token_hash        |
+| public       | trip_days          | FOREIGN KEY     | trip_id            | public            | trips              | id                |
+| public       | trip_days          | PRIMARY KEY     | id                 | public            | trip_days          | id                |
+| public       | trip_days          | UNIQUE          | trip_id            | public            | trip_days          | day_number        |
+| public       | trip_days          | UNIQUE          | trip_id            | public            | trip_days          | trip_id           |
+| public       | trip_days          | UNIQUE          | day_number         | public            | trip_days          | trip_id           |
+| public       | trip_days          | UNIQUE          | day_number         | public            | trip_days          | day_number        |
+| public       | trip_ratings       | FOREIGN KEY     | trip_id            | public            | trips              | id                |
+| public       | trip_ratings       | PRIMARY KEY     | id                 | public            | trip_ratings       | id                |
+| public       | trip_ratings       | UNIQUE          | trip_id            | public            | trip_ratings       | trip_id           |
+| public       | trips              | FOREIGN KEY     | user_id            | public            | users              | id                |
+| public       | trips              | PRIMARY KEY     | id                 | public            | trips              | id                |
+| public       | users              | PRIMARY KEY     | id                 | public            | users              | id                |
++--------------+--------------------+-----------------+--------------------+-------------------+--------------------+-------------------+
+(61 rows)
+
+
+============================================================
+4. UOC LUONG SO DONG MOI TABLE
+============================================================
++-------------+--------------------+----------------+
+| schema_name |     table_name     | estimated_rows |
++-------------+--------------------+----------------+
+| public      | hotels             |             38 |
+| public      | activities         |             30 |
+| public      | trip_days          |              6 |
+| public      | chat_messages      |              4 |
+| public      | accommodations     |              3 |
+| public      | refresh_tokens     |              3 |
+| public      | trips              |              3 |
+| public      | chat_sessions      |              2 |
+| public      | share_links        |              2 |
+| public      | users              |              2 |
+| public      | guest_claim_tokens |              1 |
+| public      | alembic_version    |              0 |
+| public      | destinations       |              0 |
+| public      | extra_expenses     |              0 |
+| public      | places             |              0 |
+| public      | saved_places       |              0 |
+| public      | scraped_sources    |              0 |
+| public      | trip_ratings       |              0 |
++-------------+--------------------+----------------+
+(18 rows)
+
+
+============================================================
+5. VIEW NEU CO
+============================================================
++--------------+------------+
+| table_schema | table_name |
++--------------+------------+
++--------------+------------+
+(0 rows)
+
