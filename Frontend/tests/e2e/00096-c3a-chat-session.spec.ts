@@ -29,7 +29,10 @@ async function isBackendAvailable(): Promise<boolean> {
 test.beforeAll(async () => {
   const backendAvailable = await isBackendAvailable();
   if (!backendAvailable) {
-    test.skip(true, "Backend API not available. These are integration tests that require the backend server.");
+    test.skip(
+      true,
+      "Backend API not available. These are integration tests that require the backend server.",
+    );
   }
 });
 
@@ -79,12 +82,15 @@ async function createGuestTripViaAPI() {
 /** Create a chat session via API with a short retry for transient trip 404s. */
 async function createChatSessionViaAPI(accessToken: string, tripId: number) {
   for (let attempt = 0; attempt < 4; attempt++) {
-    const res = await fetch(`${API_URL}/api/v1/itineraries/${tripId}/chat-sessions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+    const res = await fetch(
+      `${API_URL}/api/v1/itineraries/${tripId}/chat-sessions`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-    });
+    );
     if (res.ok) {
       return res.json() as Promise<{ id: number }>;
     }
@@ -127,10 +133,14 @@ test.describe("C3A Chat Session", () => {
       name: /Bắt đầu cuộc trò chuyện/i,
     });
     await expect(createSessionBtn).toBeVisible();
+    const createSessionResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/chat-sessions"),
+    );
     await createSessionBtn.click();
-
-    // Should show loading state
-    await expect(page.locator(".animate-spin")).toBeVisible();
+    const resolvedCreateSessionResponse = await createSessionResponse;
+    expect(resolvedCreateSessionResponse.ok()).toBeTruthy();
 
     // After creation, should show active session state
     // Wait for session to be created
@@ -145,7 +155,9 @@ test.describe("C3A Chat Session", () => {
 
     // C3B panel should now expose the real composer instead of the old placeholder
     await expect(
-      page.getByPlaceholder(/Hỏi về lịch trình hiện tại hoặc đề xuất thay đổi/i),
+      page.getByPlaceholder(
+        /Hỏi về lịch trình hiện tại hoặc đề xuất thay đổi/i,
+      ),
     ).toBeVisible();
   });
 
@@ -177,7 +189,9 @@ test.describe("C3A Chat Session", () => {
     // Should show active session state (not empty)
     await expect(page.getByText(/Companion Chat/i)).toBeVisible();
     await expect(page.getByText(/\d+\s+phiên/i)).toBeVisible();
-
+    await expect(createSessionResponse).resolves.toBeDefined();
+    const resolvedCreateSessionResponse = await createSessionResponse;
+    expect(resolvedCreateSessionResponse.ok()).toBeTruthy();
     // Should show a non-zero session count without hard-coding exact copy.
     const sessionCountLabel = page.getByText(/\d+\s+phiên/i);
     await expect(sessionCountLabel).toBeVisible();
@@ -206,7 +220,10 @@ test.describe("C3A Chat Session", () => {
     const tripA = await createTripViaAPI(tokensA.accessToken);
 
     // Create a chat session for User A's trip
-    const sessionA = await createChatSessionViaAPI(tokensA.accessToken, tripA.id);
+    const sessionA = await createChatSessionViaAPI(
+      tokensA.accessToken,
+      tripA.id,
+    );
 
     // Create User B
     const emailB = `e2e_chat_user_b_${Date.now()}@test.com`;
