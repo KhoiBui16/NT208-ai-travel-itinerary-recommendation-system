@@ -24,6 +24,8 @@ export interface Activity {
   taxiCost?: number; // Total taxi cost estimate
   // Extra expenses
   extraExpenses?: ExtraExpense[];
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface DayExtraExpense {

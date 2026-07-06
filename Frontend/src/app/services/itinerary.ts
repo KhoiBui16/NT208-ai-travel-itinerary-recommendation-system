@@ -24,6 +24,8 @@ export interface ActivityItem {
   busTicketPrice?: number;
   taxiCost?: number;
   extraExpenses?: unknown[];
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface DayItem {

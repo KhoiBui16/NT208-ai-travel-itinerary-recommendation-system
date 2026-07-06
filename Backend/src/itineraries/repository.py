@@ -34,6 +34,9 @@ class TripRepository:
                 selectinload(Trip.days)
                 .selectinload(TripDay.activities)
                 .selectinload(Activity.extra_expenses),
+                selectinload(Trip.days)
+                .selectinload(TripDay.activities)
+                .selectinload(Activity.place),
                 selectinload(Trip.days).selectinload(TripDay.extra_expenses),
                 selectinload(Trip.accommodations),
                 selectinload(Trip.rating),

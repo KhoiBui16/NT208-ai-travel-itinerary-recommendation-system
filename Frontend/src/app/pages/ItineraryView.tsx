@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { ItineraryMap } from "../components/ItineraryMap";
 import { useParams, useNavigate, Link } from "react-router";
 import { Header } from "../components/Header";
 import {
@@ -32,6 +33,8 @@ interface LocalActivity {
   cost: number;
   duration: string;
   image: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface LocalDay {
@@ -74,6 +77,8 @@ function mapApiToLocal(resp: ItineraryResponse): LocalItinerary {
         cost: a.adultPrice ?? a.customCost ?? 0,
         duration: a.endTime ? `${a.time} - ${a.endTime}` : a.time,
         image: a.image || "",
+        latitude: a.latitude ?? undefined,
+        longitude: a.longitude ?? undefined,
       })),
     })),
   };
@@ -115,6 +120,21 @@ export default function ItineraryView() {
       });
     return () => { isMounted = false; };
   }, [id, navigate]);
+
+  // Flatten all activities across all days for the map view
+  const allActivitiesForMap = useMemo(() => {
+    if (!itinerary) return [];
+    return itinerary.days.flatMap((day) =>
+      day.activities.map((a) => ({
+        id: a.id,
+        name: a.title,
+        time: a.time,
+        description: a.description,
+        latitude: a.latitude,
+        longitude: a.longitude,
+      }))
+    );
+  }, [itinerary]);
 
   const handleSave = async () => {
     if (!itinerary || !id) return;
@@ -405,17 +425,11 @@ export default function ItineraryView() {
           <div className="mb-8 overflow-hidden rounded-2xl bg-white shadow-xl">
             <div className="p-6">
               <h3 className="mb-4 text-2xl font-bold text-gray-900">Bản Đồ Hành Trình</h3>
-              <div className="flex h-96 items-center justify-center rounded-lg bg-gray-100">
-                <div className="text-center">
-                  <Map className="mx-auto mb-4 h-16 w-16 text-gray-400" />
-                  <p className="text-lg text-gray-600">
-                    Bản đồ hiển thị tất cả các điểm trong lịch trình
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Tính năng tích hợp bản đồ tương tác
-                  </p>
-                </div>
-              </div>
+              <ItineraryMap
+                activities={allActivitiesForMap}
+                destinationName={itinerary?.destination}
+                height="420px"
+              />
             </div>
           </div>
         )}

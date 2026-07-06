@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useParams } from "react-router";
 import { Header } from "../components/Header";
 import { SavedSuggestion } from "../components/SavedSuggestions";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
 import { Suggestion, mockSuggestions } from "../data/suggestions";
+import { ItineraryMap } from "../components/ItineraryMap";
 import { useAuth } from "../contexts/AuthContext";
 import { getItinerary } from "../services/itinerary";
 import { listSavedPlaces, savePlace, unsavePlace } from "../services/places";
@@ -66,6 +67,8 @@ interface Activity {
   type: "food" | "attraction" | "nature" | "entertainment" | "shopping";
   image: string;
   transportation?: "walk" | "bike" | "bus" | "taxi";
+  latitude?: number;
+  longitude?: number;
 }
 
 interface Day {
@@ -89,7 +92,7 @@ export default function DailyItinerary() {
   // AI Chat state
   const [showAIChat, setShowAIChat] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [aiMessages, setAiMessages] = useState<Array<{id: number; text: string; sender: "user" | "ai"; timestamp: Date}>>([
+  const [aiMessages, setAiMessages] = useState<Array<{ id: number; text: string; sender: "user" | "ai"; timestamp: Date }>>([
     {
       id: 1,
       text: "Xin chào! Tôi có thể giúp bạn tối ưu hóa lịch trình hoặc gợi ý địa điểm.",
@@ -98,7 +101,7 @@ export default function DailyItinerary() {
     },
   ]);
   const [aiInputValue, setAiInputValue] = useState("");
-  
+
   // Load trip data from BE API
   const [days, setDays] = useState<Day[]>([]);
   const [selectedDayId, setSelectedDayId] = useState<string>("1");
@@ -123,6 +126,8 @@ export default function DailyItinerary() {
               type: a.type,
               image: a.image,
               transportation: a.transportation,
+              latitude: a.latitude ?? undefined,
+              longitude: a.longitude ?? undefined,
             })),
             destinationName: d.destinationName,
           })));
@@ -155,21 +160,21 @@ export default function DailyItinerary() {
           .filter(s => savedNames.includes(s.name))
           .map(s => s.id);
         setSavedSuggestions(matchedIds);
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [tripIdParam, isAuthenticated]);
-  
+
   // Get selected day data
   const selectedDay = days.find(d => d.id.toString() === selectedDayId);
   const currentActivities = selectedDay?.activities || [];
-  
+
   // Filter suggestions based on selected day's destination and sort bookmarked to top
   const filteredSuggestions = mockSuggestions
     .filter(suggestion => {
       // Nếu không có ngày chọn thì hiện tất cả, nếu có thì kiểm tra tên thành phố
       if (!selectedDay?.destinationName) return true;
       return suggestion.city === selectedDay.destinationName;
-    }) 
+    })
     .sort((a, b) => {
       // Sort bookmarked places to the top
       const aIsBookmarked = savedSuggestions.includes(a.id);
@@ -178,9 +183,9 @@ export default function DailyItinerary() {
       if (!aIsBookmarked && bIsBookmarked) return 1;
       return 0;
     });
-    
+
   const totalTravelTime = "55 phút";
-  
+
   const handleToggleSave = async (suggestion: Suggestion) => {
     if (!isAuthenticated) {
       setShowLoginModal(true);
@@ -414,21 +419,19 @@ export default function DailyItinerary() {
             <div className="inline-flex w-full rounded-lg bg-gray-100 p-1">
               <button
                 onClick={() => setRightPanelTab("suggestions")}
-                className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
-                  rightPanelTab === "suggestions"
+                className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${rightPanelTab === "suggestions"
                     ? "bg-white text-cyan-600 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 Gợi ý
               </button>
               <button
                 onClick={() => setRightPanelTab("map")}
-                className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
-                  rightPanelTab === "map"
+                className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${rightPanelTab === "map"
                     ? "bg-white text-cyan-600 shadow-sm"
                     : "text-gray-600 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 Bản đồ
               </button>
@@ -453,11 +456,10 @@ export default function DailyItinerary() {
                     {/* Bookmark Icon */}
                     <button
                       onClick={() => handleToggleSave(suggestion)}
-                      className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-all hover:scale-110 ${
-                        savedSuggestions.includes(suggestion.id)
+                      className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-all hover:scale-110 ${savedSuggestions.includes(suggestion.id)
                           ? "bg-cyan-700 text-white"
                           : "bg-white/90 text-gray-600 hover:bg-cyan-500 hover:text-white"
-                      }`}
+                        }`}
                       title={savedSuggestions.includes(suggestion.id) ? "Đã lưu" : "Lưu địa điểm"}
                     >
                       <Bookmark className={`h-4 w-4 ${savedSuggestions.includes(suggestion.id) ? "fill-current" : ""}`} />
@@ -498,59 +500,18 @@ export default function DailyItinerary() {
           ) : (
             /* Map Tab */
             <div className="flex-1 relative overflow-hidden">
-              {/* Mock Map */}
-              <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 relative">
-                {/* Mock Map Markers */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <div className="relative">
-                    {/* Center Marker */}
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500 shadow-lg">
-                      <MapIcon className="h-6 w-6 text-white" />
-                    </div>
-                    <p className="mt-2 text-xs font-semibold text-gray-700 text-center">
-                      {selectedDay?.destinationName || "Hà Nội"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Mock Location Pins */}
-                <div className="absolute top-1/4 left-1/3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 shadow-md">
-                    <Utensils className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-                <div className="absolute top-2/3 left-2/3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 shadow-md">
-                    <Building className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-                <div className="absolute top-1/3 right-1/4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 shadow-md">
-                    <Coffee className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-
-                {/* Map Overlay Info */}
-                <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-white/90 p-4 shadow-lg backdrop-blur-sm">
-                  <p className="text-sm font-semibold text-gray-700 mb-1">
-                    Bản đồ khu vực {selectedDay?.destinationName || "Hà Nội"}
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    Đang hiển thị các địa điểm gợi ý trong phạm vi thành phố
-                  </p>
-                </div>
-
-                {/* Mock Grid Lines */}
-                <div className="absolute inset-0 opacity-10">
-                  <div className="h-full w-full" style={{
-                    backgroundImage: `
-                      linear-gradient(to right, #000 1px, transparent 1px),
-                      linear-gradient(to bottom, #000 1px, transparent 1px)
-                    `,
-                    backgroundSize: '40px 40px'
-                  }} />
-                </div>
-              </div>
+              <ItineraryMap
+                activities={currentActivities.map((a) => ({
+                  id: a.id,
+                  name: a.name,
+                  time: a.time,
+                  description: a.description,
+                  latitude: a.latitude,
+                  longitude: a.longitude,
+                }))}
+                destinationName={selectedDay?.destinationName}
+                height="100%"
+              />
             </div>
           )}
         </div>
@@ -616,11 +577,10 @@ export default function DailyItinerary() {
                 className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                    message.sender === "user"
+                  className={`max-w-[80%] rounded-2xl px-4 py-2 ${message.sender === "user"
                       ? "bg-gradient-to-r from-cyan-500 to-cyan-600 text-white"
                       : "bg-gray-100 text-gray-900"
-                  }`}
+                    }`}
                 >
                   <p className="text-sm">{message.text}</p>
                   <span className="mt-1 block text-xs opacity-70">
