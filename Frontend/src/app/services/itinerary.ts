@@ -48,6 +48,9 @@ export interface ActivityItem {
   busTicketPrice?: number;
   taxiCost?: number;
   extraExpenses?: unknown[];
+
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 /** A single day in a trip itinerary, containing ordered activities. */
@@ -223,16 +226,11 @@ export async function rateItinerary(
   tripId: number,
   rating: number,
 ): Promise<{ success: boolean; message: string }> {
-  return api.put(
-    `/api/v1/itineraries/${tripId}/rating?rating=${rating}`,
-    null,
-  );
+  return api.put(`/api/v1/itineraries/${tripId}/rating?rating=${rating}`, null);
 }
 
 /** Create a public share link for read-only trip access. */
-export async function shareItinerary(
-  tripId: number,
-): Promise<ShareResponse> {
+export async function shareItinerary(tripId: number): Promise<ShareResponse> {
   return api.post<ShareResponse>(`/api/v1/itineraries/${tripId}/share`);
 }
 

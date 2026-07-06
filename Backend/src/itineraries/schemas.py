@@ -105,6 +105,9 @@ class ActivitySchema(CamelCaseModel):
     # --- Nested extra expenses ---
     extra_expenses: list[ExtraExpenseSchema] = Field(default_factory=list)
 
+    latitude: float | None = None
+    longitude: float | None = None
+
 
 class DaySchema(CamelCaseModel):
     """Trip day schema — one calendar day in the itinerary.
