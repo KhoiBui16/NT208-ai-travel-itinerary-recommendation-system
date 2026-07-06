@@ -4,6 +4,7 @@ import { Header } from "../components/Header";
 import { AuthLayout } from "../components/AuthLayout";
 import { Lock, ArrowLeft } from "lucide-react";
 import { resetPassword } from "../services/auth";
+import { getAuthErrorMessage } from "../utils/authErrorHandler";
 import { toast } from "sonner";
 
 export default function ResetPassword() {
@@ -40,8 +41,8 @@ export default function ResetPassword() {
       await resetPassword(token, newPassword);
       toast.success("Đã đổi mật khẩu thành công", { position: "top-right" });
       setTimeout(() => navigate("/login"), 1500);
-    } catch {
-      setError("Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn");
+    } catch (err) {
+      setError(getAuthErrorMessage(err, "reset-password"));
     } finally {
       setLoading(false);
     }
@@ -85,12 +86,16 @@ export default function ResetPassword() {
               )}
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-900">
+                <label
+                  htmlFor="reset-password-new"
+                  className="mb-2 block text-sm font-semibold text-gray-900"
+                >
                   Nhập mật khẩu mới
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                   <input
+                    id="reset-password-new"
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -99,15 +104,22 @@ export default function ResetPassword() {
                     required
                   />
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Mật khẩu mới cần tối thiểu 6 ký tự.
+                </p>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-900">
+                <label
+                  htmlFor="reset-password-confirm"
+                  className="mb-2 block text-sm font-semibold text-gray-900"
+                >
                   Xác nhận mật khẩu mới
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                   <input
+                    id="reset-password-confirm"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}

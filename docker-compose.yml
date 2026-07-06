@@ -23,6 +23,11 @@ services:
       - ./Backend/src:/app/src
       - ./Backend/alembic:/app/alembic
       - ./Backend/config.yaml:/app/config.yaml
+      # Read-only mount of the static image assets so newly crawled images under
+      # Backend/static/img are served live without rebuilding the API image. The
+      # image already bakes static/ in via Dockerfile COPY; this overlay keeps
+      # the container in sync with the host during local development.
+      - ./Backend/static:/app/static:ro
 
   db:
     image: postgres:16-alpine
@@ -42,6 +47,13 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: >
+      redis-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
     ports:
       - "6379:6379"
     healthcheck:
@@ -49,6 +61,31 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # ETL scheduler — gated bởi profile "etl" nên KHÔNG chạy cùng `docker compose up`
+  # mặc định (tránh container 24/7 cho job chu kỳ 30 ngày). Bật khi ops muốn refresh
+  # dữ liệu định kỳ: `docker compose --profile etl up -d scheduler`.
+  # Ghi thẳng vào PROD DB qua mạng compose; GOONG_API_KEY lấy từ Backend/.env.
+  scheduler:
+    profiles: ["etl"]
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./Backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/dulichviet
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "src.etl.scheduler", "--run-immediately"]
+    restart: unless-stopped
+    volumes:
+      - ./Backend/src:/app/src
+      - ./Backend/config.yaml:/app/config.yaml
 
 volumes:
   postgres_data:

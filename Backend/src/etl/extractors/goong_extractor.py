@@ -62,13 +62,23 @@ class GoongExtractor:
         return await self.client.place_detail(place_id)
 
     async def extract_pois(self, city: str, max_items: int = 75) -> list[dict[str, Any]]:
-        """Extract POIs for a city using Goong Autocomplete + Place Detail."""
+        """Extract POIs for a city using Goong Autocomplete + Place Detail.
+
+        Uses inter-request delays to avoid hitting Goong rate limits:
+        - 1.5s between keyword searches
+        - 0.5s between place detail calls
+        These delays are conservative to stay within Goong free tier quota.
+        """
+        import asyncio as _asyncio
+
         location = await self._city_bias_location(city)
         pois: list[dict[str, Any]] = []
         seen_place_ids: set[str] = set()
 
         for category, keywords in GOONG_CATEGORY_KEYWORDS.items():
             for keyword_template in keywords:
+                # Delay between keyword searches to avoid rate limiting
+                await _asyncio.sleep(1.5)
                 predictions = await self.autocomplete(
                     keyword_template.format(city=city), location=location
                 )
@@ -78,6 +88,8 @@ class GoongExtractor:
                         continue
                     seen_place_ids.add(place_id)
 
+                    # Delay before each place detail call
+                    await _asyncio.sleep(0.5)
                     detail = await self.place_detail(str(place_id))
                     raw_poi = self._build_raw_poi(
                         city=city,
@@ -133,6 +145,12 @@ class GoongExtractor:
             "lng": point.get("lng"),
             "location": location,
             "description": source.get("description", ""),
+            "avg_cost": self._extract_int(source.get("avg_cost")),
+            "rating": self._extract_float(source.get("rating")),
+            "review_count": self._extract_int(
+                source.get("review_count") or source.get("user_ratings_total")
+            ),
+            "image": self._extract_image(source),
             "opening_hours": self._format_opening_hours(source.get("opening_hours")),
             "external_id": place_id,
             "source": "goong_places",
@@ -150,6 +168,38 @@ class GoongExtractor:
             if isinstance(weekday_text, list):
                 return "; ".join(str(item) for item in weekday_text)
         return None
+
+    @staticmethod
+    def _extract_int(value: object) -> int:
+        if isinstance(value, bool):
+            return 0
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, str):
+            digits = "".join(ch for ch in value if ch.isdigit())
+            return int(digits) if digits else 0
+        return 0
+
+    @staticmethod
+    def _extract_float(value: object) -> float:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                return 0.0
+        return 0.0
+
+    @staticmethod
+    def _extract_image(source: dict[str, Any]) -> str:
+        for key in ("image", "photo", "thumbnail"):
+            value = source.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return ""
 
     @staticmethod
     def _sanitize_metadata(

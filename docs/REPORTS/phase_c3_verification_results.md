@@ -96,7 +96,7 @@
 
 | Flow | Status | Evidence |
 |---|---|---|
-| Open FE | PASS | `http://127.0.0.1:5173` — Vite dev server ready |
+| Open FE | PASS | `http://localhost:5173` — Vite dev server ready |
 | Login/Register | PASS | Login với `b2test_matrix@example.com` thành công |
 | TripWorkspace (Hà Nội trip_id=235) | PASS | Render đúng, không có network errors, không có console errors |
 | FloatingAIChat current state | NOT_VISIBLE | `FloatingAIChat visible: false` — C3 chưa implement |

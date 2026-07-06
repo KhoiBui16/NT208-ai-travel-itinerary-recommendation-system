@@ -22,21 +22,25 @@ Neu docs va code xung dot:
 - Sau do doi chieu voi code that te
 - Neu code da lech docs, phai noi ro mismatch truoc khi sua tiep
 
-## Current repo truth (2026-05-05)
+## Current repo truth (2026-06-11)
 
 - Backend runtime hien tai la MVP2 trong `Backend/src/`
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
-- 141 BE tests (97 unit + 44 integration)
+- BE local suite: 187 unit pass + 77 integration collected (43 int pass / 34 CI-gated skip) (full suite xanh trên CI postgres)
 - Frontend runtime hien tai nam trong `Frontend/`
-- 11 Playwright e2e tests trong `Frontend/tests/e2e/`
+- Playwright suite hiện có 17 spec files trong `Frontend/tests/e2e/` (14 top-level + 3 `b3/`; CI `frontend-e2e` green)
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
 - Register page bypass OTP cho den khi BE email OTP san sang
 - `docs/` la bo tai lieu chi tiet cho user va reviewer
 - `.claude/` la lop operational memory cho Claude, phai bam theo project nay
+- **00062 fixes merged** (PR #86-90): SQLAlchemy async, dynamic timeout, Redis config, destination matching, trip_days seeding, FE error handling
+- **00093 slugify fix merged** (PR #92): Shared `core/slugify.py`, places service fuzzy matching, itineraries refactor, browser test automation
+- **00094 C3A chat session merged** (PR #98-100): Chat session REST APIs, FE ChatPanel component, e2e tests
+- **00107 post-PR#105 completion** (branch `feat/00107-c-post-105-completion`): ETL cross-city contamination guard (`src.etl.transformers.city_match`) + idempotent cleanup CLI (`python -m src.etl.cleanup`); scheduler wired vào compose qua profile `etl`; apply-patch rate limit riêng (`rate_limit_ai_apply_patch_user`, namespace `rate:ai:apply_patch:*`); C4 session management (PATCH rename + DELETE + FE switcher/load-more); migration 0009 `chat_sessions.title`. Image/review sparsity là giới hạn provider Goong (không trả photo/rating), không phải bug.
 
 ## Target MVP2 decisions da chot
 
-- MVP2 core co `35` endpoints; `EP-34 /agent/analytics` la optional/MVP2+
+- MVP2 core co `41` `/api/v1` routes (14 GET / 16 POST / 5 PUT / 5 DELETE / 1 PATCH; logical EP-0 đến EP-39, trong đó EP-37/38/39 chat + apply-patch mở rộng thành nhiều route); `EP-34 /agent/analytics` la optional/deferred (C.5)
 - Public JSON contract theo FE va dung `camelCase`
 - `GET /api/v1/itineraries/{id}` la owner-only
 - Public share chi doc qua `GET /api/v1/shared/{shareToken}`
@@ -44,7 +48,7 @@ Neu docs va code xung dot:
 - `POST /api/v1/itineraries/generate` di direct `ItineraryPipeline`, khong qua Supervisor
 - Companion chat tra `requiresConfirmation` + `proposedOperations`, khong tu persist DB
 - `SuggestionService` la DB-only service, khong goi LLM
-- Chat history projection dung `chat_sessions` + `chat_messages`
+- Chat history projection dung `chat_sessions` + `chat_messages` (C3A merged: REST APIs foundation ready)
 - AI rate limit khong duoc fail-open im lang khi Redis down
 
 ## Read order truoc khi code
@@ -163,6 +167,7 @@ Rules:
 | `.claude/commands/lint-fix.md`         | Lint/format theo dual-mode, khong hardcode template |
 | `.claude/commands/commit.md`           | Tao final commit message dung branch/commit policy  |
 | `.claude/commands/pr.md`               | Tao PR dung title/body template cua repo            |
+| `.claude/commands/browserbase-test.md` | Browserbase browser automation test skill           |
 | `.claude/skills/code-review/SKILL.md`  | Review theo invariant cua project nay               |
 | `.claude/skills/db-migration/SKILL.md` | Migration/schema rules theo MVP2                    |
 | `.claude/agents/security-auditor.md`   | Audit secret, auth, token, SQL, AI guardrails       |
@@ -235,4 +240,4 @@ Output cua audit: `docs/REPORTS/generate_pipeline_readiness.md`, `docs/REPORTS/r
 - Places/Cache: `.claude/context/04_places_cache.md`
 - AI: `.claude/context/05_ai_services.md`
 - Workflow/CI: `.claude/context/06_ops_workflow_ci.md`
-- Docs chi tiet: `docs/README.md`
+- Docs chi tiet: `docs/01_overview.md`

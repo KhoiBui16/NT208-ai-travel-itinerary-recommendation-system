@@ -8,9 +8,9 @@ Tóm tắt current repo, trạng thái MVP2 và quy tắc workflow sau khi tài 
 
 - Backend source of truth là `Backend/src/`, chạy bằng `uv`, Alembic, FastAPI async.
 - Frontend source of truth là `Frontend/`, chạy bằng Vite + React + TypeScript.
-- 33 core endpoints (EP-0 to EP-32), EP-34 optional.
-- Current branch: 93 BE unit tests + 42 BE integration tests.
-- 11 Playwright e2e tests trong `Frontend/tests/e2e/`.
+- Active backend contract có 41 `/api/v1` routes (C.0–C.4 merged: EP-37/38/39 chat sessions + apply-patch + session management; 14 GET / 16 POST / 5 PUT / 5 DELETE / 1 PATCH).
+- Current verified BE test inventory là 187 unit tests + 77 integration tests (43 int pass + 34 CI-gated skip local; chạy đủ trên CI postgres).
+- Playwright suite hiện có 17 spec files (14 top-level + 3 `b3/`) ở `Frontend/tests/e2e/` (CI `frontend-e2e` green).
 - Register bypass OTP cho đến khi BE email OTP sẵn sàng.
 - Tài liệu chính nằm trong `docs/`; các folder legacy như `plan/`, `md/`, `Diagram/`, `References/`, `guidelines/` không còn active.
 - Execution tracker nằm ở `docs/09_execution_tracker.md`.
@@ -51,6 +51,6 @@ Tóm tắt current repo, trạng thái MVP2 và quy tắc workflow sau khi tài 
 
 ## Read more
 
-- `../../docs/README.md`
 - `../../docs/01_overview.md`
 - `../../docs/02_architecture.md`
+- `../../docs/11_phase_roadmap.md`

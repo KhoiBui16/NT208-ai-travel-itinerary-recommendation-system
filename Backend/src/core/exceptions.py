@@ -113,8 +113,15 @@ class RateLimitException(AppException):
 class ServiceUnavailableException(AppException):
     """Raised when an external dependency is unavailable (e.g. Redis down, AI API down)."""
 
-    def __init__(self, detail: str = "Service unavailable") -> None:
-        super().__init__(detail, "SERVICE_UNAVAILABLE", status.HTTP_503_SERVICE_UNAVAILABLE)
+    def __init__(
+        self,
+        detail: str = "Service unavailable",
+        *,
+        error_code: str = "SERVICE_UNAVAILABLE",
+        retryable: bool = False,
+    ) -> None:
+        super().__init__(detail, error_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.retryable = retryable
 
 
 def error_payload(exc: AppException) -> dict[str, Any]:
@@ -138,6 +145,8 @@ def error_payload(exc: AppException) -> dict[str, Any]:
         if exc.reset_at is not None:
             payload["reset_at"] = exc.reset_at.isoformat()
         payload["retry_after_seconds"] = exc.retry_after_seconds
+    if isinstance(exc, ServiceUnavailableException):
+        payload["retryable"] = exc.retryable
     return payload
 
 

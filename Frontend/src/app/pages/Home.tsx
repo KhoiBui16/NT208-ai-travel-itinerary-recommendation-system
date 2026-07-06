@@ -1,18 +1,39 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Header } from "../components/Header";
-import { destinations as mockDestinations, features, heroFeatures } from "../data/homeData";
+import { features, heroFeatures } from "../data/homeData";
 import { listDestinations, type DestinationResponse } from "../services/places";
+import {
+  applyPlaceImageFallback,
+  DEFAULT_PLACE_IMAGE,
+  getDestinationFallbackImage,
+  resolvePlaceImage,
+} from "../utils/placeImage";
 import { Sparkles, MapPin, Plane, ArrowRight } from "lucide-react";
 
 interface DisplayDest {
+  slug: string;
   name: string;
   image: string;
   description: string;
 }
 
+/**
+ * Resolves a destination image URL for display.
+ *
+ * Ảnh tương đối từ API phải được nối với backend origin. Nếu API không có
+ * ảnh thì mới rơi về fallback theo destination.
+ */
+function resolveDestinationImage(
+  name: string,
+  apiImage?: string | null,
+): string {
+  return resolvePlaceImage(apiImage, getDestinationFallbackImage(name));
+}
+
 export default function Home() {
-  const [destinations, setDestinations] = useState<DisplayDest[]>(mockDestinations);
+  const [destinations, setDestinations] = useState<DisplayDest[]>([]);
+  const [loadMessage, setLoadMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -24,14 +45,20 @@ export default function Home() {
         if (apiDests.length > 0) {
           setDestinations(
             apiDests.map((d: DestinationResponse) => ({
+              slug: d.slug,
               name: d.name,
-              image: d.image || "",
-              description: d.country || "",
+              image: resolveDestinationImage(d.name, d.image),
+              description: d.readinessReason || d.country || "",
             })),
           );
+        } else {
+          setDestinations([]);
+          setLoadMessage("Chưa có dữ liệu điểm đến trong hệ thống. Hãy chạy ETL để nạp dữ liệu thật.");
         }
       } catch {
-        // Keep mock fallback
+        if (!isMounted) return;
+        setDestinations([]);
+        setLoadMessage("Không thể tải điểm đến từ API. Hãy kiểm tra backend, database và ETL.");
       }
     }
 
@@ -144,16 +171,28 @@ export default function Home() {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {destinations.map((dest) => (
+          {destinations.length === 0 ? (
+            <div className="col-span-3 rounded-xl bg-yellow-50 border border-yellow-200 px-6 py-10 text-center text-yellow-800">
+              <p className="text-lg font-semibold">Chưa có dữ liệu điểm đến.</p>
+              <p className="mt-1 text-sm">{loadMessage || "Hãy chạy ETL để tải dữ liệu."}</p>
+            </div>
+          ) : (
+            destinations.map((dest) => (
             <Link
-              key={dest.name}
-              to="/cities"
+              key={dest.slug}
+              to={`/cities/${dest.slug}`}
               className="group relative overflow-hidden rounded-xl shadow-lg transition-all hover:-translate-y-1 hover:shadow-2xl"
             >
               <div className="relative h-64">
                 <img
                   src={dest.image}
                   alt={dest.name}
+                  onError={(event) =>
+                    applyPlaceImageFallback(
+                      event,
+                      getDestinationFallbackImage(dest.name),
+                    )
+                  }
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
@@ -166,7 +205,8 @@ export default function Home() {
                 <p className="text-gray-200">{dest.description}</p>
               </div>
             </Link>
-          ))}
+            ))
+          )}
         </div>
       </section>
 
@@ -195,15 +235,15 @@ export default function Home() {
           <div className="mb-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <h4 className="mb-4 text-xl font-bold">Về sản phẩm</h4>
-              <p className="text-gray-300">YourTrip - Chạm là đi</p>
+              <p className="text-gray-300">TravelAI - Chạm là đi</p>
             </div>
             <div>
               <h4 className="mb-4 text-xl font-bold">Đội ngũ phát triển</h4>
               <ul className="space-y-2 text-gray-300">
-                <li>Bùi Nhật Anh Khôi - Leader</li>
-                <li>Dương Đăng Chính - FrontEnd</li>
-                <li>Lê Văn Chí - BackEnd</li>
-                <li>Nguyễn Hữu Chiến - BackEnd</li>
+                <li>Bùi Nhật Anh Khôi — Leader, Backend, AI</li>
+                <li>Dương Đăng Chính — FrontEnd</li>
+                <li>Lê Văn Chí — Backend</li>
+                <li>Nguyễn Hữu Chiến — Backend</li>
               </ul>
             </div>
             <div>

@@ -11,6 +11,14 @@ Return ONLY valid JSON that matches the requested schema.
 Prefer places from the provided candidatePlaces list.
 If you include a place that is not in candidatePlaces, set placeId to null.
 Keep activities realistic for Vietnam travel, with non-overlapping times.
+Use candidatePlaces.avgCost and candidateHotels.pricePerNight whenever possible.
+For food and attraction, prefer adultPrice / childPrice for per-person costs.
+If you only know one flat group estimate, put it in customCost instead of
+leaving all cost fields empty.
+If transportation is bus, provide busTicketPrice per person.
+If transportation is taxi, provide taxiCost as a flat ride estimate.
+Do not leave every cost field null/0 for a paid activity.
+Ensure totalCost matches the sum of activity, transportation, and accommodation costs.
 Do not include markdown or explanations."""
 
 

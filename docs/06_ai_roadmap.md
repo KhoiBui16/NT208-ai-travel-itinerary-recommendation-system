@@ -2,7 +2,7 @@
 
 ## Mục đích
 
-File này mô tả **chi tiết kiến trúc AI cho Phase C** — generate pipeline, companion chat, suggestion service, chat history. C.1 direct generate pipeline đã được implement trong branch `feat/00041-c-generate-pipeline`; các phần C.2-C.5 vẫn theo roadmap.
+File này mô tả **kiến trúc AI dài hạn cho Phase C** — generate pipeline, companion chat, suggestion service, chat history. Current source truth cho gate trước khi code chat/history nằm ở `docs/ARCHITECTURE_C3_C4_READINESS.md` và `docs/C3_C4_IMPLEMENTATION_PLAN.md`.
 
 **Khi nào đọc file này:**
 
@@ -18,10 +18,12 @@ File này mô tả **chi tiết kiến trúc AI cho Phase C** — generate pipel
 - `POST /api/v1/itineraries/generate` đã chạy **C.1 direct pipeline**: build recommendation context từ DB, gọi Gemini JSON, validate, persist trip/day/activity/accommodation.
 - `GET /api/v1/agent/suggest/{activity_id}` (EP-30) đã implement **C.2 SuggestionService** DB-only — merged PR #49. Xem `docs/REPORTS/phase_c2_suggestion_service.md`.
 - Destination slug matching đã được cải thiện: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" (không dấu) → slug "ha-noi" → match DB.
-- Chat/companion UI ở FE là **mock/demo**, không nối API thật.
-- DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn), nhưng chưa có API.
-- Chưa có `CompanionService`, `ChatService`, analytics.
-- C.1 không phải multi-agent; LangGraph/tool-calling để dành cho C.3 Companion Chat.
+- Chat/companion UI ở FE hiện dùng `ChatPanel` làm runtime surface thật trong `TripWorkspace`; `FloatingAIChat` và các panel companion cũ vẫn còn trên source như legacy demo components nhưng không còn được mount trên route runtime chính.
+- DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn) và C3A đã có session CRUD foundation.
+- Đã có owner-only session CRUD API, message send/history API, `companion_service.py`, và chat quota riêng cho auth user.
+- Live smoke 2026-06-20 xác nhận message flow/persistence là thật; pass `00101` trên 2026-06-21 đã bổ sung browser/API/DB evidence cho `apply`, `cancel`, `stale`, đồng thời lộ ra và fix 2 bug thật: alias `restaurant` làm nổ `500`, và stale status không persist vì rollback.
+- Sau `PR #98-106`, Phase C.0–C.4 đã merge hoàn chỉnh: chat session/message APIs, apply-patch confirm/cancel/stale, session management (rename/delete/switcher/load-more), apply-patch rate limit riêng, ETL scheduler wired. Phần còn lại là C.5 Analytics (optional/deferred) + data enrichment cho sparse cities.
+- C.1 và companion chat đều KHÔNG phải multi-agent; KHÔNG dùng Gemini function-calling/tool-calling — output là JSON prompt-driven, request JSON MIME và validate bằng Pydantic.
 
 ---
 
@@ -46,7 +48,7 @@ File này mô tả **chi tiết kiến trúc AI cho Phase C** — generate pipel
 │  │     ├── Resolve destination string → Destination          │ │
 │  │     ├── Query Goong-enriched places/hotels from DB        │ │
 │  │     ├── Build compact Recommendation Context              │ │
-│  │     ├── Call Gemini JSON mode                             │ │
+│  │     ├── Call Gemini với JSON MIME (response_mime_type)                             │ │
 │  │     │   ├── model: gemini-2.5-flash                       │ │
 │  │     │   ├── timeout: config agent_timeout_seconds         │ │
 │  │     │   └── output schema: AgentItinerary                 │ │
@@ -90,7 +92,7 @@ ItineraryPipeline.generate()
 
 | Yêu cầu             | Chi tiết                                                                          | Tại sao                                              |
 | ------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Structured output   | Gemini JSON mode ép output theo schema                                            | Không parse text tự do, giảm hallucination           |
+| Structured output   | Request `response_mime_type: application/json`, validate bằng Pydantic `AgentItinerary` | Không parse text tự do, giảm hallucination           |
 | Schema validation   | Pydantic `AgentItinerary`                                                         | Catch lỗi type, missing field, value range           |
 | Retry hữu hạn       | `agent_max_retries=2`, tổng 3 attempts cho invalid output                         | Không loop vô hạn                                    |
 | Field names         | `name` (không `title`), `adultPrice`/`childPrice`                                 | FE contract đã chốt                                  |
@@ -102,7 +104,7 @@ ItineraryPipeline.generate()
 | Empty context guard | Không đủ places → 422 trước khi gọi Gemini                                        | Không sinh itinerary từ context rỗng                 |
 | Debug logging       | Log metadata cho context/prompt/attempt/duration                                  | Không log API key, không dump full prompt            |
 
-### 2.4 File cần tạo
+### 2.4 File (C.1 đã merge #42)
 
 | File Backend                             | Mục đích                                                                     | Layer           |
 | ---------------------------------------- | ---------------------------------------------------------------------------- | --------------- |
@@ -139,12 +141,14 @@ Ngày 2026-05-25:
 - Sau khi bật pacing default `5-5`, smoke phải trả đúng 5 activities/ngày để giữ chất lượng nhưng tránh output quá dài.
 - Browser debug 4 ngày: prompt khoảng 6.4k chars (~1.6k token), response khoảng 11.7k chars; timeout không do context window mà do latency/output length của Gemini.
 - Guest browser flow: API trả `201`, FE lưu `pendingClaim` vào `sessionStorage`, rồi route protected chuyển login; authenticated flow vào workspace và load trip từ BE.
-- FE/BE browser e2e pass 11/11 khi FE `127.0.0.1:5173` gọi BE local qua `E2E_API_URL`; CORS đã bổ sung origin `127.0.0.1:5173`.
+- FE/BE browser e2e pass 11/11 khi FE `localhost:5173` gọi BE local qua `E2E_API_URL`; CORS đã bổ sung origin `localhost:5173`.
 - Browser AI smoke sau fix: authenticated generate 1 ngày trả 201, workspace load đúng generated trip từ BE và `useTripSync` chỉ gọi `GET /itineraries/{id}` một lần.
 
 ---
 
 ## 3. Companion Chat — Patch-Confirm Flow
+
+> **Lưu ý:** Companion editing đã merge (#98-106). Current source có owner-only session/message APIs, real Gemini call, persisted history, `apply-patch` confirm/cancel/stale path, và session management (rename/delete/switcher/load-more). Phần dưới mô tả conceptual flow; cơ chế thực là JSON prompt-driven `proposedOperations` (request JSON MIME + validate Pydantic), KHÔNG dùng Gemini tool-calling/function-calling.
 
 ### 3.1 Kiến trúc tổng thể
 
@@ -152,8 +156,8 @@ Ngày 2026-05-25:
 ┌─────────────────────────────────────────────────────────────┐
 │              COMPANION CHAT FLOW                              │
 │                                                              │
-│  FE (FloatingAIChat.tsx)                                     │
-│  → POST /api/v1/agent/chat { message, tripId }              │
+│  FE (ChatPanel + confirm UI)                          │
+│  → POST /api/v1/itineraries/chat-sessions/{sessionId}/messages │
 │                                                              │
 │  ┌─ CompanionService.chat() ──────────────────────────────┐ │
 │  │  1. Classify intent                                     │ │
@@ -168,16 +172,16 @@ Ngày 2026-05-25:
 │  │     └── trip.user_id == user_id → else Forbidden       │ │
 │  │                                                          │ │
 │  │  3. Build LLM context                                   │ │
-│  │     ├── System prompt: role, tools, constraints         │ │
+│  │     ├── System prompt: role, operation contract, constraints │ │
 │  │     ├── Trip data: days, activities, accommodations     │ │
 │  │     ├── Chat history: previous messages in session      │ │
-│  │     └── Tool definitions: add_activity, remove_activity,│ │
+│  │     └── Operation contract: add_activity, remove_activity,│ │
 │  │         update_activity, add_accommodation, etc.        │ │
 │  │                                                          │ │
-│  │  4. Call LLM với tool definitions                       │ │
-│  │     ├── LLM decides: trả text HOẶC gọi tool            │ │
-│  │     ├── Text response → return directly                 │ │
-│  │     └── Tool call → build proposedOperations            │ │
+│  │  4. Call Gemini với JSON prompt template                 │ │
+│  │     ├── LLM trả structured JSON response                │ │
+│  │     ├── Text-only response → return directly            │ │
+│  │     └── JSON có operations → build proposedOperations   │ │
 │  │                                                          │ │
 │  │  5. Return response:                                     │ │
 │  │     {                                                    │ │
@@ -194,7 +198,7 @@ Ngày 2026-05-25:
 │  FE hiển thị proposed changes + confirm button               │
 │                                                              │
 │  → User confirm                                              │
-│  → POST /api/v1/agent/apply-patch                            │
+│  → POST /api/v1/itineraries/{tripId}/apply-patch             │
 │    { operations: proposedOperations }                         │
 │                                                              │
 │  ┌─ CompanionService.apply_patch() ───────────────────────┐ │
@@ -266,17 +270,17 @@ Ngày 2026-05-25:
 | **Rate limit**           | Giới hạn message/session                     | Chống abuse                    |
 | **Re-validate on apply** | `apply-patch` validate lại tất cả            | Không tin FE input             |
 
-### 3.5 File cần tạo
+### 3.5 File (C.3 đã merge #98–105)
 
 | File Backend                          | Mục đích                               | Layer   |
 | ------------------------------------- | -------------------------------------- | ------- |
-| `src/itineraries/router.py` (mở rộng) | Chat + apply-patch endpoints           | Router  |
-| `src/itineraries/companion.py`        | Intent routing, tool-calling, LLM chat | Service |
+| `src/itineraries/router.py` (mở rộng) | Message + apply-patch endpoints        | Router  |
+| `src/itineraries/companion_service.py`| Message handling, apply-patch, JSON prompt-driven provider abstraction | Service (đã implement) |
 
 | File Frontend        | Mục đích                                              |
 | -------------------- | ----------------------------------------------------- |
-| `services/agent.ts`  | Chat/apply-patch API client                           |
-| `FloatingAIChat.tsx` | Thay mock bằng API thật, hiển thị proposed operations |
+| `services/agent.ts` hoặc `services/chat.ts` | Chat/apply-patch API client                 |
+| `FloatingAIChat.tsx` / `ChatPanel`          | Thay mock bằng panel/session-aware UI       |
 | `companion/*.tsx`    | Nối real suggestions, confirm UI                      |
 
 ---
@@ -313,7 +317,7 @@ Ngày 2026-05-25:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 File cần tạo
+### 4.2 File (C.2 đã merge #49)
 
 | File                               | Mục đích                 | Layer   |
 | ---------------------------------- | ------------------------ | ------- |
@@ -329,7 +333,7 @@ Ngày 2026-05-25:
 
 ### 5.1 Trạng thái
 
-DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn qua Alembic), nhưng chưa có API.
+DB đã có bảng `chat_sessions` + `chat_messages`, và current source đã có session/message/apply-patch APIs thật.
 
 ### 5.2 Endpoints dự kiến
 
@@ -339,12 +343,12 @@ DB đã có bảng `chat_sessions` + `chat_messages` (schema sẵn qua Alembic),
 | GET    | `/api/v1/chat/sessions/{sessionId}/messages` | Đọc messages trong session     | Bearer |
 | DELETE | `/api/v1/chat/sessions/{sessionId}`          | Xóa session + messages         | Bearer |
 
-### 5.3 File cần tạo
+### 5.3 File (C.4 đã merge #106)
 
 | File                                      | Mục đích                  | Layer      |
 | ----------------------------------------- | ------------------------- | ---------- |
 | `src/itineraries/router.py` (mở rộng)     | Chat history endpoints    | Router     |
-| `src/itineraries/chat_service.py`         | Chat session/message CRUD | Service    |
+| `src/itineraries/service.py`              | Chat session foundation hiện tại | Service    |
 | `src/itineraries/repository.py` (mở rộng) | Chat DB queries           | Repository |
 
 ---
@@ -395,9 +399,9 @@ Nếu bật Text-to-SQL analytics (EP-34), **bắt buộc** có các guardrails:
 | ------ | ----------------- | ------------------------------------------------------ | ----------- | ---------- |
 | 1      | Generate pipeline | Core value, ảnh hưởng trực tiếp UX                     | Cao         | ✅ merged #42 |
 | 2      | SuggestionService | DB-only, không cần LLM, ít rủi ro                      | Thấp        | ✅ merged feat/00047 (PR #49) |
-| 3      | Companion chat    | Phức tạp nhất: intent routing + tool-calling + confirm | Rất cao     | ❌ todo feat/00051-c3-companion-chat |
-| 4      | Chat history      | Cần khi companion hoạt động, CRUD đơn giản             | Thấp        | ❌ todo feat/00052-c4-chat-history |
-| 5      | Analytics         | Optional, rủi ro bảo mật cao                           | Rất cao     | ❌ optional feat/00053-c5-analytics-optional |
+| 3      | Companion chat    | Phức tạp nhất: intent routing + JSON prompt + confirm  | Rất cao     | ✅ merged #98-105 |
+| 4      | Chat history      | Cần khi companion hoạt động, CRUD đơn giản             | Thấp        | ✅ merged #106 |
+| 5      | Analytics         | Optional, rủi ro bảo mật cao                           | Rất cao     | ⏸ optional/deferred (C.5 chưa implement) |
 
 ---
 
@@ -415,21 +419,20 @@ Nếu bật Text-to-SQL analytics (EP-34), **bắt buộc** có các guardrails:
 
 ---
 
-## 9. File tổng hợp cần tạo cho Phase C
+## 9. File tổng hợp Phase C (C.0–C.4 đã merge)
 
 | File Backend                              | Mục đích                              | Layer      |
 | ----------------------------------------- | ------------------------------------- | ---------- |
 | `src/itineraries/pipeline.py`             | LLM orchestration cho generate        | Service    |
-| `src/itineraries/companion.py`            | Intent routing, tool-calling cho chat | Service    |
+| `src/itineraries/companion_service.py`    | Message handling, apply-patch, JSON prompt-driven cho chat | Service (đã implement) |
 | `src/places/suggestion_service.py`        | Gợi ý DB-only (không LLM)             | Service    |
-| `src/itineraries/chat_service.py`         | Quản lý chat session/message          | Service    |
-| `src/itineraries/router.py` (mở rộng)     | Chat + apply-patch endpoints          | Router     |
-| `src/itineraries/router.py` (mở rộng)     | Chat history endpoints                | Router     |
+| `src/itineraries/service.py`              | Quản lý trip + chat session foundation | Service |
+| `src/itineraries/router.py` (mở rộng)     | Session/message/apply-patch endpoints | Router     |
 | `src/itineraries/schemas.py` (mở rộng)    | AI generate response schema           | Schema     |
 | `src/itineraries/repository.py` (mở rộng) | Chat DB queries                       | Repository |
 
-| File Frontend        | Mục đích                         |
-| -------------------- | -------------------------------- |
-| `services/agent.ts`  | Chat/apply-patch API client      |
-| `FloatingAIChat.tsx` | Thay mock bằng API thật          |
-| `companion/*.tsx`    | Nối real suggestions, confirm UI |
+| File Frontend                           | Mục đích                                  |
+| --------------------------------------- | ----------------------------------------- |
+| `services/chat.ts` | Chat/session/apply-patch API client (đã merge #98–106) |
+| `FloatingAIChat.tsx` / `ChatPanel`      | Thay mock bằng session-aware UI           |
+| `companion/*.tsx`                       | Nối real suggestions, confirm UI          |

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, MapPin, Eye, DollarSign, Check, AlertCircle, Minus, Plus } from "lucide-react";
 import { Activity, TravelerInfo, TimeConflictWarning, ExtraExpense } from "../types/trip.types";
+import { applyPlaceImageFallback, resolvePlaceImage } from "../utils/placeImage";
 import { typeColors, typeLabels, transportationOptions, nextId } from "../utils/tripConstants";
 
 interface ActivityDetailModalProps {
@@ -35,6 +36,7 @@ export function ActivityDetailModal({
   const [activityExpenseDraft, setActivityExpenseDraft] = useState({ 
     name: "Chi tiêu khác", amount: 0, category: "food" as "food" | "attraction" | "entertainment" | "transportation" | "shopping" 
   });
+  const activityImage = resolvePlaceImage(editingActivity.image);
 
   const handleRemoveExtraExpense = (expenseId: number) => {
     setEditingActivity((prev: Activity | null) => prev ? {
@@ -62,12 +64,17 @@ export function ActivityDetailModal({
         </div>
 
         <div className="mb-6 flex gap-4">
-          <img src={editingActivity.image} alt={editingActivity.name} className="h-32 w-40 flex-shrink-0 rounded-xl object-cover" />
+          <img
+            src={activityImage}
+            alt={editingActivity.name}
+            onError={applyPlaceImageFallback}
+            className="h-32 w-40 flex-shrink-0 rounded-xl object-cover"
+          />
           <div className="flex-1">
             <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${typeColors[editingActivity.type]} mb-2`}>{typeLabels[editingActivity.type]}</span>
             <h4 className="text-lg font-bold text-gray-900 mb-1">{editingActivity.name}</h4>
             <div className="flex items-center gap-1 text-sm text-gray-500 mb-2"><MapPin className="h-4 w-4" /><span>{editingActivity.location}</span></div>
-            <button onClick={() => onViewPlace({ name: editingActivity.name, image: editingActivity.image, description: editingActivity.description, address: editingActivity.location, rating: 4.5, reviewCount: 1234, estimatedCost: editingActivity.type === 'food' ? `${formatCurrency(editingActivity.adultPrice || 0)}/người` : editingActivity.type === 'attraction' ? formatCurrency(editingActivity.adultPrice || 0) : 'Miễn phí', openingHours: '08:00 - 22:00' })} className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-600 hover:text-cyan-700"><Eye className="h-3.5 w-3.5" /> Thông tin về địa điểm</button>
+            <button onClick={() => onViewPlace({ name: editingActivity.name, image: activityImage, description: editingActivity.description, address: editingActivity.location, rating: 4.5, reviewCount: 1234, estimatedCost: editingActivity.type === 'food' ? `${formatCurrency(editingActivity.adultPrice || 0)}/người` : editingActivity.type === 'attraction' ? formatCurrency(editingActivity.adultPrice || 0) : 'Miễn phí', openingHours: '08:00 - 22:00' })} className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-600 hover:text-cyan-700"><Eye className="h-3.5 w-3.5" /> Thông tin về địa điểm</button>
           </div>
         </div>
 

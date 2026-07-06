@@ -1,7 +1,28 @@
 import { useState, useEffect } from "react";
 import { Header } from "../components/Header";
-import { User, Mail, Lock, Camera, Globe, Bell, Crown, Shield, Utensils, Mountain, Building, Music, ShoppingBag, Heart, Users, Baby } from "lucide-react";
-import { TRAVEL_TYPES, INTEREST_OPTIONS, BUDGET_LEVELS } from "../utils/tripConstants";
+import {
+  User,
+  Mail,
+  Lock,
+  Camera,
+  Globe,
+  Bell,
+  Crown,
+  Shield,
+  Utensils,
+  Mountain,
+  Building,
+  Music,
+  ShoppingBag,
+  Heart,
+  Users,
+  Baby,
+} from "lucide-react";
+import {
+  TRAVEL_TYPES,
+  INTEREST_OPTIONS,
+  BUDGET_LEVELS,
+} from "../utils/tripConstants";
 import { useAuth } from "../contexts/AuthContext";
 import * as userService from "../services/users";
 import { ApiError } from "../services/api";
@@ -9,12 +30,21 @@ import { toast } from "sonner";
 
 export default function Account() {
   const { user, refreshUser } = useAuth();
+  // editMode: bật/tắt chế độ chỉnh sửa thông tin tài khoản
   const [editMode, setEditMode] = useState(false);
+  // showPasswordChange: hiển/ẩn form đổi mật khẩu inline
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+  // showPremiumModal: hiển/ẩn modal thông tin Premium
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  // saving: cờ đang gọi API (dùng chung cho cả save profile và change password)
   const [saving, setSaving] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
+  // userData: state nội bộ của form Account
+  // accountPlan, language, travelType, budgetLevel, notificationsEnabled là UI-only
+  // (chưa được persist lên BE trong phiên bản hiện tại)
+  // username và interests được đồng bộ từ AuthContext qua useEffect bên dưới
   const [userData, setUserData] = useState({
     username: "",
     email: "",
@@ -51,10 +81,13 @@ export default function Account() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
+      // Gọi EP-6: PUT /api/v1/users/profile với name và interests
+      // (Account.tsx không cho sửa phone, chỉ sửa username và interests)
       await userService.updateProfile({
         name: userData.username,
         interests: userData.interests,
       });
+      // Refresh AuthContext để Header và các component khác cập nhật tên mới
       await refreshUser();
       setEditMode(false);
       toast.success("Đã cập nhật thông tin!", { position: "top-right" });
@@ -68,21 +101,27 @@ export default function Account() {
   };
 
   const handleChangePassword = async () => {
+    // Validate phía client trước khi gọi API: tránh round-trip không cần thiết
     if (!currentPassword || !newPassword) {
       toast.error("Vui lòng nhập đầy đủ thông tin", { position: "top-right" });
       return;
     }
     if (newPassword.length < 6) {
-      toast.error("Mật khẩu mới phải có ít nhất 6 ký tự", { position: "top-right" });
+      toast.error("Mật khẩu mới phải có ít nhất 6 ký tự", {
+        position: "top-right",
+      });
       return;
     }
 
     setSaving(true);
     try {
+      // Gọi EP-7: PUT /api/v1/users/password
+      // BE sẽ xác minh currentPassword với bcrypt hash trước khi đổi
       await userService.changePassword({
         currentPassword,
         newPassword,
       });
+      // Ẩn form và xóa state mật khẩu sau khi đổi thành công
       setShowPasswordChange(false);
       setCurrentPassword("");
       setNewPassword("");
@@ -116,11 +155,16 @@ export default function Account() {
               <Crown className="h-8 w-8 text-white" />
               <div>
                 <p className="text-sm text-white/90">Gói hiện tại</p>
-                <p className="text-2xl font-bold text-white">{userData.accountPlan}</p>
+                <p className="text-2xl font-bold text-white">
+                  {userData.accountPlan}
+                </p>
               </div>
             </div>
             {userData.accountPlan === "Free" && (
-              <button className="rounded-xl bg-white px-6 py-3 font-bold text-orange-600 shadow-lg transition-all hover:scale-105">
+              <button
+                onClick={() => setShowPremiumModal(true)}
+                className="rounded-xl bg-white px-6 py-3 font-bold text-orange-600 shadow-lg transition-all hover:scale-105"
+              >
                 Nâng Cấp Premium
               </button>
             )}
@@ -443,6 +487,80 @@ export default function Account() {
           </div>
         </div>
       </div>
+
+      {/* Premium Modal */}
+      {showPremiumModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
+            <button
+              onClick={() => setShowPremiumModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 mb-4">
+                <Crown className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Tính Năng Premium Đang Phát Triển
+              </h3>
+              <p className="text-gray-600">
+                Chúng tôi đang xây dựng các tính năng Premium để nâng cao trải nghiệm của bạn.
+              </p>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-100 flex items-center justify-center">
+                  <svg className="h-4 w-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">Lưu nhiều lịch trình hơn</p>
+                  <p className="text-sm text-gray-600">Lưu trữ vô số chuyến đi của bạn</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-100 flex items-center justify-center">
+                  <svg className="h-4 w-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">Tạo nhiều lịch trình AI hơn</p>
+                  <p className="text-sm text-gray-600">Tạo vô số lịch trình với AI mỗi ngày</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-100 flex items-center justify-center">
+                  <svg className="h-4 w-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">Ưu tiên tốc độ & gợi ý</p>
+                  <p className="text-sm text-gray-600">Tận hưởng tốc độ nhanh hơn và gợi ý thông minh hơn</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowPremiumModal(false);
+                toast.info("Chúng tôi sẽ thông báo khi Premium sẵn sàng!");
+              }}
+              className="w-full rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 font-bold text-white transition-all hover:from-amber-500 hover:to-orange-600"
+            >
+              Đã Hiểu
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

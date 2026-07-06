@@ -1,0 +1,15 @@
+## command (run from <repo-root>/Backend): uv run pytest tests/unit/ -q --tb=short
+........................................................................ [ 37%]
+........................................................................ [ 74%]
+..................................................                       [100%]
+============================== warnings summary ===============================
+tests/unit/test_itinerary_pipeline.py::test_pipeline__not_enough_places__does_not_call_llm
+  <repo-root>\Backend\src\itineraries\pipeline.py:297: DeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+    raise ValidationException(
+
+tests/unit/test_itinerary_pipeline.py::test_pipeline__still_rejects_explicit_over_budget_itinerary
+  <repo-root>\Backend\src\itineraries\pipeline.py:482: DeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+    raise ValidationException("AI itinerary generation failed validation")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+194 passed, 2 warnings in 15.60s

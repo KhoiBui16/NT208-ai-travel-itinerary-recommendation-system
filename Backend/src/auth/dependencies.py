@@ -1,7 +1,8 @@
-"""Auth-specific FastAPI dependency providers.
+"""Dependency hỗ trợ xác thực cho các endpoint cần biết user hiện tại.
 
-Moved from core/dependencies.py to eliminate core→auth model dependency.
-core/ now only provides infrastructure deps (get_db, get_redis, get_rate_limiter).
+File này chỉ lo việc đọc Bearer token, xác thực access token và nạp `User`
+từ database. Nó không xử lý business logic của auth như login, refresh
+hay logout.
 """
 
 from fastapi import Depends, Request
@@ -19,11 +20,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 async def _optional_token(request: Request) -> str | None:
-    """Extract Bearer token from the request, returning None if absent.
+    """Đọc Bearer token nếu request có gửi, ngược lại trả về `None`.
 
-    Unlike OAuth2PasswordBearer which raises 401 when no token is present,
-    this dependency silently returns None so that endpoints can serve both
-    authenticated and anonymous users.
+    Hàm này chỉ tách chuỗi token từ header `Authorization`. Việc kiểm tra
+    chữ ký JWT và trạng thái user được thực hiện ở dependency phía sau.
     """
     auth: str | None = request.headers.get("authorization")
     if not auth or not auth.lower().startswith("bearer "):
@@ -35,10 +35,13 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Resolve the current authenticated user from a Bearer token.
+    """Trả về user đang đăng nhập dựa trên access token hợp lệ.
 
-    Raises:
-        UnauthorizedException: If token is invalid, expired, or user not found.
+    Luồng xử lý:
+    1. Nhận token từ `OAuth2PasswordBearer`.
+    2. Xác minh token còn hiệu lực và có claim `sub`.
+    3. Nạp `User` từ database.
+    4. Từ chối nếu user không tồn tại hoặc đã bị vô hiệu hóa.
     """
     payload = verify_access_token(token)
     if not payload or "sub" not in payload:
@@ -55,7 +58,11 @@ async def get_current_user_optional(
     token: str | None = Depends(_optional_token),
     db: AsyncSession = Depends(get_db),
 ) -> User | None:
-    """Resolve the user when a valid token is present; otherwise return None."""
+    """Trả về user nếu request có token hợp lệ, ngược lại trả về `None`.
+
+    Dependency này phù hợp cho các endpoint có thể phục vụ cả người dùng đã
+    đăng nhập lẫn anonymous user mà không muốn ném lỗi 401 ngay từ đầu.
+    """
     if not token:
         return None
     payload = verify_access_token(token)

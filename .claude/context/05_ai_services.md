@@ -8,12 +8,13 @@ Tóm tắt AI target architecture để implement Phase C không sai hướng.
 
 - C.0 Goong-first ETL readiness đã có branch riêng để làm giàu DB places/hotels.
 - C.1 direct generate pipeline đã implement local-ready: DB recommendation context → Gemini JSON → Pydantic validation → persist trip/day/activity/accommodation.
-- DB đã có bảng chat target: `chat_sessions`, `chat_messages`, nhưng C.3 companion chat chưa implement.
+- C.3 companion chat đã merge (#98-105): message flow thật, persisted `chat_messages`, chat quota riêng (`rate:ai:chat:user:*`), `apply-patch` confirm/stale path đầy đủ.
+- C.4 đã merge (#106): history read-path + session management (rename/delete/switcher/load-more), apply-patch rate limit riêng (`rate:ai:apply_patch:user:*`), ETL scheduler wired vào compose (profile `etl`).
 
 ## Target state
 
 - Generate itinerary dùng direct pipeline với structured output.
-- Companion chat dùng intent routing/tool-calling và trả patch cần confirm.
+- Companion chat dùng intent routing + JSON prompt-driven `proposedOperations` (request JSON MIME, validate bằng Pydantic; KHÔNG dùng Gemini function-calling/tools) và trả patch cần confirm.
 - SuggestionService nếu chỉ query DB thì không gọi là agent.
 - Analytics EP-34 optional, cần guardrails nếu bật.
 
@@ -26,10 +27,10 @@ Tóm tắt AI target architecture để implement Phase C không sai hướng.
 
 ## Do next
 
-- Thiết kế Pydantic output schema khớp FE contract.
-- Implement retry hữu hạn cho invalid structured output.
-- Implement chat proposedOperations + apply endpoint riêng.
-- Viết unit tests cho invalid output, patch confirmation, rate limit.
+- Giữ structured output/Pydantic contract khớp FE khi mở rộng chat intents mới.
+- apply-patch rate limit đã có (`rate:ai:apply_patch:user:*`, #106); theo dõi quota thực tế khi traffic tăng.
+- ETL scheduler đã wired vào docker-compose profile `etl` (#106); cân nhắc cron 24/7 khi staging ổn định.
+- Viết thêm test và browser evidence cho data-sparse destinations và session-management UX.
 
 ## Do not do
 

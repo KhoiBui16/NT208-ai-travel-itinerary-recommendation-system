@@ -1,20 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
-import { FloatingAIChat } from "../components/FloatingAIChat";
 import { SavedSuggestions, SavedSuggestion } from "../components/SavedSuggestions";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { PlaceSelectionModal } from "../components/PlaceSelectionModal";
 import { CalendarModal } from "../components/CalendarModal";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import {
   Plus, Sparkles, GripVertical, Clock, MapPin, Search, Star, Heart,
   Utensils, Landmark, TreePine, Music, ShoppingBag, Trash2, X, Check,
   ChevronRight, Save, Bookmark, Home,
   Hotel as HotelIcon, Wifi, Coffee, Car, AlertCircle, Eye, DollarSign,
-  Users, Bike, Bus, Navigation, Minus, User, Edit
+  Users, Bike, Bus, Navigation, Minus, User, Edit, MessageCircle
 } from "lucide-react";
 import { format, addDays, parseISO, parse, startOfDay, isBefore, isAfter, isSameDay, differenceInDays } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -40,18 +39,19 @@ import { TripSidebar } from "../components/TripSidebar";
 import { TripBudgetSidebar } from "../components/TripBudgetSidebar";
 import { TripTimeline } from "../components/TripTimeline";
 import { TripAccommodation } from "../components/TripAccommodation";
+import { ChatPanel } from "../components/ChatPanel";
 import { EditTravelersModal } from "../components/EditTravelersModal";
 import { BudgetDetailModal } from "../components/BudgetDetailModal";
 import { AddDaysModal } from "../components/AddDaysModal";
 import { AddPlaceModal } from "../components/AddPlaceModal";
 import { useTripCost } from "../hooks/useTripCost";
-import { AIPromoBubble } from "../components/AIPromoBubble";
 import { TopActionBar } from "../components/TopActionBar";
 import { useActivityManager } from "../hooks/trips/useActivityManager";
 import { useAccommodation } from "../hooks/trips/useAccommodation";
 import { usePlacesManager } from "../hooks/trips/usePlacesManager";
 import { useTripSync } from "../hooks/trips/useTripSync";
 import { listSavedPlaces } from "../services/places";
+import { buildSavedPlaceIdSet, normalizeSavedPlaces } from "../utils/savedPlaces";
 import { useAuth } from "../contexts/AuthContext";
 // Khởi tạo ID (để tránh lỗi khi tạo hoạt động mới)
 let nextId = 500;
@@ -66,29 +66,29 @@ export default function TripWorkspace() {
   const [searchParams] = useSearchParams();
   const tripIdParam = searchParams.get("tripId");
   const { isAuthenticated: authIsAuthenticated } = useAuth();
-  const [tripId, setTripId] = useState<number | null>(tripIdParam ? Number(tripIdParam) : null);
+  const [tripId, setTripId] = useState<number | null>(
+    tripIdParam && Number.isFinite(Number(tripIdParam)) ? Number(tripIdParam) : null,
+  );
   const [days, setDays] = useState<Day[]>(initialDays);
   const [selectedDayId, setSelectedDayId] = useState(1);
 
   // Tab state for Địa điểm / Nơi ở
   const [activeTab, setActiveTab] = useState<"places" | "accommodation">("places");
+  // Tab state for Budget / Chat (right panel)
+  const [rightPanelTab, setRightPanelTab] = useState<"budget" | "chat">("budget");
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(authIsAuthenticated);
+  const remoteTripId = isAuthenticated ? tripId : null;
   const {
     places, setPlaces, placeSearch, setPlaceSearch, activeFilter, setActiveFilter,
     showSavedSuggestions, setShowSavedSuggestions, savedSuggestions, setSavedSuggestions,
     filteredPlaces, handleAddSuggestionToItinerary, handleRemoveSavedSuggestion, toggleSavePlace
-  } = usePlacesManager(days, setDays, selectedDayId, isAuthenticated, setShowLoginModal, tripId);
+  } = usePlacesManager(days, setDays, selectedDayId, isAuthenticated, setShowLoginModal, remoteTripId);
   
   // Place Selection Modal state
   const [showPlaceSelectionModal, setShowPlaceSelectionModal] = useState(false);
   const [selectedDayForPlaces, setSelectedDayForPlaces] = useState<number | null>(null);
   
-  // AI bubble speech states
-  const [showAIBubbleSpeech, setShowAIBubbleSpeech] = useState(false);
-  const [hasClosedBubbleSpeech, setHasClosedBubbleSpeech] = useState(false);
-  const [hasOpenedChat, setHasOpenedChat] = useState(false);
-
   // Add to itinerary modal (from place panel)
   const [addPlaceModal, setAddPlaceModal] = useState<{ place: Place } | null>(null);
 
@@ -105,8 +105,11 @@ export default function TripWorkspace() {
 
   // ── 2-Step "Add Days" Flow States ────────────────────────────────────────
   const [showAddDaysModal, setShowAddDaysModal] = useState(false);
-  const selectedDay = days.find((d) => d.id === selectedDayId)!;
-  
+  // Compare ids as strings (tolerant of number/string mismatch between DB day ids
+  // and the selectedDayId state) and fall back to the first day so a stale
+  // selectedDayId can never produce undefined — which previously crashed the
+  // center panel with "Cannot read properties of undefined (reading 'label')".
+  const selectedDay = days.find((d) => String(d.id) === String(selectedDayId)) ?? days[0];
   const {
     accommodations, setAccommodations, showHotelSelection, setShowHotelSelection,
     selectedHotel, setSelectedHotel, showDaySelection, setShowDaySelection,
@@ -114,7 +117,7 @@ export default function TripWorkspace() {
     bookingType, setBookingType, bookingDuration, setBookingDuration,
     getAccommodationForDay, getHotelsForCity, handleSelectHotel,
     handleConfirmAccommodation, handleChangeAccommodation
-  } = useAccommodation(days, selectedDayId, tripId);
+  } = useAccommodation(days, selectedDayId, remoteTripId);
 
   const {
     calculateHotelCost, calculateActivityCost, calculateDayCost,
@@ -122,9 +125,9 @@ export default function TripWorkspace() {
     calculateTotalCostByCategory, formatCurrency
   } = useTripCost(days, accommodations, travelers);
 
-  const { handleSaveItinerary, currentTripId } = useTripSync(
-    days, setDays, setSelectedDayId, accommodations, setAccommodations,
-    totalBudget, setTotalBudget, setTravelers, setIsAuthenticated, setPlaces,
+  const { applyServerTrip, handleSaveItinerary, currentTripId, currentTripUpdatedAt, isSaving } = useTripSync(
+    days, setDays, selectedDayId, setSelectedDayId, accommodations, setAccommodations,
+    totalBudget, setTotalBudget, travelers, setTravelers, setIsAuthenticated, setPlaces,
     isAuthenticated, setShowLoginModal, updateNextId,
     tripName, setTripName,
     tripIdParam ? Number(tripIdParam) : null
@@ -142,7 +145,7 @@ export default function TripWorkspace() {
     handleDeleteActivity, handleViewDetails, checkTimeConflict, handleSaveActivityDetails,
     addActivityToDay,
     handleAddDayExtraExpenseFromSidebar, handleRemoveDayExtraExpense
-  } = useActivityManager(days, setDays, selectedDayId, tripId);
+  } = useActivityManager(days, setDays, selectedDayId, remoteTripId);
 
   // ── Add Place from PlaceSelectionModal ──────────────────────────────────
   const handleAddPlaceFromModal = (place: any) => {
@@ -158,7 +161,7 @@ export default function TripWorkspace() {
       name: place.name,
       time: startTime,
       endTime: endTime,
-      location: place.name,
+      location: place.location || place.name,
       description: place.description,
       type: "attraction",
       image: place.image,
@@ -184,7 +187,7 @@ export default function TripWorkspace() {
       name: place.name,
       time: time,
       endTime: minutesToTime(addMin + 60),
-      location: place.name,
+      location: place.location || place.name,
       description: typeLabels[place.type],
       type: place.type,
       image: place.image,
@@ -217,7 +220,8 @@ export default function TripWorkspace() {
       <TopActionBar
           travelersTotal={travelers.total}
           tripName={tripName || "Lịch trình mới"}
-          tripId={tripIdParam ? Number(tripIdParam) : null}
+          tripId={remoteTripId}
+          isSaving={isSaving}
           onNameChange={(newName) => {
             setTripName(newName);
           }}
@@ -232,7 +236,7 @@ export default function TripWorkspace() {
               });
               return;
             }
-            navigate("/daily-itinerary");
+            navigate(remoteTripId ? `/daily-itinerary?tripId=${remoteTripId}` : "/daily-itinerary");
           }}
         />
 
@@ -352,18 +356,73 @@ export default function TripWorkspace() {
         </div>
       </div>
       
-      {/* ── RIGHT PANEL — Budget & Expenses ────────────────────────────── */}
-        <TripBudgetSidebar 
-          selectedDay={selectedDay}
-          totalBudget={totalBudget}
-          calculateTotalTripCost={calculateTotalTripCost}
-          calculateDayCost={calculateDayCost}
-          calculateDayCostByCategory={calculateDayCostByCategory}
-          formatCurrency={formatCurrency}
-          onOpenBudgetDetail={() => setShowBudgetDetail(true)}
-          onAddDayExpense={handleAddDayExtraExpenseFromSidebar}
-          onRemoveDayExpense={handleRemoveDayExtraExpense}
-        />
+      {/* ── RIGHT PANEL — Budget / Chat ──────────────────────────────────── */}
+        <div className="w-80 flex-shrink-0 border-l border-gray-200 bg-white overflow-y-auto">
+          {/* Tab Switcher */}
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setRightPanelTab("budget")}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                rightPanelTab === "budget"
+                  ? "bg-white text-cyan-600 border-b-2 border-cyan-600"
+                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              Ngân sách
+            </button>
+            <button
+              onClick={() => setRightPanelTab("chat")}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                rightPanelTab === "chat"
+                  ? "bg-white text-cyan-600 border-b-2 border-cyan-600"
+                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              AI Chat
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {rightPanelTab === "budget" ? (
+            <TripBudgetSidebar
+              selectedDay={selectedDay}
+              totalBudget={totalBudget}
+              calculateTotalTripCost={calculateTotalTripCost}
+              calculateDayCost={calculateDayCost}
+              calculateDayCostByCategory={calculateDayCostByCategory}
+              formatCurrency={formatCurrency}
+              onOpenBudgetDetail={() => setShowBudgetDetail(true)}
+              onAddDayExpense={handleAddDayExtraExpenseFromSidebar}
+              onRemoveDayExpense={handleRemoveDayExtraExpense}
+            />
+          ) : (
+            <div className="h-[calc(100vh-8rem)]">
+              {remoteTripId ? (
+                <ChatPanel
+                  tripId={remoteTripId}
+                  isAuthenticated={isAuthenticated}
+                  tripUpdatedAt={currentTripUpdatedAt}
+                  onTripPatched={applyServerTrip}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center p-6 text-center">
+                  <div>
+                    <MessageCircle className="mx-auto h-12 w-12 text-gray-300" />
+                    <p className="mt-3 text-sm text-gray-600">
+                      Lưu lịch trình để sử dụng tính năng AI Chat
+                    </p>
+                    <button
+                      onClick={() => setShowLoginModal(true)}
+                      className="mt-4 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white transition-all hover:scale-105"
+                    >
+                      Đăng nhập / Lưu lịch trình
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       
       {/* ── ACTIVITY DETAIL MODAL ────────────────────────────────────────────── */}
@@ -411,13 +470,13 @@ export default function TripWorkspace() {
           isOpen={showSavedSuggestions}
           onClose={() => {
             setShowSavedSuggestions(false);
+            if (!isAuthenticated) return;
             // Re-sync bookmark state from API
             listSavedPlaces().then((data) => {
-              const savedNames = new Set(data.map((p: any) => p.placeName || p.name));
-              setPlaces(prev => prev.map(p => ({
-                ...p,
-                saved: savedNames.has(p.name),
-              })));
+              const savedIds = buildSavedPlaceIdSet(normalizeSavedPlaces(data));
+              setPlaces((prev) =>
+                prev.map((p) => ({ ...p, saved: savedIds.has(p.id) })),
+              );
             }).catch(() => {});
           }}
           suggestions={savedSuggestions}
@@ -435,29 +494,10 @@ export default function TripWorkspace() {
         setTravelers={setTravelers}
       />
 
-      {/* AI Bubble Speech */}
-      <AIPromoBubble
-      show={showAIBubbleSpeech}
-      onClose={() => {
-        setShowAIBubbleSpeech(false);
-        setHasClosedBubbleSpeech(true);
-        sessionStorage.setItem('hasClosedAIBubbleSpeech', 'true');
-        }}
-      />
-      
-      <FloatingAIChat 
-        selectedCities={["Hà Nội"]} 
-        onOpen={() => {
-          setHasOpenedChat(true);
-          sessionStorage.setItem('hasOpenedAIChat', 'true');
-          setShowAIBubbleSpeech(false);
-        }}
-      />
-
       <LoginRequiredModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
-        reason="Đăng nhập để lưu lịch trình và sử dụng đầy đủ tính năng"
+        reason="Đăng nhập để lưu lịch trình thủ công vào tài khoản. Nếu chưa đăng nhập, lịch trình chỉ được lưu tạm trong trình duyệt này."
       />
 
       {showPlaceSelectionModal && selectedDayForPlaces !== null && (
@@ -466,13 +506,13 @@ export default function TripWorkspace() {
           onClose={() => {
             setShowPlaceSelectionModal(false);
             setSelectedDayForPlaces(null);
+            if (!isAuthenticated) return;
             // Re-sync bookmark state from API after modal closes
             listSavedPlaces().then((data) => {
-              const savedNames = new Set(data.map((p: any) => p.placeName || p.name));
-              setPlaces(prev => prev.map(p => ({
-                ...p,
-                saved: savedNames.has(p.name),
-              })));
+              const savedIds = buildSavedPlaceIdSet(normalizeSavedPlaces(data));
+              setPlaces((prev) =>
+                prev.map((p) => ({ ...p, saved: savedIds.has(p.id) })),
+              );
             }).catch(() => {});
           }}
           currentDayLabel={days.find((d) => d.id === selectedDayForPlaces)?.label || ""}
@@ -502,7 +542,6 @@ export default function TripWorkspace() {
         />
       )}
       
-      <Toaster />
     </div>
   );
 }

@@ -1,10 +1,9 @@
 """Redis-backed rate limiting primitives.
 
-Rate limiting for AI endpoints (generate, chat):
-  - Daily quota per user or guest fingerprint (default: 3 calls/day for free tier).
+Rate limiting for AI endpoints:
+  - Generate giữ key legacy `rate:ai:user:{id}:{YYYYMMDD}` / `rate:ai:guest:{hash}:{YYYYMMDD}`.
+  - Companion chat dùng namespace riêng `rate:ai:chat:user:{id}:{YYYYMMDD}`.
   - Counter resets at midnight UTC.
-  - Key format: rate:ai:user:{user_id}:{YYYYMMDD}
-  - Guest key format: rate:ai:guest:{hash}:{YYYYMMDD}
 
 Fail mode behavior (configurable via ai_rate_limit_fail_mode):
   - "closed" (default): If Redis is down, block the request with 503.
@@ -68,12 +67,24 @@ class RateLimiter:
         """
         return await self.check_ai_actor_limit(f"user:{user_id}")
 
-    async def check_ai_actor_limit(self, actor: str) -> bool:
-        """Check if an AI actor key still has calls left today.
+    async def check_ai_actor_limit(
+        self,
+        actor: str,
+        *,
+        namespace: str | None = None,
+        limit: int | None = None,
+    ) -> bool:
+        """Kiểm tra quota AI theo actor và namespace logic.
 
-        Actor values are scoped labels such as "user:12" or "guest:abcd".
+        Args:
+            actor: Actor logic như ``user:12`` hoặc ``guest:abcd``.
+            namespace: ``None`` để giữ key generate legacy, hoặc tên namespace
+                riêng như ``chat``.
+            limit: Hạn mức riêng cho namespace; nếu bỏ trống sẽ dùng quota
+                generate mặc định.
         """
-        key = self._ai_key(actor)
+        key = self._ai_key(actor) if namespace is None else self._scoped_ai_key(namespace, actor)
+        quota_limit = limit or self.settings.rate_limit_ai_free
         try:
             # Step 1: Increment counter
             count = await self.redis.incr(key)
@@ -86,7 +97,7 @@ class RateLimiter:
                 raise ServiceUnavailableException("AI rate limiter unavailable") from exc
             return True
         # Step 4: Check against limit
-        return count <= self.settings.rate_limit_ai_free
+        return count <= quota_limit
 
     async def enforce_ai_limit(self, user_id: int) -> None:
         """Raise when the user has exceeded the daily AI quota.
@@ -132,6 +143,28 @@ class RateLimiter:
                 reset_at=reset,
             )
 
+    async def enforce_chat_limit(self, user_id: int) -> None:
+        """Chặn companion chat khi user đã dùng hết quota chat riêng trong ngày.
+
+        Guest chat chưa được mở trong phase hiện tại, nên method này chỉ nhận
+        authenticated user ID.
+        """
+        limit = self.settings.rate_limit_ai_chat_user
+        if not await self.check_ai_actor_limit(
+            f"user:{user_id}",
+            namespace="chat",
+            limit=limit,
+        ):
+            reset = self._next_midnight_utc()
+            raise RateLimitException(
+                detail=f"Bạn đã dùng hết {limit} lượt chat AI hôm nay. "
+                f"Hạn mức sẽ được đặt lại lúc {reset.strftime('%H:%M UTC')}. "
+                "Vui lòng thử lại sau hoặc tiếp tục chỉnh lịch trình thủ công.",
+                limit=limit,
+                remaining=0,
+                reset_at=reset,
+            )
+
     async def get_remaining(self, user_id: int) -> RateLimitInfo:
         """Return remaining AI calls for the current UTC day.
 
@@ -146,11 +179,56 @@ class RateLimiter:
         """
         return await self.get_remaining_for_actor(f"user:{user_id}")
 
-    async def get_remaining_for_actor(self, actor: str) -> RateLimitInfo:
+    async def get_chat_remaining(self, user_id: int) -> RateLimitInfo:
+        """Trả về quota chat còn lại của user hiện tại."""
+        return await self.get_remaining_for_actor(
+            f"user:{user_id}",
+            namespace="chat",
+            limit=self.settings.rate_limit_ai_chat_user,
+        )
+
+    async def enforce_apply_patch_limit(self, user_id: int) -> None:
+        """Chặn apply-patch khi user đã dùng hết quota apply-patch riêng trong ngày.
+
+        apply-patch là mutation nhanh (không gọi LLM) nhưng vẫn cần chặn spam nên
+        dùng namespace ``apply_patch``, tách biệt hẳn với generate và chat.
+        """
+        limit = self.settings.rate_limit_ai_apply_patch_user
+        if not await self.check_ai_actor_limit(
+            f"user:{user_id}",
+            namespace="apply_patch",
+            limit=limit,
+        ):
+            reset = self._next_midnight_utc()
+            raise RateLimitException(
+                detail=f"Bạn đã dùng hết {limit} lượt xác nhận chỉnh sửa AI hôm nay. "
+                f"Hạn mức sẽ được đặt lại lúc {reset.strftime('%H:%M UTC')}.",
+                limit=limit,
+                remaining=0,
+                reset_at=reset,
+            )
+
+    async def get_apply_patch_remaining(self, user_id: int) -> RateLimitInfo:
+        """Trả về quota apply-patch còn lại của user hiện tại."""
+        return await self.get_remaining_for_actor(
+            f"user:{user_id}",
+            namespace="apply_patch",
+            limit=self.settings.rate_limit_ai_apply_patch_user,
+        )
+
+    async def get_remaining_for_actor(
+        self,
+        actor: str,
+        *,
+        namespace: str | None = None,
+        limit: int | None = None,
+    ) -> RateLimitInfo:
         """Return remaining AI calls for an actor (user or guest) for the current UTC day.
 
         Args:
             actor: Actor string like "user:123" or "guest:abcd1234".
+            namespace: ``None`` để đọc key generate legacy, hoặc namespace riêng.
+            limit: Override hạn mức khi namespace không dùng quota generate mặc định.
 
         Returns:
             RateLimitInfo with remaining count, limit, and reset time.
@@ -158,15 +236,15 @@ class RateLimiter:
         Raises:
             ServiceUnavailableException: If Redis is down (always fail-closed for reads).
         """
-        key = self._ai_key(actor)
+        key = self._ai_key(actor) if namespace is None else self._scoped_ai_key(namespace, actor)
         try:
             current = int(await self.redis.get(key) or 0)
         except Exception as exc:
             raise ServiceUnavailableException("AI rate limiter unavailable") from exc
-        limit = self.settings.rate_limit_ai_free
+        resolved_limit = limit or self.settings.rate_limit_ai_free
         return RateLimitInfo(
-            remaining=max(limit - current, 0),
-            limit=limit,
+            remaining=max(resolved_limit - current, 0),
+            limit=resolved_limit,
             reset_at=self._next_midnight_utc(),
         )
 
@@ -191,3 +269,9 @@ class RateLimiter:
         """
         today = datetime.now(UTC).strftime("%Y%m%d")
         return f"rate:ai:{actor}:{today}"
+
+    @staticmethod
+    def _scoped_ai_key(namespace: str, actor: str) -> str:
+        """Build namespaced AI quota keys without breaking generate legacy keys."""
+        today = datetime.now(UTC).strftime("%Y%m%d")
+        return f"rate:ai:{namespace}:{actor}:{today}"

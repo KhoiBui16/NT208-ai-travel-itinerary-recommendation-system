@@ -35,7 +35,7 @@ Backend/
 │   │   ├── models/
 │   │   │   ├── trip.py            # Trip, TripDay, Activity, ExtraExpense
 │   │   │   ├── extras.py          # Accommodation, ShareLink, TripRating, GuestClaimToken
-│   │   │   └── chat.py            # ChatSession, ChatMessage (schema ready, API todo C.3/C.4)
+│   │   │   └── chat.py            # ChatSession, ChatMessage (schema đã có; C3A mới thêm session API)
 │   │   ├── pipeline.py            # C.1 ItineraryPipeline (Gemini → validate → persist)
 │   │   ├── repository.py          # TripRepository (CRUD + AI context queries)
 │   │   ├── router.py              # EP-8..21 + generate + shared_router
@@ -53,12 +53,12 @@ Backend/
 │   ├── agent/                     # Shared AI infrastructure
 │   │   ├── config.py              # AgentConfig (model, temp, retries, timeout, pacing)
 │   │   ├── llm.py                 # GeminiLLM wrapper + parse_json_response()
-│   │   ├── router.py              # /agent prefix — EP-30 suggest (C.3 chat/apply-patch todo)
+│   │   ├── router.py              # /agent prefix — EP-30 suggest only (chat/apply-patch nằm trong itineraries router)
 │   │   ├── prompts/
 │   │   │   └── itinerary_prompts.py   # build_itinerary_prompt() cho C.1
 │   │   └── schemas/
 │   │       └── itinerary_schemas.py   # AgentItinerary, AgentDay, AgentActivity
-│   │   # TODO C.3: tools/, graph/ subdirs chưa tồn tại
+│   │   # Companion chat dùng JSON prompt-driven proposedOperations (không cần tools/ hay graph/)
 │   │
 │   ├── core/                      # Cross-cutting concerns
 │   │   ├── config.py              # AppSettings (pydantic-settings, YAML + .env)
@@ -91,8 +91,8 @@ Backend/
 │   └── shared/                    # Shared base classes
 │       └── service.py             # BaseService
 ├── tests/
-│   ├── unit/                      # 97 unit tests
-│   └── integration/               # 44 integration tests
+│   ├── unit/                      # 187 unit tests
+│   └── integration/               # 77 integration tests (43 pass + 34 CI-gated skip local)
 ├── alembic/
 │   └── versions/                  # DB migration files
 ├── config.yaml                    # Non-secret config
@@ -130,7 +130,7 @@ Backend/
 | EP-6 | PUT | `/api/v1/users/profile` | Bearer | `{name?, phone?, interests?}` | `UserResponse` |
 | EP-7 | PUT | `/api/v1/users/password` | Bearer | `{currentPassword, newPassword}` | `{message}` |
 
-### Itinerary endpoints (14 endpoints)
+### Itinerary endpoints (22 endpoints: 14 CRUD + 8 chat/apply-patch)
 
 | EP | Method | Path | Auth | Request Body | Response |
 |---|---|---|---|---|---|
@@ -148,6 +148,23 @@ Backend/
 | EP-19 | DELETE | `/api/v1/itineraries/{tripId}/activities/{activityId}` | Bearer | — | `{message}` |
 | EP-20 | POST | `/api/v1/itineraries/{tripId}/accommodations` | Bearer | `AccommodationSchema` | `AccommodationSchema` |
 | EP-21 | DELETE | `/api/v1/itineraries/{tripId}/accommodations/{accommodationId}` | Bearer | — | `{message}` |
+
+### Chat & apply-patch endpoints (C.3/C.4 — 8 endpoints)
+
+Trip-bound companion chat: owner-only, session/message REST + patch-confirm (merged #98-106).
+
+| Method | Path | Auth | Request Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/itineraries/{tripId}/chat-sessions` | Bearer | `{title?}` | `ChatSessionResponse` |
+| GET | `/api/v1/itineraries/{tripId}/chat-sessions` | Bearer | — | `list[ChatSessionSummary]` |
+| GET | `/api/v1/itineraries/chat-sessions/{sessionId}` | Bearer | — | `ChatSessionResponse` |
+| PATCH | `/api/v1/itineraries/chat-sessions/{sessionId}` | Bearer | `{title}` | `ChatSessionResponse` |
+| DELETE | `/api/v1/itineraries/chat-sessions/{sessionId}` | Bearer | — | `{message}` |
+| POST | `/api/v1/itineraries/chat-sessions/{sessionId}/messages` | Bearer | `{content}` | `ChatMessageResponse` (+ `requiresConfirmation`, `proposedOperations`) |
+| GET | `/api/v1/itineraries/chat-sessions/{sessionId}/messages` | Bearer | — | `list[ChatMessageResponse]` |
+| POST | `/api/v1/itineraries/{tripId}/apply-patch` | Bearer | `{action, assistantMessageId}` | `{applied, message}` |
+
+> Companion chat KHÔNG tự persist itinerary trong message flow; user phải `apply-patch` để xác nhận. Apply-patch có rate limit riêng (`rate:ai:apply_patch:user:*`). Chi tiết flow xem `docs/06_ai_roadmap.md` mục Companion Chat.
 
 ### Shared endpoint (1 endpoint)
 
@@ -167,7 +184,7 @@ Backend/
 | EP-28 | POST | `/api/v1/places/saved` | Bearer | `SavedPlaceResponse` |
 | EP-29 | DELETE | `/api/v1/places/saved/{savedId}` | Bearer | `{message}` |
 
-**Tổng: 35 endpoints** trên `main` sau merge C.2 (EP-0 đến EP-32 + EP-30 suggest; EP-34 analytics optional MVP2+)
+**Tổng: 41 `/api/v1` endpoints** trên `main` sau merge C.4 (14 GET / 16 POST / 5 PUT / 5 DELETE / 1 PATCH — EP-0..EP-32 + EP-30 suggest + 8 chat/apply-patch; EP-34 analytics optional/deferred)
 
 ### EP-23: `GET /api/v1/places/destinations` — Destination Data Quality Contract
 
@@ -182,7 +199,7 @@ Backend/
   // Data quality fields (00057+)
   placesCount: number;      // Số điểm đến tại thành phố này
   hotelsCount: number;      // Số khách sạn tại thành phố này
-  isGenerateReady: boolean; // Luôn true cho các city trong API response
+  isGenerateReady: boolean; // Coarse signal theo live place coverage tối thiểu
   readinessStatus: "ready" | "partial" | "sparse";
   readinessReason: string | null;  // Thông báo advisory (không block submit)
 }
@@ -195,7 +212,7 @@ Backend/
 
 **Product principle**: City đã nằm trong backend destinations API phải cho phép user chọn và submit bình thường. `readinessReason` chỉ là warning advisory, không phải hard gate.
 
-**Cache key**: `destinations:all:v2` (TTL 1h)
+**Cache key**: `destinations:all:v3` (TTL 1h)
 
 ### EP-30: `GET /api/v1/agent/suggest/{activity_id}` (C.2)
 
@@ -500,7 +517,7 @@ HTTP Request
 
 ### CamelCaseModel
 
-Tất cả response schema kế thừa `CamelCaseModel` (trong `schemas/common.py`):
+Tất cả response schema kế thừa `CamelCaseModel` (trong `src/core/schema.py`):
 
 ```python
 class CamelCaseModel(BaseModel):
@@ -643,7 +660,7 @@ trip = repo.get_with_full_data(trip_id)  # Fresh query → load từ DB
 | Claim token one-time | `consumed_at` + `expires_at` + hash |
 | Password reset silent | Không tiết lộ email có tồn tại hay không |
 | Force re-login on reset | Revoke tất cả refresh tokens khi đổi password |
-| CORS origin | Allow local FE origins: `localhost:5173` và `127.0.0.1:5173` |
+| CORS origin | Allow local FE origins: `localhost:5173` |
 
 ---
 
@@ -665,8 +682,9 @@ EmailService
 
 ## 11. Backend còn thiếu
 
-- AI companion chat + patch-confirm flow (C.3 — `feat/00051-c3-companion-chat`).
-- Chat history API endpoints (C.4 — `feat/00052-c4-chat-history`).
-- Analytics optional EP-34 với SQL guardrails (C.5 — `feat/00053-c5-analytics-optional`, optional).
+- `C3B` đã merged: message send, provider abstraction, chat quota riêng (`rate:ai:chat:user:*`), persisted history read-path.
+- `C3C` đã merged (#105): `POST /itineraries/{tripId}/apply-patch` confirm endpoint, proposed-operations enrichment, stale-proposal handling.
+- `C4` đã merged (#106): session management (rename/delete/switcher/load-more), history reload; apply-patch rate limit riêng (`rate:ai:apply_patch:user:*`) + ETL scheduler wired vào compose (profile `etl`).
+- Analytics EP-34 (C.5) — optional/deferred, **chưa implement** (`/agent/analytics` route absent, `enable_analytics` default false); cần guardrails (read-only role, table allowlist, SQL validator, max rows, audit log) nếu bật.
 
-> **C.2 SuggestionService** (EP-30) đã merged trên `feat/00047-c-suggestion-service` → PR #49. Xem `docs/REPORTS/phase_c2_suggestion_service.md`.
+> **Current state (2026-06-24, HEAD `#109`):** Phase C.1–C.4 đã merge hoàn chỉnh. Phần còn lại trước khi coi hệ thống "production-complete" là C.5 Analytics (optional) + data enrichment cho sparse cities (giới hạn Goong provider — không trả photo/rating).

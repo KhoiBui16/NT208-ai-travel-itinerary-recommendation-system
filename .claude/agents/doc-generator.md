@@ -50,9 +50,9 @@ Khong duoc phat minh policy moi neu codebase/docs hien tai chua chot.
 ## Mandatory sync points
 
 - Branch/commit/PR/CI rules
-- 33 core endpoints + EP-34 optional
-- 117 BE tests (75 unit + 42 integration)
-- 11 Playwright e2e tests
+- Active endpoint numbering da mo rong qua shorthand cu "33 core endpoints"; C3A bo sung EP-37/38/39
+- 148 BE unit tests + 67 BE integration tests
+- 33 Playwright e2e test cases trong 15 spec files
 - camelCase contract theo FE
 - shareToken / claimToken / owner-only by ID
 - AI direct pipeline + patch-confirm + chat history projection

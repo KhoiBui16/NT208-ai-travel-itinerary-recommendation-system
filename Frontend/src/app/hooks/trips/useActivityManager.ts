@@ -69,6 +69,10 @@ export const useActivityManager = (
             )
           );
         }
+        toast.error("Không thể xóa hoạt động. Vui lòng thử lại sau.", {
+          position: "top-right",
+          duration: 4000,
+        });
       });
     }
   };
@@ -153,6 +157,10 @@ export const useActivityManager = (
             })
           );
         }
+        toast.error("Không thể cập nhật hoạt động. Vui lòng thử lại sau.", {
+          position: "top-right",
+          duration: 4000,
+        });
       });
     }
   };
@@ -201,6 +209,10 @@ export const useActivityManager = (
             day.id !== dayId ? day : { ...day, activities: day.activities.filter((a: Activity) => a.id !== activity.id) }
           )
         );
+        toast.error("Không thể thêm hoạt động. Vui lòng thử lại sau.", {
+          position: "top-right",
+          duration: 4000,
+        });
       });
     }
 

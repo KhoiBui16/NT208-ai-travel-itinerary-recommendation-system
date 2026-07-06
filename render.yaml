@@ -1,0 +1,117 @@
+# =============================================================================
+# Render Blueprint — provision backend stack cho DuLichViet
+#   Postgres (dulichviet-db) + Key Value/Redis (dulichviet-redis)
+#   + Web Service/API (dulichviet-api)
+#
+# Cách dùng:
+#   1. Render Dashboard > New > Blueprint > chọn repo + branch chứa file này.
+#   2. Render đọc render.yaml và tự tạo các tài nguyên. Bạn KHÔNG cần config tay.
+#   3. Với các env có "sync: false", Render sẽ DỪNG và yêu cầu bạn nhập giá trị
+#      (secret/thông tin chỉ bạn mới có) trước khi deploy lần đầu.
+#
+# LƯU Ý QUAN TRỌNG — DATABASE_URL (scheme bắt buộc):
+#   Code dùng SQLAlchemy ASYNC, nên scheme BẮT BUỘC là `postgresql+asyncpg://`.
+#   Render sinh Internal Database URL dạng `postgresql://...`. KHÔNG paste nguyên
+#   như vậy — hãy đổi phần đầu thành `postgresql+asyncpg://` rồi mới dán vào
+#   env DATABASE_URL (sync: false bên dưới). Nếu quên, backend sẽ crash lúc boot.
+#
+# LƯU Ý QUAN TRỌNG — MIGRATION TỰ CHẠY (preDeployCommand):
+#   App KHÔNG tự tạo bảng ở main.py lifespan (chỉ `SELECT 1` check connectivity).
+#   Nên schema phải được tạo bằng `alembic upgrade head`. Vì Render plan: free
+#   KHÔNG có tab Shell, web service dùng `preDeployCommand` để Render tự chạy
+#   `uv run alembic upgrade head` mỗi deploy (sau build, trước uvicorn). Không
+#   cần thao tác thủ công. Nếu thiếu dòng này → DB không có bảng → mọi endpoint
+#   truy vấn DB (vd /places/destinations) trả 500.
+#
+# SCHEMA (Render Blueprint YAML Reference — render.com/docs/blueprint-spec):
+#   - Root keys hợp lệ: services, databases, envVarGroups, projects, ungrouped,
+#     previews. KHÔNG có top-level `redis:` hay `keyvalues:`.
+#   - Key Value (Redis-compatible) là 1 service `type: keyvalue` nằm trong
+#     danh sách `services:` (cùng cấp với web). Wiring envVar dùng `fromService:`
+#     + `type: keyvalue` + `name:` + `property: connectionString`.
+#   - Cron KHÔNG hỗ trợ plan `free` (Render spec), nên ETL cron bị bỏ ở bản
+#     deploy free-tier này. Chạy ETL thủ công qua Render Shell khi cần; thêm lại
+#     cron (plan `starter`+) khi nâng cấp trả phí.
+#
+# Region: singapore (gần VN, giảm latency). Plan: free (student project).
+# =============================================================================
+
+databases:
+  - name: dulichviet-db
+    databaseName: dulichviet
+    plan: free
+    region: singapore
+
+services:
+  # ---------------------------------------------------------------------------
+  # Key Value (Redis-compatible, Valkey) — KHÔNG phải top-level key.
+  # Theo Render spec, Key Value là 1 service `type: keyvalue` trong `services:`.
+  # ipAllowList: [] = chỉ cho phép kết nối nội bộ Render (private network);
+  # web nối tới qua fromService → property connectionString (redis://...:6379).
+  # ---------------------------------------------------------------------------
+  - type: keyvalue
+    name: dulichviet-redis
+    plan: free
+    region: singapore
+    ipAllowList: [] # internal-only; KHÔNG expose Redis ra Internet
+
+  # ---------------------------------------------------------------------------
+  # Backend API (FastAPI + Uvicorn)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: dulichviet-api
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: Backend
+    buildCommand: pip install uv && uv sync --frozen --no-dev
+    startCommand: uv run uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    # preDeployCommand chạy SAU buildCommand, TRƯỚC startCommand, trên MỌI deploy
+    # (kể cả plan: free). Tự chạy alembic upgrade head để tạo schema (bảng) trong DB
+    # mà KHÔNG cần Render Shell (Shell chỉ có trên plan Starter trở lên).
+    # App KHÔNG tự create_all() ở main.py lifespan (theo thiết kế), nên bắt buộc
+    # migration phải chạy qua preDeployCommand này, nếu không DB trống → 500.
+    preDeployCommand: uv run alembic upgrade head
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: 'off' # tắt auto-deploy lần đầu; bật lại sau khi smoke pass
+    envVars:
+      # --- BẮT BUỘC nhập thủ công (sync=false → Render prompt lúc import) ---
+      - key: DATABASE_URL
+        sync: false
+        # Dán: postgresql+asyncpg://USER:PASS@INTERNAL_HOST/dulichviet
+        # (đổi scheme từ Internal Database URL của dulichviet-db)
+      - key: JWT_SECRET_KEY
+        sync: false
+        # Sinh local: python -c "import secrets; print(secrets.token_hex(32))"
+      - key: GEMINI_API_KEY
+        sync: false
+        # Thiếu → generate AI trả 503; app vẫn boot, health vẫn pass.
+      - key: GOONG_API_KEY
+        sync: false
+        # Canonical REST key server-side (FE KHÔNG dùng).
+      - key: FRONTEND_URL
+        sync: false
+        # Dán URL Vercel production SAU khi deploy FE, vd: https://dulichviet.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+        # JSON array exact Vercel URL, vd: ["https://dulichviet.vercel.app"]
+        # KHÔNG dùng "*" (app bật allow_credentials=True)
+
+      # --- Từ Key Value (Render tự wire qua fromService) ---
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: dulichviet-redis
+          property: connectionString
+
+      # --- Giá trị tĩnh ---
+      - key: ENVIRONMENT
+        value: production # BẮT BUỘC: kích hoạt production validator (chặn JWT default)
+      - key: APP_DEBUG
+        value: "false"
+      - key: ENABLE_ANALYTICS
+        value: "false" # C.5 optional; nếu true thì cần thêm ANALYTICS_DATABASE_URL
+      - key: AI_RATE_LIMIT_FAIL_MODE
+        value: closed # fail-closed: Redis down → 503, KHÔNG set "open" trên production
+      - key: AGENT_TIMEOUT_SECONDS
+        value: "120"

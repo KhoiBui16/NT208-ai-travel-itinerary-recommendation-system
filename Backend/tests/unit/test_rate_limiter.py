@@ -138,3 +138,83 @@ async def test_get_remaining_for_actor__works_for_guest_actors() -> None:
     await limiter.check_ai_actor_limit(guest_actor)
     info = await limiter.get_remaining_for_actor(guest_actor)
     assert info.remaining == 0
+
+
+@pytest.mark.asyncio
+async def test_chat_limit__uses_separate_namespace_and_limit() -> None:
+    """Quota chat phải dùng key riêng để không ăn chung với generate."""
+    settings = AppSettings(_env_file=None, rate_limit_ai_free=1, rate_limit_ai_chat_user=2)
+    redis = FakeRedis()
+    limiter = RateLimiter(redis=redis, settings=settings)  # type: ignore[arg-type]
+
+    # Generate quota dùng key legacy và hết sau 1 lượt.
+    await limiter.enforce_ai_limit(123)
+    generate_key = next(iter(redis.values))
+    assert generate_key.startswith("rate:ai:user:123:")
+
+    with pytest.raises(RateLimitException):
+        await limiter.enforce_ai_limit(123)
+
+    # Chat quota vẫn còn vì đi namespace riêng.
+    await limiter.enforce_chat_limit(123)
+    await limiter.enforce_chat_limit(123)
+
+    chat_keys = [key for key in redis.values if ":chat:user:123:" in key]
+    assert len(chat_keys) == 1
+
+    with pytest.raises(RateLimitException):
+        await limiter.enforce_chat_limit(123)
+
+
+@pytest.mark.asyncio
+async def test_get_chat_remaining__returns_chat_quota_metadata() -> None:
+    """Đọc remaining của chat phải phản ánh hạn mức chat, không phải generate."""
+    settings = AppSettings(_env_file=None, rate_limit_ai_free=3, rate_limit_ai_chat_user=5)
+    redis = FakeRedis()
+    limiter = RateLimiter(redis=redis, settings=settings)  # type: ignore[arg-type]
+
+    await limiter.enforce_chat_limit(456)
+    info = await limiter.get_chat_remaining(456)
+
+    assert info.limit == 5
+    assert info.remaining == 4
+
+
+@pytest.mark.asyncio
+async def test_apply_patch_limit__uses_separate_namespace_and_limit() -> None:
+    """Quota apply-patch dùng namespace riêng, không ăn chung generate/chat."""
+    settings = AppSettings(
+        _env_file=None,
+        rate_limit_ai_free=1,
+        rate_limit_ai_chat_user=5,
+        rate_limit_ai_apply_patch_user=2,
+    )
+    redis = FakeRedis()
+    limiter = RateLimiter(redis=redis, settings=settings)  # type: ignore[arg-type]
+
+    # apply-patch hết sau 2 lượt.
+    await limiter.enforce_apply_patch_limit(789)
+    await limiter.enforce_apply_patch_limit(789)
+    patch_keys = [key for key in redis.values if ":apply_patch:user:789:" in key]
+    assert len(patch_keys) == 1
+
+    with pytest.raises(RateLimitException):
+        await limiter.enforce_apply_patch_limit(789)
+
+    # generate + chat vẫn còn quota riêng vì namespace tách biệt.
+    await limiter.enforce_ai_limit(789)
+    await limiter.enforce_chat_limit(789)
+
+
+@pytest.mark.asyncio
+async def test_get_apply_patch_remaining__returns_apply_patch_quota() -> None:
+    """Đọc remaining apply-patch phải phản ánh hạn mức apply-patch."""
+    settings = AppSettings(_env_file=None, rate_limit_ai_apply_patch_user=4)
+    redis = FakeRedis()
+    limiter = RateLimiter(redis=redis, settings=settings)  # type: ignore[arg-type]
+
+    await limiter.enforce_apply_patch_limit(321)
+    info = await limiter.get_apply_patch_remaining(321)
+
+    assert info.limit == 4
+    assert info.remaining == 3

@@ -1,5 +1,7 @@
 # 08. Chạy local và kiểm thử
 
+> Guide UAT mới nhất: `docs/LOCAL_MANUAL_UAT_GUIDE.md`. Các command bên dưới dùng `localhost:<port>` cho tài liệu human-facing.
+
 ## Docker-only
 
 ```powershell
@@ -55,7 +57,7 @@ Terminal 2:
 cd Backend
 uv sync
 uv run alembic upgrade head
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn src.main:app --host localhost --port 8000 --reload
 ```
 
 Terminal 3:
@@ -63,8 +65,8 @@ Terminal 3:
 ```powershell
 cd Frontend
 npm ci
-$env:VITE_API_URL="http://127.0.0.1:8000"
-npm run dev -- --host 127.0.0.1 --port 5173
+$env:VITE_API_URL="http://localhost:8000"
+npm run dev -- --host localhost --port 5173
 ```
 
 ## Test gates
@@ -84,22 +86,22 @@ Frontend:
 
 ```powershell
 cd Frontend
-$env:VITE_API_URL="http://127.0.0.1:8000"
+$env:VITE_API_URL="http://localhost:8000"
 npm run build
 npm run test:e2e        # Playwright e2e (cần BE server chạy)
 npm run test:e2e:headed # Chạy e2e với browser hiển thị
 ```
 
-ETL smoke:
+Optional ETL smoke (only when explicitly approved):
 
 ```powershell
 cd Backend
 uv run python -m src.etl --cities "Hà Nội" --dry-run
 uv run python -m src.etl --cities "Hà Nội"
-curl.exe "http://127.0.0.1:8000/api/v1/places/search?city=H%C3%A0%20N%E1%BB%99i&limit=5"
+curl.exe "http://localhost:8000/api/v1/places/search?city=H%C3%A0%20N%E1%BB%99i&limit=5"
 ```
 
-AI generate smoke:
+Optional real AI generate smoke (only when explicitly approved):
 
 ```powershell
 cd Backend
@@ -108,7 +110,7 @@ $env:AGENT_TIMEOUT_SECONDS="60"
 $env:AGENT_MIN_ACTIVITIES_PER_DAY="5"
 $env:AGENT_MAX_ACTIVITIES_PER_DAY="5"
 
-curl.exe -X POST "http://127.0.0.1:8000/api/v1/itineraries/generate" `
+curl.exe -X POST "http://localhost:8000/api/v1/itineraries/generate" `
   -H "Content-Type: application/json" `
   --data-raw '{"destination":"Hà Nội","startDate":"2026-06-01","endDate":"2026-06-03","budget":5000000,"adults":2,"children":0,"interests":["food","attraction"]}'
 ```
@@ -135,8 +137,8 @@ docker compose exec redis redis-cli --scan --pattern "rate:ai:*" |
 
 - BE health trả `{"status":"healthy"}`.
 - FE dev server trả HTTP 200 ở `/`.
-- `GET /api/v1/places/search?city=Hà Nội&limit=5` trả list non-empty sau ETL.
-- `POST /api/v1/itineraries/generate` trả `201 Created` sau khi có Goong data + Gemini key.
+- `GET /api/v1/places/search?city=Hà Nội&limit=5` trả list non-empty sau ETL khi bạn chủ động chạy ETL smoke.
+- `POST /api/v1/itineraries/generate` trả `201 Created` sau khi có Goong data + Gemini key và khi bạn chủ động chạy AI smoke.
 - Guest generate lưu `pendingClaim` vào `sessionStorage` rồi chuyển login; sau login claim trip và quay lại đúng `tripId`.
 - Authenticated generate vào `/trip-workspace?tripId=...` và workspace load itinerary từ BE.
 - Docker API container health endpoint trả healthy.
@@ -149,7 +151,37 @@ npm run build           # Production build phải pass
 npm run test:e2e        # Playwright e2e tests (cần BE chạy trên localhost:8000)
 ```
 
-FE build phải pass (production bundle). Playwright e2e tests kiểm tra 11 flow: auth (3), trip CRUD (3), public pages (5). Yêu cầu BE server chạy trước khi chạy e2e.
+FE build phải pass (production bundle). Playwright e2e tests hiện có `17` spec files ở `tests/e2e/` (14 top-level + 3 trong `b3/`; CI `frontend-e2e` green trên PR #109). Yêu cầu BE server chạy trước khi chạy e2e.
+
+### Current evidence snapshot (2026-06-19)
+
+```powershell
+Set-Location "<repo-root>\\Backend"
+uv run pytest tests/unit tests/integration -v --tb=short
+```
+
+Kết quả collect local (2026-06-24):
+
+- Backend unit: `187 tests` collected
+- Backend integration: `77 tests` collected (43 pass + 34 CI-gated skip local; chạy đủ trên CI postgres)
+
+Companion chat smoke đã verify trên stack thật FE -> BE -> DB -> Redis:
+
+- `POST /api/v1/itineraries/generate` → `201`
+- `POST /api/v1/itineraries/chat-sessions/{sessionId}/messages` → `201`
+- `GET /api/v1/itineraries/chat-sessions/{sessionId}/messages` → `200`
+
+ETL scheduler smoke đã verify trên DB thật của project:
+
+```powershell
+Set-Location "<repo-root>\\Backend"
+uv run python -m src.etl.scheduler --once --cities "Buôn Ma Thuột"
+```
+
+Kết quả mẫu:
+
+- `Buôn Ma Thuột`: từ `0 places` lên `69 places`
+- Scheduler hiện chạy local/manual loop; chưa được wire vào compose service hoặc CI schedule
 
 ### 00057 Manual Verification — Destination Data Quality Advisory
 
@@ -158,14 +190,14 @@ FE build phải pass (production bundle). Playwright e2e tests kiểm tra 11 flo
 ```powershell
 # Start BE/FE
 cd Backend
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8000
+uv run uvicorn src.main:app --host localhost --port 8000
 
 cd Frontend
-npm run dev -- --host 127.0.0.1 --port 5173
+npm run dev -- --host localhost --port 5173
 ```
 
 **Browser test steps**:
-1. Open http://127.0.0.1:5173/create-trip
+1. Open http://localhost:5173/create-trip
 2. Type "Đà Lạt" in destination field
 3. Select "Đà Lạt" from suggestions (should show ⚠️ icon for partial city)
 4. **Expected**: Yellow/amber warning box appears with text "Dữ liệu cho Đà Lạt hiện còn hạn chế..."
@@ -179,7 +211,7 @@ npm run dev -- --host 127.0.0.1 --port 5173
 **API verification**:
 ```powershell
 # Check Đà Lạt response has readiness fields
-curl http://127.0.0.1:8000/api/v1/places/destinations | python -m json.tool | grep -A 10 "Đà Lạt"
+curl http://localhost:8000/api/v1/places/destinations | python -m json.tool | grep -A 10 "Đà Lạt"
 
 # Verify:
 # - placesCount: 10
@@ -189,15 +221,15 @@ curl http://127.0.0.1:8000/api/v1/places/destinations | python -m json.tool | gr
 # - readinessReason: "Dữ liệu cho Đà Lạt..."
 ```
 
-Nếu dùng `127.0.0.1` thay vì `localhost`, hãy giữ đồng bộ:
+Giữ đồng bộ URL khi chạy local:
 
 ```powershell
-$env:VITE_API_URL="http://127.0.0.1:8000"
-$env:E2E_BASE_URL="http://127.0.0.1:5173"
-$env:E2E_API_URL="http://127.0.0.1:8000"
+$env:VITE_API_URL="http://localhost:8000"
+$env:E2E_BASE_URL="http://localhost:5173"
+$env:E2E_API_URL="http://localhost:8000"
 ```
 
-Backend CORS đã allow cả `http://localhost:5173` và `http://127.0.0.1:5173`.
+Backend CORS allow local frontend origins; docs/manual run should prefer `localhost:<port>`.
 
 ## Full-stack smoke script
 

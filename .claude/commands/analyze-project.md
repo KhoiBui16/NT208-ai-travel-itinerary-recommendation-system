@@ -16,8 +16,8 @@ allowed-tools: Read, Grep, Glob, Bash(rg:*), Bash(git:*)
 
 - Luon phan biet `current repo truth` va `target MVP2 plan`
 - Backend source of truth la `Backend/src/` voi `pyproject.toml`, `uv.lock`, Alembic
-- 33 core endpoints (EP-0 to EP-32), EP-34 optional
-- 117 BE tests (75 unit + 42 integration), 11 Playwright e2e tests
+- Active backend contract da co them C3A chat session endpoints EP-37/38/39; khong duoc quay lai shorthand cu "33 core endpoints"
+- 148 BE unit tests + 67 BE integration tests, Playwright suite 35 test cases / 16 spec files
 - Public contract cho FE lay tu `Frontend/src/app/types/trip.types.ts`
 
 ## Your task

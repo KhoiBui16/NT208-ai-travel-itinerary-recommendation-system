@@ -7,13 +7,14 @@ interface TopActionBarProps {
   travelersTotal: number;
   tripName: string;
   tripId: number | null;
+  isSaving: boolean;
   onEditTravelers: () => void;
   onSaveItinerary: () => void;
   onCreateItinerary: () => void;
   onNameChange: (newName: string) => void;
 }
 
-export function TopActionBar({ travelersTotal, tripName, tripId, onEditTravelers, onSaveItinerary, onCreateItinerary, onNameChange }: TopActionBarProps) {
+export function TopActionBar({ travelersTotal, tripName, tripId, isSaving, onEditTravelers, onSaveItinerary, onCreateItinerary, onNameChange }: TopActionBarProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(tripName);
   const [shareLink, setShareLink] = useState<string | null>(null);
@@ -130,7 +131,25 @@ export function TopActionBar({ travelersTotal, tripName, tripId, onEditTravelers
                 setIsSharing(true);
                 try {
                   const resp = await shareItinerary(tripId);
-                  const link = `${window.location.origin}/shared/${resp.shareToken}`;
+                  // Guard against placeholder/invalid tokens returned by the BE
+                  const token = resp.shareToken;
+                  const isValidToken =
+                    token &&
+                    !token.startsWith("[REDACTED") &&
+                    token !== "undefined" &&
+                    token !== "null" &&
+                    token.length > 8;
+                  if (!isValidToken) {
+                    toast.error(
+                      "Không thể hiển thị lại liên kết chia sẻ cũ. Vui lòng tạo liên kết chia sẻ mới sau khi đăng nhập.",
+                    );
+                    return;
+                  }
+                  // Prefer full URL from BE; fall back to building from token
+                  const link =
+                    resp.shareUrl && resp.shareUrl.startsWith("http")
+                      ? resp.shareUrl
+                      : `${window.location.origin}/shared/${token}`;
                   setShareLink(link);
                 } catch {
                   toast.error("Không thể chia sẻ lịch trình");
@@ -147,10 +166,11 @@ export function TopActionBar({ travelersTotal, tripName, tripId, onEditTravelers
           )}
           <button
             onClick={onSaveItinerary}
-            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:shadow-md"
+            disabled={isSaving}
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Save className="h-4 w-4" />
-            Lưu lịch trình
+            {isSaving ? "Đang lưu..." : "Lưu lịch trình"}
           </button>
           <button
             onClick={onCreateItinerary}

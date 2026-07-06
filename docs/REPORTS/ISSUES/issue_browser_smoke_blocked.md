@@ -5,8 +5,8 @@ OPEN
 
 ## Evidence
 - Command: `npm run test:e2e` — script exists in package.json but no test files for required flows
-- Frontend dev server running on `http://127.0.0.1:5173`
-- Backend running on `http://127.0.0.1:8000`
+- Frontend dev server running on `http://localhost:5173`
+- Backend running on `http://localhost:8000`
 - Playwright installed (`@playwright/test ^1.59.1` in devDependencies)
 - `Frontend/playwright-report/` directory exists (untracked) — suggests previous runs
 

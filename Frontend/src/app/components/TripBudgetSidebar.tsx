@@ -103,7 +103,7 @@ export function TripBudgetSidebar({
         </div>
         
         <div className="p-4 space-y-3">
-          {BUDGET_CATEGORIES.filter(c => c.key !== 'accommodation').map(cat => {
+          {BUDGET_CATEGORIES.map(cat => {
             const Icon = cat.icon;
             const baseAmount = breakdown[cat.key] || 0;
             if (baseAmount === 0) return null;

@@ -1,0 +1,39 @@
+destination_id,destination_slug,destination_name,hotel_id,hotel_name,location,image,rating,review_count,price_per_night
+74,buon-ma-thuot,Buôn Ma Thuột,157,Mường Thanh Luxury Buôn Ma Thuột,"Nguyễn Đình Chiểu, Buôn Ma Thuột",/img/hotels/muong-thanh-bmt.jpg,4.3,540,1400000
+78,chau-doc,Châu Đốc,161,Victoria Núi Sam Lodge,"Núi Sam, Châu Đốc",/img/hotels/victoria-nui-sam.jpg,4.5,610,1900000
+76,con-dao,Côn Đảo,159,Poulo Condor Boutique Resort,"Suối Ớt, Côn Đảo",/img/hotels/poulo-condor.jpg,4.7,520,5200000
+63,can-tho,Cần Thơ,142,Azerai Cần Thơ,"Cồn Châu Á, Cần Thơ",/img/hotels/azerai-canTho.jpg,4.6,560,3200000
+32,hue,Huế,89,Azerai La Résidence Huế,"5 Lê Lợi, Huế",/img/hotels/azerai.jpg,4.7,890,3600000
+67,ha-giang,Hà Giang,148,P'apiu Resort Hà Giang,"Yên Định, Bắc Mê",/img/hotels/papiu-ha-giang.jpg,4.8,420,5200000
+67,ha-giang,Hà Giang,149,Phoenix Hotel Hà Giang,"Nguyễn Trãi, TP. Hà Giang",/img/hotels/phoenix-ha-giang.jpg,4.3,530,1100000
+2,ha-noi,Hà Nội,2,Hotel de l'Opera Hà Nội,"29 Tràng Tiền, Hoàn Kiếm",/img/hotels/delopera.jpg,4.7,1820,3200000
+2,ha-noi,Hà Nội,3,La Siesta Premium Hang Be,"95 Hàng Bè, Hoàn Kiếm",/img/hotels/lasiesta.jpg,4.6,1350,1800000
+2,ha-noi,Hà Nội,1,Sofitel Legend Metropole Hà Nội,"15 Ngô Quyền, Hoàn Kiếm",/img/hotels/metropole.jpg,4.9,2450,5500000
+36,ha-long,Hạ Long,94,Wyndham Legend Hạ Long,"12 Hạ Long, Bãi Cháy",/img/hotels/wyndham.jpg,4.5,1100,3000000
+65,hai-phong,Hải Phòng,144,Hotel Nikko Hải Phòng,"Vĩnh Niệm, Lê Chân",/img/hotels/nikko-hai-phong.jpg,4.6,820,2500000
+65,hai-phong,Hải Phòng,145,Melia Vinpearl Hải Phòng Rivera,"Vinhomes Imperia, Hồng Bàng",/img/hotels/melia-hai-phong.jpg,4.5,760,2300000
+31,hoi-an,Hội An,88,Almanity Hoi An,"88 Cửa Đại, Hội An",/img/hotels/almanity.jpg,4.5,760,2100000
+31,hoi-an,Hội An,87,Victoria Hội An Beach Resort,"Cửa Đại, Hội An",/img/hotels/victoria.jpg,4.6,1120,3200000
+72,mui-ne,Mũi Né,155,Anantara Mũi Né Resort,"Nguyễn Đình Chiểu, Mũi Né",/img/hotels/anantara-mui-ne.jpg,4.7,980,4300000
+68,moc-chau,Mộc Châu,150,Mường Thanh Holiday Mộc Châu,"Hoàng Quốc Việt, Mộc Châu",/img/hotels/muong-thanh-moc-chau.jpg,4.3,610,1500000
+68,moc-chau,Mộc Châu,151,Mộc Châu Eco Garden Resort,"Bản Búa, Đông Sang",/img/hotels/eco-garden-moc-chau.jpg,4.4,480,1900000
+33,nha-trang,Nha Trang,90,Sheraton Nha Trang,"28 Trần Phú, Nha Trang",/img/hotels/sheraton.jpg,4.7,1560,3800000
+66,ninh-binh,Ninh Bình,147,Emeralda Resort Ninh Bình,"Vân Long, Gia Viễn",/img/hotels/emeralda-ninh-binh.jpg,4.5,1040,2800000
+66,ninh-binh,Ninh Bình,146,Tam Coc Garden Resort,"Hải Nham, Hoa Lư",/img/hotels/tam-coc-garden.jpg,4.7,920,3100000
+71,phan-thiet,Phan Thiết,154,The Cliff Resort & Residences,"Phú Hài, Phan Thiết",/img/hotels/the-cliff-phan-thiet.jpg,4.6,1150,2600000
+70,phong-nha,Phong Nha,153,Phong Nha Lake House Resort,"Hưng Trạch, Bố Trạch",/img/hotels/phong-nha-lake-house.jpg,4.4,560,1300000
+35,phu-quoc,Phú Quốc,93,InterContinental Phú Quốc,"Bãi Trường, Phú Quốc",/img/hotels/intercontinental.jpg,4.8,1340,6500000
+75,pleiku,Pleiku,158,HAGL Hotel Pleiku,"Phù Đổng, Pleiku",/img/hotels/hagl-pleiku.jpg,4.2,470,1200000
+64,quy-nhon,Quy Nhơn,143,Avani Quy Nhơn Resort,"Nhơn Lý, Quy Nhơn",/img/hotels/avani.jpg,4.5,480,2600000
+37,sapa,Sapa,95,Hotel de la Coupole Sapa,"Hoàng Liên, Sapa",/img/hotels/coupole.jpg,4.6,670,2800000
+29,tp-ho-chi-minh,TP. Hồ Chí Minh,77,Caravelle Saigon,"19 Lam Sơn, District 1",/img/hotels/caravelle.jpg,4.8,2100,4200000
+29,tp-ho-chi-minh,TP. Hồ Chí Minh,78,Liberty Central Saigon Riverside,"17 Tôn Đức Thắng, District 1",/img/hotels/liberty.jpg,4.5,1680,2400000
+73,tuy-hoa,Tuy Hòa,156,Sala Tuy Hòa Beach Hotel,"Độc Lập, Tuy Hòa",/img/hotels/sala-tuy-hoa.jpg,4.4,620,1600000
+77,tay-ninh,Tây Ninh,160,Melia Vinpearl Tây Ninh,Trung tâm TP. Tây Ninh,/img/hotels/melia-tay-ninh.jpg,4.4,680,1700000
+62,vung-tau,Vũng Tàu,141,Imperial Hotel Vũng Tàu,"159 Thùy Vân, Vũng Tàu",/img/hotels/imperial.jpg,4.4,720,2200000
+61,vinh-ha-long,Vịnh Hạ Long,137,Paradise Suites Hạ Long,"Đảo Tuần Châu, Hạ Long",/img/hotels/paradise-suites.jpg,4.5,640,2400000
+34,da-lat,Đà Lạt,91,Ana Mandara Villas Đà Lạt,"Trại Mát, Đà Lạt",/img/hotels/anamandara.jpg,4.7,980,3500000
+34,da-lat,Đà Lạt,92,Swiss-Belresort Tuyen Lam,"Tuyên Lâm, Đà Lạt",/img/hotels/swissbel.jpg,4.4,870,1900000
+30,da-nang,Đà Nẵng,86,A La Carte Da Nang Beach,"200 Võ Nguyên Giáp, Sơn Trà",/img/hotels/alacarte.jpg,4.5,1200,2200000
+30,da-nang,Đà Nẵng,85,Furama Resort Đà Nẵng,"68 Hoàng Sa, Sơn Trà",/img/hotels/furama.jpg,4.8,1950,4800000
+69,dong-hoi,Đồng Hới,152,Melia Vinpearl Quảng Bình,"Quách Xuân Kỳ, Đồng Hới",/img/hotels/melia-quang-binh.jpg,4.5,790,2100000

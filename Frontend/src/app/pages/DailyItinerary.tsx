@@ -1,51 +1,34 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link, useParams } from "react-router";
 import { Header } from "../components/Header";
-import { SavedSuggestion } from "../components/SavedSuggestions";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
 import { Suggestion, mockSuggestions } from "../data/suggestions";
-import { ItineraryMap } from "../components/ItineraryMap";
 import { useAuth } from "../contexts/AuthContext";
 import { getItinerary } from "../services/itinerary";
-import { listSavedPlaces, savePlace, unsavePlace } from "../services/places";
+import { getDestinationDetail, listSavedPlaces, savePlace, unsavePlace, type PlaceResponse } from "../services/places";
+import { normalizeSavedPlaces } from "../utils/savedPlaces";
+import { applyPlaceImageFallback, resolvePlaceImage } from "../utils/placeImage";
+import { GoongMap } from "../components/GoongMap";
 import {
   Plus,
-  Sparkles,
-  GripVertical,
   Car,
-  Lightbulb,
   MapPin,
-  Users,
-  MessageCircle,
-  Sun,
-  CloudRain,
-  Clock,
   Utensils,
   Building,
   Camera,
   Coffee,
-  Zap,
   Share2,
   Download,
-  Link2,
   Map as MapIcon,
   DollarSign,
-  TrendingUp,
-  AlertCircle,
-  UserPlus,
   Edit,
-  ChevronDown,
   TreePine,
   Music,
   ShoppingBag,
   Star,
   Eye,
   Bookmark,
-  X,
-  ChevronLeft,
-  Save as SaveIcon,
-  Send,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import {
@@ -79,18 +62,18 @@ interface Day {
   destinationName?: string;
 }
 
+const formatSuggestionCost = (place: PlaceResponse) => place.price || "Chưa có dữ liệu";
+
 export default function DailyItinerary() {
   const navigate = useNavigate();
-  const { id: tripIdParam } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const tripIdParam = searchParams.get("tripId");
   const { isAuthenticated } = useAuth();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [selectedPin, setSelectedPin] = useState<number | null>(null);
-  const [savedSuggestions, setSavedSuggestions] = useState<string[]>([]);
-  const [viewingPlace, setViewingPlace] = useState<Suggestion | null>(null);
+  const [savedSuggestions, setSavedSuggestions] = useState<number[]>([]);
+  const [viewingPlace, setViewingPlace] = useState<PlaceResponse | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<"suggestions" | "map">("suggestions");
 
-  // AI Chat state
-  const [showAIChat, setShowAIChat] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [aiMessages, setAiMessages] = useState<Array<{ id: number; text: string; sender: "user" | "ai"; timestamp: Date }>>([
     {
@@ -105,6 +88,9 @@ export default function DailyItinerary() {
   // Load trip data from BE API
   const [days, setDays] = useState<Day[]>([]);
   const [selectedDayId, setSelectedDayId] = useState<string>("1");
+  const [suggestions, setSuggestions] = useState<PlaceResponse[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
 
   // Load data from BE API on mount
   useEffect(() => {
@@ -155,10 +141,16 @@ export default function DailyItinerary() {
     // Load saved places from API
     if (isAuthenticated) {
       listSavedPlaces().then((data) => {
-        const savedNames = data.map((p: any) => p.placeName || p.name);
-        const matchedIds = mockSuggestions
-          .filter(s => savedNames.includes(s.name))
-          .map(s => s.id);
+        const normalized = normalizeSavedPlaces(data);
+        const savedIds = new Set(
+          data
+            .map((item) => item.place?.id)
+            .filter((value): value is number => typeof value === "number"),
+        );
+        const savedNames = new Set(normalized.map((p) => p.name));
+        const matchedIds = suggestions
+          .filter((place) => savedIds.has(place.id) || savedNames.has(place.name))
+          .map((place) => place.id);
         setSavedSuggestions(matchedIds);
       }).catch(() => { });
     }
@@ -204,7 +196,7 @@ export default function DailyItinerary() {
     try {
       if (isAlreadySaved) {
         const savedList = await listSavedPlaces();
-        const match = savedList.find((p: any) => (p.placeName || p.name) === suggestion.name);
+        const match = savedList.find((item) => item.place?.id === suggestion.id || item.place?.name === suggestion.name);
         if (match) await unsavePlace(match.id);
       } else {
         await savePlace(suggestion.id);
@@ -217,11 +209,6 @@ export default function DailyItinerary() {
         setSavedSuggestions(prev => prev.filter(id => id !== suggestion.id));
       }
     }
-  };
-
-  const handleAddToItinerary = (suggestion: any, date: string, time: string) => {
-    console.log("Adding to itinerary:", suggestion, date, time);
-    // In production, add to actual itinerary
   };
 
   return (
@@ -255,7 +242,7 @@ export default function DailyItinerary() {
             <div className="flex items-center gap-3">
               {/* Detail Trip Button - UPDATED TEXT */}
               <Link
-                to="/trip-workspace"
+                to={tripIdParam ? `/trip-workspace?tripId=${tripIdParam}` : "/trip-workspace"}
                 className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 font-semibold text-gray-700 shadow-sm transition-all hover:shadow-md"
               >
                 <Edit className="h-4 w-4" />
@@ -278,28 +265,28 @@ export default function DailyItinerary() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
-                    <div className="rounded-lg bg-gray-100 p-4">
-                      <p className="mb-2 text-sm font-semibold text-gray-700">Link chia sẻ:</p>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          readOnly
-                          value="yourtrip.app/trip/abc123"
-                          className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                        />
-                        <button className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700">
-                          Copy
-                        </button>
+                    {!isAuthenticated ? (
+                      <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-center">
+                        <p className="text-sm font-semibold text-amber-800">
+                          Vui lòng đăng nhập để chia sẻ lịch trình
+                        </p>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
+                        <p className="text-sm text-gray-600">
+                          Màn hình này chỉ là bản xem theo ngày. Để tạo link chia sẻ thật, hãy vào trang Chi tiết lịch trình và dùng nút Chia sẻ ở đó.
+                        </p>
+                      </div>
+                    )}
                     <div className="space-y-2">
-                      <button className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50">
-                        <Download className="h-5 w-5 text-gray-600" />
-                        <span className="font-semibold text-gray-700">Export as PDF</span>
-                      </button>
-                      <button className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50">
-                        <Link2 className="h-5 w-5 text-gray-600" />
-                        <span className="font-semibold text-gray-700">Copy Link</span>
+                      <button
+                        disabled
+                        title="Tính năng đang phát triển"
+                        className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 opacity-50 cursor-not-allowed"
+                      >
+                        <Download className="h-5 w-5 text-gray-400" />
+                        <span className="font-semibold text-gray-400">Export as PDF</span>
+                        <span className="ml-auto text-xs text-gray-400">Tính năng đang phát triển</span>
                       </button>
                     </div>
                   </div>
@@ -367,8 +354,9 @@ export default function DailyItinerary() {
                           <div className="flex gap-4">
                             {/* Thumbnail */}
                             <img
-                              src={item.image}
+                              src={resolvePlaceImage(item.image)}
                               alt={item.name}
+                              onError={applyPlaceImageFallback}
                               className="h-24 w-24 rounded-lg object-cover"
                             />
 
@@ -420,8 +408,8 @@ export default function DailyItinerary() {
               <button
                 onClick={() => setRightPanelTab("suggestions")}
                 className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${rightPanelTab === "suggestions"
-                    ? "bg-white text-cyan-600 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white text-cyan-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
                   }`}
               >
                 Gợi ý
@@ -429,8 +417,8 @@ export default function DailyItinerary() {
               <button
                 onClick={() => setRightPanelTab("map")}
                 className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${rightPanelTab === "map"
-                    ? "bg-white text-cyan-600 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white text-cyan-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
                   }`}
               >
                 Bản đồ
@@ -441,7 +429,22 @@ export default function DailyItinerary() {
           {/* Tab Content */}
           {rightPanelTab === "suggestions" ? (
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {filteredSuggestions.map((suggestion) => (
+              {suggestionsLoading && (
+                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-500">
+                  Đang tải gợi ý địa điểm từ dữ liệu điểm đến...
+                </div>
+              )}
+              {!suggestionsLoading && suggestionsError && (
+                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-500">
+                  {suggestionsError}
+                </div>
+              )}
+              {!suggestionsLoading && !suggestionsError && filteredSuggestions.length === 0 && (
+                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-500">
+                  Chưa có gợi ý khả dụng cho ngày này từ dữ liệu hiện có.
+                </div>
+              )}
+              {!suggestionsLoading && !suggestionsError && filteredSuggestions.map((suggestion) => (
                 <div
                   key={suggestion.id}
                   className="rounded-xl border-2 border-gray-200 bg-white transition-all hover:border-cyan-300 hover:shadow-md overflow-hidden"
@@ -449,16 +452,17 @@ export default function DailyItinerary() {
                   {/* Image with Bookmark */}
                   <div className="relative">
                     <img
-                      src={suggestion.image}
+                      src={resolvePlaceImage(suggestion.image)}
                       alt={suggestion.name}
+                      onError={applyPlaceImageFallback}
                       className="h-32 w-full object-cover"
                     />
                     {/* Bookmark Icon */}
                     <button
                       onClick={() => handleToggleSave(suggestion)}
                       className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-all hover:scale-110 ${savedSuggestions.includes(suggestion.id)
-                          ? "bg-cyan-700 text-white"
-                          : "bg-white/90 text-gray-600 hover:bg-cyan-500 hover:text-white"
+                        ? "bg-cyan-700 text-white"
+                        : "bg-white/90 text-gray-600 hover:bg-cyan-500 hover:text-white"
                         }`}
                       title={savedSuggestions.includes(suggestion.id) ? "Đã lưu" : "Lưu địa điểm"}
                     >
@@ -474,15 +478,15 @@ export default function DailyItinerary() {
                     <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                       <div className="flex items-center gap-1">
                         <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                        <span>{suggestion.rating}</span>
+                        <span>{suggestion.rating ?? 0}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
-                        <span>{suggestion.distance}</span>
+                        <span className="line-clamp-1">{suggestion.location || suggestion.city}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <DollarSign className="h-3 w-3" />
-                        <span>{suggestion.estimatedCost}</span>
+                        <span>{formatSuggestionCost(suggestion)}</span>
                       </div>
                     </div>
 
@@ -498,20 +502,61 @@ export default function DailyItinerary() {
               ))}
             </div>
           ) : (
-            /* Map Tab */
+            /* Map Tab — real Goong map of the destination's places */
             <div className="flex-1 relative overflow-hidden">
-              <ItineraryMap
-                activities={currentActivities.map((a) => ({
-                  id: a.id,
-                  name: a.name,
-                  time: a.time,
-                  description: a.description,
-                  latitude: a.latitude,
-                  longitude: a.longitude,
-                }))}
-                destinationName={selectedDay?.destinationName}
-                height="100%"
-              />
+              {/* Mock Map */}
+              <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 relative">
+                {/* Mock Map Markers */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                  <div className="relative">
+                    {/* Center Marker */}
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500 shadow-lg">
+                      <MapIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <p className="mt-2 text-xs font-semibold text-gray-700 text-center">
+                      {selectedDay?.destinationName || "Hà Nội"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Mock Location Pins */}
+                <div className="absolute top-1/4 left-1/3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 shadow-md">
+                    <Utensils className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <div className="absolute top-2/3 left-2/3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 shadow-md">
+                    <Building className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <div className="absolute top-1/3 right-1/4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 shadow-md">
+                    <Coffee className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+
+                {/* Map Overlay Info */}
+                <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-white/90 p-4 shadow-lg backdrop-blur-sm">
+                  <p className="text-sm font-semibold text-gray-700 mb-1">
+                    Bản đồ khu vực {selectedDay?.destinationName || "Hà Nội"}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    Đang hiển thị các địa điểm gợi ý trong phạm vi thành phố
+                  </p>
+                </div>
+
+                {/* Mock Grid Lines */}
+                <div className="absolute inset-0 opacity-10">
+                  <div className="h-full w-full" style={{
+                    backgroundImage: `
+                      linear-gradient(to right, #000 1px, transparent 1px),
+                      linear-gradient(to bottom, #000 1px, transparent 1px)
+                    `,
+                    backgroundSize: '40px 40px'
+                  }} />
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -524,13 +569,10 @@ export default function DailyItinerary() {
             name: viewingPlace.name,
             image: viewingPlace.image,
             description: viewingPlace.description,
-            address: viewingPlace.address,
-            rating: viewingPlace.rating,
+            address: viewingPlace.location || viewingPlace.city,
+            rating: viewingPlace.rating ?? undefined,
             reviewCount: viewingPlace.reviewCount,
-            estimatedCost: viewingPlace.estimatedCost,
-            openingHours: viewingPlace.openingHours,
-            phone: viewingPlace.phone,
-            website: viewingPlace.website,
+            estimatedCost: formatSuggestionCost(viewingPlace),
           }}
           onClose={() => setViewingPlace(null)}
         />

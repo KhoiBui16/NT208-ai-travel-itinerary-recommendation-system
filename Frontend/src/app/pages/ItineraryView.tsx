@@ -19,7 +19,16 @@ import {
   Plus,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { getItinerary, updateItinerary, deleteItinerary as deleteItineraryApi, rateItinerary as rateItineraryApi, shareItinerary, ItineraryResponse } from "../services/itinerary";
+import { resolvePlaceImage, applyPlaceImageFallback } from "../utils/placeImage";
+import {
+  deleteActivity,
+  getItinerary,
+  updateItinerary,
+  deleteItinerary as deleteItineraryApi,
+  rateItinerary as rateItineraryApi,
+  shareItinerary,
+  ItineraryResponse,
+} from "../services/itinerary";
 import { formatCurrency } from "../utils/itinerary";
 import { toast } from "sonner";
 
@@ -65,10 +74,10 @@ function mapApiToLocal(resp: ItineraryResponse): LocalItinerary {
     budget: resp.budget,
     interests: resp.interests,
     totalCost: resp.totalCost,
-    days: resp.days.map((d, idx) => ({
+    days: (resp.days || []).map((d, idx) => ({
       day: idx + 1,
-      date: d.date || d.label || "",
-      activities: (d.activities || []).map((a) => ({
+      date: d?.date || d?.label || "",
+      activities: (d?.activities || []).map((a) => ({
         id: String(a.id ?? idx * 100 + Math.random()),
         time: a.time,
         title: a.name,
@@ -156,6 +165,7 @@ export default function ItineraryView() {
 
   const handleDelete = async (dayIndex: number, activityId: string) => {
     if (!itinerary || !id) return;
+    const numericActivityId = Number(activityId);
 
     const newDays = itinerary.days.map((day, idx) => {
       if (idx === dayIndex) {
@@ -170,22 +180,14 @@ export default function ItineraryView() {
     const newItinerary = { ...itinerary, days: newDays };
     setItinerary(newItinerary);
 
+    if (!Number.isFinite(numericActivityId) || numericActivityId <= 0) {
+      toast.error("Không thể xác định hoạt động để xóa.");
+      setItinerary(itinerary);
+      return;
+    }
+
     try {
-      await updateItinerary(Number(id), {
-        days: newDays.map((d, idx) => ({
-          id: idx + 1,
-          label: `Ngày ${idx + 1}`,
-          date: d.date,
-          activities: d.activities.map((a) => ({
-            time: a.time,
-            name: a.title,
-            description: a.description,
-            location: a.location,
-            type: "attraction",
-            image: a.image,
-          })),
-        })),
-      });
+      await deleteActivity(Number(id), numericActivityId);
     } catch {
       toast.error("Xóa hoạt động thất bại.");
       setItinerary(itinerary);
@@ -210,7 +212,24 @@ export default function ItineraryView() {
     setIsSharing(true);
     try {
       const resp = await shareItinerary(Number(id));
-      const link = `${window.location.origin}/shared/${resp.shareToken}`;
+      // Guard against placeholder/invalid tokens returned by the BE
+      const token = resp.shareToken;
+      const isValidToken =
+        token &&
+        token !== "[REDACTED]" &&
+        !token.startsWith("[REDACTED") &&
+        token.length > 8;
+      if (!isValidToken) {
+        toast.warning(
+          "Không thể lấy link chia sẻ. Hãy thử lại để tạo link mới.",
+        );
+        return;
+      }
+      // Prefer the full URL returned by BE; fall back to building it from the token
+      const link =
+        resp.shareUrl && resp.shareUrl.startsWith("http")
+          ? resp.shareUrl
+          : `${window.location.origin}/shared/${token}`;
       setShareLink(link);
     } catch {
       toast.error("Không thể chia sẻ lịch trình");
@@ -364,6 +383,15 @@ export default function ItineraryView() {
 
           <div className="flex flex-wrap gap-3">
             {isAuthenticated && (
+              <Link
+                to={`/trip-workspace?tripId=${itinerary.id}`}
+                className="flex items-center gap-2 rounded-lg bg-white/20 px-6 py-2 font-semibold backdrop-blur-sm transition-all hover:bg-white/30"
+              >
+                <Edit2 className="h-5 w-5" />
+                Tiếp tục chỉnh sửa
+              </Link>
+            )}
+            {isAuthenticated && (
               <button
                 onClick={handleSave}
                 className="flex items-center gap-2 rounded-lg bg-white/20 px-6 py-2 font-semibold backdrop-blur-sm transition-all hover:bg-white/30"
@@ -486,8 +514,9 @@ export default function ItineraryView() {
                     className="flex gap-4 rounded-xl border border-gray-200 p-4 transition-all hover:shadow-lg"
                   >
                     <img
-                      src={activity.image}
+                      src={resolvePlaceImage(activity.image)}
                       alt={activity.title}
+                      onError={applyPlaceImageFallback}
                       className="h-24 w-24 rounded-lg object-cover"
                     />
                     <div className="flex-1">

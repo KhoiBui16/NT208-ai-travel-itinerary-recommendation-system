@@ -34,8 +34,8 @@ File này ghi trạng thái test mới nhất. Các kết quả cần được c
 
 ### AI browser smoke 2026-05-25
 
-- FE: `http://127.0.0.1:5173`
-- BE: `http://127.0.0.1:8020`
+- FE: `http://localhost:5173`
+- BE: `http://localhost:8020`
 - Flow: authenticated `CreateTrip` → `POST /api/v1/itineraries/generate` → `/trip-workspace?tripId=129`
 - Result: API `201 Created`, generated trip rendered in workspace, 5 activities for the generated day, no browser console errors.
 - Extra check: reopening `/trip-workspace?tripId=129` after `useTripSync` fix triggers a single `GET /api/v1/itineraries/129`.

@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { X, ArrowLeft, Star, Bookmark, MapPin, Plus, Check, Eye, Search } from "lucide-react";
 import { toast } from "sonner";
 import { PlaceInfoModal } from "./PlaceInfoModal";
-import { City, Place, cities, places } from "../data/places";
+import { listDestinations, getDestinationDetail, type DestinationResponse } from "../services/places";
+import type { Place } from "../types/trip.types";
 import { useAuth } from "../contexts/AuthContext";
 import { listSavedPlaces, savePlace, unsavePlace } from "../services/places";
+import { applyPlaceImageFallback, resolvePlaceImageWithCategory } from "../utils/placeImage";
 
 interface PlaceSelectionModalProps {
   isOpen: boolean;
@@ -14,19 +16,76 @@ interface PlaceSelectionModalProps {
   destinationName?: string;
 }
 
-const CATEGORIES = ["Tất cả", "Điểm tham quan", "Ẩm thực", "Thiên nhiên", "Giải trí", "Mua sắm"];
+const CATEGORY_OPTIONS = [
+  { label: "Tất cả", value: "all" },
+  { label: "Điểm tham quan", value: "attraction" },
+  { label: "Ẩm thực", value: "food" },
+  { label: "Thiên nhiên", value: "nature" },
+  { label: "Giải trí", value: "entertainment" },
+  { label: "Mua sắm", value: "shopping" },
+] as const;
+
+const normalizeDestinationName = (value?: string | null) =>
+  (value || "")
+    .toLowerCase()
+    .replace(/^(tp\.?\s*|thành phố\s*)/, "")
+    .trim();
+
+const normalizePlaceType = (value?: string): Place["type"] => {
+  if (
+    value === "food" ||
+    value === "attraction" ||
+    value === "nature" ||
+    value === "entertainment" ||
+    value === "shopping"
+  ) {
+    return value;
+  }
+  return "attraction";
+};
+
+const mapPlaceResponseToTripPlace = (place: {
+  id: number;
+  name: string;
+  reviewCount: number;
+  type: string;
+  image: string;
+  price: string | null;
+  location: string | null;
+  rating: number | null;
+  saved: boolean;
+  city: string;
+  description: string | null;
+}): Place => ({
+  id: place.id,
+  name: place.name,
+  reviewCount: place.reviewCount ?? 0,
+  type: normalizePlaceType(place.type),
+  image: place.image || "",
+  price: place.price ?? undefined,
+  location: place.location ?? undefined,
+  reviews: place.reviewCount ?? 0,
+  rating: place.rating ?? 0,
+  saved: place.saved,
+  city: place.city,
+  description: place.description ?? undefined,
+});
 
 export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPlace, destinationName }: PlaceSelectionModalProps) {
   const [step, setStep] = useState<"city" | "place">("city");
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
+  const [cities, setCities] = useState<DestinationResponse[]>([]);
+  const [cityPlaces, setCityPlaces] = useState<Place[]>([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
+  const [placesLoading, setPlacesLoading] = useState(false);
+  const [placesError, setPlacesError] = useState<string | null>(null);
   const [savedPlaces, setSavedPlaces] = useState<number[]>([]);
-  const [savedPlaceNames, setSavedPlaceNames] = useState<Set<string>>(new Set());
   const [selectedPlaces, setSelectedPlaces] = useState<number[]>([]);
   const [viewingPlaceInfo, setViewingPlaceInfo] = useState<Place | null>(null);
 
   // States cho Tìm kiếm và Lọc
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("Tất cả");
+  const [activeCategory, setActiveCategory] = useState<(typeof CATEGORY_OPTIONS)[number]["value"]>("all");
 
   const modalRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated } = useAuth();
@@ -34,49 +93,110 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
   const syncBookmarksFromAPI = async () => {
     if (!isAuthenticated) {
       setSavedPlaces([]);
-      setSavedPlaceNames(new Set());
       return;
     }
     try {
       const data = await listSavedPlaces();
-      const names = new Set(data.map((p: any) => p.placeName || p.name));
-      setSavedPlaceNames(names);
-      const matchedIds = places
-        .filter((p) => names.has(p.name))
-        .map((p) => p.id);
+      const savedIds = data
+        .map((item) => item.place?.id)
+        .filter((value): value is number => typeof value === "number");
+      const savedNames = new Set(
+        data.map((item) => item.place?.name).filter((value): value is string => Boolean(value))
+      );
+      const matchedIds = cityPlaces
+        .filter((place) => savedIds.includes(place.id) || savedNames.has(place.name))
+        .map((place) => place.id);
       setSavedPlaces(matchedIds);
     } catch {
       setSavedPlaces([]);
-      setSavedPlaceNames(new Set());
+    }
+  };
+
+  const loadCityPlaces = async (city: DestinationResponse) => {
+    setPlacesLoading(true);
+    setPlacesError(null);
+    try {
+      const detail = await getDestinationDetail(city.slug);
+      setCityPlaces(detail.places.map(mapPlaceResponseToTripPlace));
+      setSelectedCityId(city.id);
+      setStep("place");
+    } catch {
+      setCityPlaces([]);
+      setSelectedCityId(city.id);
+      setStep("place");
+      setPlacesError("Không thể tải địa điểm cho thành phố này từ API.");
+    } finally {
+      setPlacesLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isOpen) {
-      if (destinationName) {
-        const normalizedTarget = destinationName.toLowerCase().replace(/^(tp\.?\s*|thành phố\s*)/, '').trim();
-        const matchedCity = cities.find((c) => {
-          const normalizedCity = c.name.toLowerCase().replace(/^(tp\.?\s*|thành phố\s*)/, '').trim();
-          return normalizedCity.includes(normalizedTarget) || normalizedTarget.includes(normalizedCity);
-        });
+    if (!isOpen) return;
+
+    let active = true;
+    const bootstrap = async () => {
+      setSelectedPlaces([]);
+      setSearchQuery("");
+      setActiveCategory("all");
+      setPlacesError(null);
+
+      if (cities.length === 0) {
+        setCitiesLoading(true);
+      }
+
+      try {
+        const destinationList =
+          cities.length > 0 ? cities : await listDestinations();
+
+        if (!active) return;
+
+        if (cities.length === 0) {
+          setCities(destinationList);
+        }
+
+        const normalizedTarget = normalizeDestinationName(destinationName);
+        const matchedCity =
+          destinationList.find((city) => {
+            const normalizedCity = normalizeDestinationName(city.name);
+            return (
+              normalizedTarget &&
+              (normalizedCity.includes(normalizedTarget) ||
+                normalizedTarget.includes(normalizedCity))
+            );
+          }) ?? null;
 
         if (matchedCity) {
-          setSelectedCityId(matchedCity.id);
-          setStep("place");
+          await loadCityPlaces(matchedCity);
         } else {
           setStep("city");
           setSelectedCityId(null);
+          setCityPlaces([]);
         }
-      } else {
+      } catch {
+        if (!active) return;
+        setCities([]);
         setStep("city");
         setSelectedCityId(null);
+      } finally {
+        if (active) {
+          setCitiesLoading(false);
+        }
       }
-      setSelectedPlaces([]);
-      setSearchQuery("");
-      setActiveCategory("Tất cả");
-      syncBookmarksFromAPI();
-    }
+
+      await syncBookmarksFromAPI();
+    };
+
+    void bootstrap();
+
+    return () => {
+      active = false;
+    };
   }, [isOpen, destinationName]);
+
+  useEffect(() => {
+    if (!isOpen || step !== "place") return;
+    void syncBookmarksFromAPI();
+  }, [isOpen, step, cityPlaces, isAuthenticated]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -92,11 +212,10 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
   const selectedCity = cities.find((c) => c.id === selectedCityId);
   
   // Logic Lọc danh sách địa điểm theo Search và Category
-  const cityPlaces = places
-    .filter((p) => p.cityId === selectedCityId)
+  const filteredCityPlaces = cityPlaces
     .filter((p) => {
       const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchCategory = activeCategory === "Tất cả" || p.category === activeCategory;
+      const matchCategory = activeCategory === "all" || p.type === activeCategory;
       return matchSearch && matchCategory;
     })
     .sort((a, b) => {
@@ -107,17 +226,20 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
       return 0;
     });
 
-  const handleCitySelect = (cityId: number) => {
-    setSelectedCityId(cityId);
+  const handleCitySelect = async (cityId: number) => {
+    const city = cities.find((item) => item.id === cityId);
+    if (!city) return;
     setSearchQuery("");
-    setActiveCategory("Tất cả");
-    setStep("place");
+    setActiveCategory("all");
+    await loadCityPlaces(city);
   };
 
   const handleBack = () => {
     setStep("city");
     setSelectedCityId(null);
     setSelectedPlaces([]);
+    setCityPlaces([]);
+    setPlacesError(null);
   };
 
   const togglePlaceSelection = (placeId: number) => {
@@ -127,7 +249,7 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
   };
 
   const handleConfirmSelection = () => {
-    const selectedPlaceObjects = places.filter((p) => selectedPlaces.includes(p.id));
+    const selectedPlaceObjects = cityPlaces.filter((p) => selectedPlaces.includes(p.id));
     selectedPlaceObjects.forEach((place) => {
       onAddPlace(place);
     });
@@ -143,7 +265,7 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
     e.stopPropagation();
     if (!isAuthenticated) return;
 
-    const place = places.find((p) => p.id === placeId);
+    const place = cityPlaces.find((p) => p.id === placeId);
     if (!place) return;
 
     const isCurrentlySaved = savedPlaces.includes(placeId);
@@ -151,16 +273,14 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
     // Optimistic UI update
     if (isCurrentlySaved) {
       setSavedPlaces((prev) => prev.filter((id) => id !== placeId));
-      setSavedPlaceNames(prev => { const n = new Set(prev); n.delete(place.name); return n; });
     } else {
       setSavedPlaces((prev) => [...prev, placeId]);
-      setSavedPlaceNames(prev => { const n = new Set(prev); n.add(place.name); return n; });
     }
 
     try {
       if (isCurrentlySaved) {
         const savedList = await listSavedPlaces();
-        const match = savedList.find((p: any) => (p.placeName || p.name) === place.name);
+        const match = savedList.find((item) => item.place?.id === place.id || item.place?.name === place.name);
         if (match) await unsavePlace(match.id);
       } else {
         await savePlace(placeId);
@@ -169,10 +289,8 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
       // Revert on failure
       if (isCurrentlySaved) {
         setSavedPlaces((prev) => [...prev, placeId]);
-        setSavedPlaceNames(prev => { const n = new Set(prev); n.add(place.name); return n; });
       } else {
         setSavedPlaces((prev) => prev.filter((id) => id !== placeId));
-        setSavedPlaceNames(prev => { const n = new Set(prev); n.delete(place.name); return n; });
       }
     }
   };
@@ -265,17 +383,17 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
                 />
               </div>
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                {CATEGORIES.map((cat) => (
+                {CATEGORY_OPTIONS.map((option) => (
                   <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
+                    key={option.value}
+                    onClick={() => setActiveCategory(option.value)}
                     className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-                      activeCategory === cat
+                      activeCategory === option.value
                         ? "bg-cyan-600 text-white shadow-sm"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
-                    {cat}
+                    {option.label}
                   </button>
                 ))}
               </div>
@@ -287,6 +405,19 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
         <div className="flex-1 overflow-y-auto p-6">
           {step === "city" && (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {citiesLoading && (
+                <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
+                  <MapPin className="mb-3 h-12 w-12 text-gray-300" />
+                  <p className="text-lg font-semibold">Đang tải danh sách thành phố...</p>
+                </div>
+              )}
+              {!citiesLoading && cities.length === 0 && (
+                <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
+                  <MapPin className="mb-3 h-12 w-12 text-gray-300" />
+                  <p className="text-lg font-semibold">Không tải được danh sách thành phố</p>
+                  <p className="text-sm">Kiểm tra backend, database và dữ liệu điểm đến.</p>
+                </div>
+              )}
               {cities.map((city) => (
                 <div
                   key={city.id}
@@ -295,8 +426,9 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
                 >
                   <div className="relative h-48">
                     <img
-                      src={city.image}
+                      src={resolvePlaceImageWithCategory(city.image, "attraction")}
                       alt={city.name}
+                      onError={applyPlaceImageFallback}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -312,7 +444,18 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
 
           {step === "place" && (
             <>
-              {cityPlaces.length === 0 ? (
+              {placesLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                  <MapPin className="mb-3 h-12 w-12 text-gray-300" />
+                  <p className="text-lg font-semibold">Đang tải địa điểm...</p>
+                </div>
+              ) : placesError ? (
+                <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                  <MapPin className="mb-3 h-12 w-12 text-gray-300" />
+                  <p className="text-lg font-semibold">Không tải được địa điểm</p>
+                  <p className="text-sm">{placesError}</p>
+                </div>
+              ) : filteredCityPlaces.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                   <MapPin className="mb-3 h-12 w-12 text-gray-300" />
                   <p className="text-lg font-semibold">Không tìm thấy địa điểm phù hợp</p>
@@ -320,7 +463,7 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
                 </div>
               ) : (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {cityPlaces.map((place) => {
+                  {filteredCityPlaces.map((place) => {
                     const isSelected = selectedPlaces.includes(place.id);
                     
                     return (
@@ -334,8 +477,9 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
                       >
                         <div className="relative h-48 flex-shrink-0">
                           <img
-                            src={place.image}
+                            src={resolvePlaceImageWithCategory(place.image, place.type)}
                             alt={place.name}
+                            onError={applyPlaceImageFallback}
                             className="h-full w-full object-cover"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -354,18 +498,18 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
 
                           <div className="absolute bottom-0 left-0 right-0 p-4">
                             <div className="mb-1 inline-block rounded-full bg-cyan-500/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                              {place.category}
+                              {CATEGORY_OPTIONS.find((item) => item.value === place.type)?.label || place.type}
                             </div>
                             <h3 className="text-lg font-bold text-white drop-shadow leading-tight">{place.name}</h3>
                             <div className="flex items-center gap-1 text-white/90 mt-1">
                               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                              <span className="text-sm font-semibold">{place.rating}</span>
+                              <span className="text-sm font-semibold">{place.rating || 0}</span>
                             </div>
                           </div>
                         </div>
 
                         <div className="p-4 flex flex-col flex-1">
-                          <p className="text-sm text-gray-600 line-clamp-2 mb-4 flex-1">{place.description}</p>
+                          <p className="text-sm text-gray-600 line-clamp-2 mb-4 flex-1">{place.description || "Chưa có mô tả chi tiết."}</p>
                           
                           <div className="flex gap-2 mt-auto">
                             <button
@@ -411,13 +555,11 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
         <PlaceInfoModal
           place={{
             name: viewingPlaceInfo.name,
-            image: viewingPlaceInfo.image,
+            image: resolvePlaceImageWithCategory(viewingPlaceInfo.image, viewingPlaceInfo.type),
             description: viewingPlaceInfo.description,
-            address: cities.find(c => c.id === viewingPlaceInfo.cityId)?.name || '',
+            address: viewingPlaceInfo.location || viewingPlaceInfo.city,
             rating: viewingPlaceInfo.rating,
-            reviewCount: 1234, 
-            estimatedCost: '100,000₫', 
-            openingHours: '08:00 - 22:00', 
+            estimatedCost: viewingPlaceInfo.price,
           }}
           onClose={() => setViewingPlaceInfo(null)}
         />

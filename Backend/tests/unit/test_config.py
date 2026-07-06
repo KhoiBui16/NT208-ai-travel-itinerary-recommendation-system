@@ -20,11 +20,13 @@ def test_get_settings__default_config__loads_foundation_values(
     assert settings.access_token_expire_minutes == 15
     assert settings.companion_requires_confirmation is True
     assert "Hà Nội" in settings.etl_cities
-    assert "Vịnh Hạ Long" in settings.etl_cities
+    assert "Hạ Long" in settings.etl_cities
+    assert "Vịnh Hạ Long" not in settings.etl_cities
     assert "Châu Đốc" in settings.etl_cities
     assert settings.etl_max_places_per_city == 75
     assert settings.agent_min_activities_per_day == 5
     assert settings.agent_max_activities_per_day == 5
+    assert settings.rate_limit_ai_chat_user == 20
 
     get_settings.cache_clear()
 
@@ -59,3 +61,12 @@ def test_settings__accepts_goong_map_api_key_alias(monkeypatch: pytest.MonkeyPat
     settings = AppSettings(_env_file=None)
 
     assert settings.goong_api_key.get_secret_value() == "goong-test"
+
+
+def test_settings__accepts_chat_quota_alias(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Chat quota nên cấu hình được bằng env riêng cho phase C3B."""
+    monkeypatch.setenv("AI_CHAT_CALLS_PER_DAY", "25")
+
+    settings = AppSettings(_env_file=None)
+
+    assert settings.rate_limit_ai_chat_user == 25

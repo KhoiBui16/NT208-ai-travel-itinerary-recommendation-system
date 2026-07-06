@@ -3,11 +3,12 @@
 import json
 from datetime import date, datetime
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
 from src.core.config import AppSettings
-from src.core.exceptions import ValidationException
+from src.core.exceptions import ServiceUnavailableException, ValidationException
 from src.itineraries.models.extras import Accommodation
 from src.itineraries.models.trip import Activity, Trip, TripDay
 from src.itineraries.pipeline import ItineraryPipeline
@@ -34,6 +35,19 @@ class FakeLLM:
         self.calls += 1
         index = min(self.calls - 1, len(self.responses) - 1)
         return json.dumps(self.responses[index])
+
+
+class FakeTimeoutLLM:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def generate_text(self, prompt: str) -> str:
+        self.calls += 1
+        raise ServiceUnavailableException(
+            "Dịch vụ AI đang phản hồi quá lâu. Vui lòng thử lại sau hoặc tạo chuyến đi ngắn hơn.",
+            error_code="AI_PROVIDER_TIMEOUT",
+            retryable=True,
+        )
 
 
 class FakeRepo:
@@ -94,6 +108,26 @@ class FakeRepo:
         self.trip.days.append(day)
         return day
 
+    async def get_or_create_day(
+        self, *, trip_id: int, day_number: int, **kwargs: object
+    ) -> TripDay:
+        """Fake mirror of TripRepository.get_or_create_day.
+
+        The production helper is race-safe via ON CONFLICT DO NOTHING; in this
+        in-memory fake there is no concurrency, so we simply return the
+        existing day for (trip_id, day_number) if one was already created, or
+        create+append a new one. This keeps pipeline persistence tests
+        deterministic after the caller switch from add_day.
+        """
+        assert self.trip is not None
+        existing = next(
+            (d for d in self.trip.days if d.day_number == day_number),
+            None,
+        )
+        if existing is not None:
+            return existing
+        return await self.add_day(trip_id=trip_id, day_number=day_number, **kwargs)
+
     async def add_activity(self, **kwargs: object) -> Activity:
         assert self.trip is not None
         self._activity_id += 1
@@ -112,14 +146,20 @@ class FakeRepo:
         return self.trip
 
 
-def _make_request(days: int = 2) -> GenerateItineraryRequest:
+def _make_request(
+    days: int = 2,
+    *,
+    budget: int = 5_000_000,
+    adults: int = 2,
+    children: int = 0,
+) -> GenerateItineraryRequest:
     return GenerateItineraryRequest(
         destination="Hà Nội",
         startDate=date(2026, 6, 1),
         endDate=date(2026, 6, days),
-        budget=5000000,
-        adults=2,
-        children=0,
+        budget=budget,
+        adults=adults,
+        children=children,
         interests=["food", "culture"],
     )
 
@@ -139,7 +179,7 @@ def _make_places(count: int = 4) -> list[Place]:
             avg_cost=50000,
             rating=4.5,
             review_count=100,
-            image="",
+            image=f"https://cdn.test/place-{idx + 1}.jpg",
             source="goong_places",
         )
         for idx in range(count)
@@ -294,9 +334,59 @@ async def test_pipeline__persists_generated_trip_and_nulls_unknown_place() -> No
     assert trip.ai_generated is True
     assert len(trip.days) == 2
     assert trip.days[0].activities[0].place_id == 1
+    assert trip.days[0].activities[0].image == "https://cdn.test/place-1.jpg"
     assert trip.days[0].activities[1].place_id is None
+    assert trip.days[0].activities[1].image == ""
     assert trip.accommodations[0].hotel_id == 1
+    assert trip.accommodations[0].day_ids == [11, 12]
     assert "5 to 5 activities" in llm.prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_pipeline__drops_invalid_accommodation_day_ids_and_logs_warning() -> None:
+    payload = _valid_ai_payload()
+    payload["accommodations"][0]["dayIds"] = [2, 99, 2, 0]
+
+    llm = FakeLLM([payload])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places()),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    with patch("src.itineraries.pipeline.logger.warning") as warning_mock:
+        trip = await pipeline.generate(_make_request(), user_id=None)
+
+    assert trip.accommodations[0].day_ids == [12]
+    warning_mock.assert_called_once()
+    _, kwargs = warning_mock.call_args
+    assert kwargs["trip_id"] == 1
+    assert kwargs["accommodation_name"] == "Hotel A"
+    assert kwargs["raw_day_ids"] == [2, 99, 2, 0]
+    assert kwargs["invalid_day_ids"] == [99, 0]
+
+
+@pytest.mark.asyncio
+async def test_pipeline__falls_back_to_exact_name_location_for_activity_image() -> None:
+    payload = _valid_ai_payload()
+    payload["days"][0]["activities"][1]["name"] = "Place 2"
+    payload["days"][0]["activities"][1]["location"] = "Hà Nội"
+
+    llm = FakeLLM([payload])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places()),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    trip = await pipeline.generate(_make_request(), user_id=None)
+
+    assert trip.days[0].activities[1].place_id is None
+    assert trip.days[0].activities[1].image == "https://cdn.test/place-2.jpg"
 
 
 @pytest.mark.asyncio
@@ -315,3 +405,148 @@ async def test_pipeline__retries_invalid_output_then_accepts_valid() -> None:
 
     assert trip.trip_name == "AI Hà Nội Trip"
     assert llm.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_pipeline__recomputes_total_and_backfills_missing_costs() -> None:
+    payload = _valid_ai_payload()
+    payload["totalCost"] = 1
+    first_activity = payload["days"][0]["activities"][0]
+    first_activity["adultPrice"] = None
+    first_activity["childPrice"] = None
+    first_activity["transportation"] = "taxi"
+    first_activity["taxiCost"] = None
+
+    llm = FakeLLM([payload])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places()),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    trip = await pipeline.generate(_make_request(), user_id=None)
+
+    normalized = trip.days[0].activities[0]
+    assert normalized.adult_price == 50000
+    assert normalized.child_price == 30000
+    assert normalized.taxi_cost == 50000
+    assert trip.total_cost > 1
+
+
+def _sparse_cost_payload() -> dict[str, Any]:
+    return {
+        "tripName": "Budget Soft Gate Trip",
+        "totalCost": 450000,
+        "days": [
+            {
+                "dayNumber": 1,
+                "label": "Ngày 1",
+                "activities": [
+                    {
+                        "time": "08:00",
+                        "name": "Place 1",
+                        "type": "food",
+                        "location": "Hà Nội",
+                        "placeId": 1,
+                    },
+                    {
+                        "time": "10:00",
+                        "name": "Place 2",
+                        "type": "attraction",
+                        "location": "Hà Nội",
+                        "placeId": 2,
+                    },
+                    {
+                        "time": "12:00",
+                        "name": "Place 3",
+                        "type": "food",
+                        "location": "Hà Nội",
+                        "placeId": 3,
+                    },
+                    {
+                        "time": "15:00",
+                        "name": "Place 4",
+                        "type": "attraction",
+                        "location": "Hà Nội",
+                        "placeId": 4,
+                    },
+                    {
+                        "time": "18:00",
+                        "name": "Place 5",
+                        "type": "nature",
+                        "location": "Hà Nội",
+                        "placeId": 5,
+                    },
+                ],
+            }
+        ],
+        "accommodations": [],
+    }
+
+
+@pytest.mark.asyncio
+async def test_pipeline__accepts_budget_soft_overshoot_when_costs_are_inferred() -> None:
+    llm = FakeLLM([_sparse_cost_payload()])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places(count=6)),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    trip = await pipeline.generate(
+        _make_request(days=1, budget=400_000, adults=2, children=1),
+        user_id=None,
+    )
+
+    assert trip.total_cost > int(400_000 * 1.2)
+    assert trip.days[0].activities[0].adult_price == 50_000
+    assert trip.days[0].activities[0].child_price == 30_000
+
+
+@pytest.mark.asyncio
+async def test_pipeline__still_rejects_explicit_over_budget_itinerary() -> None:
+    payload = _sparse_cost_payload()
+    payload["totalCost"] = 700000
+    for activity in payload["days"][0]["activities"][:4]:
+        activity["adultPrice"] = 120000
+        activity["childPrice"] = 60000
+
+    llm = FakeLLM([payload])
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=FakeRepo(places=_make_places(count=6)),  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    with pytest.raises(ValidationException, match="failed validation"):
+        await pipeline.generate(
+            _make_request(days=1, budget=400_000, adults=2, children=1),
+            user_id=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_pipeline__ai_timeout__raises_retryable_timeout_without_persisting() -> None:
+    llm = FakeTimeoutLLM()
+    repo = FakeRepo(places=_make_places())
+    pipeline = ItineraryPipeline(
+        session=FakeSession(),  # type: ignore[arg-type]
+        repo=repo,  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
+        settings=AppSettings(_env_file=None),
+        retry_delay_seconds=0,
+    )
+
+    with pytest.raises(ServiceUnavailableException) as exc_info:
+        await pipeline.generate(_make_request(), user_id=None)
+
+    assert llm.calls == 1
+    assert repo.trip is None
+    assert exc_info.value.error_code == "AI_PROVIDER_TIMEOUT"
+    assert exc_info.value.retryable is True

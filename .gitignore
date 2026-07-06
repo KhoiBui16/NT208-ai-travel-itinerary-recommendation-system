@@ -40,16 +40,20 @@ test_full_results.json
 *-smoke.result.txt
 .pytest_cache/
 pytest-cache-files-*/
+test-results/
+test_trip.json
 
 # Frontend build artifacts (local only)
 Frontend/dist/
 Frontend/dist_ci/
 Frontend/test-results/
 Frontend/.build-tmp/
+Frontend/.build-tmpverify*/
 Frontend/playwright-report/
 
 # Claude local-only settings
 .claude/settings.local.json
+.claude/AGENTS.md
 
 # MVP1 legacy code (kept for reference, not tracked)
 Backend/app/
@@ -58,9 +62,10 @@ Backend/requirements.txt
 Backend/seed_data.py
 Backend/venv/
 
-# Render/Vercel deploy configs (MVP1)
-render.yaml
+# Render/Vercel deploy configs
+# render.yaml tracked ở MVP2 (Render Blueprint — KHÔNG chứa secret; mọi secret là sync:false trong Render UI)
 vercel.json
+!Frontend/vercel.json
 
 # Archive files
 *.zip
@@ -71,3 +76,7 @@ References/
 Diagram/
 guidelines/
 md/
+
+# Runtime logs (for debugging, not committed)
+logs/
+*.log

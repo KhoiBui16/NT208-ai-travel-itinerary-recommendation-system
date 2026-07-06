@@ -2,18 +2,19 @@ import { Link } from "react-router";
 import { Header } from "../components/Header";
 import { Bookmark, MapPin, Clock, Star, Plus, Trash2, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
 import * as placesService from "../services/places";
+import { normalizeSavedPlaces, type NormalizedSavedPlace } from "../utils/savedPlaces";
 
-interface SavedPlace {
-  id: string;
+interface SavedPlaceDisplay {
+  savedId: number; // bookmark row ID — used for DELETE /saved/:savedId
+  placeId: number; // actual place ID — used for POST /saved { placeId }
   name: string;
   type: string;
   rating: number;
   reviewCount: number;
-  distance?: string;
   estimatedCost: string;
-  priceLevel: string;
   image: string;
   description: string;
   address: string;
@@ -21,60 +22,102 @@ interface SavedPlace {
   phone?: string;
   website?: string;
   savedAt: string;
-  isBookmarked?: boolean; // Track bookmark state
+  isBookmarked?: boolean;
 }
 
 export default function SavedPlaces() {
-  const [savedLocations, setSavedLocations] = useState<SavedPlace[]>([]);
-  const [viewingPlace, setViewingPlace] = useState<SavedPlace | null>(null);
+  const [savedLocations, setSavedLocations] = useState<SavedPlaceDisplay[]>([]);
+  const [viewingPlace, setViewingPlace] = useState<SavedPlaceDisplay | null>(null);
 
-  // Load saved places from API
+  // Load saved places from API — use normalizeSavedPlace to get correct savedId/placeId
   useEffect(() => {
     placesService.listSavedPlaces().then((res) => {
-      const mapped: SavedPlace[] = res.map((sp) => ({
-        id: String(sp.id),
-        name: sp.place.name,
-        type: sp.place.type,
-        rating: sp.place.rating,
-        reviewCount: sp.place.reviewCount,
-        estimatedCost: String(sp.place.price),
-        priceLevel: "",
-        image: sp.place.image,
-        description: sp.place.description,
-        address: sp.place.location,
+      const normalized = normalizeSavedPlaces(res);
+      const mapped: SavedPlaceDisplay[] = normalized.map((sp) => ({
+        savedId: sp.savedId,
+        placeId: sp.placeId,
+        name: sp.name,
+        type: sp.category || "attraction",
+        rating: 0,
+        reviewCount: 0,
+        estimatedCost: "",
+        image: sp.image || "",
+        description: "",
+        address: sp.location || "",
         isBookmarked: true,
-        savedAt: sp.createdAt,
+        savedAt: sp.createdAt || "",
       }));
+      // Merge full place details from the raw response for display
+      res.forEach((raw, idx) => {
+        if (mapped[idx]) {
+          mapped[idx].rating = raw.place?.rating ?? 0;
+          mapped[idx].reviewCount = raw.place?.reviewCount ?? 0;
+          mapped[idx].estimatedCost = String(raw.place?.price ?? "");
+          mapped[idx].image = raw.place?.image ?? mapped[idx].image;
+          mapped[idx].description = raw.place?.description ?? "";
+          mapped[idx].address = raw.place?.location ?? mapped[idx].address;
+        }
+      });
       setSavedLocations(mapped);
     }).catch(() => {
       setSavedLocations([]);
+      toast.error("Không thể tải danh sách địa điểm đã lưu. Vui lòng thử lại sau.", {
+        position: "top-right",
+        duration: 4000,
+      });
     });
   }, []);
 
-  // No more localStorage cleanup needed — data lives in BE
-
-  const handleToggleBookmark = (id: string) => {
-    const place = savedLocations.find(loc => loc.id === id);
+  const handleToggleBookmark = (savedId: number) => {
+    const place = savedLocations.find(loc => loc.savedId === savedId);
     if (!place) return;
 
     if (place.isBookmarked === false) {
-      // Re-save via API
-      placesService.savePlace(Number(id)).catch(() => {});
+      // Re-save via API using the actual place ID
+      placesService.savePlace(place.placeId).catch(() => {
+        // Revert UI
+        setSavedLocations((prev) =>
+          prev.map((loc) =>
+            loc.savedId === savedId ? { ...loc, isBookmarked: place.isBookmarked } : loc
+          )
+        );
+        toast.error("Không thể lưu địa điểm. Vui lòng thử lại sau.", {
+          position: "top-right",
+          duration: 4000,
+        });
+      });
     } else {
-      // Unsave via API
-      placesService.unsavePlace(Number(id)).catch(() => {});
+      // Unsave via API using the bookmark row ID (savedId, not placeId)
+      placesService.unsavePlace(savedId).catch(() => {
+        // Revert UI
+        setSavedLocations((prev) =>
+          prev.map((loc) =>
+            loc.savedId === savedId ? { ...loc, isBookmarked: place.isBookmarked } : loc
+          )
+        );
+        toast.error("Không thể bỏ lưu địa điểm. Vui lòng thử lại sau.", {
+          position: "top-right",
+          duration: 4000,
+        });
+      });
     }
 
     setSavedLocations(prevLocations =>
       prevLocations.map(loc =>
-        loc.id === id ? { ...loc, isBookmarked: !loc.isBookmarked } : loc
+        loc.savedId === savedId ? { ...loc, isBookmarked: !loc.isBookmarked } : loc
       )
     );
   };
 
-  const handleDelete = (id: string) => {
-    placesService.unsavePlace(Number(id)).catch(() => {});
-    const updated = savedLocations.filter(loc => loc.id !== id);
+  const handleDelete = (savedId: number) => {
+    // Always use savedId (bookmark row ID) for unsave, never placeId
+    placesService.unsavePlace(savedId).catch(() => {
+      toast.error("Không thể xóa địa điểm. Vui lòng thử lại sau.", {
+        position: "top-right",
+        duration: 4000,
+      });
+    });
+    const updated = savedLocations.filter(loc => loc.savedId !== savedId);
     setSavedLocations(updated);
   };
 
@@ -112,7 +155,7 @@ export default function SavedPlaces() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {displayLocations.map((location) => (
               <div
-                key={location.id}
+                key={location.savedId}
                 className={`group overflow-hidden rounded-2xl bg-white shadow-lg transition-all hover:shadow-2xl border-2 ${
                   location.isBookmarked === false
                     ? "border-gray-300"
@@ -130,7 +173,7 @@ export default function SavedPlaces() {
 
                   {/* Bookmark Icon */}
                   <button
-                    onClick={() => handleToggleBookmark(location.id)}
+                    onClick={() => handleToggleBookmark(location.savedId)}
                     className={`absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-full shadow-lg backdrop-blur-sm transition-all hover:scale-110 ${
                       location.isBookmarked === false
                         ? "bg-white/90 text-gray-600 hover:bg-cyan-500 hover:text-white"

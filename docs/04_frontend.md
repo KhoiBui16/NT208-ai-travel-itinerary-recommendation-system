@@ -36,10 +36,11 @@ Frontend/
 │   │   │   ├── PlaceSelectionModal.tsx # Choose place for activity
 │   │   │   ├── CalendarModal.tsx  # Date picker
 │   │   │   ├── BudgetTracker.tsx  # Budget progress
-│   │   │   ├── FloatingAIChat.tsx # AI companion chat (mock)
-│   │   │   ├── AIPromoBubble.tsx  # AI promo (mock)
-│   │   │   ├── ContextualSuggestionsPanel.tsx # Suggestions (mock)
+│   │   │   ├── FloatingAIChat.tsx # Legacy mock companion surface (không còn mount ở runtime chính)
+│   │   │   ├── AIPromoBubble.tsx  # Legacy promo bubble (không còn mount ở TripWorkspace)
+│   │   │   ├── ContextualSuggestionsPanel.tsx # Suggestions demo panel (mock/inactive)
 │   │   │   ├── SavedSuggestions.tsx
+│   │   │   ├── GoongMap.tsx    # Real Goong map (DailyItinerary "Bản đồ" tab, @goongmaps/goong-js, VITE_GOONG_MAP_API_KEY)
 │   │   │   └── SimpleFooter.tsx
 │   │   ├── contexts/
 │   │   │   ├── AuthContext.tsx     # JWT state, login/logout/register, pending claim
@@ -65,6 +66,7 @@ Frontend/
 │   │   │   ├── auth.ts            # login, register, logout, forgotPassword, resetPassword
 │   │   │   ├── itinerary.ts       # CRUD, generate, share, claim, nested activity/accommodation
 │   │   │   ├── places.ts          # destinations, search, saved
+│   │   │   ├── chat.ts            # chat session CRUD + message/history + apply-patch APIs (C.3/C.4)
 │   │   │   └── users.ts           # profile, password
 │   │   ├── types/
 │   │   │   └── trip.types.ts      # FE-BE contract: Activity, Day, Place, Accommodation, etc.
@@ -72,7 +74,7 @@ Frontend/
 │   │       └── tripConstants.ts   # Trip constants
 │   ├── styles/                     # Tailwind + global CSS
 │   └── imports/                    # Shared imports
-├── tests/e2e/                      # Playwright e2e tests
+├── tests/e2e/                      # 36 test cases / 17 spec files (latest full recorded run: 33 passed, 3 skipped)
 │   ├── auth.spec.ts
 │   ├── trips.spec.ts
 │   ├── public.spec.ts
@@ -192,15 +194,15 @@ AuthContext
   │   ├── refreshToken: string | null (localStorage)
   │   ├── isAuthenticated: boolean
   │   ├── isLoading: boolean
-  │   └── pendingClaims: { tripId, claimToken }[] (localStorage)
+  │   └── pendingClaim: { tripId, claimToken, returnTo? } | null (sessionStorage)
   │
   ├── Methods:
   │   ├── login(email, password) → API call → save tokens → load profile → executePendingClaim()
   │   ├── register(email, password, name) → API call → save tokens → executePendingClaim()
   │   ├── logout() → API call revoke → clear tokens → clear user
   │   ├── refreshUser() → GET /users/profile → update user state
-  │   ├── storePendingClaim(tripId, claimToken) → save to localStorage
-  │   └── executePendingClaim() → for each pending: POST /itineraries/{id}/claim
+  │   ├── storePendingClaim(tripId, claimToken, returnTo?) → save to sessionStorage
+  │   └── executePendingClaim() → nếu có pendingClaim thì POST /itineraries/{id}/claim
   │
   └── Auto-check on mount:
       ├── Read tokens from localStorage
@@ -218,16 +220,16 @@ AuthContext
 │     → POST /itineraries (không Bearer)                   │
 │     → Response chứa claimToken                            │
 │     → AuthContext.storePendingClaim(tripId, claimToken)   │
-│     → Lưu vào localStorage: pendingClaims[]              │
+│     → Lưu vào sessionStorage: pendingClaim               │
 │                                                           │
 │  2. Guest đăng nhập hoặc đăng ký                         │
 │     → Login/Register success → tokens saved              │
 │     → AuthContext.executePendingClaim()                   │
-│     → For each pending:                                   │
+│     → Nếu có pendingClaim:                                │
 │         POST /itineraries/{tripId}/claim                  │
-│           { claimToken: "raw_token_from_localStorage" }   │
+│           { claimToken: "raw_token_from_sessionStorage" } │
 │         → Success: trip now owned by user                │
-│         → Remove from pendingClaims                      │
+│         → Remove pendingClaim                            │
 │                                                           │
 │  3. Result: Guest trip → Owner trip                       │
 └──────────────────────────────────────────────────────────┘
@@ -314,7 +316,7 @@ TripWorkspace mount
   │       ├── Build trip data from wizard selections
   │       └── POST /itineraries (create new)
   │           ├── Success → set tripId, save to sessionStorage
-  │           └── If guest → storePendingClaim(claimToken)
+  │           └── If guest → storePendingClaim(tripId, claimToken)
   │
   ├── Auto-save on changes:
   │   ├── Debounce 500ms sau last change
@@ -535,33 +537,18 @@ Tất cả trang chính đã nối BE API. Mock chỉ dùng fallback.
 - **Timeout**: 30 giây, retries: 2 trên CI
 - **WebServer**: Tự động start `npm run dev` nếu chưa chạy
 
-### Test suites (11 tests)
+### Test suites (36 tests trên 17 spec files; latest full recorded run: 33 passed, 3 skipped)
 
-**Auth flow (3 tests):**
+Current suite coverage:
 
-| Test | Flow | Mô tả |
-|---|---|---|
-| register → success → redirect home | UI form | Điền form, submit, redirect `/` |
-| login → success → redirect home | API + UI | Register qua API, login qua UI |
-| protected route → redirect login → login → show page | UI navigation | `/trip-library` chưa auth → `/login` → login → access granted |
-
-**Trip CRUD (3 tests):**
-
-| Test | Flow | Mô tả |
-|---|---|---|
-| create trip → navigate to workspace | API + UI | Tạo trip qua API, navigate workspace |
-| view trip list in TripLibrary | API + UI | Tạo trip, mở TripLibrary, verify card |
-| delete trip from TripHistory | API + UI | Tạo trip, mở ItineraryView, xóa |
-
-**Public pages (5 tests):**
-
-| Test | Mô tả |
-|---|---|
-| home page loads | Verify `/` trả banner |
-| login page loads | Verify heading "Chào mừng bạn trở lại!" |
-| register page loads | Verify heading "Đăng Ký" |
-| forgot-password page loads | Verify URL đúng |
-| not-found page | Verify heading "404" |
+- Auth flow: register, login, protected redirect, guest claim after login/register.
+- Trip CRUD + workspace truth: create, list, delete, workspace boundary, TripHistory/TripLibrary rendering.
+- Calendar + destination readiness: date-range interaction và limited-data advisory.
+- Rate-limit / timeout / UI shell: 429 contract, timeout UX, submit/loading shell.
+- Public pages: home, login, register, forgot-password, 404.
+- C3A chat session CRUD: create/list/detail/persist/cross-user ownership behavior.
+- CityDetail API-first regression: non-mock city và mock-pack city đều phải render backend truth khi API detail có sẵn.
+- Legacy `b3/*` observation flows: `3 skipped`.
 
 ### Test helpers
 
@@ -587,10 +574,10 @@ Job `frontend-e2e` trong `frontend-ci.yml`:
 
 ## 11. Known Gaps
 
-- FloatingAIChat vẫn mock vì C.3 companion chat chưa implement.
+- `FloatingAIChat` / `AIPromoBubble` vẫn còn trên source như legacy components, nhưng `TripWorkspace` và `DailyItinerary` không còn mount chúng; active runtime chat surface là `ChatPanel`.
 - CreateTrip đã gọi BE generate API thật; chất lượng lịch trình phụ thuộc Goong ETL data + Gemini key.
-- E2E chưa cover: trip workspace drag-and-drop, calendar interaction, accommodation CRUD.
-- CityList chủ yếu dùng mock data (BE cần nhiều destinations hơn).
+- E2E spec assert confirm `apply` của proposal trên runtime thật; `cancel` và `stale`-proposal có browser/API/DB evidence (pass `00101`) nhưng chưa có e2e spec assertion riêng. Gap còn lại là trip workspace drag-and-drop, accommodation CRUD e2e, và data richness cho sparse cities.
+- City browse/detail hiện đã API-backed; gap còn lại là sparse-city data richness, image quality, và một số destination image path cũ như `ha-n-i.jpg`.
 - Visual regression testing chưa có.
 
 ---

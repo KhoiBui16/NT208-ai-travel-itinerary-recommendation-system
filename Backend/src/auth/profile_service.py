@@ -15,17 +15,17 @@ logger = get_logger(__name__)
 
 
 class UserService:
-    """Handle profile read, update, and password change.
-
-    Args:
-        user_repo: UserRepository for user table writes.
-    """
+    """Xử lý các thao tác hồ sơ cá nhân và đổi mật khẩu của người dùng."""
 
     def __init__(self, user_repo: UserRepository) -> None:
         self.user_repo = user_repo
 
     async def get_profile(self, user: User) -> UserResponse:
-        """Return the public profile for the authenticated user."""
+        """Trả về hồ sơ công khai của user đã được xác thực.
+
+        Hàm này không query lại database vì `user` đã được dependency auth
+        nạp sẵn từ access token.
+        """
         return UserResponse.model_validate(user)
 
     async def update_profile(
@@ -35,7 +35,11 @@ class UserService:
         phone: str | None = None,
         interests: list[str] | None = None,
     ) -> UserResponse:
-        """Partially update the user's profile fields."""
+        """Cập nhật từng phần hồ sơ cá nhân của user.
+
+        Chỉ những field khác `None` mới được ghi xuống database. Nếu payload
+        không tạo ra thay đổi nào thì service trả lại trạng thái hiện tại.
+        """
         user = await self.user_repo.get_by_id(user_id)
         if user is None:
             raise UnauthorizedException("User not found")
@@ -60,7 +64,11 @@ class UserService:
         current_password: str,
         new_password: str,
     ) -> None:
-        """Change the user's password after verifying the current one."""
+        """Đổi mật khẩu sau khi xác minh đúng mật khẩu hiện tại.
+
+        Service chỉ cập nhật hash mật khẩu và ghi log audit. Việc revoke các
+        refresh token cũ không được tự động thực hiện trong flow này.
+        """
         user = await self.user_repo.get_by_id(user_id)
         if user is None:
             raise UnauthorizedException("User not found")

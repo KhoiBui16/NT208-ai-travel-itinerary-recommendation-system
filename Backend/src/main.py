@@ -1,9 +1,12 @@
 """FastAPI application factory for the MVP2 backend."""
 
+import mimetypes
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy import text
 
 from src.agent.router import agent_router
@@ -27,6 +30,47 @@ async def health_check() -> dict[str, str]:
 
 
 logger = get_logger(__name__)
+
+
+# Static image assets — DB stores paths like "/img/destinations/<slug>.jpg" and
+# the FE resolves them against the API base. Serve them from Backend/static/img
+# with a deterministic placeholder fallback so missing images never 404 while
+# real assets are still being collected.
+_STATIC_IMG_DIR = Path(__file__).resolve().parent.parent / "static" / "img"
+_STATIC_IMG_ROOT = _STATIC_IMG_DIR.resolve()
+_STATIC_IMG_PLACEHOLDER = _STATIC_IMG_DIR / "placeholder.svg"
+_STATIC_IMG_FALLBACK_EXTENSIONS = (".webp", ".avif", ".jpg", ".jpeg", ".png")
+
+# Register explicit MIME types for modern image formats so FileResponse serves
+# .webp/.avif with a correct Content-Type. Python's stdlib mimetypes omits
+# .webp on some platforms (verified: CPython 3.12 on Windows returns
+# guess_type('x.webp') -> (None, None)); without this Starlette falls back to
+# text/plain and the browser shows a broken <img> for the .webp covers.
+mimetypes.add_type("image/webp", ".webp")
+mimetypes.add_type("image/avif", ".avif")
+
+assets_router = APIRouter(tags=["assets"])
+
+
+@assets_router.get("/img/{file_path:path}")
+async def serve_static_image(file_path: str) -> FileResponse:
+    """Serve a static image, falling back to the placeholder when absent."""
+    requested = (_STATIC_IMG_DIR / file_path).resolve()
+    candidates = [requested]
+    candidates.extend(
+        requested.with_suffix(extension) for extension in _STATIC_IMG_FALLBACK_EXTENSIONS
+    )
+
+    for candidate in candidates:
+        try:
+            candidate.relative_to(_STATIC_IMG_ROOT)
+        except ValueError:
+            continue
+        if candidate.is_file():
+            return FileResponse(candidate)
+    if _STATIC_IMG_PLACEHOLDER.is_file():
+        return FileResponse(_STATIC_IMG_PLACEHOLDER, media_type="image/svg+xml")
+    raise HTTPException(status_code=404)
 
 
 @asynccontextmanager
@@ -75,6 +119,9 @@ def create_app(verify_database: bool = True) -> FastAPI:
     api_v1.include_router(shared_router)
 
     app.include_router(api_v1, prefix="/api/v1")
+    # Static image assets are mounted at the app root (not under /api/v1) because
+    # DB image paths and the FE already assume origin-relative "/img/..." URLs.
+    app.include_router(assets_router)
     return app
 
 

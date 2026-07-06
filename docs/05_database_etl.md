@@ -144,7 +144,7 @@ File này mô tả **chi tiết toàn bộ database schema** — từng bảng, 
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          AI/CHAT DOMAIN (schema sẵn, chưa có API)          │
+│                    AI/CHAT DOMAIN (schema + API đã có trên current source)   │
 │                                                                             │
 │  ┌──────── chat_sessions ──────────┐     ┌──── chat_messages ────────────┐ │
 │  │ PK  id               int        │1──N │ PK  id                int     │ │
@@ -495,7 +495,7 @@ CHECK (
 
 ### 2.15 `chat_sessions` / `chat_messages` — AI Chat (Phase C)
 
-Schema đã có trong DB qua Alembic migration, nhưng chưa có API endpoints.
+Schema đã có trong DB qua Alembic migration, và current source đã có session/message/apply-patch endpoints.
 
 **`chat_sessions`:**
 
@@ -547,13 +547,24 @@ Schema đã có trong DB qua Alembic migration, nhưng chưa có API endpoints.
 | `20260504_0003_add_password_reset_fields` | 2026-05-04 | Password reset | `users` thêm `password_reset_token_hash`, `password_reset_expires_at` |
 | `20260525_0004_add_goong_place_metadata` | 2026-05-25 | Goong ETL metadata | `places` thêm `external_id` (120 char), `raw_metadata` (JSONB); index `ix_places_external_id` |
 | `20260525_0005_expand_goong_external_id` | 2026-05-25 | Long Goong place_id | `places.external_id` mở rộng `varchar(512)` để chứa Goong `place_id` dài |
-| `20260525_0006_add_companion_chat_tables` | tương lai | Chat history schema | `chat_sessions`, `chat_messages` (Phase C.3/C.4 — chưa chạy trên `main`) |
-
+| `20260608_0006_fix_accommodation_day_ids` | 2026-06-08 | Accommodation day linking fix | Chuẩn hóa `accommodations.day_ids` cho dữ liệu cũ |
+| `20260609_0007_seed_trip_days_for_existing_trips` | 2026-06-09 | Backfill trip days | Seed `trip_days` cho trip cũ để workspace/edit flow ổn định |
+| `20260621_0008_add_chat_message_confirmation_fields` | 2026-06-21 | C3C apply-patch confirmation state | `chat_messages` thêm `confirmation_status`, `trip_snapshot_updated_at`, `resolved_at` |
+| `20260622_0009_add_chat_session_title` | 2026-06-22 | C4 chat session rename | `chat_sessions` thêm `title` |
+| `20260703_0010_merge_vinh_ha_long_into_ha_long` | 2026-07-03 | Gộp `vinh-ha-long` lệch vào `ha-long` + tính lại `destinations.places_count` | `destinations`, `places.destination_id` |
+| `20260703_0012_import_crawled_image_paths` | 2026-07-03 | Import ảnh crawl thật (places/hotels/destinations) theo slug | `places.image`, `hotels.image`, `destinations.image` |
+| `20260703_0013_expand_crawled_image_paths` | 2026-07-03 | Bổ sung ảnh thật cho 13 place + 1 hotel còn trống (predicate `name`+`destination_id`) | `places.image`, `hotels.image` |
+| `20260703_0014_backfill_activity_images_from_places` | 2026-07-03 | Backfill `activities.image` rỗng từ `places.image` qua `place_id` (sửa snapshot trip đóng băng lúc generate, vd. trip 837) | `activities.image` |
 **Nguyên tắc migration:**
 - Alembic là source of truth — không dùng `create_all()` trong production.
 - Mỗi migration phải có `upgrade()` và `downgrade()`.
 - Naming convention: `YYYYMMDD_NNNN_description.py`.
 - Chạy `alembic upgrade head` trước khi start BE.
+
+**Current truth after `00060B` / `00060C`:**
+- `chat_sessions` và `chat_messages` đã nằm trong `20260428_0001_initial_mvp2_schema`.
+- Trên `main` hiện tại không có migration riêng kiểu `add_companion_chat_tables`.
+- `C3A` cần thêm session API và ownership rules, không cần dựng lại chat tables từ đầu.
 
 ---
 
@@ -751,6 +762,13 @@ uv run python -m src.etl --cities "Hà Nội" --dry-run
 
 - Chạy full ETL cho các city chính còn lại (Đà Nẵng, TP.HCM, Phú Quốc, Hội An...).
 - Kiểm tra số lượng places/hotels sau crawl trước khi test AI generate cho city đó.
-- Thiết lập lịch crawl định kỳ nếu cần dữ liệu mới (gợi ý: cron 30 ngày/lần).
 - ETL chưa có incremental update — mỗi lần chạy reload toàn bộ city.
-- Phase C: `chat_sessions` / `chat_messages` cần API endpoints.
+- Phase C (post-00107): `chat_sessions`/`chat_messages` đã có full runtime APIs + session-management UX (rename/delete/switcher/load-more); `apply-patch` có rate limit riêng; phần còn thiếu chủ yếu là **data coverage cho city sparse** (Goong không trả places cho ~9/28 destination) — đã xử lý bằng `isGenerateReady=false` + pipeline empty-context guard.
+
+## 8. Data quality ops (00107)
+
+- **Cross-city contamination**: ETL guard trong `src.etl.transformers.city_match` dùng heuristic "last city token wins" (city hành chính cuối địa chỉ) để từ chối place sai thành phố — đáng tin hơn tên thành phố xuất hiện trong tên nhà hàng (vd "Nhà hàng Huế" ở Ba Đình, Hà Nội). Cleanup dữ liệu đã có qua CLI idempotent:
+  - `docker compose exec -T api uv run python -m src.etl.cleanup --dry-run` (chỉ báo cáo)
+  - `docker compose exec -T api uv run python -m src.etl.cleanup` (dọn thật: reassign `destination_id` cho place sai city; xoá place thiếu tọa độ không bị activity reference; recompute `places_count`)
+- **Scheduler wiring**: service `scheduler` trong `docker-compose.yml` gate bởi profile `etl` (KHÔNG chạy cùng `docker compose up` mặc định). Bật khi cần refresh định kỳ: `docker compose --profile etl up -d scheduler`. One-shot: `docker compose exec -T api uv run python -m src.etl.scheduler --once --cities "Hà Nội"`.
+- **Image/review sparsity là giới hạn provider**: Goong Places API (autocomplete + place_detail) không trả trường photo/image hay rating/review_count, nên phần lớn place trong DB có `image=''` và `review_count=0`. Đây là hạn chế nguồn dữ liệu, không phải bug — không fake ảnh/rating. Ranking theo rating chưa khả thi cho đến khi thêm provider có photo+review.

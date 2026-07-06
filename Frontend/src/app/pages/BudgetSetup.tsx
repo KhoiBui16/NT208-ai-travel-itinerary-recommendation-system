@@ -42,7 +42,8 @@ export default function BudgetSetup() {
       const numValue = parseInt(value) || 0;
       setBudget(numValue);
       
-      if (numValue > 0 && numValue < 10000) {
+      // Minimum threshold: 1,000,000 VND for any trip (based on budget level calculation)
+      if (numValue > 0 && numValue < 1000000) {
         setWarningMessage("Ngân sách hiện tại quá ít, vui lòng cân nhắc lại");
       } else {
         setWarningMessage("");
@@ -71,8 +72,8 @@ export default function BudgetSetup() {
   };
 
   const handleConfirm = () => {
-    // Check if budget is too low
-    if (budget === 0 || budget < 10000) {
+    // Check if budget is too low (minimum 1,000,000 VND for any trip)
+    if (budget === 0 || budget < 1000000) {
       setShowWarningModal(true);
       return;
     }

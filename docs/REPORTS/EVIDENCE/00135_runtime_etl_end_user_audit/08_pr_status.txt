@@ -1,0 +1,32 @@
+## PR #126 — final CI status on fix commit a7d3664 (post-push)
+## gh pr view 126 --json number,title,state,mergeable,headRefName,baseRefName,url
+{"baseRefName":"main","headRefName":"fix/00135-a-runtime-etl-image-hardening","mergeable":"MERGEABLE","number":126,"state":"OPEN","title":"fix: [#00135] merge ha-long taxonomy and harden ai image runtime","url":"https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/pull/126"}
+
+## gh pr checks 126  (required: pr-policy, backend-lint, backend-unit, backend-integration, backend-migrations, frontend-build, frontend-e2e, Vercel)
+Vercel	pass	0	https://vercel.com/khoib1601-6701s-projects/nt-208-ai-travel-itinerary-recommendation-system/6d4ykFy2wF2uVv4bQE3eJqkRoTTQ	Deployment has completed
+Vercel Preview Comments	pass	0	https://vercel.com/github	
+backend-integration	pass	1m15s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635230007/job/84920072100	
+backend-integration	pass	1m6s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635231851/job/84920077406	
+backend-lint	pass	13s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635230007/job/84920072101	
+backend-lint	pass	13s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635231851/job/84920077416	
+backend-migrations	pass	33s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635230007/job/84920072111	
+backend-migrations	pass	32s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635231851/job/84920077414	
+backend-unit	pass	29s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635230007/job/84920072097	
+backend-unit	pass	30s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635231851/job/84920077418	
+frontend-build	pass	31s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635230007/job/84920072102	
+frontend-build	pass	29s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635230039/job/84920072145	
+frontend-build	pass	33s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635231851/job/84920077405	
+frontend-build	pass	26s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635231863/job/84920077427	
+frontend-e2e	pass	2m46s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635230039/job/84920072148	
+frontend-e2e	pass	2m46s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635231863/job/84920077415	
+pr-policy	pass	7s	https://github.com/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/actions/runs/28635231853/job/84920077407	
+
+## required-checks rollup
+backend-integration pass
+backend-lint pass
+backend-migrations pass
+backend-unit pass
+frontend-build pass
+frontend-e2e pass
+pr-policy pass
+Vercel pass
