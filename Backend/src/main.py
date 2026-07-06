@@ -39,6 +39,7 @@ logger = get_logger(__name__)
 _STATIC_IMG_DIR = Path(__file__).resolve().parent.parent / "static" / "img"
 _STATIC_IMG_ROOT = _STATIC_IMG_DIR.resolve()
 _STATIC_IMG_PLACEHOLDER = _STATIC_IMG_DIR / "placeholder.svg"
+_STATIC_IMG_FALLBACK_EXTENSIONS = (".webp", ".avif", ".jpg", ".jpeg", ".png")
 
 # Register explicit MIME types for modern image formats so FileResponse serves
 # .webp/.avif with a correct Content-Type. Python's stdlib mimetypes omits
@@ -55,13 +56,18 @@ assets_router = APIRouter(tags=["assets"])
 async def serve_static_image(file_path: str) -> FileResponse:
     """Serve a static image, falling back to the placeholder when absent."""
     requested = (_STATIC_IMG_DIR / file_path).resolve()
-    try:
-        requested.relative_to(_STATIC_IMG_ROOT)
-    except ValueError:
-        # Path escaped the static root — treat as not found.
-        raise HTTPException(status_code=404) from None
-    if requested.is_file():
-        return FileResponse(requested)
+    candidates = [requested]
+    candidates.extend(
+        requested.with_suffix(extension) for extension in _STATIC_IMG_FALLBACK_EXTENSIONS
+    )
+
+    for candidate in candidates:
+        try:
+            candidate.relative_to(_STATIC_IMG_ROOT)
+        except ValueError:
+            continue
+        if candidate.is_file():
+            return FileResponse(candidate)
     if _STATIC_IMG_PLACEHOLDER.is_file():
         return FileResponse(_STATIC_IMG_PLACEHOLDER, media_type="image/svg+xml")
     raise HTTPException(status_code=404)
