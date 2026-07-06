@@ -48,6 +48,9 @@ export interface ActivityItem {
   busTicketPrice?: number;
   taxiCost?: number;
   extraExpenses?: unknown[];
+  /** Map coordinates — populated by BE from the linked Place record. */
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 /** A single day in a trip itinerary, containing ordered activities. */

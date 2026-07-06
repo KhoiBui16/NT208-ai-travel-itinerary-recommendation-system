@@ -105,6 +105,10 @@ class ActivitySchema(CamelCaseModel):
     # --- Nested extra expenses ---
     extra_expenses: list[ExtraExpenseSchema] = Field(default_factory=list)
 
+    # --- Map coordinates — from linked Place record (read-only, populated by service) ---
+    latitude: float | None = None
+    longitude: float | None = None
+
 
 class DaySchema(CamelCaseModel):
     """Trip day schema — one calendar day in the itinerary.
