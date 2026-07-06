@@ -372,6 +372,8 @@ class CompanionPatchActivityInput(CamelCaseModel):
     bus_ticket_price: int | None = Field(default=None, ge=0)
     taxi_cost: int | None = Field(default=None, ge=0)
     extra_expenses: list[ExtraExpenseSchema] = Field(default_factory=list)
+    latitude: float | None = None
+    longitude: float | None = None
 
     @field_validator("type", mode="before")
     @classmethod

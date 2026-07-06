@@ -832,6 +832,8 @@ class ItineraryService(BaseService):
                         bus_ticket_price=act.bus_ticket_price,
                         taxi_cost=act.taxi_cost,
                         extra_expenses=expenses,
+                        latitude=act.place.latitude if act.place else None,
+                        longitude=act.place.longitude if act.place else None,
                     )
                 )
 

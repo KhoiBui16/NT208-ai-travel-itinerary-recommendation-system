@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link, useSearchParams } from "react-router";
+import { useNavigate, Link, useParams } from "react-router";
 import { Header } from "../components/Header";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
+import { Suggestion, mockSuggestions } from "../data/suggestions";
 import { useAuth } from "../contexts/AuthContext";
 import { getItinerary } from "../services/itinerary";
 import { getDestinationDetail, listSavedPlaces, savePlace, unsavePlace, type PlaceResponse } from "../services/places";
@@ -49,6 +50,8 @@ interface Activity {
   type: "food" | "attraction" | "nature" | "entertainment" | "shopping";
   image: string;
   transportation?: "walk" | "bike" | "bus" | "taxi";
+  latitude?: number;
+  longitude?: number;
 }
 
 interface Day {
@@ -72,7 +75,16 @@ export default function DailyItinerary() {
   const [rightPanelTab, setRightPanelTab] = useState<"suggestions" | "map">("suggestions");
 
   const [showLoginModal, setShowLoginModal] = useState(false);
-  
+  const [aiMessages, setAiMessages] = useState<Array<{ id: number; text: string; sender: "user" | "ai"; timestamp: Date }>>([
+    {
+      id: 1,
+      text: "Xin chào! Tôi có thể giúp bạn tối ưu hóa lịch trình hoặc gợi ý địa điểm.",
+      sender: "ai",
+      timestamp: new Date(),
+    },
+  ]);
+  const [aiInputValue, setAiInputValue] = useState("");
+
   // Load trip data from BE API
   const [days, setDays] = useState<Day[]>([]);
   const [selectedDayId, setSelectedDayId] = useState<string>("1");
@@ -100,6 +112,8 @@ export default function DailyItinerary() {
               type: a.type,
               image: a.image,
               transportation: a.transportation,
+              latitude: a.latitude ?? undefined,
+              longitude: a.longitude ?? undefined,
             })),
             destinationName: d.destinationName,
           })));
@@ -138,46 +152,21 @@ export default function DailyItinerary() {
           .filter((place) => savedIds.has(place.id) || savedNames.has(place.name))
           .map((place) => place.id);
         setSavedSuggestions(matchedIds);
-      }).catch(() => {});
+      }).catch(() => { });
     }
-  }, [tripIdParam, isAuthenticated, suggestions]);
-  
+  }, [tripIdParam, isAuthenticated]);
+
   // Get selected day data
   const selectedDay = days.find(d => d.id.toString() === selectedDayId);
   const currentActivities = selectedDay?.activities || [];
 
-  useEffect(() => {
-    if (!selectedDay?.destinationName) {
-      setSuggestions([]);
-      return;
-    }
-
-    let active = true;
-    setSuggestionsLoading(true);
-    setSuggestionsError(null);
-
-    getDestinationDetail(selectedDay.destinationName)
-      .then((detail) => {
-        if (!active) return;
-        setSuggestions(detail.places);
-      })
-      .catch(() => {
-        if (!active) return;
-        setSuggestions([]);
-        setSuggestionsError("Không thể tải gợi ý địa điểm từ dữ liệu hiện có.");
-      })
-      .finally(() => {
-        if (active) {
-          setSuggestionsLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [selectedDay?.destinationName]);
-
-  const filteredSuggestions = [...suggestions]
+  // Filter suggestions based on selected day's destination and sort bookmarked to top
+  const filteredSuggestions = mockSuggestions
+    .filter(suggestion => {
+      // Nếu không có ngày chọn thì hiện tất cả, nếu có thì kiểm tra tên thành phố
+      if (!selectedDay?.destinationName) return true;
+      return suggestion.city === selectedDay.destinationName;
+    })
     .sort((a, b) => {
       // Sort bookmarked places to the top
       const aIsBookmarked = savedSuggestions.includes(a.id);
@@ -186,8 +175,10 @@ export default function DailyItinerary() {
       if (!aIsBookmarked && bIsBookmarked) return 1;
       return 0;
     });
-    
-  const handleToggleSave = async (suggestion: PlaceResponse) => {
+
+  const totalTravelTime = "55 phút";
+
+  const handleToggleSave = async (suggestion: Suggestion) => {
     if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
@@ -416,21 +407,19 @@ export default function DailyItinerary() {
             <div className="inline-flex w-full rounded-lg bg-gray-100 p-1">
               <button
                 onClick={() => setRightPanelTab("suggestions")}
-                className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
-                  rightPanelTab === "suggestions"
-                    ? "bg-white text-cyan-600 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
+                className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${rightPanelTab === "suggestions"
+                  ? "bg-white text-cyan-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+                  }`}
               >
                 Gợi ý
               </button>
               <button
                 onClick={() => setRightPanelTab("map")}
-                className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
-                  rightPanelTab === "map"
-                    ? "bg-white text-cyan-600 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
+                className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${rightPanelTab === "map"
+                  ? "bg-white text-cyan-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+                  }`}
               >
                 Bản đồ
               </button>
@@ -471,11 +460,10 @@ export default function DailyItinerary() {
                     {/* Bookmark Icon */}
                     <button
                       onClick={() => handleToggleSave(suggestion)}
-                      className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-all hover:scale-110 ${
-                        savedSuggestions.includes(suggestion.id)
-                          ? "bg-cyan-700 text-white"
-                          : "bg-white/90 text-gray-600 hover:bg-cyan-500 hover:text-white"
-                      }`}
+                      className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-all hover:scale-110 ${savedSuggestions.includes(suggestion.id)
+                        ? "bg-cyan-700 text-white"
+                        : "bg-white/90 text-gray-600 hover:bg-cyan-500 hover:text-white"
+                        }`}
                       title={savedSuggestions.includes(suggestion.id) ? "Đã lưu" : "Lưu địa điểm"}
                     >
                       <Bookmark className={`h-4 w-4 ${savedSuggestions.includes(suggestion.id) ? "fill-current" : ""}`} />
@@ -516,10 +504,59 @@ export default function DailyItinerary() {
           ) : (
             /* Map Tab — real Goong map of the destination's places */
             <div className="flex-1 relative overflow-hidden">
-              <GoongMap
-                places={filteredSuggestions}
-                destinationName={selectedDay?.destinationName}
-              />
+              {/* Mock Map */}
+              <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 relative">
+                {/* Mock Map Markers */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                  <div className="relative">
+                    {/* Center Marker */}
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500 shadow-lg">
+                      <MapIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <p className="mt-2 text-xs font-semibold text-gray-700 text-center">
+                      {selectedDay?.destinationName || "Hà Nội"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Mock Location Pins */}
+                <div className="absolute top-1/4 left-1/3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 shadow-md">
+                    <Utensils className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <div className="absolute top-2/3 left-2/3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 shadow-md">
+                    <Building className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <div className="absolute top-1/3 right-1/4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 shadow-md">
+                    <Coffee className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+
+                {/* Map Overlay Info */}
+                <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-white/90 p-4 shadow-lg backdrop-blur-sm">
+                  <p className="text-sm font-semibold text-gray-700 mb-1">
+                    Bản đồ khu vực {selectedDay?.destinationName || "Hà Nội"}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    Đang hiển thị các địa điểm gợi ý trong phạm vi thành phố
+                  </p>
+                </div>
+
+                {/* Mock Grid Lines */}
+                <div className="absolute inset-0 opacity-10">
+                  <div className="h-full w-full" style={{
+                    backgroundImage: `
+                      linear-gradient(to right, #000 1px, transparent 1px),
+                      linear-gradient(to bottom, #000 1px, transparent 1px)
+                    `,
+                    backgroundSize: '40px 40px'
+                  }} />
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -539,6 +576,181 @@ export default function DailyItinerary() {
           }}
           onClose={() => setViewingPlace(null)}
         />
+      )}
+
+      {/* AI Chat Button (always visible) */}
+      <button
+        onClick={() => setShowAIChat(true)}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-2xl transition-all hover:scale-110 hover:shadow-purple-500/50"
+      >
+        <MessageCircle className="h-6 w-6" />
+      </button>
+
+      {/* AI Chat Panel */}
+      {showAIChat && (
+        <div className="fixed bottom-6 right-6 z-50 flex h-[500px] w-96 flex-col rounded-2xl bg-white shadow-2xl">
+          {/* Header */}
+          <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-purple-500 to-pink-500 p-4 text-white">
+            <div>
+              <h3 className="font-bold">AI Travel Assistant</h3>
+              <p className="text-xs text-white/80">
+                Gợi ý trong: {selectedDay?.destinationName || "Hà Nội"}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAIChat(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/20"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Warning Banner */}
+          <div className="flex items-center gap-2 border-b border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>⚠️ Mọi thay đổi cần xác nhận của bạn</span>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {aiMessages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-2 ${message.sender === "user"
+                      ? "bg-gradient-to-r from-cyan-500 to-cyan-600 text-white"
+                      : "bg-gray-100 text-gray-900"
+                    }`}
+                >
+                  <p className="text-sm">{message.text}</p>
+                  <span className="mt-1 block text-xs opacity-70">
+                    {message.timestamp.toLocaleTimeString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick Replies */}
+          {aiMessages.length <= 2 && (
+            <div className="border-t border-gray-200 p-3">
+              <p className="mb-2 text-xs text-gray-500">Gợi ý nhanh (tùy chọn):</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const userMsg = {
+                      id: aiMessages.length + 1,
+                      text: "Tối ưu lịch trình",
+                      sender: "user" as const,
+                      timestamp: new Date(),
+                    };
+                    setAiMessages(prev => [...prev, userMsg]);
+                    setTimeout(() => { // TODO: Gọi API AI thực tế ở đây
+                      const aiMsg = {
+                        id: aiMessages.length + 2,
+                        text: "Tôi đã nhận được yêu cầu của bạn. Vui lòng xác nhận các thay đổi trước khi áp dụng vào lịch trình.",
+                        sender: "ai" as const,
+                        timestamp: new Date(),
+                      };
+                      setAiMessages(prev => [...prev, aiMsg]);
+                    }, 1000);
+                  }}
+                  className="flex-1 rounded-lg border-2 border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 transition-all hover:border-purple-400 hover:bg-purple-100"
+                >
+                  ✨ Tối ưu lịch trình
+                </button>
+                <button
+                  onClick={() => {
+                    const userMsg = {
+                      id: aiMessages.length + 1,
+                      text: "Gợi ý địa điểm",
+                      sender: "user" as const,
+                      timestamp: new Date(),
+                    };
+                    setAiMessages(prev => [...prev, userMsg]);
+                    setTimeout(() => { // TODO: Gọi API AI thực tế ở đây
+                      const aiMsg = {
+                        id: aiMessages.length + 2,
+                        text: "Tôi có thể gợi ý các địa điểm phù hợp với lịch trình của bạn.",
+                        sender: "ai" as const,
+                        timestamp: new Date(),
+                      };
+                      setAiMessages(prev => [...prev, aiMsg]);
+                    }, 1000);
+                  }}
+                  className="flex-1 rounded-lg border-2 border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 transition-all hover:border-purple-400 hover:bg-purple-100"
+                >
+                  📍 Gợi ý địa điểm
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Input */}
+          <div className="border-t border-gray-200 p-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={aiInputValue}
+                onChange={(e) => setAiInputValue(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" && aiInputValue.trim()) {
+                    const userMsg = {
+                      id: aiMessages.length + 1,
+                      text: aiInputValue,
+                      sender: "user" as const,
+                      timestamp: new Date(),
+                    };
+                    setAiMessages(prev => [...prev, userMsg]);
+                    setAiInputValue("");
+                    setTimeout(() => { // TODO: Gọi API AI thực tế ở đây
+                      const aiMsg = {
+                        id: aiMessages.length + 2,
+                        text: "Tôi đã nhận được yêu cầu của bạn. Vui lòng xác nhận các thay đổi trước khi áp dụng vào lịch trình.",
+                        sender: "ai" as const,
+                        timestamp: new Date(),
+                      };
+                      setAiMessages(prev => [...prev, aiMsg]);
+                    }, 1000);
+                  }
+                }}
+                placeholder="Nhập tin nhắn..."
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100"
+              />
+              <button
+                onClick={() => {
+                  if (aiInputValue.trim()) {
+                    const userMsg = {
+                      id: aiMessages.length + 1,
+                      text: aiInputValue,
+                      sender: "user" as const,
+                      timestamp: new Date(),
+                    };
+                    setAiMessages(prev => [...prev, userMsg]);
+                    setAiInputValue("");
+                    setTimeout(() => { // TODO: Gọi API AI thực tế ở đây
+                      const aiMsg = {
+                        id: aiMessages.length + 2,
+                        text: "Tôi đã nhận được yêu cầu của bạn. Vui lòng xác nhận các thay đổi trước khi áp dụng vào lịch trình.",
+                        sender: "ai" as const,
+                        timestamp: new Date(),
+                      };
+                      setAiMessages(prev => [...prev, aiMsg]);
+                    }, 1000);
+                  }
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white transition-all hover:scale-105"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Login Required Modal */}

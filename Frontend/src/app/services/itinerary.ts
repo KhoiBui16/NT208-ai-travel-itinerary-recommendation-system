@@ -33,31 +33,21 @@ export interface TravelerInfo {
  * the automatic CamelCaseModel serialization from the backend.
  */
 export interface ActivityItem {
-  id?: number; // Assigned after DB insert, undefined for new activities
-
-  // --- Scheduling ---
-  time: string; // Start time in "HH:mm" format
-  endTime?: string; // Optional end time in "HH:mm" format
-
-  // --- Descriptive info ---
-  name: string; // Activity display name
-  location: string; // Address or area description
-  description: string; // Detailed description
-  type: string; // Category: "food" | "attraction" | "nature" | etc.
-  image?: string; // Photo URL
-
-  // --- Transportation ---
-  transportation?: string; // How traveler gets here: "walk" | "bike" | "bus" | "taxi"
-
-  // --- Cost breakdown (all amounts in VND) ---
-  adultPrice?: number; // Per-adult cost
-  childPrice?: number; // Per-child cost
-  customCost?: number; // Override cost (shopping, entertainment)
-  busTicketPrice?: number; // Per-person bus fare
-  taxiCost?: number; // Flat taxi fare estimate
-
-  // --- Nested ---
-  extraExpenses?: unknown[]; // Extra expense items
+  id?: number;
+  time: string;
+  endTime?: string;
+  name: string;
+  location: string;
+  description: string;
+  type: string;
+  image?: string;
+  transportation?: string;
+  adultPrice?: number;
+  childPrice?: number;
+  customCost?: number;
+  busTicketPrice?: number;
+  taxiCost?: number;
+  extraExpenses?: unknown[];
 }
 
 /** A single day in a trip itinerary, containing ordered activities. */

@@ -144,6 +144,8 @@ export function mapItineraryResponseToSessionTrip(
         customCost: activity.customCost,
         busTicketPrice: activity.busTicketPrice,
         taxiCost: activity.taxiCost,
+        latitude: activity.latitude,
+        longitude: activity.longitude,
         extraExpenses: [],
       }),
     ),

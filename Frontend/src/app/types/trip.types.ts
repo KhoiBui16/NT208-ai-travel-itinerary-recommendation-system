@@ -78,6 +78,10 @@ export interface Activity {
   busTicketPrice?: number; // Per person bus ticket
   taxiCost?: number; // Total taxi cost estimate
 
+  // --- Map coordinates ---
+  latitude?: number;  // GPS latitude for map marker
+  longitude?: number; // GPS longitude for map marker
+
   // --- Extra expenses ---
   extraExpenses?: ExtraExpense[]; // Additional itemized costs
 }
