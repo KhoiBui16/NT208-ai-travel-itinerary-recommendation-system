@@ -19,7 +19,7 @@ def test_health_endpoint__api_v1_path__returns_healthy() -> None:
     assert response.status_code == 200
     assert response.json() == {"status": "healthy"}
 
-    
+
 def test_static_image__jpg_request_falls_back_to_webp(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
