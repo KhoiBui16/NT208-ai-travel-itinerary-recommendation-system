@@ -91,6 +91,16 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
             action='Generate one: python -c "import secrets; print(secrets.token_hex(32))"',
         )
 
+    # Flush Redis cache on startup to clear old cached destination/place search lists
+    try:
+        from redis.asyncio import Redis as AsyncRedis
+        redis_client = AsyncRedis.from_url(settings.redis_url, decode_responses=True)
+        await redis_client.flushall()
+        logger.info("redis_cache_flushed_successfully_on_startup")
+        await redis_client.aclose()
+    except Exception as e:
+        logger.warning(f"failed_to_flush_redis_on_startup: {e}")
+
     yield
 
     await engine.dispose()
