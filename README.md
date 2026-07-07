@@ -349,7 +349,7 @@ Bộ tài liệu kỹ thuật tiếng Việt đầy đủ nằm trong [`docs/`](
 Tất cả các đường dẫn dưới đây phải truy cập được công khai tại thời điểm nộp bài:
 
 - Full source code: `<điền link GitHub public của project>`
-- Video demo tính năng mới nhất hoặc full demo tính năng: `https://drive.google.com/file/d/164MzlIF3FJdZA5K8DjJyJ-6vokwbVFeD/view?usp=sharing`
+- Video demo tính năng mới nhất hoặc full demo tính năng: `https://drive.google.com/file/d/1HZwDT6bFB5nAl1D1Y9v_DIZ5QJi0kCzU/view?usp=sharing`
 - Video khảo sát user: `<điền link nếu có>`
 - Ảnh chụp minh chứng cộng điểm / tài nguyên bổ sung: `<điền link nếu có>`
 - Report hoặc slide bổ sung: `<điền link nếu có>`
