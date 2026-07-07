@@ -49,6 +49,7 @@ export const useTripSync = (
   const [currentTripId, _setCurrentTripId] = useState<number | null>(tripIdParam ?? null);
   const [currentTripUpdatedAt, setCurrentTripUpdatedAt] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!tripIdParam);
   const setCurrentTripId = useCallback((id: number | null) => {
     currentTripIdRef.current = id;
     _setCurrentTripId(id);
@@ -167,24 +168,33 @@ export const useTripSync = (
       // NẾU LÀ LỊCH TRÌNH MỚI TINH (Từ bước manual setup sang) — read from wizard context
       if (wizardDestinations.length > 0 && Object.keys(wizardAllocations).length > 0) {
         try {
-          let dayCounter = 1;
-          let dayId = 1;
-          const generatedDays: Day[] = [];
-
+          // Generate raw candidates to sort chronologically first
+          const candidates: { dateObj: Date; dateStr: string; destinationName: string }[] = [];
           wizardDestinations.forEach((dest) => {
             const allocation = wizardAllocations[dest.id];
             if (!allocation) return;
             const from = parseISO(allocation.from);
             for (let i = 0; i < allocation.days; i++) {
-              generatedDays.push({
-                id: dayId++,
-                label: `Ngày ${dayCounter++} - ${dest.name}`,
-                date: format(addDays(from, i), "dd/MM/yyyy", { locale: vi }),
-                activities: [],
+              const dateObj = addDays(from, i);
+              candidates.push({
+                dateObj,
+                dateStr: format(dateObj, "dd/MM/yyyy", { locale: vi }),
                 destinationName: dest.name,
               });
             }
           });
+
+          // Sort candidates chronologically by dateObj
+          candidates.sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+
+          let dayId = 1;
+          const generatedDays: Day[] = candidates.map((cand, idx) => ({
+            id: dayId++,
+            label: `Ngày ${idx + 1} - ${cand.destinationName}`,
+            date: cand.dateStr,
+            activities: [],
+            destinationName: cand.destinationName,
+          }));
 
           if (generatedDays.length > 0) {
             setDays(generatedDays);
@@ -205,7 +215,14 @@ export const useTripSync = (
       isInitialMount.current = false;
     };
 
-    loadInitialData();
+    const run = async () => {
+      try {
+        await loadInitialData();
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    run();
     return () => { isMounted = false; };
   }, [tripIdParam, isAuthenticated, setCurrentTripId, applyServerTrip]);
 
@@ -281,6 +298,7 @@ export const useTripSync = (
               extraExpenses: a.extraExpenses,
               latitude: a.latitude,
               longitude: a.longitude,
+              placeId: a.placeId,
             })),
           })),
           accommodations: uniqueAccommodations.map((acc) => ({
@@ -342,6 +360,7 @@ export const useTripSync = (
               extraExpenses: a.extraExpenses,
               latitude: a.latitude,
               longitude: a.longitude,
+              placeId: a.placeId,
             })),
           })),
           accommodations: uniqueAccommodations.map((acc) => ({
@@ -429,5 +448,5 @@ export const useTripSync = (
     applyServerTrip,
   ]);
 
-  return { applyServerTrip, currentTripId, currentTripUpdatedAt, handleSaveItinerary, isSaving };
+  return { applyServerTrip, currentTripId, currentTripUpdatedAt, handleSaveItinerary, isSaving, isLoading };
 };

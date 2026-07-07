@@ -169,7 +169,12 @@ export function TripAccommodation({
 
         <div className="mb-8 p-5 rounded-2xl bg-gray-50 border border-gray-100 shadow-inner flex items-center gap-5">
           {hotelImage ? (
-            <img src={hotelImage} alt={selectedHotel.name} className="h-20 w-32 rounded-lg object-cover flex-shrink-0 shadow-sm" />
+            <img
+              src={resolvePlaceImage(hotelImage)}
+              alt={selectedHotel.name}
+              onError={applyPlaceImageFallback}
+              className="h-20 w-32 rounded-lg object-cover flex-shrink-0 shadow-sm"
+            />
           ) : (
             <div className="flex h-20 w-32 items-center justify-center rounded-lg bg-cyan-50 text-cyan-500 shadow-sm">
               <HotelIcon className="h-8 w-8" />
