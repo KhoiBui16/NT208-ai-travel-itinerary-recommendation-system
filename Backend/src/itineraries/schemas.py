@@ -107,6 +107,8 @@ class ActivitySchema(CamelCaseModel):
 
     latitude: float | None = None
     longitude: float | None = None
+    place_id: int | None = None
+    city: str | None = None
 
 
 class DaySchema(CamelCaseModel):
@@ -377,6 +379,7 @@ class CompanionPatchActivityInput(CamelCaseModel):
     extra_expenses: list[ExtraExpenseSchema] = Field(default_factory=list)
     latitude: float | None = None
     longitude: float | None = None
+    place_id: int | None = None
 
     @field_validator("type", mode="before")
     @classmethod

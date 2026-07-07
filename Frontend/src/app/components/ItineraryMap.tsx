@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapPin, Navigation, Locate } from "lucide-react";
+import { MapPin, Navigation, Locate, Loader2, AlertTriangle } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface MapActivity {
@@ -52,13 +52,11 @@ function createNumberedIcon(index: number): L.DivIcon {
 // ─── Auto-fit bounds helper ──────────────────────────────────────
 function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap();
-  const fitted = useRef(false);
 
   useEffect(() => {
-    if (positions.length > 0 && !fitted.current) {
+    if (positions.length > 0) {
       const bounds = L.latLngBounds(positions.map(([lat, lng]) => [lat, lng]));
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-      fitted.current = true;
     }
   }, [positions, map]);
 
@@ -170,12 +168,42 @@ export function ItineraryMap({
   // Center on first marker (fitBounds will override)
   const center: [number, number] = positions[0];
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [mapLoading, setMapLoading] = useState(true);
+  const [tileError, setTileError] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMapLoading(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div
-      className="relative overflow-hidden rounded-xl shadow-inner"
+      className="relative overflow-hidden rounded-xl shadow-inner bg-gray-50"
       style={{ height }}
     >
+      {/* Loading Spinner */}
+      {mapLoading && (
+        <div className="absolute inset-0 z-[2000] flex flex-col items-center justify-center bg-gray-50/80 backdrop-blur-sm transition-all duration-300">
+          <Loader2 className="h-8 w-8 animate-spin text-cyan-600 mb-2" />
+          <p className="text-sm font-semibold text-gray-600">Đang tải bản đồ...</p>
+        </div>
+      )}
+
+      {/* Connection / OSM Server Overload Warning Banner */}
+      {tileError && (
+        <div className="absolute top-12 left-3 z-[1000] rounded-lg bg-amber-50 border border-amber-200 p-3 shadow-lg flex items-start gap-2 max-w-[320px] transition-all">
+          <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-bold text-amber-800">Sự cố tải bản đồ nền</p>
+            <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed font-sans">
+              Không thể tải một số vùng bản đồ từ dịch vụ OpenStreetMap. Vui lòng kiểm tra kết nối mạng của bạn hoặc thử lại sau ít phút.
+            </p>
+          </div>
+        </div>
+      )}
+
       <MapContainer
         center={center}
         zoom={13}
@@ -186,6 +214,14 @@ export function ItineraryMap({
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          eventHandlers={{
+            tileerror: () => {
+              setTileError(true);
+            },
+            load: () => {
+              setMapLoading(false);
+            }
+          }}
         />
 
         <FitBounds positions={positions} />

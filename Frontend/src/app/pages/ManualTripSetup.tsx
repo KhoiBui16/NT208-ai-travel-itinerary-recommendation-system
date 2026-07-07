@@ -67,7 +67,7 @@ export default function ManualTripSetup() {
             name: d.name,
             country: d.country || "",
             image: resolveDestinationImage(d.name, d.image),
-            description: d.readinessReason || d.country || "",
+            description: d.description || d.readinessReason || d.country || "",
             rating: d.rating || 0,
             places: [],
           }));

@@ -140,6 +140,14 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
       setActiveCategory("all");
       setPlacesError(null);
 
+      // Nếu đã có điểm đến xác định, chuyển hướng loading trực tiếp sang place
+      if (destinationName) {
+        setStep("place");
+        setPlacesLoading(true);
+      } else {
+        setStep("city");
+      }
+
       if (cities.length === 0) {
         setCitiesLoading(true);
       }
@@ -166,20 +174,31 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
           }) ?? null;
 
         if (matchedCity) {
-          await loadCityPlaces(matchedCity);
+          // Gọi API lấy địa điểm
+          const detail = await getDestinationDetail(matchedCity.slug);
+          if (!active) return;
+          setCityPlaces(detail.places.map(mapPlaceResponseToTripPlace));
+          setSelectedCityId(matchedCity.id);
+          setStep("place");
         } else {
           setStep("city");
           setSelectedCityId(null);
           setCityPlaces([]);
         }
-      } catch {
+      } catch (err) {
         if (!active) return;
-        setCities([]);
-        setStep("city");
-        setSelectedCityId(null);
+        if (destinationName) {
+          setStep("place");
+          setPlacesError(`Không thể tải địa điểm cho ${destinationName} từ API.`);
+        } else {
+          setStep("city");
+          setSelectedCityId(null);
+          setCityPlaces([]);
+        }
       } finally {
         if (active) {
           setCitiesLoading(false);
+          setPlacesLoading(false);
         }
       }
 
@@ -350,7 +369,7 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
               )}
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  {step === "city" ? "Chọn thành phố" : selectedCity?.name}
+                  {step === "city" ? "Chọn thành phố" : (selectedCity?.name || destinationName)}
                 </h2>
                 <p className="text-sm text-gray-500">
                   {step === "city" 
@@ -446,8 +465,8 @@ export function PlaceSelectionModal({ isOpen, onClose, currentDayLabel, onAddPla
             <>
               {placesLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                  <MapPin className="mb-3 h-12 w-12 text-gray-300" />
-                  <p className="text-lg font-semibold">Đang tải địa điểm...</p>
+                  <MapPin className="mb-3 h-12 w-12 text-cyan-500 animate-bounce" />
+                  <p className="text-lg font-semibold">Đang tải danh sách địa điểm của {destinationName || selectedCity?.name}...</p>
                 </div>
               ) : placesError ? (
                 <div className="flex flex-col items-center justify-center py-12 text-gray-500">

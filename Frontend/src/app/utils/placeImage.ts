@@ -1,32 +1,31 @@
 import type { SyntheticEvent } from "react";
 import { API_BASE } from "../services/api";
 
-export const DEFAULT_PLACE_IMAGE =
-  "https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=1080";
+export const DEFAULT_PLACE_IMAGE = "/img/placeholder.svg";
 
-// Category-based fallback images (Pexels — free to use)
+// Category-based fallback images - now pointing to default placeholder.svg
 export const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
-  food: "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?w=400",
-  attraction: "https://images.pexels.com/photos/2166553/pexels-photo-2166553.jpeg?w=400",
-  nature: "https://images.pexels.com/photos/1179229/pexels-photo-1179229.jpeg?w=400",
-  entertainment: "https://images.pexels.com/photos/1105666/pexels-photo-1105666.jpeg?w=400",
-  shopping: "https://images.pexels.com/photos/1884581/pexels-photo-1884581.jpeg?w=400",
+  food: "/img/placeholder.svg",
+  attraction: "/img/placeholder.svg",
+  nature: "/img/placeholder.svg",
+  entertainment: "/img/placeholder.svg",
+  shopping: "/img/placeholder.svg",
 };
 
-// Destination name → representative cover image for TripHistory cards
+// Destination name → representative cover image - now pointing to default placeholder.svg
 const DESTINATION_COVER_IMAGES: Record<string, string> = {
-  "Hà Nội": "https://images.unsplash.com/photo-1509030450996-dd1a26dda07a?w=600&q=80",
-  "TP. Hồ Chí Minh": "https://images.unsplash.com/photo-1532961432136-ca37cae5fa4a?w=600&q=80",
-  "Hồ Chí Minh": "https://images.unsplash.com/photo-1532961432136-ca37cae5fa4a?w=600&q=80",
-  "Đà Nẵng": "https://images.unsplash.com/photo-1723142282970-1fd415eec1ad?w=600&q=80",
-  "Hội An": "https://images.unsplash.com/photo-1664650440553-ab53804814b3?w=600&q=80",
-  "Hạ Long": "https://images.unsplash.com/photo-1668000018482-a02acf02b22a?w=600&q=80",
-  "Sapa": "https://images.unsplash.com/photo-1694152362876-42d5815a214d?w=600&q=80",
-  "Nha Trang": "https://images.pexels.com/photos/2166553/pexels-photo-2166553.jpeg?w=600",
-  "Đà Lạt": "https://images.pexels.com/photos/1179229/pexels-photo-1179229.jpeg?w=600",
-  "Phú Quốc": "https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?w=600",
-  "Huế": "https://images.pexels.com/photos/2249485/pexels-photo-2249485.jpeg?w=600",
-  "Ninh Bình": "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?w=600",
+  "Hà Nội": "/img/placeholder.svg",
+  "TP. Hồ Chí Minh": "/img/placeholder.svg",
+  "Hồ Chí Minh": "/img/placeholder.svg",
+  "Đà Nẵng": "/img/placeholder.svg",
+  "Hội An": "/img/placeholder.svg",
+  "Hạ Long": "/img/placeholder.svg",
+  "Sapa": "/img/placeholder.svg",
+  "Nha Trang": "/img/placeholder.svg",
+  "Đà Lạt": "/img/placeholder.svg",
+  "Phú Quốc": "/img/placeholder.svg",
+  "Huế": "/img/placeholder.svg",
+  "Ninh Bình": "/img/placeholder.svg",
 };
 
 function resolveApiImageUrl(
@@ -55,7 +54,8 @@ export function resolvePlaceImage(
   image?: string | null,
   fallbackSrc: string = DEFAULT_PLACE_IMAGE,
 ): string {
-  return resolveApiImageUrl(image, fallbackSrc);
+  const resolved = resolveApiImageUrl(image, fallbackSrc);
+  return resolveApiImageUrl(resolved);
 }
 
 /**
@@ -77,16 +77,47 @@ export function resolvePlaceImageWithCategory(
   image?: string | null,
   category?: string,
 ): string {
-  return resolveApiImageUrl(image, getPlaceFallbackImage(category));
+  const resolved = resolveApiImageUrl(image, getPlaceFallbackImage(category));
+  return resolveApiImageUrl(resolved);
+}
+
+/**
+ * Converts a Vietnamese city name to its corresponding URL slug.
+ */
+export function getCitySlug(cityName: string): string {
+  let normalized = cityName.trim().toLowerCase();
+  if (normalized.includes("ho chi minh") || normalized.includes("hcm")) {
+    return "tp-ho-chi-minh";
+  }
+  return normalized
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, "d")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 }
 
 /**
  * Returns a destination cover image for use in TripHistory cards.
+ * Splits multi-destination names, sorts them A-Z alphabetically, and picks the first city's image.
  */
 export function getDestinationFallbackImage(destination?: string | null): string {
-  if (!destination) return DEFAULT_PLACE_IMAGE;
-  const key = destination.trim();
-  return DESTINATION_COVER_IMAGES[key] ?? DEFAULT_PLACE_IMAGE;
+  if (!destination) return resolvePlaceImage(DEFAULT_PLACE_IMAGE);
+  
+  const cities = destination
+    .split(/,\s*/)
+    .map((c) => c.trim())
+    .filter(Boolean);
+    
+  if (cities.length === 0) return resolvePlaceImage(DEFAULT_PLACE_IMAGE);
+  
+  // Sort alphabetically A-Z (Vietnamese locale aware)
+  cities.sort((a, b) => a.localeCompare(b, "vi"));
+  
+  const chosenCity = cities[0];
+  return resolvePlaceImage(`/img/destinations/${getCitySlug(chosenCity)}.jpg`);
 }
 
 export function applyPlaceImageFallback(
@@ -98,5 +129,5 @@ export function applyPlaceImageFallback(
   }
 
   event.currentTarget.dataset.fallbackApplied = "true";
-  event.currentTarget.src = fallbackSrc;
+  event.currentTarget.src = resolvePlaceImage(fallbackSrc);
 }

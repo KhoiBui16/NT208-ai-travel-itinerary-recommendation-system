@@ -81,6 +81,8 @@ export interface Activity {
   // --- Map coordinates ---
   latitude?: number;  // GPS latitude for map marker
   longitude?: number; // GPS longitude for map marker
+  placeId?: number;   // Linked place database ID
+  city?: string;      // Name of the destination city
 
   // --- Extra expenses ---
   extraExpenses?: ExtraExpense[]; // Additional itemized costs
@@ -129,6 +131,8 @@ export interface Place {
   saved: boolean; // Whether the current user has bookmarked this place
   city: string; // Parent destination name
   description?: string; // Place description text
+  latitude?: number; // GPS latitude
+  longitude?: number; // GPS longitude
 }
 
 /**

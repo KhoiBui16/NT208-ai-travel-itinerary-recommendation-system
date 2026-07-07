@@ -40,7 +40,7 @@ def _get_pwd_context() -> Any:
 
 
 def hash_password(plain: str) -> str:
-    """Hash a plain-text password with bcrypt.
+    """Hash a plain-text password with bcrypt directly.
 
     Args:
         plain: The user's plaintext password.
@@ -48,11 +48,15 @@ def hash_password(plain: str) -> str:
     Returns:
         bcrypt hash string suitable for storage in the users table.
     """
-    return _get_pwd_context().hash(plain)
+    import bcrypt
+    pwd_bytes = plain.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """Verify a plain-text password against a stored bcrypt hash.
+    """Verify a plain-text password against a stored bcrypt hash directly.
 
     Args:
         plain: The plaintext password to check.
@@ -61,7 +65,10 @@ def verify_password(plain: str, hashed: str) -> bool:
     Returns:
         True if the password matches, False otherwise.
     """
-    return _get_pwd_context().verify(plain, hashed)
+    import bcrypt
+    pwd_bytes = plain.encode('utf-8')
+    hashed_bytes = hashed.encode('utf-8')
+    return bcrypt.checkpw(pwd_bytes, hashed_bytes)
 
 
 def hash_token(raw_token: str) -> str:

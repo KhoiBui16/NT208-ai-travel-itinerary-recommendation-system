@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link, useParams } from "react-router";
+import { useNavigate, Link, useParams, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
@@ -10,6 +10,7 @@ import { getDestinationDetail, listSavedPlaces, savePlace, unsavePlace, type Pla
 import { normalizeSavedPlaces } from "../utils/savedPlaces";
 import { applyPlaceImageFallback, resolvePlaceImage } from "../utils/placeImage";
 import { GoongMap } from "../components/GoongMap";
+import { ItineraryMap } from "../components/ItineraryMap";
 import {
   Plus,
   Car,
@@ -29,6 +30,10 @@ import {
   Star,
   Eye,
   Bookmark,
+  Send,
+  MessageCircle,
+  X,
+  AlertCircle,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import {
@@ -52,6 +57,7 @@ interface Activity {
   transportation?: "walk" | "bike" | "bus" | "taxi";
   latitude?: number;
   longitude?: number;
+  city?: string;
 }
 
 interface Day {
@@ -73,6 +79,7 @@ export default function DailyItinerary() {
   const [savedSuggestions, setSavedSuggestions] = useState<number[]>([]);
   const [viewingPlace, setViewingPlace] = useState<PlaceResponse | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<"suggestions" | "map">("suggestions");
+  const [showAIChat, setShowAIChat] = useState(false);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [aiMessages, setAiMessages] = useState<Array<{ id: number; text: string; sender: "user" | "ai"; timestamp: Date }>>([
@@ -114,6 +121,8 @@ export default function DailyItinerary() {
               transportation: a.transportation,
               latitude: a.latitude ?? undefined,
               longitude: a.longitude ?? undefined,
+              placeId: a.placeId ?? undefined,
+              city: a.city ?? undefined,
             })),
             destinationName: d.destinationName,
           })));
@@ -159,6 +168,15 @@ export default function DailyItinerary() {
   // Get selected day data
   const selectedDay = days.find(d => d.id.toString() === selectedDayId);
   const currentActivities = selectedDay?.activities || [];
+
+  // Determine dynamic destination name for the map
+  const displayDestinationName = (() => {
+    const activityWithCity = currentActivities.find(act => act.city);
+    if (activityWithCity?.city) {
+      return activityWithCity.city;
+    }
+    return selectedDay?.destinationName || "";
+  })();
 
   // Filter suggestions based on selected day's destination and sort bookmarked to top
   const filteredSuggestions = mockSuggestions
@@ -502,61 +520,13 @@ export default function DailyItinerary() {
               ))}
             </div>
           ) : (
-            /* Map Tab — real Goong map of the destination's places */
+            /* Map Tab — real Leaflet (OpenStreetMap) of the day's activities */
             <div className="flex-1 relative overflow-hidden">
-              {/* Mock Map */}
-              <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 relative">
-                {/* Mock Map Markers */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <div className="relative">
-                    {/* Center Marker */}
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500 shadow-lg">
-                      <MapIcon className="h-6 w-6 text-white" />
-                    </div>
-                    <p className="mt-2 text-xs font-semibold text-gray-700 text-center">
-                      {selectedDay?.destinationName || "Hà Nội"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Mock Location Pins */}
-                <div className="absolute top-1/4 left-1/3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 shadow-md">
-                    <Utensils className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-                <div className="absolute top-2/3 left-2/3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 shadow-md">
-                    <Building className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-                <div className="absolute top-1/3 right-1/4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 shadow-md">
-                    <Coffee className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-
-                {/* Map Overlay Info */}
-                <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-white/90 p-4 shadow-lg backdrop-blur-sm">
-                  <p className="text-sm font-semibold text-gray-700 mb-1">
-                    Bản đồ khu vực {selectedDay?.destinationName || "Hà Nội"}
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    Đang hiển thị các địa điểm gợi ý trong phạm vi thành phố
-                  </p>
-                </div>
-
-                {/* Mock Grid Lines */}
-                <div className="absolute inset-0 opacity-10">
-                  <div className="h-full w-full" style={{
-                    backgroundImage: `
-                      linear-gradient(to right, #000 1px, transparent 1px),
-                      linear-gradient(to bottom, #000 1px, transparent 1px)
-                    `,
-                    backgroundSize: '40px 40px'
-                  }} />
-                </div>
-              </div>
+              <ItineraryMap
+                activities={currentActivities}
+                destinationName={displayDestinationName}
+                height="100%"
+              />
             </div>
           )}
         </div>

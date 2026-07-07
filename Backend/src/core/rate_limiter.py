@@ -240,7 +240,9 @@ class RateLimiter:
         try:
             current = int(await self.redis.get(key) or 0)
         except Exception as exc:
-            raise ServiceUnavailableException("AI rate limiter unavailable") from exc
+            if self.settings.ai_rate_limit_fail_mode == "closed":
+                raise ServiceUnavailableException("AI rate limiter unavailable") from exc
+            current = 0
         resolved_limit = limit or self.settings.rate_limit_ai_free
         return RateLimitInfo(
             remaining=max(resolved_limit - current, 0),

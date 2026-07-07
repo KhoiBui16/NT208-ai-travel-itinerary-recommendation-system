@@ -4,7 +4,7 @@ import { MapPin, Calendar, DollarSign, Clock, TrendingUp, Edit2, Eye, FileText, 
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { listItineraries, updateItinerary, deleteItinerary } from "../services/itinerary";
-import { getDestinationFallbackImage } from "../utils/placeImage";
+import { getDestinationFallbackImage, resolvePlaceImage } from "../utils/placeImage";
 import {
   computeTripDurationDays,
   computeTripTimelineStatus,
@@ -54,7 +54,7 @@ export default function TripHistory() {
         days: computeTripDurationDays(trip.startDate, trip.endDate),
         estimatedCost: trip.totalCost ?? trip.budget ?? 0,
         status: computeTripTimelineStatus(trip.startDate, trip.endDate),
-        coverImage: trip.coverImage || getDestinationFallbackImage(trip.destination),
+        coverImage: resolvePlaceImage(trip.coverImage, getDestinationFallbackImage(trip.destination)),
         tripData: trip,
       }));
       mapped.sort((a, b) => b.createdAt - a.createdAt);
