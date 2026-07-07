@@ -46,6 +46,8 @@ export default function ManualTripSetup() {
   const { setDestinations: setWizardDestinations } = useTripWizard();
   const [searchQuery, setSearchQuery] = useState("");
   const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [isLoadingDestinations, setIsLoadingDestinations] = useState(true);
+  const [destinationLoadIssue, setDestinationLoadIssue] = useState<"empty" | "error" | null>(null);
   const [loadMessage, setLoadMessage] = useState<string | null>(null);
   const [savedDestinations, setSavedDestinations] = useState<number[]>([]);
   const [selectedDests, setSelectedDests] = useState<number[]>([]);
@@ -58,6 +60,10 @@ export default function ManualTripSetup() {
     let isMounted = true;
 
     async function loadApiDestinations() {
+      setIsLoadingDestinations(true);
+      setDestinationLoadIssue(null);
+      setLoadMessage(null);
+
       try {
         const apiDests = await listDestinations();
         if (!isMounted) return;
@@ -72,14 +78,22 @@ export default function ManualTripSetup() {
             places: [],
           }));
           setDestinations(mapped);
+          setDestinationLoadIssue(null);
+          setLoadMessage(null);
         } else {
           setDestinations([]);
+          setDestinationLoadIssue("empty");
           setLoadMessage("Chưa có dữ liệu điểm đến trong hệ thống. Hãy chạy ETL để nạp dữ liệu thật trước khi tạo chuyến đi thủ công.");
         }
       } catch {
         if (!isMounted) return;
         setDestinations([]);
+        setDestinationLoadIssue("error");
         setLoadMessage("Không thể tải điểm đến từ API. Hãy kiểm tra backend, database và ETL.");
+      } finally {
+        if (isMounted) {
+          setIsLoadingDestinations(false);
+        }
       }
     }
 
@@ -306,11 +320,17 @@ export default function ManualTripSetup() {
           </div>
         )}
 
-        {loadMessage && (
-          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
-            {loadMessage}
+        {isLoadingDestinations ? (
+          <div className="mb-6 rounded-2xl border border-cyan-200 bg-cyan-50 px-5 py-4 text-sm text-cyan-800">
+            Đang tải danh sách các thành phố...
           </div>
-        )}
+        ) : loadMessage ? (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+            {destinationLoadIssue === "empty"
+              ? "Không có dữ liệu thành phố trong hệ thống. Hãy chạy ETL để nạp dữ liệu trước khi tạo chuyến đi thủ công."
+              : loadMessage}
+          </div>
+        ) : null}
 
         {/* Search */}
         <div className="mb-6 relative">
@@ -443,7 +463,34 @@ export default function ManualTripSetup() {
           })}
         </div>
 
-        {filtered.length === 0 && (
+        {isLoadingDestinations && filtered.length === 0 && (
+          <div className="py-20 text-center">
+            <MapPin className="mx-auto mb-4 h-12 w-12 animate-pulse text-gray-300" />
+            <p className="text-gray-500">
+              Đang tải danh sách các thành phố...
+            </p>
+          </div>
+        )}
+
+        {!isLoadingDestinations && destinationLoadIssue === "empty" && (
+          <div className="py-20 text-center">
+            <MapPin className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+            <p className="text-gray-500">
+              Không có dữ liệu thành phố khả dụng
+            </p>
+          </div>
+        )}
+
+        {!isLoadingDestinations && destinationLoadIssue === "error" && (
+          <div className="py-20 text-center">
+            <MapPin className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+            <p className="text-gray-500">
+              Không thể tải danh sách thành phố từ API
+            </p>
+          </div>
+        )}
+
+        {!isLoadingDestinations && destinationLoadIssue === null && filtered.length === 0 && (
           <div className="py-20 text-center">
             <MapPin className="mx-auto mb-4 h-12 w-12 text-gray-300" />
             <p className="text-gray-500">
