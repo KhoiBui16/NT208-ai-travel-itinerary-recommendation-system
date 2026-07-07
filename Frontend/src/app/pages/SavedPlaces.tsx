@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
 import * as placesService from "../services/places";
 import { normalizeSavedPlaces, type NormalizedSavedPlace } from "../utils/savedPlaces";
+import { resolvePlaceImage, applyPlaceImageFallback } from "../utils/placeImage";
 
 interface SavedPlaceDisplay {
   savedId: number; // bookmark row ID — used for DELETE /saved/:savedId
@@ -165,8 +166,9 @@ export default function SavedPlaces() {
                 {/* Location Image */}
                 <div className="relative h-48 overflow-hidden">
                   <img
-                    src={location.image}
+                    src={resolvePlaceImage(location.image)}
                     alt={location.name}
+                    onError={applyPlaceImageFallback}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
@@ -258,7 +260,7 @@ export default function SavedPlaces() {
         <PlaceInfoModal
           place={{
             name: viewingPlace.name,
-            image: viewingPlace.image,
+            image: resolvePlaceImage(viewingPlace.image),
             description: viewingPlace.description,
             address: viewingPlace.address,
             rating: viewingPlace.rating,

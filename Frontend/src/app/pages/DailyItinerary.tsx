@@ -3,10 +3,10 @@ import { useNavigate, Link, useParams, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
 import { LoginRequiredModal } from "../components/LoginRequiredModal";
 import { PlaceInfoModal } from "../components/PlaceInfoModal";
-import { Suggestion, mockSuggestions } from "../data/suggestions";
 import { useAuth } from "../contexts/AuthContext";
-import { getItinerary } from "../services/itinerary";
-import { getDestinationDetail, listSavedPlaces, savePlace, unsavePlace, type PlaceResponse } from "../services/places";
+import { getItinerary, addActivity, shareItinerary } from "../services/itinerary";
+import { getDestinationDetail, listSavedPlaces, savePlace, unsavePlace, searchPlaces, type PlaceResponse } from "../services/places";
+import { toast } from "sonner";
 import { normalizeSavedPlaces } from "../utils/savedPlaces";
 import { applyPlaceImageFallback, resolvePlaceImage } from "../utils/placeImage";
 import { GoongMap } from "../components/GoongMap";
@@ -34,6 +34,7 @@ import {
   MessageCircle,
   X,
   AlertCircle,
+  Copy,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import {
@@ -75,8 +76,55 @@ export default function DailyItinerary() {
   const [searchParams] = useSearchParams();
   const tripIdParam = searchParams.get("tripId");
   const { isAuthenticated } = useAuth();
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
   const [savedSuggestions, setSavedSuggestions] = useState<number[]>([]);
+
+  const handleShare = async () => {
+    if (!tripIdParam) return;
+    setIsSharing(true);
+    try {
+      const resp = await shareItinerary(Number(tripIdParam));
+      const token = resp.shareToken;
+      const isValidToken =
+        token &&
+        token !== "[REDACTED]" &&
+        !token.startsWith("[REDACTED") &&
+        token.length > 8;
+      if (!isValidToken) {
+        toast.warning(
+          "Không thể lấy link chia sẻ. Hãy thử lại để tạo link mới.",
+        );
+        return;
+      }
+      const link =
+        resp.shareUrl && resp.shareUrl.startsWith("http")
+          ? resp.shareUrl
+          : `${window.location.origin}/shared/${token}`;
+      setShareLink(link);
+      toast.success("Tạo liên kết chia sẻ thành công!");
+    } catch {
+      toast.error("Không thể chia sẻ lịch trình");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      toast.success("Đã sao chép liên kết chia sẻ");
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = shareLink;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      toast.success("Đã sao chép liên kết chia sẻ");
+    }
+  };
   const [viewingPlace, setViewingPlace] = useState<PlaceResponse | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<"suggestions" | "map">("suggestions");
   const [showAIChat, setShowAIChat] = useState(false);
@@ -147,22 +195,6 @@ export default function DailyItinerary() {
       }
     }
 
-    // Load saved places from API
-    if (isAuthenticated) {
-      listSavedPlaces().then((data) => {
-        const normalized = normalizeSavedPlaces(data);
-        const savedIds = new Set(
-          data
-            .map((item) => item.place?.id)
-            .filter((value): value is number => typeof value === "number"),
-        );
-        const savedNames = new Set(normalized.map((p) => p.name));
-        const matchedIds = suggestions
-          .filter((place) => savedIds.has(place.id) || savedNames.has(place.name))
-          .map((place) => place.id);
-        setSavedSuggestions(matchedIds);
-      }).catch(() => { });
-    }
   }, [tripIdParam, isAuthenticated]);
 
   // Get selected day data
@@ -178,15 +210,51 @@ export default function DailyItinerary() {
     return selectedDay?.destinationName || "";
   })();
 
-  // Filter suggestions based on selected day's destination and sort bookmarked to top
-  const filteredSuggestions = mockSuggestions
+  // Load suggestions from API when destination name changes
+  useEffect(() => {
+    if (!displayDestinationName) return;
+    setSuggestionsLoading(true);
+    setSuggestionsError(null);
+    searchPlaces({ city: displayDestinationName, limit: 100 })
+      .then((data) => {
+        setSuggestions(data);
+        setSuggestionsLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error loading suggestions:", err);
+        setSuggestionsError("Không thể tải gợi ý địa điểm từ cơ sở dữ liệu.");
+        setSuggestionsLoading(false);
+      });
+  }, [displayDestinationName]);
+
+  // Load saved places and match with current suggestions
+  useEffect(() => {
+    if (isAuthenticated && suggestions.length > 0) {
+      listSavedPlaces().then((data) => {
+        const normalized = normalizeSavedPlaces(data);
+        const savedIds = new Set(
+          data
+            .map((item) => item.place?.id)
+            .filter((value): value is number => typeof value === "number"),
+        );
+        const savedNames = new Set(normalized.map((p) => p.name));
+        const matchedIds = suggestions
+          .filter((place) => savedIds.has(place.id) || savedNames.has(place.name))
+          .map((place) => place.id);
+        setSavedSuggestions(matchedIds);
+      }).catch(() => { });
+    }
+  }, [suggestions, isAuthenticated]);
+
+  // Filter suggestions: exclude places already in the selected day's activities
+  const filteredSuggestions = suggestions
     .filter(suggestion => {
-      // Nếu không có ngày chọn thì hiện tất cả, nếu có thì kiểm tra tên thành phố
-      if (!selectedDay?.destinationName) return true;
-      return suggestion.city === selectedDay.destinationName;
+      const isAlreadySelected = currentActivities.some(
+        act => act.name.toLowerCase().trim() === suggestion.name.toLowerCase().trim()
+      );
+      return !isAlreadySelected;
     })
     .sort((a, b) => {
-      // Sort bookmarked places to the top
       const aIsBookmarked = savedSuggestions.includes(a.id);
       const bIsBookmarked = savedSuggestions.includes(b.id);
       if (aIsBookmarked && !bIsBookmarked) return -1;
@@ -196,7 +264,7 @@ export default function DailyItinerary() {
 
   const totalTravelTime = "55 phút";
 
-  const handleToggleSave = async (suggestion: Suggestion) => {
+  const handleToggleSave = async (suggestion: PlaceResponse) => {
     if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
@@ -215,9 +283,13 @@ export default function DailyItinerary() {
       if (isAlreadySaved) {
         const savedList = await listSavedPlaces();
         const match = savedList.find((item) => item.place?.id === suggestion.id || item.place?.name === suggestion.name);
-        if (match) await unsavePlace(match.id);
+        if (match) {
+          await unsavePlace(match.id);
+          toast.success(`Đã bỏ lưu ${suggestion.name}`);
+        }
       } else {
         await savePlace(suggestion.id);
+        toast.success(`Đã lưu ${suggestion.name} thành công!`);
       }
     } catch {
       // Revert on failure
@@ -225,6 +297,98 @@ export default function DailyItinerary() {
         setSavedSuggestions(prev => [...prev, suggestion.id]);
       } else {
         setSavedSuggestions(prev => prev.filter(id => id !== suggestion.id));
+      }
+      toast.error("Thao tác thất bại. Vui lòng thử lại.");
+    }
+  };
+
+  const handleAddSuggestionToItinerary = async (suggestion: PlaceResponse) => {
+    if (!selectedDay) return;
+
+    // Tự động tính toán thời gian hợp lý (cộng 2 tiếng sau hoạt động cuối, hoặc mặc định 09:00)
+    const getNextTime = () => {
+      if (currentActivities.length === 0) return "09:00";
+      const lastAct = currentActivities[currentActivities.length - 1];
+      const match = lastAct.time.match(/^(\d{1,2}):(\d{2})$/);
+      if (!match) return "09:00";
+      const hours = parseInt(match[1], 10);
+      const minutes = parseInt(match[2], 10);
+      let nextHours = hours + 2;
+      if (nextHours >= 24) nextHours = 23;
+      return `${String(nextHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    };
+
+    const nextTime = getNextTime();
+    const tempId = Date.now() + Math.floor(Math.random() * 1000);
+
+    const newActivity: Activity = {
+      id: tempId,
+      time: nextTime,
+      name: suggestion.name,
+      location: suggestion.location || suggestion.city,
+      description: suggestion.description || `Khám phá ${suggestion.name} tại ${suggestion.city}.`,
+      type: (suggestion.type as any) || "attraction",
+      image: suggestion.image || "",
+      transportation: "taxi",
+      latitude: suggestion.latitude,
+      longitude: suggestion.longitude,
+    };
+
+    // Optimistic UI update
+    setDays((prevDays) =>
+      prevDays.map((day) =>
+        day.id === selectedDay.id
+          ? { ...day, activities: [...day.activities, newActivity] }
+          : day
+      )
+    );
+
+    toast.success(`Đã thêm ${suggestion.name} vào lịch trình ngày hôm nay!`);
+
+    if (tripIdParam) {
+      try {
+        const resp = await addActivity(Number(tripIdParam), selectedDay.id, {
+          time: newActivity.time,
+          endTime: newActivity.endTime || "",
+          name: newActivity.name,
+          location: newActivity.location,
+          description: newActivity.description,
+          type: newActivity.type,
+          image: newActivity.image,
+          transportation: newActivity.transportation,
+          latitude: newActivity.latitude,
+          longitude: newActivity.longitude,
+        });
+
+        // Update with actual database ID
+        if (resp.id && resp.id !== tempId) {
+          setDays((prevDays) =>
+            prevDays.map((day) =>
+              day.id === selectedDay.id
+                ? {
+                    ...day,
+                    activities: day.activities.map((act) =>
+                      act.id === tempId ? { ...act, id: resp.id! } : act
+                    ),
+                  }
+                : day
+            )
+          );
+        }
+      } catch (error) {
+        console.error("Error adding activity to DB:", error);
+        // Revert optimistic update
+        setDays((prevDays) =>
+          prevDays.map((day) =>
+            day.id === selectedDay.id
+              ? {
+                  ...day,
+                  activities: day.activities.filter((act) => act.id !== tempId),
+                }
+              : day
+          )
+        );
+        toast.error(`Không thể thêm ${suggestion.name}. Vui lòng thử lại.`);
       }
     }
   };
@@ -235,7 +399,7 @@ export default function DailyItinerary() {
 
       {/* Top Navigation Bar */}
       <div className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-7xl px-6 py-4">
+        <div className="w-full px-6 py-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             {/* Left: Day Selector Dropdown */}
             <div className="flex items-center gap-3">
@@ -257,7 +421,7 @@ export default function DailyItinerary() {
             </div>
 
             {/* Right: Action buttons */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 sm:ml-auto">
               {/* Detail Trip Button - UPDATED TEXT */}
               <Link
                 to={tripIdParam ? `/trip-workspace?tripId=${tripIdParam}` : "/trip-workspace"}
@@ -268,48 +432,26 @@ export default function DailyItinerary() {
               </Link>
 
               {/* Share Button */}
-              <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-                <DialogTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-semibold text-gray-700 shadow-md transition-all hover:shadow-lg border border-gray-200">
-                    <Share2 className="h-5 w-5" />
-                    <span className="hidden sm:inline">Chia sẻ</span>
-                  </button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Chia Sẻ Chuyến Đi</DialogTitle>
-                    <DialogDescription>
-                      Chia sẻ lịch trình của bạn với bạn bè và gia đình
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    {!isAuthenticated ? (
-                      <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-center">
-                        <p className="text-sm font-semibold text-amber-800">
-                          Vui lòng đăng nhập để chia sẻ lịch trình
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
-                        <p className="text-sm text-gray-600">
-                          Màn hình này chỉ là bản xem theo ngày. Để tạo link chia sẻ thật, hãy vào trang Chi tiết lịch trình và dùng nút Chia sẻ ở đó.
-                        </p>
-                      </div>
-                    )}
-                    <div className="space-y-2">
-                      <button
-                        disabled
-                        title="Tính năng đang phát triển"
-                        className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 opacity-50 cursor-not-allowed"
-                      >
-                        <Download className="h-5 w-5 text-gray-400" />
-                        <span className="font-semibold text-gray-400">Export as PDF</span>
-                        <span className="ml-auto text-xs text-gray-400">Tính năng đang phát triển</span>
-                      </button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              {isAuthenticated ? (
+                <button
+                  onClick={handleShare}
+                  disabled={isSharing}
+                  className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-semibold text-gray-700 shadow-md transition-all hover:shadow-lg border border-gray-200 disabled:opacity-50"
+                >
+                  <Share2 className="h-5 w-5 animate-pulse" />
+                  <span className="hidden sm:inline">
+                    {isSharing ? "Đang chia sẻ..." : "Chia sẻ"}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 font-semibold text-gray-700 shadow-md transition-all hover:shadow-lg border border-gray-200"
+                >
+                  <Share2 className="h-5 w-5" />
+                  <span className="hidden sm:inline">Chia sẻ</span>
+                </button>
+              )}
 
               <Link
                 to="/create-trip"
@@ -320,6 +462,27 @@ export default function DailyItinerary() {
               </Link>
             </div>
           </div>
+
+          {/* Share Link Bar */}
+          {shareLink && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2.5">
+              <Share2 className="h-4 w-4 text-cyan-600 flex-shrink-0" />
+              <span className="text-sm text-gray-700 truncate flex-1">{shareLink}</span>
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-cyan-700 flex-shrink-0"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Sao chép
+              </button>
+              <button
+                onClick={() => setShareLink(null)}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 flex-shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -478,13 +641,14 @@ export default function DailyItinerary() {
                     {/* Bookmark Icon */}
                     <button
                       onClick={() => handleToggleSave(suggestion)}
-                      className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-all hover:scale-110 ${savedSuggestions.includes(suggestion.id)
-                        ? "bg-cyan-700 text-white"
-                        : "bg-white/90 text-gray-600 hover:bg-cyan-500 hover:text-white"
-                        }`}
+                      className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-700 shadow-md transition-all hover:scale-110 hover:shadow-lg ${
+                        savedSuggestions.includes(suggestion.id)
+                          ? "text-cyan-600"
+                          : "text-gray-500 hover:text-cyan-600"
+                      }`}
                       title={savedSuggestions.includes(suggestion.id) ? "Đã lưu" : "Lưu địa điểm"}
                     >
-                      <Bookmark className={`h-4 w-4 ${savedSuggestions.includes(suggestion.id) ? "fill-current" : ""}`} />
+                      <Bookmark className={`h-4.5 w-4.5 ${savedSuggestions.includes(suggestion.id) ? "fill-current" : ""}`} />
                     </button>
                   </div>
 
@@ -508,13 +672,23 @@ export default function DailyItinerary() {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => setViewingPlace(suggestion)}
-                      className="w-full flex items-center justify-center gap-1 rounded-lg border-2 border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition-all hover:border-cyan-500 hover:text-cyan-600"
-                    >
-                      <Eye className="h-3 w-3" />
-                      Chi tiết
-                    </button>
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setViewingPlace(suggestion)}
+                        className="flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition-all hover:border-cyan-500 hover:text-cyan-600"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        Chi tiết
+                      </button>
+                      <button
+                        onClick={() => handleAddSuggestionToItinerary(suggestion)}
+                        className="flex items-center justify-center gap-1 rounded-lg bg-cyan-600 px-3 py-2 text-xs font-semibold text-white transition-all hover:bg-cyan-700"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Thêm vào ngày
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -537,7 +711,7 @@ export default function DailyItinerary() {
         <PlaceInfoModal
           place={{
             name: viewingPlace.name,
-            image: viewingPlace.image,
+            image: resolvePlaceImage(viewingPlace.image),
             description: viewingPlace.description,
             address: viewingPlace.location || viewingPlace.city,
             rating: viewingPlace.rating ?? undefined,

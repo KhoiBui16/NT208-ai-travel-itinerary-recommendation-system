@@ -620,6 +620,8 @@ class CompanionService:
                 custom_cost=operation.activity.custom_cost,
                 bus_ticket_price=operation.activity.bus_ticket_price,
                 taxi_cost=operation.activity.taxi_cost,
+                latitude=operation.activity.latitude,
+                longitude=operation.activity.longitude,
                 order_index=current_next,
             )
             return
@@ -650,6 +652,8 @@ class CompanionService:
                 custom_cost=operation.activity.custom_cost,
                 bus_ticket_price=operation.activity.bus_ticket_price,
                 taxi_cost=operation.activity.taxi_cost,
+                latitude=operation.activity.latitude,
+                longitude=operation.activity.longitude,
             )
             return
 

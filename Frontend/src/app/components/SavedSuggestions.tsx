@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Star, MapPin, Bookmark, Plus, Calendar, Clock } from "lucide-react";
 import { listSavedPlaces, unsavePlace } from "../services/places";
 import { findSavedPlaceByName, normalizeSavedPlaces } from "../utils/savedPlaces";
+import { resolvePlaceImage, applyPlaceImageFallback } from "../utils/placeImage";
 export interface SavedSuggestion {
   id: string;
   name: string;
@@ -172,8 +173,9 @@ export function SavedSuggestions({
                 >
                   <div className="flex gap-4">
                     <img
-                      src={place.image}
+                      src={resolvePlaceImage(place.image)}
                       alt={place.name}
+                      onError={applyPlaceImageFallback}
                       className="h-24 w-32 flex-shrink-0 rounded-lg object-cover"
                     />
                     <div className="flex-1 min-w-0">

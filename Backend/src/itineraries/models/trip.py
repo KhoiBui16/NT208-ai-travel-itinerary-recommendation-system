@@ -18,6 +18,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -241,6 +242,10 @@ class Activity(Base):
     location: Mapped[str] = mapped_column(String(300), default="", nullable=False)  # Address
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)  # Details
     image: Mapped[str] = mapped_column(String(500), default="", nullable=False)  # Image URL
+
+    # --- Optional standalone coordinates for manually added activities ---
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # --- Transportation to this activity ---
     transportation: Mapped[str | None] = mapped_column(String(50), nullable=True)

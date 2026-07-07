@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   AlertCircle,
 } from "lucide-react";
+import { resolvePlaceImage, applyPlaceImageFallback } from "../utils/placeImage";
 
 export default function SharedTripView() {
   const { token } = useParams<{ token: string }>();
@@ -248,8 +249,9 @@ export default function SharedTripView() {
                           >
                             {act.image && (
                               <img
-                                src={act.image}
+                                src={resolvePlaceImage(act.image)}
                                 alt={act.name}
+                                onError={applyPlaceImageFallback}
                                 className="h-16 w-20 rounded-lg object-cover flex-shrink-0"
                               />
                             )}

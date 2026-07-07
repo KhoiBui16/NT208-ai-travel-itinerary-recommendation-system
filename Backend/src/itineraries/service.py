@@ -268,16 +268,11 @@ class ItineraryService(BaseService):
         if trip.user_id != user_id:
             raise ForbiddenException("Not trip owner")
 
-        # Check for existing non-revoked share link
+        # Delete existing share link if it exists to allow generating a new link
         existing = await self.repo.get_share_link(trip_id)
-        if existing and existing.revoked_at is None:
-            # Already shared — return existing token info (cannot recover raw token)
-            settings = get_settings()
-            return ShareResponse(
-                share_url=f"{settings.frontend_url}/shared/[REDACTED]",
-                share_token="[REDACTED — already issued]",
-                expires_at=existing.expires_at,
-            )
+        if existing:
+            await self.session.delete(existing)
+            await self.session.flush()
 
         # Generate new opaque share token and store its hash
         raw_token, token_hash = create_opaque_token("share")
@@ -391,6 +386,8 @@ class ItineraryService(BaseService):
             custom_cost=data.custom_cost,
             bus_ticket_price=data.bus_ticket_price,
             taxi_cost=data.taxi_cost,
+            latitude=data.latitude,
+            longitude=data.longitude,
             order_index=0,
         )
         return self._activity_to_schema(activity)
@@ -594,6 +591,8 @@ class ItineraryService(BaseService):
                     "bus_ticket_price",
                     "taxi_cost",
                     "place_id",
+                    "latitude",
+                    "longitude",
                 ):
                     val = getattr(act_data, field, None)
                     if val is not None:
@@ -617,6 +616,8 @@ class ItineraryService(BaseService):
                     custom_cost=act_data.custom_cost,
                     bus_ticket_price=act_data.bus_ticket_price,
                     taxi_cost=act_data.taxi_cost,
+                    latitude=act_data.latitude,
+                    longitude=act_data.longitude,
                     order_index=idx,
                     place_id=act_data.place_id,
                 )
@@ -784,8 +785,8 @@ class ItineraryService(BaseService):
             taxi_cost=activity.taxi_cost,
             extra_expenses=extra_expenses_list,  # BUG-BE-002 fix: use actual data
             place_id=activity.place_id,
-            latitude=activity.place.latitude if getattr(activity, "place", None) else None,
-            longitude=activity.place.longitude if getattr(activity, "place", None) else None,
+            latitude=activity.latitude if activity.latitude is not None else (activity.place.latitude if getattr(activity, "place", None) else None),
+            longitude=activity.longitude if activity.longitude is not None else (activity.place.longitude if getattr(activity, "place", None) else None),
             city=activity.place.destination.name if (getattr(activity, "place", None) and activity.place.destination) else None,
         )
 
@@ -823,8 +824,8 @@ class ItineraryService(BaseService):
                         bus_ticket_price=act.bus_ticket_price,
                         taxi_cost=act.taxi_cost,
                         extra_expenses=expenses,
-                        latitude=act.place.latitude if act.place else None,
-                        longitude=act.place.longitude if act.place else None,
+                        latitude=act.latitude if act.latitude is not None else (act.place.latitude if act.place else None),
+                        longitude=act.longitude if act.longitude is not None else (act.place.longitude if act.place else None),
                         place_id=act.place_id,
                         city=act.place.destination.name if (act.place and act.place.destination) else None,
                     )
