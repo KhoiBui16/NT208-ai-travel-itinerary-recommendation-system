@@ -66,10 +66,11 @@ class TripRepository:
                 selectinload(Trip.days)
                 .selectinload(TripDay.activities)
                 .selectinload(Activity.extra_expenses),
-                # Load days → activities → place (for map markers)
+                # Load days → activities → place (for map markers) and its destination city
                 selectinload(Trip.days)
                 .selectinload(TripDay.activities)
-                .selectinload(Activity.place),
+                .selectinload(Activity.place)
+                .selectinload(Place.destination),
                 # Load days → day-level extra expenses
                 selectinload(Trip.days).selectinload(TripDay.extra_expenses),
                 # Load flat relations

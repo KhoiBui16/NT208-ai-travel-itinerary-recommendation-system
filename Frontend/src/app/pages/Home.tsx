@@ -48,7 +48,7 @@ export default function Home() {
               slug: d.slug,
               name: d.name,
               image: resolveDestinationImage(d.name, d.image),
-              description: d.readinessReason || d.country || "",
+              description: d.description || d.readinessReason || d.country || "",
             })),
           );
         } else {
@@ -71,13 +71,13 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        {/* Hero Image Background (Ruộng bậc thang) */}
+        {/* Hero Image Background (Ảnh bãi biển từ backend) */}
         <div className="relative min-h-[750px] w-full">
           <img
-  src="https://images.pexels.com/photos/2444403/pexels-photo-2444403.jpeg?auto=compress&cs=tinysrgb&w=2000"
-  alt="Mu Cang Chai Terraced Fields"
-  className="absolute inset-0 h-full w-full object-cover"
-/>
+            src={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/img/home/AnhBia.jpg`}
+            alt="Vietnam Travel Beach Hero"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
           {/* Lớp phủ gradient tối dần từ trên xuống để làm nổi bật chữ */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/60" />
 
@@ -94,19 +94,15 @@ export default function Home() {
               điểm tuyệt vời.
             </p>
 
-            {/* CTA Button & Robot */}
+            {/* CTA Button */}
             <div className="relative mb-16">
               <Link
                 to="/create-trip"
-                className="relative z-10 inline-flex items-center gap-3 rounded-full bg-orange-500 px-10 py-4 text-xl font-bold text-white shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-all hover:scale-105 hover:bg-orange-600"
+                className="relative z-10 inline-flex items-center gap-3 rounded-full bg-cyan-600 px-10 py-4 text-xl font-bold text-white shadow-[0_0_20px_rgba(8,145,178,0.4)] transition-all hover:scale-105 hover:bg-cyan-700"
               >
                 <Sparkles className="h-6 w-6" />
                 Bắt đầu lên lịch trình đầu tiên
               </Link>
-              {/* Fake Robot Icon (Bạn có thể thay bằng thẻ img chứa hình robot thực tế) */}
-              <div className="absolute -right-12 -top-8 z-20 animate-bounce">
-                <span className="text-6xl filter drop-shadow-lg">🤖</span>
-              </div>
             </div>
 
             {/* Glassmorphism Cards */}
@@ -172,9 +168,9 @@ export default function Home() {
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {destinations.length === 0 ? (
-            <div className="col-span-3 rounded-xl bg-yellow-50 border border-yellow-200 px-6 py-10 text-center text-yellow-800">
-              <p className="text-lg font-semibold">Chưa có dữ liệu điểm đến.</p>
-              <p className="mt-1 text-sm">{loadMessage || "Hãy chạy ETL để tải dữ liệu."}</p>
+            <div className="col-span-3 rounded-xl bg-cyan-50/50 border border-cyan-100 px-6 py-10 text-center text-cyan-800 backdrop-blur-sm">
+              <p className="text-lg font-semibold animate-pulse text-cyan-700">Đang tải danh sách các thành phố...</p>
+              <p className="mt-1 text-sm text-cyan-600/80">Hệ thống đang kết nối dữ liệu, vui lòng đợi trong giây lát.</p>
             </div>
           ) : (
             destinations.map((dest) => (
@@ -221,7 +217,7 @@ export default function Home() {
           </p>
           <Link
             to="/create-trip"
-            className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-8 py-4 text-lg font-semibold text-white shadow-xl transition-all hover:scale-105 hover:bg-orange-600"
+            className="inline-flex items-center gap-2 rounded-full bg-cyan-600 px-8 py-4 text-lg font-semibold text-white shadow-xl transition-all hover:scale-105 hover:bg-cyan-700"
           >
             <Plane className="h-6 w-6" />
             Lên Kế Hoạch Ngay

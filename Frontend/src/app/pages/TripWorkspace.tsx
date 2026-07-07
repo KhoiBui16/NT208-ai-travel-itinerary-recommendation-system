@@ -125,7 +125,7 @@ export default function TripWorkspace() {
     calculateTotalCostByCategory, formatCurrency
   } = useTripCost(days, accommodations, travelers);
 
-  const { applyServerTrip, handleSaveItinerary, currentTripId, currentTripUpdatedAt, isSaving } = useTripSync(
+  const { applyServerTrip, handleSaveItinerary, currentTripId, currentTripUpdatedAt, isSaving, isLoading } = useTripSync(
     days, setDays, selectedDayId, setSelectedDayId, accommodations, setAccommodations,
     totalBudget, setTotalBudget, travelers, setTravelers, setIsAuthenticated, setPlaces,
     isAuthenticated, setShowLoginModal, updateNextId,
@@ -170,6 +170,9 @@ export default function TripWorkspace() {
       childPrice: 25000,
       taxiCost: 50000,
       extraExpenses: [],
+      latitude: place.latitude,
+      longitude: place.longitude,
+      placeId: place.id,
     };
 
     addActivityToDay(dayId, act);
@@ -196,6 +199,9 @@ export default function TripWorkspace() {
       childPrice: place.type === "food" ? 30000 : place.type === "attraction" ? 20000 : undefined,
       customCost: place.type === "shopping" || place.type === "entertainment" ? 100000 : undefined,
       extraExpenses: [],
+      latitude: place.latitude,
+      longitude: place.longitude,
+      placeId: place.id,
     };
     addActivityToDay(dayId, act);
     setAddPlaceModal(null);
@@ -210,7 +216,43 @@ export default function TripWorkspace() {
     }));
     setDays(prev => [...prev, ...newDaysWithId]);
   };
-    
+  
+  if (isLoading) {
+    return (
+      <div className="flex h-screen flex-col bg-gray-100">
+        <Header />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="text-center">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-600 border-t-transparent mx-auto mb-4"></div>
+            <p className="text-gray-600 font-medium">Đang tải thông tin lịch trình...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedDay) {
+    return (
+      <div className="flex h-screen flex-col bg-gray-100">
+        <Header />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="text-center max-w-md px-6 py-8 bg-white rounded-2xl shadow-xl">
+            <AlertCircle className="h-14 w-14 text-red-500 mx-auto mb-4 animate-bounce" />
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Lịch trình bị lỗi</h3>
+            <p className="text-gray-600 mb-6 text-sm">
+              Lịch trình này không chứa ngày nào hoặc đã bị hỏng cấu trúc trước đó (do lỗi đồng bộ cũ). Vui lòng tạo lịch trình mới để tiếp tục chỉnh sửa.
+            </p>
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center px-6 py-2.5 rounded-xl bg-cyan-600 text-white font-semibold hover:bg-cyan-700 transition-colors shadow-lg hover:shadow-cyan-600/30"
+            >
+              Quay lại Trang chủ
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gray-100">

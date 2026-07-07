@@ -165,11 +165,14 @@ export default function CityDetail() {
           image: resolveDestinationImage(apiDestination.name, apiDestination.image),
           bannerImage: resolveDestinationImage(apiDestination.name, apiDestination.image),
           description:
+            apiDestination.description ||
             apiDestination.readinessReason ||
             `${apiDestination.name} hiện có ${apiPlaceCount} địa điểm và ${apiHotelCount} khách sạn trong hệ thống.`,
-          overview: apiDestination.readinessReason
-            ? `${apiDestination.readinessReason} Trang này ưu tiên hiển thị dữ liệu backend hiện có để bạn đánh giá đúng độ phủ dữ liệu trước khi tạo lịch trình.`
-            : `${apiDestination.name} hiện có ${apiPlaceCount} địa điểm và ${apiHotelCount} khách sạn tham khảo trong cơ sở dữ liệu. Trang này đang hiển thị trực tiếp dữ liệu backend thay vì mock pack cố định.`,
+          overview:
+            apiDestination.description ||
+            (apiDestination.readinessReason
+              ? `${apiDestination.readinessReason} Trang này ưu tiên hiển thị dữ liệu backend hiện có để bạn đánh giá đúng độ phủ dữ liệu trước khi tạo lịch trình.`
+              : `${apiDestination.name} hiện có ${apiPlaceCount} địa điểm và ${apiHotelCount} khách sạn tham khảo trong cơ sở dữ liệu. Trang này đang hiển thị trực tiếp dữ liệu backend thay vì mock pack cố định.`),
           bestTimeToVisit: "Đang cập nhật từ dữ liệu hệ thống",
           averageTemperature: apiHotelCount
             ? `${apiHotelCount} khách sạn tham khảo`

@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Plus, MapPin, Check, CalendarDays, Calendar } from "lucide-react";
 import { format, addDays, parse, parseISO, isValid, startOfDay } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Day, DateAllocation } from "../types/trip.types";
-import { availableDestinations } from "../utils/tripConstants";
 import { CalendarModal } from "./CalendarModal";
+import { listDestinations } from "../services/places";
+import { resolvePlaceImage, getDestinationFallbackImage } from "../utils/placeImage";
 
 /** Parse a date string in either ISO (YYYY-MM-DD) or dd/MM/yyyy format. */
 function safeParseDate(dateStr: string): Date | null {
@@ -19,6 +20,14 @@ function safeParseDate(dateStr: string): Date | null {
   return isValid(d) ? d : null;
 }
 
+interface Destination {
+  id: number;
+  name: string;
+  country: string;
+  image: string;
+  rating: number;
+}
+
 interface AddDaysModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -28,11 +37,39 @@ interface AddDaysModalProps {
 
 export function AddDaysModal({ isOpen, onClose, days, onConfirm }: AddDaysModalProps) {
   const [step, setStep] = useState<1 | 2>(1);
+  const [destinationsList, setDestinationsList] = useState<Destination[]>([]);
   const [selectedDestinations, setSelectedDestinations] = useState<number[]>([]);
   const [dateAllocations, setDateAllocations] = useState<Record<number, DateAllocation | null>>({});
   const [showCalendarForDest, setShowCalendarForDest] = useState<number | null>(null);
   const [calendarKey, setCalendarKey] = useState(0);
   const [initialDateRange, setInitialDateRange] = useState<{ from: Date | null; to: Date | null }>({ from: null, to: null });
+
+  // Fetch real destinations from API when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    let isMounted = true;
+
+    async function load() {
+      try {
+        const apiDests = await listDestinations();
+        if (!isMounted) return;
+        
+        const mapped = apiDests.map((d, idx) => ({
+          id: d.id || idx + 1,
+          name: d.name,
+          country: d.country || "Việt Nam",
+          image: resolvePlaceImage(d.image, getDestinationFallbackImage(d.name)),
+          rating: d.rating || 0,
+        }));
+        setDestinationsList(mapped);
+      } catch (err) {
+        console.error("Failed to load destinations in AddDaysModal", err);
+      }
+    }
+
+    load();
+    return () => { isMounted = false; };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -113,7 +150,7 @@ export function AddDaysModal({ isOpen, onClose, days, onConfirm }: AddDaysModalP
     
     if (!hasAllAllocations) return;
     
-    const selectedDests = availableDestinations.filter((d) => selectedDestinations.includes(d.id));
+    const selectedDests = destinationsList.filter((d) => selectedDestinations.includes(d.id));
     let newDayNumber = days.length + 1;
     const newDays: Omit<Day, "id">[] = [];
     
@@ -174,45 +211,52 @@ export function AddDaysModal({ isOpen, onClose, days, onConfirm }: AddDaysModalP
                 </div>
               )}
 
-              <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {availableDestinations.map((dest) => {
-                  const isSelected = selectedDestinations.includes(dest.id);
-                  return (
-                    <div
-                      key={dest.id}
-                      onClick={() => handleToggleDestination(dest.id)}
-                      className={`group overflow-hidden rounded-xl border-2 shadow-sm transition-all duration-300 cursor-pointer ${
-                        isSelected
-                          ? "border-cyan-500 bg-white ring-2 ring-cyan-200 shadow-lg"
-                          : "border-gray-200 bg-white hover:border-cyan-300 hover:shadow-md"
-                      }`}
-                    >
-                      <div className="relative h-40">
-                        <img
-                          src={dest.image}
-                          alt={dest.name}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                        
-                        <div className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full transition-all ${
-                          isSelected ? "bg-cyan-500 text-white" : "bg-white/80 text-gray-600"
-                        }`}>
-                          {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                        </div>
+              {destinationsList.length === 0 ? (
+                <div className="rounded-xl bg-cyan-50/50 border border-cyan-100 p-8 text-center text-cyan-800 backdrop-blur-sm mb-6">
+                  <p className="text-base font-semibold animate-pulse text-cyan-700">Đang tải danh sách các thành phố...</p>
+                  <p className="mt-1 text-xs text-cyan-600/80">Hệ thống đang tải dữ liệu thành phố, vui lòng đợi trong giây lát.</p>
+                </div>
+              ) : (
+                <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {destinationsList.map((dest) => {
+                    const isSelected = selectedDestinations.includes(dest.id);
+                    return (
+                      <div
+                        key={dest.id}
+                        onClick={() => handleToggleDestination(dest.id)}
+                        className={`group overflow-hidden rounded-xl border-2 shadow-sm transition-all duration-300 cursor-pointer ${
+                          isSelected
+                            ? "border-cyan-500 bg-white ring-2 ring-cyan-200 shadow-lg"
+                            : "border-gray-200 bg-white hover:border-cyan-300 hover:shadow-md"
+                        }`}
+                      >
+                        <div className="relative h-40">
+                          <img
+                            src={dest.image}
+                            alt={dest.name}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                          
+                          <div className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full transition-all ${
+                            isSelected ? "bg-cyan-500 text-white" : "bg-white/80 text-gray-600"
+                          }`}>
+                            {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                          </div>
 
-                        <div className="absolute bottom-3 left-3">
-                          <h3 className="text-lg font-bold text-white">{dest.name}</h3>
-                          <div className="flex items-center gap-1 text-white/90">
-                            <MapPin className="h-3 w-3" />
-                            <span className="text-xs">{dest.country}</span>
+                          <div className="absolute bottom-3 left-3">
+                            <h3 className="text-lg font-bold text-white">{dest.name}</h3>
+                            <div className="flex items-center gap-1 text-white/90">
+                              <MapPin className="h-3 w-3" />
+                              <span className="text-xs">{dest.country}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
                 <button
@@ -262,7 +306,7 @@ export function AddDaysModal({ isOpen, onClose, days, onConfirm }: AddDaysModalP
               </div>
 
               <div className="mb-6 space-y-3">
-                {availableDestinations.filter(d => selectedDestinations.includes(d.id)).map((dest) => {
+                {destinationsList.filter(d => selectedDestinations.includes(d.id)).map((dest) => {
                   const allocation = dateAllocations[dest.id];
                   const isAllocated = !!allocation;
                   
@@ -345,7 +389,7 @@ export function AddDaysModal({ isOpen, onClose, days, onConfirm }: AddDaysModalP
         onClose={() => setShowCalendarForDest(null)}
         onConfirm={handleConfirmDatesForDest}
         value={initialDateRange}
-        selectedName={availableDestinations.find(d => d.id === showCalendarForDest)?.name || ""}
+        selectedName={destinationsList.find(d => d.id === showCalendarForDest)?.name || ""}
         isDateDisabled={isDateAllocatedInAddFlow}
       />
     </>

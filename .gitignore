@@ -80,3 +80,6 @@ md/
 # Runtime logs (for debugging, not committed)
 logs/
 *.log
+
+# Docker tar archives
+*.tar

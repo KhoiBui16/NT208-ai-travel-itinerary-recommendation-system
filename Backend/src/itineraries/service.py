@@ -554,24 +554,9 @@ class ItineraryService(BaseService):
                     date=day_data.date,
                     destination_name=day_data.destination_name,
                 )
-                for act_data in day_data.activities:
-                    await self.repo.add_activity(
-                        trip_day_id=day.id,
-                        name=act_data.name,
-                        time=act_data.time,
-                        end_time=act_data.end_time,
-                        type=act_data.type,
-                        location=act_data.location,
-                        description=act_data.description,
-                        image=act_data.image,
-                        transportation=act_data.transportation,
-                        adult_price=act_data.adult_price,
-                        child_price=act_data.child_price,
-                        custom_cost=act_data.custom_cost,
-                        bus_ticket_price=act_data.bus_ticket_price,
-                        taxi_cost=act_data.taxi_cost,
-                        order_index=0,
-                    )
+                incoming_day_ids.add(day.id)  # FIX: Keep the day from being deleted
+                # Sync activities within this day (handles diff/merge safely)
+                await self._sync_activities(day, day_data.activities)
 
         # DELETE days not present in incoming list (cascade deletes activities)
         for existing_id in existing_map:
@@ -608,6 +593,7 @@ class ItineraryService(BaseService):
                     "custom_cost",
                     "bus_ticket_price",
                     "taxi_cost",
+                    "place_id",
                 ):
                     val = getattr(act_data, field, None)
                     if val is not None:
@@ -632,6 +618,7 @@ class ItineraryService(BaseService):
                     bus_ticket_price=act_data.bus_ticket_price,
                     taxi_cost=act_data.taxi_cost,
                     order_index=idx,
+                    place_id=act_data.place_id,
                 )
 
         # DELETE activities not present in incoming list
@@ -796,6 +783,10 @@ class ItineraryService(BaseService):
             bus_ticket_price=activity.bus_ticket_price,
             taxi_cost=activity.taxi_cost,
             extra_expenses=extra_expenses_list,  # BUG-BE-002 fix: use actual data
+            place_id=activity.place_id,
+            latitude=activity.place.latitude if getattr(activity, "place", None) else None,
+            longitude=activity.place.longitude if getattr(activity, "place", None) else None,
+            city=activity.place.destination.name if (getattr(activity, "place", None) and activity.place.destination) else None,
         )
 
     async def _to_response(self, trip: Trip) -> ItineraryResponse:
@@ -834,6 +825,8 @@ class ItineraryService(BaseService):
                         extra_expenses=expenses,
                         latitude=act.place.latitude if act.place else None,
                         longitude=act.place.longitude if act.place else None,
+                        place_id=act.place_id,
+                        city=act.place.destination.name if (act.place and act.place.destination) else None,
                     )
                 )
 

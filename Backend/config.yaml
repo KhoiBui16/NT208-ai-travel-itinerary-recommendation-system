@@ -34,7 +34,7 @@ ai:
   max_activities_per_day: 5
   calls_per_day: 3
   chat_calls_per_day: 20
-  rate_limit_fail_mode: "closed"
+  rate_limit_fail_mode: "open"
   companion_requires_confirmation: true
   enable_analytics: false
 

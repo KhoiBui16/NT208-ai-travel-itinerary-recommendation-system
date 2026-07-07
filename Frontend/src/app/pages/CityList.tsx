@@ -36,7 +36,7 @@ function apiToCity(d: DestinationResponse): DisplayCity {
     name: d.name,
     region: "",
     image: resolveDestinationCardImage(d.name, d.image),
-    description: d.readinessReason || d.country || "",
+    description: d.description || d.readinessReason || d.country || "",
     popularPlaces: d.placesCount,
     rating: d.rating || 0,
   };
