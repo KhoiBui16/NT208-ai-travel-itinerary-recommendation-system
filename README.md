@@ -53,7 +53,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 | **AI C.3B/C.3C** | Companion chat message flow + apply-patch confirm | ✅ Done |
 | **AI C.4** | Chat history persisted + quản lý session (rename/delete/switcher) | ✅ Done |
 | **AI C.5** | Analytics Text-to-SQL | 🔄 Optional/deferred |
-| **ETL** | Goong-first ETL nạp dữ liệu địa điểm (28 thành phố, scheduler opt-in) | ✅ Done |
+| **ETL** | Goong-first ETL nạp dữ liệu địa điểm vào PostgreSQL (28 thành phố, scheduler opt-in); CSV root chỉ là snapshot/export artifact | ✅ Done |
 
 > Chi tiết từng phase (branch/PR/endpoint): [`docs/11_phase_roadmap.md`](docs/11_phase_roadmap.md) · [`docs/06_ai_roadmap.md`](docs/06_ai_roadmap.md)
 
@@ -164,8 +164,8 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   ├── geo/                   # Goong REST client
 │   │   ├── core/                  # config, db, security, dependencies, middleware, rate limiter
 │   │   └── shared/                # cache client, pagination, base helpers
-│   ├── tests/                     # 187 unit + 77 integration (collect)
-│   ├── alembic/versions/          # 13 migrations
+│   ├── tests/                     # 194 unit + 79 integration (collect-only 2026-07-10)
+│   ├── alembic/versions/          # 15 migrations, head 20260707_0016
 │   ├── config.yaml                # non-secret defaults
 │   ├── .env.example               # secret template
 │   ├── pyproject.toml             # uv deps + Ruff config
@@ -176,12 +176,13 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   ├── components/            # shared + companion/ + ui/
 │   │   ├── services/              # api.ts + auth/chat/itinerary/places/users
 │   │   ├── hooks/ · contexts/ · types/ · data/ · utils/
-│   ├── tests/e2e/                 # 17 Playwright spec files
+│   ├── tests/e2e/                 # 18 Playwright spec files / 37 test declarations
 │   ├── playwright.config.ts
 │   ├── vite.config.ts · package.json
 │   └── vercel.json                # SPA fallback rewrite
 ├── docs/                          # tài liệu kỹ thuật + REPORTS/
 ├── .claude/                       # context + skills cho Claude Code
+├── dulichviet_full_database_one_file.csv # DB snapshot/export artifact, không phải runtime storage
 ├── docker-compose.yml             # api + db + redis (+ scheduler profile etl)
 ├── CLAUDE.md · AGENTS.md
 └── README.md
@@ -277,7 +278,7 @@ npm run dev -- --host localhost --port 5173
 | C.4 History | Chat history + session management (rename/delete/switcher) | ✅ Merged (#106) |
 | C.5 Analytics | Text-to-SQL | 🔄 Optional/deferred |
 
-**HEAD hiện tại:** `fix: [#00136] integrate goong map and backfill trip image snapshots (#128)` — Phase C.1–C.4 đã merge hoàn chỉnh; gần đây thêm hardening runtime ảnh + tích hợp bản đồ Goong thật ở DailyItinerary (PR #127/#128); C.5 Analytics là tùy chọn (chưa implement, cần guardrails bảo mật nếu bật).
+**HEAD hiện tại:** `42f4d33 Update video demo link in README.md` (2026-07-10). Phase C.1–C.4 đã merge hoàn chỉnh; sau đó có các pass hardening runtime ảnh, map Goong thật, backfill tọa độ activity (`20260707_0016`) và tài liệu/video demo. C.5 Analytics vẫn là tùy chọn (chưa implement, cần guardrails bảo mật nếu bật).
 
 > Mọi chi tiết phase/branch/PR: [`docs/11_phase_roadmap.md`](docs/11_phase_roadmap.md) · Tracker: [`docs/09_execution_tracker.md`](docs/09_execution_tracker.md)
 
@@ -287,14 +288,14 @@ npm run dev -- --host localhost --port 5173
 
 | Layer | Số lượng | Cách chạy |
 |---|---|---|
-| Backend unit | 187 tests | `cd Backend && uv run pytest tests/unit -v` |
-| Backend integration | 77 collected (43 pass + 34 CI-gated skip local) | `cd Backend && uv run pytest tests/integration -v` |
+| Backend unit | 194 collected (collect-only 2026-07-10) | `cd Backend && uv run pytest tests/unit -v` |
+| Backend integration | 79 collected (collect-only 2026-07-10) | `cd Backend && uv run pytest tests/integration -v` |
 | Frontend build | production bundle | `cd Frontend && npm run build` |
-| Frontend e2e | 17 spec files / 36 tests (Playwright) | `cd Frontend && npm run test:e2e` |
+| Frontend e2e | 18 spec files / 37 test declarations (Playwright source inventory) | `cd Frontend && npm run test:e2e` |
 
 **CI (GitHub Actions) — 7 required checks:** `pr-policy`, `backend-lint`, `backend-unit`, `backend-integration`, `backend-migrations`, `frontend-build`, `frontend-e2e`.
 
-> ⚠️ Integration tests skip 34 case local vì cần PostgreSQL thật (CI-gated); chạy đủ trên CI postgres. E2E cần BE đang chạy trên `localhost:8000`.
+> ⚠️ Integration tests skip 34 case local vì cần PostgreSQL thật (CI-gated); chạy đủ trên CI postgres. E2E cần BE đang chạy trên `localhost:8000`. Nếu cần số liệu pass mới nhất, chạy lại collect/test thay vì dùng snapshot docs cũ.
 
 📖 Chi tiết: [`docs/08_testing_local_run.md`](docs/08_testing_local_run.md) · [`docs/10_automation_testing_report.md`](docs/10_automation_testing_report.md)
 
@@ -307,6 +308,7 @@ npm run dev -- --host localhost --port 5173
 - **Postgres:** Render Postgres (khuyến nghị) hoặc Supabase.
 - **Redis:** Render Key Value / TCP provider (bắt buộc — app dùng Redis TCP client, **không** Upstash REST).
 - **Migrations:** tự chạy qua `preDeployCommand` trong `render.yaml` (Render chạy `alembic upgrade head` sau build, trước uvicorn, mỗi deploy — free tier OK, không cần Render Shell).
+- **Database snapshot CSV:** `dulichviet_full_database_one_file.csv` là artifact export để tham khảo/restore thủ công. Backend không đọc CSV này khi chạy; sau restore snapshot cũ phải chạy `alembic upgrade head` để lên migration head hiện tại.
 
 📖 Runbook đầy đủ (env/secrets/ports/provider): [`docs/STAGING_DEPLOYMENT_GUIDE.md`](docs/STAGING_DEPLOYMENT_GUIDE.md)
 
@@ -349,7 +351,14 @@ Bộ tài liệu kỹ thuật tiếng Việt đầy đủ nằm trong [`docs/`](
 Tất cả các đường dẫn dưới đây phải truy cập được công khai tại thời điểm nộp bài:
 
 - Full source code: `<điền link GitHub public của project>`
-- Video demo tính năng mới nhất hoặc full demo tính năng: `https://drive.google.com/file/d/1HZwDT6bFB5nAl1D1Y9v_DIZ5QJi0kCzU/view?usp=sharing`
+- Video demo tính năng mới nhất hoặc full demo tính năng:
+
+<video src="asserts/videos/VideoDemoNhom9-TravelAI.mp4" controls width="100%">
+  Trình duyệt/Markdown viewer của bạn không hỗ trợ hiển thị video trực tiếp. Mở file: asserts/videos/VideoDemoNhom9-TravelAI.mp4
+</video>
+
+  [`VideoDemoNhom9-TravelAI.mp4`](asserts/videos/VideoDemoNhom9-TravelAI.mp4)
+
 - Video khảo sát user: `<điền link nếu có>`
 - Ảnh chụp minh chứng cộng điểm / tài nguyên bổ sung: `<điền link nếu có>`
 - Report hoặc slide bổ sung: `<điền link nếu có>`

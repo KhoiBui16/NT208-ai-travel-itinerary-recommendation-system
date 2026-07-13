@@ -17,7 +17,9 @@ FastAPI backend for the NT208 AI travel itinerary recommendation system.
 | AI C.3B/C.3C | Merged (#105): trip-bound `POST/GET /itineraries/chat-sessions/{sessionId}/messages`, `POST /itineraries/{tripId}/apply-patch`, real Gemini call, persisted `chat_messages`, stale proposal handling, auth-user chat quota riêng |
 | AI C.4 | Merged (#106): chat history persisted + session management (rename/delete/switcher/load-more); apply-patch rate limit riêng + ETL scheduler wired vào compose (profile `etl`) |
 | Remaining AI | C.5 Analytics Text-to-SQL — optional/deferred (chưa implement; cần guardrails nếu bật) |
-| Verified 2026-06-24 | Ruff check pass, Alembic upgrade/check pass, `187 unit + 77 integration` collected (43 int pass + 34 CI-gated skip local), ETL scheduler compose profile smoke pass |
+| Current source 2026-07-10 | 41 `/api/v1` routes + `/img/{file_path:path}` asset route; Alembic head `20260707_0016_add_activity_coordinates`; runtime DB is PostgreSQL, not CSV |
+| Current test inventory | `194 unit + 79 integration` collected by `uv run pytest ... --collect-only -q` on 2026-07-10 |
+| Last full pass snapshot | Ruff check pass, Alembic upgrade/check pass, ETL scheduler compose profile smoke pass (snapshot 2026-06-24; re-run pass before claiming current green) |
 
 ## Architecture
 
@@ -42,6 +44,8 @@ src/
 └── shared/                  # CacheClient, pagination, base service helpers
 ```
 
+Runtime static images are served by `GET /img/{file_path}` from `Backend/static/img`. The DB stores origin-relative paths such as `/img/destinations/ha-noi.jpg`; `asserts/images/` is only the source/crawl archive.
+
 ## Environment
 
 Copy the template and fill local secrets:
@@ -65,6 +69,16 @@ Copy-Item .env.example .env
 | `ENABLE_ANALYTICS` | Optional, default false | Keep disabled until C.5 guardrails exist |
 
 Never commit `Backend/.env`.
+
+## Database Snapshot CSV
+
+The repo root contains `dulichviet_full_database_one_file.csv`. Treat it as a database export/snapshot artifact, not as the runtime database:
+
+- Backend code does not read this CSV during app startup or request handling.
+- Runtime storage is PostgreSQL via `DATABASE_URL`.
+- Schema is controlled by Alembic; current head is `20260707_0016_add_activity_coordinates`.
+- The CSV snapshot observed during audit records `alembic_version=20260705_0015`, so a restore from that artifact must run `uv run alembic upgrade head`.
+- Do not paste CSV row contents into docs or PRs; it may contain full table records.
 
 ## Local Start
 
@@ -199,9 +213,19 @@ Expected local result (verified 2026-06-24):
 | Ruff check | Pass |
 | Ruff format check | Pass |
 | Alembic upgrade/check | Pass |
-| Backend unit | `187 passed` |
-| Backend integration | `77 collected` (43 pass + 34 CI-gated skip local; đủ trên CI postgres) |
+| Backend unit | `194 collected` (collect-only 2026-07-10; run full suite before claiming pass) |
+| Backend integration | `79 collected` (collect-only 2026-07-10; run full suite before claiming pass) |
 | Real AI smoke | Generate + companion chat (phụ thuộc tình trạng provider Gemini) |
+
+Current source inventory (2026-07-10):
+
+| Item | Count / state |
+|---|---|
+| API routes | 41 under `/api/v1/*` |
+| Root asset route | `GET /img/{file_path:path}` |
+| Alembic migrations | 15 files, head `20260707_0016_add_activity_coordinates` |
+| SQLAlchemy tables | 17 model tables |
+| Runtime images | `Backend/static/img` committed and copied by Dockerfile |
 
 ## Debug Notes
 

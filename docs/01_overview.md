@@ -59,7 +59,7 @@ MVP1
 → C.5 Analytics optional/deferred
 ```
 
-### Current state (HEAD `#109`, Phase C.0–C.4 merged)
+### Current state (HEAD `42f4d33`, Phase C.0–C.4 merged)
 
 | Hạng mục | Current truth |
 |---|---|
@@ -73,6 +73,9 @@ MVP1
 | Chat REST API | Đã có session CRUD + `POST/GET /itineraries/chat-sessions/{sessionId}/messages` |
 | Real Gemini call trong chat | Đã có |
 | Chat quota riêng | Đã có `rate:ai:chat:user:{user_id}:{YYYYMMDD}` |
+| Database runtime | PostgreSQL + Alembic; không đọc CSV ở runtime |
+| CSV snapshot | `dulichviet_full_database_one_file.csv` là export artifact; không phải source runtime nếu chưa có importer |
+| Alembic head | `20260707_0016_add_activity_coordinates` |
 
 Điểm cần nhớ:
 
@@ -112,7 +115,7 @@ MVP1
 - Places/cache: destinations, destination detail, place search/detail, saved places, Redis read cache fail-open.
 - ETL D1/C.0: Goong-first autocomplete/detail/geocode, OSM fallback, transformers, DB upsert loader, `hotels.yaml`, `scraped_sources`.
 - AI C.1 generate pipeline: DB recommendation context, Gemini JSON output, Pydantic validation, retry, guest/user AI rate limit.
-- Tests current local source (2026-06-24): backend `187 unit + 77 integration` collected (43 int pass + 34 CI-gated skip local); Playwright suite hiện là `17` spec files / 36 tests (CI `frontend-e2e` green trên PR #109).
+- Tests current source inventory: backend `194 unit + 79 integration` collected 2026-07-10; Playwright suite hiện có `18` spec files / 37 tests theo `npx playwright test --list`. Re-run full test suites nếu cần claim pass mới nhất.
 - AI C.2 SuggestionService (EP-30): DB-only suggest alternatives, owner-check, no LLM.
 - Destination slug matching: `resolve_destination_for_ai()` hỗ trợ "Ha Noi" → "ha-noi" → match DB.
 
@@ -128,7 +131,7 @@ MVP1
 - `useActivityManager`/`useAccommodation`/`usePlacesManager` — optimistic CRUD + revert.
 - `CreateTrip` nối `generateItinerary` API, navigate TripWorkspace với tripId.
 - `ErrorBoundary` bọc toàn app.
-- Playwright e2e hiện có `36` test cases / `17` spec files, bao phủ auth flow, trip CRUD, public pages, guest claim, destination readiness, rate-limit UX, CityDetail API-first regression, C3A chat session CRUD, và C3B ChatPanel message/history contract.
+- Playwright e2e hiện có `37` test declarations / `18` spec files, bao phủ auth flow, trip CRUD, public pages, guest claim, destination readiness, rate-limit UX, CityDetail API-first regression, C3A chat session CRUD, C3B ChatPanel message/history contract, và accommodation runtime regression.
 - **Tất cả trang chính đã nối BE API**; mock chỉ làm fallback khi BE không có data.
 
 ### Docs/Ops
@@ -153,7 +156,8 @@ MVP1
 
 - Full ETL real data cần `GOONG_API_KEY`.
 - Cần chạy ETL cho danh sách city chính sau khi có key/network.
-- Cần kiểm số lượng destination/place/hotel sau crawl.
+- Cần kiểm số lượng destination/place/hotel sau crawl hoặc sau restore snapshot.
+- `dulichviet_full_database_one_file.csv` là snapshot/export artifact; nếu dùng để restore deploy thì cần runbook import riêng và `alembic upgrade head` sau restore.
 
 ### Docker/Deploy
 
@@ -175,7 +179,7 @@ MVP1
 | Guest claim          | `user_id IS NULL` | claimToken hash + expiry + consume                      |
 | Data source          | Mock thuần        | Goong-first ETL places/hotels + Redis cache             |
 | FE architecture      | localStorage      | API client + optimistic CRUD + revert                   |
-| Testing              | Không có          | Backend unit/integration tests + 17 e2e specs (36 tests)              |
+| Testing              | Không có          | Backend unit/integration tests + 18 e2e specs (37 test declarations)  |
 | CI/CD                | Không có          | 7 required checks                                       |
 
 ---
@@ -197,4 +201,4 @@ MVP1
 
 ## Kết Luận Hiện Tại
 
-Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. Phase C.0–C.4 đã merge (#42, #49, #98-106): companion chat + apply-patch + session management đều chạy thật trên current source, các mock AI surface chủ động đã được gỡ khỏi runtime chính. Phần còn lại là C.5 Analytics (optional/deferred) + data enrichment cho sparse cities (giới hạn Goong provider).
+Backend CRUD core đã chạy và có test. FE-BE integration đã hoàn thành cho tất cả trang chính — auth, trip CRUD, activity/accommodation CRUD, places, share/claim, city detail, CreateTrip, forgot/reset password. Phase C.0–C.4 đã merge (#42, #49, #98-106): companion chat + apply-patch + session management đều chạy thật trên current source, các mock AI surface chủ động đã được gỡ khỏi runtime chính. Sau đó có các pass hardening ảnh/static assets, Goong map, activity coordinates, và docs/video demo. Phần còn lại là C.5 Analytics (optional/deferred) + data enrichment cho sparse cities (giới hạn Goong provider).

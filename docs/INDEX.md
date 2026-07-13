@@ -1,7 +1,7 @@
 # Documentation Index
 
 **Ngày tạo:** 2026-06-08
-**Cập nhật lần cuối:** 2026-06-24 (sync task 00116)
+**Cập nhật lần cuối:** 2026-07-10 (sync task 00137)
 
 ---
 
@@ -9,7 +9,7 @@
 
 | Category | Số files | Đường dẫn |
 |----------|----------|-----------|
-| [Core Architecture](#1-core-architecture-documentation) | 13 | `docs/*.md` |
+| [Core Architecture](#1-core-architecture-documentation) | 14 | `docs/*.md` |
 | [Strategic Planning](#2-strategic-planning-documentation) | 4 | `docs/*.md` |
 | [Phase Reports](#3-phase-reports--result-documentation) | 40+ | `docs/REPORTS/phase_*.md` |
 | [Numbered Series](#4-numbered-series-reports-00050-00060) | 30+ | `docs/REPORTS/000*.md` |
@@ -36,8 +36,9 @@
 | [`07_workflow_ci.md`](07_workflow_ci.md) | Branch/commit/PR format, CI/CD rules | Contributing guidelines |
 | [`08_testing_local_run.md`](08_testing_local_run.md) | Local development and testing guide | Running tests locally |
 | [`09_execution_tracker.md`](09_execution_tracker.md) | Task/branch/PR tracker (living document) | Project status tracking |
-| [`10_automation_testing_report.md`](10_automation_testing_report.md) | Test results (187 unit + 77 integration; 17 e2e specs) | Test quality verification |
+| [`10_automation_testing_report.md`](10_automation_testing_report.md) | Test results snapshot; current collect inventory is 194 unit + 79 integration | Test quality verification |
 | [`11_phase_roadmap.md`](11_phase_roadmap.md) | Phase C roadmap & completion tracker | Phase planning |
+| [`12_current_source_audit_sync.md`](12_current_source_audit_sync.md) | Current Backend/Frontend/database/deploy truth, including CSV boundary | Source-truth docs sync |
 
 ### C3/C4 Specific
 
@@ -290,11 +291,11 @@
 | Metric | Giá trị | Đánh giá |
 |--------|---------|----------|
 | Tổng số files | 150 | 🟢 Excellent |
-| Core architecture docs | 13 | 🟢 Complete |
+| Core architecture docs | 14 | 🟢 Complete |
 | Phase reports | 40+ | 🟢 Comprehensive |
 | PR descriptions | 35+ | 🟢 Excellent traceability |
 | Issue reports | 45+ | 🟢 Well tracked |
-| Cập nhật gần nhất | 2026-06-24 | 🟢 Current |
+| Cập nhật gần nhất | 2026-07-10 | 🟢 Current |
 
 ---
 
@@ -329,11 +330,12 @@
 3. UAT: [`00059b_full_user_journey_uat.md`](REPORTS/00059b_full_user_journey_uat.md)
 4. Results: [`00060k_r2_full_testing_report.md`](REPORTS/00060k_r2_full_testing_report.md)
 
-### For Current Status (June 2026, HEAD `#109`)
-1. Phase status: [`11_phase_roadmap.md`](11_phase_roadmap.md) (C.0–C.4 merged; C.5 optional)
-2. Tracker: [`09_execution_tracker.md`](09_execution_tracker.md)
-3. Deploy readiness: [`STAGING_DEPLOYMENT_GUIDE.md`](STAGING_DEPLOYMENT_GUIDE.md) · evidence `REPORTS/EVIDENCE/00115_post_109_deploy_readiness/`
-4. Latest test inventory: 187 unit + 77 integration (17 e2e specs / 36 tests); CI green trên PR #109
+### For Current Status (July 2026, HEAD `42f4d33`)
+1. Current source truth: [`12_current_source_audit_sync.md`](12_current_source_audit_sync.md)
+2. Latest audit report: [`REPORTS/00137_current_source_docs_sync_audit.md`](REPORTS/00137_current_source_docs_sync_audit.md)
+3. Phase status: [`11_phase_roadmap.md`](11_phase_roadmap.md) (C.0–C.4 merged; C.5 optional)
+4. Deploy readiness: [`STAGING_DEPLOYMENT_GUIDE.md`](STAGING_DEPLOYMENT_GUIDE.md)
+5. Current source inventory: 41 `/api/v1` routes + `/img` asset route, Alembic head `20260707_0016`, 194 unit + 79 integration collected, 18 e2e specs / 37 tests. Full pass still needs a current run before claiming green.
 
 ---
 
@@ -363,5 +365,5 @@
 ---
 
 **Generated:** 2026-06-08
-**Next audit:** 2026-07-08
+**Next audit:** Theo PR/docs drift tiếp theo
 **Status:** ✅ Documentation is comprehensive and well-maintained

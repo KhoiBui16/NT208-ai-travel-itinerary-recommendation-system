@@ -51,8 +51,9 @@ Khong duoc phat minh policy moi neu codebase/docs hien tai chua chot.
 
 - Branch/commit/PR/CI rules
 - Active endpoint numbering da mo rong qua shorthand cu "33 core endpoints"; C3A bo sung EP-37/38/39
-- 148 BE unit tests + 67 BE integration tests
-- 33 Playwright e2e test cases trong 15 spec files
+- 194 BE unit tests + 79 BE integration tests theo collect-only evidence 2026-07-10; full pass phải re-run trước khi claim green
+- 18 Playwright e2e spec files / 37 `test(...)` declarations theo source inventory 2026-07-10
 - camelCase contract theo FE
 - shareToken / claimToken / owner-only by ID
 - AI direct pipeline + patch-confirm + chat history projection
+- Runtime DB là PostgreSQL + Alembic; CSV snapshot ở repo root không được mô tả như runtime backend nếu chưa có importer/code path

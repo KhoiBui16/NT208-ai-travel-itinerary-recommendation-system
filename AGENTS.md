@@ -14,6 +14,7 @@ File nay la bang dieu phoi ngan gon cho Claude trong repo nay. Chi giu nhung age
 |---|---|---|
 | `security-auditor` | Truoc merge cac thay doi nhay cam ve auth, token, SQL, AI, config, secrets | JWT/refresh/share/claim token, SQL guardrails, `.claude/settings*.json`, rate limit, prompt injection |
 | `doc-generator` | Khi can sync tai lieu hoac tao docs moi dung roadmap hien tai | `CLAUDE.md`, `AGENTS.md`, condensed context pack, long plan docs, README, PR/CI docs |
+| `current-source-docs-auditor` | Khi can audit source hien tai roi sync docs/README/.claude toan repo, nhat la DB/CSV/deploy drift | `Backend/`, `Frontend/`, Alembic/PostgreSQL/CSV snapshot, deploy docs, README entrypoints |
 
 ## Skills uu tien
 

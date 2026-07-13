@@ -15,7 +15,8 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 | AI C.3A | `ChatPanel` integrated into `TripWorkspace` with chat session REST APIs |
 | AI C.3B/C.3C | `ChatPanel` now loads history thật, gửi message thật, render `requiresConfirmation` + `proposedOperations`, và đã có confirm/cancel UI gọi `apply-patch` thật |
 | Remaining AI UI | Legacy companion/demo components vẫn còn trên source nhưng không còn mount trên runtime chính; C.4 session management (switcher/rename/delete/load-more) đã merged (#106) |
-| Verified 2026-06-24 | Production build pass qua `npm run build`; CI `frontend-e2e` green trên PR #109; 17 spec files Playwright ở `tests/e2e/` (14 top-level + 3 `b3/`; cần BE chạy trên `localhost:8000`) |
+| Current source 2026-07-10 | 18 Playwright spec files ở `tests/e2e/` (15 top-level + 3 `b3/`), 37 `test(...)` declarations by source inventory; cần BE chạy trên `localhost:8000` để chạy e2e |
+| Last verified build/e2e | Production build pass qua `npm run build`; CI `frontend-e2e` green trên PR #109 (snapshot docs 2026-06-24) |
 
 ## Local Start
 
@@ -138,13 +139,20 @@ npm run test:e2e
 
 Post-verify note from 2026-06-19:
 
-- `npm run test:e2e`: `17` spec files ở `tests/e2e/` (14 top-level + 3 `b3/`; cần BE chạy trên `localhost:8000`); CI `frontend-e2e` green trên PR #109. Số case chính xác chạy đủ trên CI.
+- `npm run test:e2e`: current source có `18` spec files ở `tests/e2e/` (15 top-level + 3 `b3/`; 37 `test(...)` declarations by source inventory 2026-07-10; cần BE chạy trên `localhost:8000`). CI `frontend-e2e` green trên PR #109 là snapshot cũ, không phải run mới nhất trong turn này.
 - FE error handling improved: toast notifications now show specific error messages instead of generic "Không thể tạo lịch trình" for rate limits, validation errors, and AI timeouts.
 - Destination slugify fuzzy matching (PR #92): Backend now properly matches "Ha Noi" → "ha-noi" → DB, improving destination resolution for users typing city names without accents.
 - C3A chat session foundation (PR #98-100): ChatPanel component integrated into TripWorkspace, chat session REST APIs (EP-37/38/39), e2e tests for chat session CRUD.
 - C3B message flow (current source): `ChatPanel` creates/loads session thật, fetches persisted history, sends companion messages through BE, and can render the assistant `proposedOperations` contract when the provider returns it.
 - Active runtime drift đã được dọn ở `00100`: `TripWorkspace` và `DailyItinerary` không còn mount `FloatingAIChat` / promo mock surfaces.
 - Local note: latest verified build used `--outDir .build-tmp\\verify`. Nếu chạy default `npm run build` và `dist` bị process khác khóa trên Windows thì có thể vẫn gặp `EPERM`; đây là local artifact state, không phải compile failure của source.
+
+## Data And Asset Boundary
+
+- FE does not read `dulichviet_full_database_one_file.csv`.
+- FE data source for runtime city/place/trip views is the backend API.
+- Image URLs from the API may be origin-relative `/img/...`; `resolveApiImageUrl()` resolves them against `VITE_API_URL`.
+- Missing images fall back to `Backend/static/img/placeholder.svg` or category/destination fallbacks through `placeImage.ts`.
 
 ## Browser Debug Checklist
 

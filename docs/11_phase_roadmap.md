@@ -18,7 +18,7 @@
 
 **Status:** `todo` | `wip` | `review_ready` | `merged`
 
-> **Current state (2026-06-24, HEAD `#109`):** Phase C.0–C.4 đã merge hoàn chỉnh — `C3C` apply/cancel/stale (#105), scheduler wiring + apply-patch rate limit + session management (#106). Phần còn lại là C.5 Analytics (optional/deferred) và data enrichment cho sparse cities (giới hạn Goong provider — không trả photo/rating).
+> **Current state (2026-07-10, HEAD `42f4d33`):** Phase C.0–C.4 đã merge hoàn chỉnh — `C3C` apply/cancel/stale (#105), scheduler wiring + apply-patch rate limit + session management (#106). Sau đó có các pass hardening static images, Goong map, activity coordinates (`20260707_0016`) và docs/video demo. Runtime DB vẫn là PostgreSQL + Alembic; `dulichviet_full_database_one_file.csv` chỉ là snapshot/export artifact. Phần còn lại là C.5 Analytics (optional/deferred) và data enrichment cho sparse cities.
 
 ---
 

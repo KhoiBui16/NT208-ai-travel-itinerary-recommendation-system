@@ -91,8 +91,8 @@ Backend/
 │   └── shared/                    # Shared base classes
 │       └── service.py             # BaseService
 ├── tests/
-│   ├── unit/                      # 187 unit tests
-│   └── integration/               # 77 integration tests (43 pass + 34 CI-gated skip local)
+│   ├── unit/                      # 194 unit tests collected (2026-07-10)
+│   └── integration/               # 79 integration tests collected (2026-07-10)
 ├── alembic/
 │   └── versions/                  # DB migration files
 ├── config.yaml                    # Non-secret config
@@ -687,4 +687,4 @@ EmailService
 - `C4` đã merged (#106): session management (rename/delete/switcher/load-more), history reload; apply-patch rate limit riêng (`rate:ai:apply_patch:user:*`) + ETL scheduler wired vào compose (profile `etl`).
 - Analytics EP-34 (C.5) — optional/deferred, **chưa implement** (`/agent/analytics` route absent, `enable_analytics` default false); cần guardrails (read-only role, table allowlist, SQL validator, max rows, audit log) nếu bật.
 
-> **Current state (2026-06-24, HEAD `#109`):** Phase C.1–C.4 đã merge hoàn chỉnh. Phần còn lại trước khi coi hệ thống "production-complete" là C.5 Analytics (optional) + data enrichment cho sparse cities (giới hạn Goong provider — không trả photo/rating).
+> **Current state (2026-07-10, HEAD `42f4d33`):** Phase C.1–C.4 đã merge hoàn chỉnh. Sau đó có các pass static image hardening, Goong map/activity coordinate support, và docs/video demo. Runtime DB vẫn là PostgreSQL + Alembic head `20260707_0016`; CSV root chỉ là snapshot/export artifact. Phần còn lại trước khi coi hệ thống "production-complete" là C.5 Analytics (optional) + data enrichment cho sparse cities.

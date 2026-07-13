@@ -555,6 +555,11 @@ Schema đã có trong DB qua Alembic migration, và current source đã có sess
 | `20260703_0012_import_crawled_image_paths` | 2026-07-03 | Import ảnh crawl thật (places/hotels/destinations) theo slug | `places.image`, `hotels.image`, `destinations.image` |
 | `20260703_0013_expand_crawled_image_paths` | 2026-07-03 | Bổ sung ảnh thật cho 13 place + 1 hotel còn trống (predicate `name`+`destination_id`) | `places.image`, `hotels.image` |
 | `20260703_0014_backfill_activity_images_from_places` | 2026-07-03 | Backfill `activities.image` rỗng từ `places.image` qua `place_id` (sửa snapshot trip đóng băng lúc generate, vd. trip 837) | `activities.image` |
+| `20260705_0015_link_crawled_place_images` | 2026-07-05 | Link thêm 43 ảnh place crawl thật bằng match slug/CamelCase | `places.image` |
+| `20260707_0016_add_activity_coordinates` | 2026-07-07 | Lưu tọa độ trực tiếp trên activity manual; generated activity vẫn có thể dùng tọa độ qua `place_id` | `activities.latitude`, `activities.longitude` |
+
+**Current Alembic head (2026-07-10):** `20260707_0016_add_activity_coordinates`.
+
 **Nguyên tắc migration:**
 - Alembic là source of truth — không dùng `create_all()` trong production.
 - Mỗi migration phải có `upgrade()` và `downgrade()`.
@@ -565,6 +570,22 @@ Schema đã có trong DB qua Alembic migration, và current source đã có sess
 - `chat_sessions` và `chat_messages` đã nằm trong `20260428_0001_initial_mvp2_schema`.
 - Trên `main` hiện tại không có migration riêng kiểu `add_companion_chat_tables`.
 - `C3A` cần thêm session API và ownership rules, không cần dựng lại chat tables từ đầu.
+
+---
+
+## 3.1 CSV Snapshot Boundary
+
+Repo root hiện có `dulichviet_full_database_one_file.csv`. Đây là **database snapshot/export artifact**, không phải backend runtime storage.
+
+| Câu hỏi | Current truth |
+|---|---|
+| Backend có đọc CSV khi start app không? | Không. App dùng `DATABASE_URL` trỏ tới PostgreSQL. |
+| Schema do CSV hay Alembic quản lý? | Alembic quản lý schema; CSV chỉ chứa record export. |
+| CSV có thay thế ETL không? | Không. CSV có thể là artifact để restore/seed thủ công nếu có runbook riêng. |
+| Snapshot có cùng migration head với code không? | Snapshot audit thấy `alembic_version=20260705_0015`; code head là `20260707_0016`, nên restore xong phải `alembic upgrade head`. |
+| Có nên paste row CSV vào docs không? | Không. Snapshot có thể chứa full table records; xem issue `docs/REPORTS/ISSUES/issue_csv_database_snapshot_public_sensitivity.md`. |
+
+Nếu muốn chính thức deploy bằng CSV snapshot, cần thêm importer/runbook riêng. Khi chưa có importer, docs chỉ được mô tả CSV là artifact tham khảo/restore thủ công.
 
 ---
 

@@ -22,13 +22,13 @@ Neu docs va code xung dot:
 - Sau do doi chieu voi code that te
 - Neu code da lech docs, phai noi ro mismatch truoc khi sua tiep
 
-## Current repo truth (2026-06-11)
+## Current repo truth (2026-07-10)
 
 - Backend runtime hien tai la MVP2 trong `Backend/src/`
 - Backend dung `uv`, `pyproject.toml`, `uv.lock`, Alembic, async SQLAlchemy, Redis, Docker Compose
-- BE local suite: 187 unit pass + 77 integration collected (43 int pass / 34 CI-gated skip) (full suite xanh trên CI postgres)
+- BE current collect inventory: 194 unit + 79 integration tests (collect-only 2026-07-10). Older full-pass snapshot was 187 unit + 77 integration; re-run before claiming current green.
 - Frontend runtime hien tai nam trong `Frontend/`
-- Playwright suite hiện có 17 spec files trong `Frontend/tests/e2e/` (14 top-level + 3 `b3/`; CI `frontend-e2e` green)
+- Playwright suite hiện có 18 spec files trong `Frontend/tests/e2e/` (15 top-level + 3 `b3/`; 37 `test(...)` declarations by source inventory)
 - Public contract cho trip va nested data lay tu `Frontend/src/app/types/trip.types.ts`
 - Register page bypass OTP cho den khi BE email OTP san sang
 - `docs/` la bo tai lieu chi tiet cho user va reviewer
@@ -37,6 +37,7 @@ Neu docs va code xung dot:
 - **00093 slugify fix merged** (PR #92): Shared `core/slugify.py`, places service fuzzy matching, itineraries refactor, browser test automation
 - **00094 C3A chat session merged** (PR #98-100): Chat session REST APIs, FE ChatPanel component, e2e tests
 - **00107 post-PR#105 completion** (branch `feat/00107-c-post-105-completion`): ETL cross-city contamination guard (`src.etl.transformers.city_match`) + idempotent cleanup CLI (`python -m src.etl.cleanup`); scheduler wired vào compose qua profile `etl`; apply-patch rate limit riêng (`rate_limit_ai_apply_patch_user`, namespace `rate:ai:apply_patch:*`); C4 session management (PATCH rename + DELETE + FE switcher/load-more); migration 0009 `chat_sessions.title`. Image/review sparsity là giới hạn provider Goong (không trả photo/rating), không phải bug.
+- **00137 current source sync**: Alembic head is `20260707_0016_add_activity_coordinates`; runtime DB remains PostgreSQL, not CSV. `dulichviet_full_database_one_file.csv` is a snapshot/export artifact only unless an importer/runbook is added. Static image contract: `asserts/images/` source archive -> `Backend/static/img/` runtime bytes -> DB stores `/img/...`.
 
 ## Target MVP2 decisions da chot
 
@@ -172,6 +173,7 @@ Rules:
 | `.claude/skills/db-migration/SKILL.md` | Migration/schema rules theo MVP2                    |
 | `.claude/agents/security-auditor.md`   | Audit secret, auth, token, SQL, AI guardrails       |
 | `.claude/agents/doc-generator.md`      | Sync docs dai, docs rut gon, README, CI/PR docs     |
+| `.claude/agents/current-source-docs-auditor.md` | Audit Backend/Frontend/database/deploy truth before docs sync |
 
 ## Security rules
 

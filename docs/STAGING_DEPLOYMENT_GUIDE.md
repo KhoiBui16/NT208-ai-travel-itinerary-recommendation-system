@@ -355,6 +355,8 @@ Nếu pooler/session URL hiện tại dùng được cho cả runtime và migrat
 - **Data đã có giá trị:** 1563 real Goong place (không dummy).
 - **Nhanh hơn:** Dump + restore < 30 phút vs recrawl multi-hour + quota risk.
 
+**CSV snapshot note (2026-07-10):** repo root có `dulichviet_full_database_one_file.csv`, nhưng backend/deploy hiện **không** đọc CSV này ở runtime. Render vẫn chạy PostgreSQL thật; schema do `preDeployCommand: uv run alembic upgrade head` tạo/cập nhật. Nếu muốn dùng CSV snapshot để seed/restore, phải có runbook import riêng, không được thay thế các bước migration/Postgres bên dưới bằng giả định "app đọc CSV".
+
 **Các bước:**
 
 1. **Cleanup local DB trước (fix contamination):**
