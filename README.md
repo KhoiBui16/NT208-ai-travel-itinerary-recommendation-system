@@ -353,14 +353,16 @@ Tất cả các đường dẫn dưới đây phải truy cập được công k
 - Full source code: `<điền link GitHub public của project>`
 - Video demo tính năng mới nhất hoặc full demo tính năng:
 
+  **MP4 trực tiếp:** [`Chạy VideoDemoNhom9-TravelAI.mp4`](https://media.githubusercontent.com/media/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/main/asserts/videos/VideoDemoNhom9-TravelAI.mp4)
+  · Local mirror: [`asserts/videos/VideoDemoNhom9-TravelAI.mp4`](asserts/videos/VideoDemoNhom9-TravelAI.mp4)
+
 <p align="center">
   <a href="https://youtu.be/b48kz0IVvpY">
     <img src="https://img.youtube.com/vi/b48kz0IVvpY/hqdefault.jpg" alt="TravelAI Full Demo" width="720">
   </a>
 </p>
 
-  YouTube: [`TravelAI - Full Demo Tính Năng`](https://youtu.be/b48kz0IVvpY)
-  · Local MP4 mirror: [`VideoDemoNhom9-TravelAI.mp4`](asserts/videos/VideoDemoNhom9-TravelAI.mp4)
+  YouTube dự phòng: [`TravelAI - Full Demo Tính Năng`](https://youtu.be/b48kz0IVvpY)
 
 ---
 
