@@ -347,10 +347,6 @@ Bộ tài liệu kỹ thuật tiếng Việt đầy đủ nằm trong [`docs/`](
 ---
 
 ## 🔗 Video / Demo / Public Links
-
-Tất cả các đường dẫn dưới đây phải truy cập được công khai tại thời điểm nộp bài:
-
-- Full source code: `<điền link GitHub public của project>`
 - Video demo tính năng mới nhất hoặc full demo tính năng:
 
   **MP4 trực tiếp:** [`Chạy VideoDemoNhom9-TravelAI.mp4`](https://media.githubusercontent.com/media/KhoiBui16/NT208-ai-travel-itinerary-recommendation-system/main/asserts/videos/VideoDemoNhom9-TravelAI.mp4)
