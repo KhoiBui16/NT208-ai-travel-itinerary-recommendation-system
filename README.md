@@ -353,11 +353,14 @@ Tất cả các đường dẫn dưới đây phải truy cập được công k
 - Full source code: `<điền link GitHub public của project>`
 - Video demo tính năng mới nhất hoặc full demo tính năng:
 
-<video src="asserts/videos/VideoDemoNhom9-TravelAI.mp4" controls width="100%">
-  Trình duyệt/Markdown viewer của bạn không hỗ trợ hiển thị video trực tiếp. Mở file: asserts/videos/VideoDemoNhom9-TravelAI.mp4
-</video>
+<p align="center">
+  <a href="https://youtu.be/b48kz0IVvpY">
+    <img src="https://img.youtube.com/vi/b48kz0IVvpY/hqdefault.jpg" alt="TravelAI Full Demo - NT208 Nhóm 9" width="720">
+  </a>
+</p>
 
-  [`VideoDemoNhom9-TravelAI.mp4`](asserts/videos/VideoDemoNhom9-TravelAI.mp4)
+  YouTube: [`TravelAI - Full Demo Tính Năng | NT208 Nhóm 9`](https://youtu.be/b48kz0IVvpY)
+  · Local MP4 mirror: [`VideoDemoNhom9-TravelAI.mp4`](asserts/videos/VideoDemoNhom9-TravelAI.mp4)
 
 - Video khảo sát user: `<điền link nếu có>`
 - Ảnh chụp minh chứng cộng điểm / tài nguyên bổ sung: `<điền link nếu có>`
