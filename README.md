@@ -355,16 +355,12 @@ Tất cả các đường dẫn dưới đây phải truy cập được công k
 
 <p align="center">
   <a href="https://youtu.be/b48kz0IVvpY">
-    <img src="https://img.youtube.com/vi/b48kz0IVvpY/hqdefault.jpg" alt="TravelAI Full Demo - NT208 Nhóm 9" width="720">
+    <img src="https://img.youtube.com/vi/b48kz0IVvpY/hqdefault.jpg" alt="TravelAI Full Demo" width="720">
   </a>
 </p>
 
-  YouTube: [`TravelAI - Full Demo Tính Năng | NT208 Nhóm 9`](https://youtu.be/b48kz0IVvpY)
+  YouTube: [`TravelAI - Full Demo Tính Năng`](https://youtu.be/b48kz0IVvpY)
   · Local MP4 mirror: [`VideoDemoNhom9-TravelAI.mp4`](asserts/videos/VideoDemoNhom9-TravelAI.mp4)
-
-- Video khảo sát user: `<điền link nếu có>`
-- Ảnh chụp minh chứng cộng điểm / tài nguyên bổ sung: `<điền link nếu có>`
-- Report hoặc slide bổ sung: `<điền link nếu có>`
 
 ---
 
