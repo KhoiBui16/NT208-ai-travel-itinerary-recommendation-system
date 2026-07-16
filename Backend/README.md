@@ -17,8 +17,8 @@ FastAPI backend for the NT208 AI travel itinerary recommendation system.
 | AI C.3B/C.3C | Merged (#105): trip-bound `POST/GET /itineraries/chat-sessions/{sessionId}/messages`, `POST /itineraries/{tripId}/apply-patch`, real Gemini call, persisted `chat_messages`, stale proposal handling, auth-user chat quota riêng |
 | AI C.4 | Merged (#106): chat history persisted + session management (rename/delete/switcher/load-more); apply-patch rate limit riêng + ETL scheduler wired vào compose (profile `etl`) |
 | Remaining AI | C.5 Analytics Text-to-SQL — optional/deferred (chưa implement; cần guardrails nếu bật) |
-| Current source 2026-07-10 | 41 `/api/v1` routes + `/img/{file_path:path}` asset route; Alembic head `20260707_0016_add_activity_coordinates`; runtime DB is PostgreSQL, not CSV |
-| Current test inventory | `194 unit + 79 integration` collected by `uv run pytest ... --collect-only -q` on 2026-07-10 |
+| Current source 2026-07-16 | 41 `/api/v1` routes + `/img/{file_path:path}` asset route; Alembic head `20260707_0016_add_activity_coordinates`; runtime DB is PostgreSQL, not CSV |
+| Current test inventory | `194 unit + 79 integration` collected by `uv run pytest ... --collect-only -q` on 2026-07-16 |
 | Last full pass snapshot | Ruff check pass, Alembic upgrade/check pass, ETL scheduler compose profile smoke pass (snapshot 2026-06-24; re-run pass before claiming current green) |
 
 ## Architecture
@@ -213,11 +213,11 @@ Expected local result (verified 2026-06-24):
 | Ruff check | Pass |
 | Ruff format check | Pass |
 | Alembic upgrade/check | Pass |
-| Backend unit | `194 collected` (collect-only 2026-07-10; run full suite before claiming pass) |
-| Backend integration | `79 collected` (collect-only 2026-07-10; run full suite before claiming pass) |
+| Backend unit | `194 collected` (collect-only 2026-07-16; run full suite before claiming pass) |
+| Backend integration | `79 collected` (collect-only 2026-07-16; run full suite before claiming pass) |
 | Real AI smoke | Generate + companion chat (phụ thuộc tình trạng provider Gemini) |
 
-Current source inventory (2026-07-10):
+Current source inventory (2026-07-16):
 
 | Item | Count / state |
 |---|---|

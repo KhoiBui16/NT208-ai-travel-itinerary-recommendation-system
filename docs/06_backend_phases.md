@@ -180,7 +180,7 @@ Cache rule:
 - DB loader upsert destinations, places, hotels.
 - `scraped_sources` track ETL run.
 - `hotels.yaml` làm sample hotel data không cần API key.
-- `config.yaml` có danh sách 28 city Việt Nam.
+- `config.yaml` có danh sách 27 city/destination Việt Nam hiện tại sau khi merge `vinh-ha-long` vào `ha-long`.
 
 Luồng ETL:
 

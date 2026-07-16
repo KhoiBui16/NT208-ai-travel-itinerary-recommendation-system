@@ -1,7 +1,7 @@
 # 12. Current Source Audit & Docs Sync
 
-**Cập nhật:** 2026-07-10
-**Nguồn chi tiết:** [`docs/REPORTS/00137_current_source_docs_sync_audit.md`](REPORTS/00137_current_source_docs_sync_audit.md)
+**Cập nhật:** 2026-07-16
+**Nguồn chi tiết:** [`docs/REPORTS/00138_source_docs_sync_audit.md`](REPORTS/00138_source_docs_sync_audit.md)
 
 ## Current Runtime Truth
 
@@ -15,6 +15,16 @@
 | Frontend | Vite + React + TypeScript trong `Frontend/`; routes ở `Frontend/src/app/routes.tsx` |
 | Maps | Backend dùng Goong REST key; FE chỉ dùng public map-tiles key `VITE_GOONG_MAP_API_KEY` |
 | Deploy | FE target Vercel; BE target Render web + Render Postgres + Render Key Value/Redis; migration tự chạy bằng `preDeployCommand` |
+
+## Re-check Evidence 2026-07-16
+
+- `rg --files Backend` inventory: 524 files.
+- `rg --files Frontend` inventory: 183 files.
+- `rg --files docs -g "*.md"` inventory: 208 markdown files.
+- Backend route introspection: 41 `/api/v1/*` routes + 1 root `/img/{file_path:path}` route.
+- Backend collect-only: 194 unit tests + 79 integration tests.
+- Frontend e2e source inventory: 18 spec files + 37 `test(...)` declarations.
+- Root README architecture Mermaid was changed to avoid HTML `<br/>` labels because some IDE Markdown renderers fail rich-display parsing on those labels.
 
 ## Backend Scope
 
