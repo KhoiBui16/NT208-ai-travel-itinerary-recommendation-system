@@ -32,10 +32,10 @@ Mục tiêu của staging:
 
 ```mermaid
 flowchart LR
-    Browser["User Browser"] --> Vercel["Vercel<br/>Frontend Vite SPA"]
-    Vercel --> RenderAPI["Render Web Service<br/>FastAPI + Uvicorn"]
-    RenderAPI --> Postgres["Managed Postgres<br/>Render Postgres hoặc Supabase"]
-    RenderAPI --> Redis["Managed Redis TCP<br/>Render Key Value / Redis provider"]
+    Browser["User Browser"] --> Vercel["Vercel Frontend Vite SPA"]
+    Vercel --> RenderAPI["Render Web Service FastAPI + Uvicorn"]
+    RenderAPI --> Postgres["Managed Postgres: Render Postgres hoặc Supabase"]
+    RenderAPI --> Redis["Managed Redis TCP: Render Key Value / Redis provider"]
     RenderAPI --> Gemini["Gemini API"]
     RenderAPI --> Goong["Goong API (optional runtime, required for live ETL)"]
 ```
@@ -350,12 +350,12 @@ Nếu pooler/session URL hiện tại dùng được cho cả runtime và migrat
 ### Bước 4 (Copy DB) — Import data local lên Render
 
 **Tại sao copy DB (Option A) thay vì recrawl?**
-- **Quota-safe:** Recrawl 28 city = ~2100+ Goong Place Detail call → cạn free tier ngay. Local đã crawl xong.
+- **Quota-safe:** Recrawl 27 destination hiện tại = ~2000+ Goong Place Detail call → cạn free tier ngay. Local đã crawl xong.
 - **FK-safe:** Destination ID non-contiguous (2, 29–78) + 267 activity reference place → dump nguyên vẹn giữ FK, sạch hơn re-import rời rạc.
 - **Data đã có giá trị:** 1563 real Goong place (không dummy).
 - **Nhanh hơn:** Dump + restore < 30 phút vs recrawl multi-hour + quota risk.
 
-**CSV snapshot note (2026-07-10):** repo root có `dulichviet_full_database_one_file.csv`, nhưng backend/deploy hiện **không** đọc CSV này ở runtime. Render vẫn chạy PostgreSQL thật; schema do `preDeployCommand: uv run alembic upgrade head` tạo/cập nhật. Nếu muốn dùng CSV snapshot để seed/restore, phải có runbook import riêng, không được thay thế các bước migration/Postgres bên dưới bằng giả định "app đọc CSV".
+**CSV snapshot note (re-check 2026-07-16):** repo root có `dulichviet_full_database_one_file.csv`, nhưng backend/deploy hiện **không** đọc CSV này ở runtime. Render vẫn chạy PostgreSQL thật; schema do `preDeployCommand: uv run alembic upgrade head` tạo/cập nhật. Nếu muốn dùng CSV snapshot để seed/restore, phải có runbook import riêng, không được thay thế các bước migration/Postgres bên dưới bằng giả định "app đọc CSV".
 
 **Các bước:**
 
@@ -408,7 +408,7 @@ Nếu pooler/session URL hiện tại dùng được cho cả runtime và migrat
      -c "SELECT count(*) AS destinations FROM destinations;" \
      -c "SELECT count(*) AS places FROM places;"
    ```
-   - Expect: `destinations = 28`, `places ≈ 1564` (1563 Goong + 1 ETL)
+   - Expect: `destinations = 27`, `places ≈ 1564` (1563 Goong + 1 ETL, tùy snapshot restore)
 
 6. **Redis cache — KHÔNG cần flush (tự expire):**
    - Redis chỉ là cache (places/destinations) + quota counter, có TTL tự expire

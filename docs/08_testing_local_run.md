@@ -151,7 +151,7 @@ npm run build           # Production build phải pass
 npm run test:e2e        # Playwright e2e tests (cần BE chạy trên localhost:8000)
 ```
 
-FE build phải pass (production bundle). Playwright e2e tests hiện có `18` spec files ở `tests/e2e/` (15 top-level + 3 trong `b3/`; 37 `test(...)` declarations theo source inventory 2026-07-10). Yêu cầu BE server chạy trước khi chạy e2e. CI `frontend-e2e` green trên PR #109 là snapshot cũ, không phải run mới nhất.
+FE build phải pass (production bundle). Playwright e2e tests hiện có `18` spec files ở `tests/e2e/` (15 top-level + 3 trong `b3/`; 37 `test(...)` declarations theo source inventory 2026-07-16). Yêu cầu BE server chạy trước khi chạy e2e. CI `frontend-e2e` green trên PR #109 là snapshot cũ, không phải run mới nhất.
 
 ### Current evidence snapshot (2026-06-19)
 
@@ -160,12 +160,12 @@ Set-Location "<repo-root>\\Backend"
 uv run pytest tests/unit tests/integration -v --tb=short
 ```
 
-Kết quả collect local (2026-07-10):
+Kết quả collect local (2026-07-16):
 
 - Backend unit: `194 tests` collected
 - Backend integration: `79 tests` collected
 
-Source inventory update (2026-07-10):
+Source inventory update (2026-07-16):
 
 - Alembic head: `20260707_0016_add_activity_coordinates`
 - E2E spec files: `18`

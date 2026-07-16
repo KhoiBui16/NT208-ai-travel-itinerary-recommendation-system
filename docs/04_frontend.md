@@ -74,7 +74,7 @@ Frontend/
 │   │       └── tripConstants.ts   # Trip constants
 │   ├── styles/                     # Tailwind + global CSS
 │   └── imports/                    # Shared imports
-├── tests/e2e/                      # 37 test declarations / 18 spec files (current source inventory 2026-07-10)
+├── tests/e2e/                      # 37 test declarations / 18 spec files (current source inventory 2026-07-16)
 │   ├── auth.spec.ts
 │   ├── trips.spec.ts
 │   ├── public.spec.ts
@@ -537,7 +537,7 @@ Tất cả trang chính đã nối BE API. Mock chỉ dùng fallback.
 - **Timeout**: 30 giây, retries: 2 trên CI
 - **WebServer**: Tự động start `npm run dev` nếu chưa chạy
 
-### Test suites (37 test declarations trên 18 spec files; source inventory 2026-07-10)
+### Test suites (37 test declarations trên 18 spec files; source inventory 2026-07-16)
 
 Current suite coverage:
 

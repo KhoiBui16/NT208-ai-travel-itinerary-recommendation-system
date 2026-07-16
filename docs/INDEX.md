@@ -1,7 +1,7 @@
 # Documentation Index
 
 **Ngày tạo:** 2026-06-08
-**Cập nhật lần cuối:** 2026-07-10 (sync task 00137)
+**Cập nhật lần cuối:** 2026-07-16 (sync task 00138)
 
 ---
 
@@ -295,7 +295,7 @@
 | Phase reports | 40+ | 🟢 Comprehensive |
 | PR descriptions | 35+ | 🟢 Excellent traceability |
 | Issue reports | 45+ | 🟢 Well tracked |
-| Cập nhật gần nhất | 2026-07-10 | 🟢 Current |
+| Cập nhật gần nhất | 2026-07-16 | 🟢 Current |
 
 ---
 
@@ -330,12 +330,12 @@
 3. UAT: [`00059b_full_user_journey_uat.md`](REPORTS/00059b_full_user_journey_uat.md)
 4. Results: [`00060k_r2_full_testing_report.md`](REPORTS/00060k_r2_full_testing_report.md)
 
-### For Current Status (July 2026, HEAD `42f4d33`)
+### For Current Status (July 2026)
 1. Current source truth: [`12_current_source_audit_sync.md`](12_current_source_audit_sync.md)
-2. Latest audit report: [`REPORTS/00137_current_source_docs_sync_audit.md`](REPORTS/00137_current_source_docs_sync_audit.md)
+2. Latest audit report: [`REPORTS/00138_source_docs_sync_audit.md`](REPORTS/00138_source_docs_sync_audit.md)
 3. Phase status: [`11_phase_roadmap.md`](11_phase_roadmap.md) (C.0–C.4 merged; C.5 optional)
 4. Deploy readiness: [`STAGING_DEPLOYMENT_GUIDE.md`](STAGING_DEPLOYMENT_GUIDE.md)
-5. Current source inventory: 41 `/api/v1` routes + `/img` asset route, Alembic head `20260707_0016`, 194 unit + 79 integration collected, 18 e2e specs / 37 tests. Full pass still needs a current run before claiming green.
+5. Current source inventory re-checked 2026-07-16: 41 `/api/v1` routes + `/img` asset route, Alembic head `20260707_0016`, 194 unit + 79 integration collected, 18 e2e specs / 37 tests. Full pass still needs a current run before claiming green.
 
 ---
 

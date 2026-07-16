@@ -31,7 +31,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 - 🔒 Bảo mật token: refresh rotation, share/claim token hash SHA-256, không lưu raw token
 - ⚡ Optimistic update trên FE — UI phản hồi ngay, revert nếu API fail
 - 🗄️ Redis cache cho places/destinations; rate limit AI **fail-closed** (Redis down thì block, không bypass)
-- 📡 ETL Goong-first nạp địa điểm thật vào PostgreSQL (28 thành phố)
+- 📡 ETL Goong-first nạp địa điểm thật vào PostgreSQL (27 destination hiện tại sau khi merge `vinh-ha-long` vào `ha-long`)
 
 ---
 
@@ -53,7 +53,7 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 | **AI C.3B/C.3C** | Companion chat message flow + apply-patch confirm | ✅ Done |
 | **AI C.4** | Chat history persisted + quản lý session (rename/delete/switcher) | ✅ Done |
 | **AI C.5** | Analytics Text-to-SQL | 🔄 Optional/deferred |
-| **ETL** | Goong-first ETL nạp dữ liệu địa điểm vào PostgreSQL (28 thành phố, scheduler opt-in); CSV root chỉ là snapshot/export artifact | ✅ Done |
+| **ETL** | Goong-first ETL nạp dữ liệu địa điểm vào PostgreSQL (27 destination hiện tại, scheduler opt-in); CSV root chỉ là snapshot/export artifact | ✅ Done |
 
 > Chi tiết từng phase (branch/PR/endpoint): [`docs/11_phase_roadmap.md`](docs/11_phase_roadmap.md) · [`docs/06_ai_roadmap.md`](docs/06_ai_roadmap.md)
 
@@ -114,20 +114,20 @@ Lịch trình được tạo ra dựa trên dữ liệu địa điểm thực t�
 flowchart LR
     subgraph Client["Frontend (React + Vite)"]
         UI[Pages / Components]
-        SVC["services/<br/>api client"]
+        SVC["services api client"]
     end
     subgraph BE["Backend (FastAPI async)"]
-        Routers["/api/v1 routers<br/>auth · users · itineraries · shared · places · agent"]
+        Routers["/api/v1 routers: auth, users, itineraries, shared, places, agent"]
         Svc["domain services + repositories"]
         RL["Rate limiter (Redis)"]
     end
     subgraph Data
-        PG[("PostgreSQL 16<br/>dulichviet")]
-        RD[("Redis 7<br/>cache + quota")]
+        PG[("PostgreSQL 16 dulichviet")]
+        RD[("Redis 7 cache + quota")]
     end
     subgraph External
-        GEM["Gemini AI<br/>generate · companion chat"]
-        GOONG["Goong Maps API<br/>ETL"]
+        GEM["Gemini AI: generate + companion chat"]
+        GOONG["Goong Maps API ETL"]
     end
 
     UI --> SVC
@@ -144,6 +144,8 @@ flowchart LR
 - **Generate** đi **direct pipeline** (`ItineraryPipeline`), không qua Supervisor.
 - **Companion chat** trả `requiresConfirmation` + `proposedOperations`; **không tự persist** — chỉ `apply-patch` sau user confirm mới ghi DB.
 - **Rate limit AI fail-closed**: Redis down → 503, không cho bypass.
+
+> Render note: diagram này tránh HTML label kiểu `<br/>` để tương thích hơn với Markdown preview/IDE renderer. Lỗi `Unable to render rich display` trước đó đến từ Mermaid renderer không parse ổn HTML label trong node text, không phải do kiến trúc thiếu node.
 
 📖 Đầy đủ kiến trúc / luồng dữ liệu / bảo mật / thiết kế: [`docs/02_architecture.md`](docs/02_architecture.md)
 
@@ -164,15 +166,15 @@ NT208-ai-travel-itinerary-recommendation-system/
 │   │   ├── geo/                   # Goong REST client
 │   │   ├── core/                  # config, db, security, dependencies, middleware, rate limiter
 │   │   └── shared/                # cache client, pagination, base helpers
-│   ├── tests/                     # 194 unit + 79 integration (collect-only 2026-07-10)
-│   ├── alembic/versions/          # 15 migrations, head 20260707_0016
+│   ├── tests/                     # 194 unit + 79 integration (collect-only 2026-07-16)
+│   ├── alembic/versions/          # 15 migration files, head 20260707_0016
 │   ├── config.yaml                # non-secret defaults
 │   ├── .env.example               # secret template
 │   ├── pyproject.toml             # uv deps + Ruff config
 │   └── Dockerfile
 ├── Frontend/
 │   ├── src/app/
-│   │   ├── pages/                 # 26 page components
+│   │   ├── pages/                 # 27 page components
 │   │   ├── components/            # shared + companion/ + ui/
 │   │   ├── services/              # api.ts + auth/chat/itinerary/places/users
 │   │   ├── hooks/ · contexts/ · types/ · data/ · utils/
@@ -278,7 +280,7 @@ npm run dev -- --host localhost --port 5173
 | C.4 History | Chat history + session management (rename/delete/switcher) | ✅ Merged (#106) |
 | C.5 Analytics | Text-to-SQL | 🔄 Optional/deferred |
 
-**HEAD hiện tại:** `42f4d33 Update video demo link in README.md` (2026-07-10). Phase C.1–C.4 đã merge hoàn chỉnh; sau đó có các pass hardening runtime ảnh, map Goong thật, backfill tọa độ activity (`20260707_0016`) và tài liệu/video demo. C.5 Analytics vẫn là tùy chọn (chưa implement, cần guardrails bảo mật nếu bật).
+**Current source re-check:** 2026-07-16 trên nhánh docs `00138`; Phase C.1–C.4 đã merge hoàn chỉnh; sau đó có các pass hardening runtime ảnh, map Goong thật, backfill tọa độ activity (`20260707_0016`) và tài liệu/video demo. C.5 Analytics vẫn là tùy chọn (chưa implement, cần guardrails bảo mật nếu bật).
 
 > Mọi chi tiết phase/branch/PR: [`docs/11_phase_roadmap.md`](docs/11_phase_roadmap.md) · Tracker: [`docs/09_execution_tracker.md`](docs/09_execution_tracker.md)
 
@@ -288,8 +290,8 @@ npm run dev -- --host localhost --port 5173
 
 | Layer | Số lượng | Cách chạy |
 |---|---|---|
-| Backend unit | 194 collected (collect-only 2026-07-10) | `cd Backend && uv run pytest tests/unit -v` |
-| Backend integration | 79 collected (collect-only 2026-07-10) | `cd Backend && uv run pytest tests/integration -v` |
+| Backend unit | 194 collected (collect-only 2026-07-16) | `cd Backend && uv run pytest tests/unit -v` |
+| Backend integration | 79 collected (collect-only 2026-07-16) | `cd Backend && uv run pytest tests/integration -v` |
 | Frontend build | production bundle | `cd Frontend && npm run build` |
 | Frontend e2e | 18 spec files / 37 test declarations (Playwright source inventory) | `cd Frontend && npm run test:e2e` |
 

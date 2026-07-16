@@ -795,6 +795,21 @@ Không có thay đổi UI/UX, API contract, DB schema, hoặc business logic tro
 
 **Status:** ✅ READY FOR PR
 
+## 00138 Source Docs Sync Audit
+
+| File | Nội dung |
+|---|---|
+| [00138_source_docs_sync_audit.md](00138_source_docs_sync_audit.md) | 2026-07-16: Re-check Backend/Frontend/docs/README inventory, fix README Mermaid render labels, sync active docs to current source, and restore AI rate-limit fail-closed config invariant |
+
+**Key findings:**
+- ✅ Root README Mermaid rich-display issue fixed by removing HTML `<br/>` labels from node text.
+- ✅ Full file inventory recorded for Backend, Frontend, docs markdown, and README files.
+- ✅ Current source truth re-checked: 41 `/api/v1` routes + 1 `/img/{file_path:path}` asset route; 194 unit + 79 integration tests collected; 18 Playwright spec files / 37 test declarations.
+- ✅ Active docs now use 27 current destinations after `vinh-ha-long` merge; historical reports remain snapshots.
+- ✅ `Backend/config.yaml` restored paid AI rate-limit fail mode to `closed`, matching the security invariant.
+
+**Status:** ✅ READY FOR PR
+
 ## 00098 Pre-C3B Hardening And PR Readiness
 
 | File | Nội dung |

@@ -558,7 +558,7 @@ Schema đã có trong DB qua Alembic migration, và current source đã có sess
 | `20260705_0015_link_crawled_place_images` | 2026-07-05 | Link thêm 43 ảnh place crawl thật bằng match slug/CamelCase | `places.image` |
 | `20260707_0016_add_activity_coordinates` | 2026-07-07 | Lưu tọa độ trực tiếp trên activity manual; generated activity vẫn có thể dùng tọa độ qua `place_id` | `activities.latitude`, `activities.longitude` |
 
-**Current Alembic head (2026-07-10):** `20260707_0016_add_activity_coordinates`.
+**Current Alembic head (2026-07-16):** `20260707_0016_add_activity_coordinates`.
 
 **Nguyên tắc migration:**
 - Alembic là source of truth — không dùng `create_all()` trong production.
@@ -784,7 +784,7 @@ uv run python -m src.etl --cities "Hà Nội" --dry-run
 - Chạy full ETL cho các city chính còn lại (Đà Nẵng, TP.HCM, Phú Quốc, Hội An...).
 - Kiểm tra số lượng places/hotels sau crawl trước khi test AI generate cho city đó.
 - ETL chưa có incremental update — mỗi lần chạy reload toàn bộ city.
-- Phase C (post-00107): `chat_sessions`/`chat_messages` đã có full runtime APIs + session-management UX (rename/delete/switcher/load-more); `apply-patch` có rate limit riêng; phần còn thiếu chủ yếu là **data coverage cho city sparse** (Goong không trả places cho ~9/28 destination) — đã xử lý bằng `isGenerateReady=false` + pipeline empty-context guard.
+- Phase C (post-00107): `chat_sessions`/`chat_messages` đã có full runtime APIs + session-management UX (rename/delete/switcher/load-more); `apply-patch` có rate limit riêng; phần còn thiếu chủ yếu là **data coverage cho city sparse** (Goong không trả places cho một số destination trong tập 27 hiện tại) — đã xử lý bằng `isGenerateReady=false` + pipeline empty-context guard.
 
 ## 8. Data quality ops (00107)
 

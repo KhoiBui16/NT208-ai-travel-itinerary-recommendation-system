@@ -15,7 +15,7 @@ React + Vite + TypeScript frontend for the NT208 AI travel itinerary recommendat
 | AI C.3A | `ChatPanel` integrated into `TripWorkspace` with chat session REST APIs |
 | AI C.3B/C.3C | `ChatPanel` now loads history thật, gửi message thật, render `requiresConfirmation` + `proposedOperations`, và đã có confirm/cancel UI gọi `apply-patch` thật |
 | Remaining AI UI | Legacy companion/demo components vẫn còn trên source nhưng không còn mount trên runtime chính; C.4 session management (switcher/rename/delete/load-more) đã merged (#106) |
-| Current source 2026-07-10 | 18 Playwright spec files ở `tests/e2e/` (15 top-level + 3 `b3/`), 37 `test(...)` declarations by source inventory; cần BE chạy trên `localhost:8000` để chạy e2e |
+| Current source 2026-07-16 | 18 Playwright spec files ở `tests/e2e/` (15 top-level + 3 `b3/`), 37 `test(...)` declarations by source inventory; cần BE chạy trên `localhost:8000` để chạy e2e |
 | Last verified build/e2e | Production build pass qua `npm run build`; CI `frontend-e2e` green trên PR #109 (snapshot docs 2026-06-24) |
 
 ## Local Start
@@ -139,7 +139,7 @@ npm run test:e2e
 
 Post-verify note from 2026-06-19:
 
-- `npm run test:e2e`: current source có `18` spec files ở `tests/e2e/` (15 top-level + 3 `b3/`; 37 `test(...)` declarations by source inventory 2026-07-10; cần BE chạy trên `localhost:8000`). CI `frontend-e2e` green trên PR #109 là snapshot cũ, không phải run mới nhất trong turn này.
+- `npm run test:e2e`: current source có `18` spec files ở `tests/e2e/` (15 top-level + 3 `b3/`; 37 `test(...)` declarations by source inventory 2026-07-16; cần BE chạy trên `localhost:8000`). CI `frontend-e2e` green trên PR #109 là snapshot cũ, không phải run mới nhất trong turn này.
 - FE error handling improved: toast notifications now show specific error messages instead of generic "Không thể tạo lịch trình" for rate limits, validation errors, and AI timeouts.
 - Destination slugify fuzzy matching (PR #92): Backend now properly matches "Ha Noi" → "ha-noi" → DB, improving destination resolution for users typing city names without accents.
 - C3A chat session foundation (PR #98-100): ChatPanel component integrated into TripWorkspace, chat session REST APIs (EP-37/38/39), e2e tests for chat session CRUD.
